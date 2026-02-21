@@ -96,15 +96,44 @@ cd backend
 ## CI (GitHub Actions)
 - ワークフロー: `.github/workflows/ci.yml`
 - 実行タイミング:
-  - `pull_request` (target: `main`)
-  - `push` (`main`)
+  - `pull_request` (target: `main`, `frontend/**` または `backend/**` の変更時)
+  - `push` (`main`, `frontend/**` または `backend/**` の変更時)
 - 実行内容:
   - frontend: `npm run test`, `npm run build`
-  - backend: `pytest -q backend/tests`
+  - backend: `python -m pytest -q tests` (working-directory: `backend`)
 - 低コスト運用の工夫:
   - Linuxランナーのみ使用
   - Node/Python依存キャッシュを利用
   - `concurrency` で古い実行を自動キャンセル
+
+## Terraform (HCP Terraform Free)
+- テンプレート配置: `infra/`
+- 構成:
+  - `infra/environments/dev|stg|prod`
+  - `infra/modules/resume_stack`
+- バージョン管理:
+  - Terraform本体: 各環境の `versions.tf` (`required_version`)
+  - テンプレート版: 各環境の `terraform.tfvars` (`template_version`)
+
+### 初期設定
+1. このリポジトリを `public` に設定
+2. HCP Terraform で Organization を作成
+3. Workspaces を作成
+   - `yakini-dev`
+   - `yakini-stg`
+   - `yakini-prod`
+4. `infra/environments/*/versions.tf` の `organization` を実値に変更
+
+### Terraform検証CI
+- ワークフロー: `.github/workflows/terraform-ci.yml`
+- 実行タイミング:
+  - `pull_request` (target: `main`, `infra/**` 変更時)
+  - `push` (`main`, `infra/**` 変更時)
+- 実行内容:
+  - `terraform fmt -check -recursive`
+  - `terraform init -backend=false`
+  - `terraform validate`
+  - `terraform plan -backend=false` 相当のローカル検証
 
 ## main ブランチ保護
 ### ローカル（ターミナル）での直コミット/直push防止
@@ -120,7 +149,12 @@ cd backend
 2. `Branch name pattern` に `main` を設定
 3. 以下を有効化
    - `Require a pull request before merging`
-   - `Require status checks to pass before merging`（`CI` を選択）
+   - `Require status checks to pass before merging`
+     - `test` (Application CI)
+     - `terraform-fmt`
+     - `terraform-validate-dev`
+     - `terraform-validate-stg`
+     - `terraform-validate-prod`
    - `Do not allow bypassing the above settings`（利用可能な場合）
 4. 保存
 
