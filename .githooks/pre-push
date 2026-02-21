@@ -1,0 +1,13 @@
+#!/bin/sh
+
+blocked_ref="refs/heads/main"
+
+while read -r local_ref local_sha remote_ref remote_sha
+do
+  if [ "$remote_ref" = "$blocked_ref" ]; then
+    echo "Error: main ブランチへの直接 push は禁止です。Pull Request 経由で反映してください。"
+    exit 1
+  fi
+done
+
+exit 0
