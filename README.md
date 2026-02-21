@@ -133,7 +133,10 @@ cd backend
   - `terraform fmt -check -recursive`
   - `terraform init -backend=false`
   - `terraform validate`
-  - `terraform plan -backend=false` 相当のローカル検証
+
+### HCP Terraform での plan / apply
+- `cloud {}` を使っているため、実際の `plan` / `apply` は HCP Terraform Workspace で実行
+- GitHub Actions 側は無料枠を意識して静的検証 (`fmt/init/validate`) のみを実施
 
 ## main ブランチ保護
 ### ローカル（ターミナル）での直コミット/直push防止

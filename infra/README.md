@@ -22,8 +22,11 @@
 ```bash
 terraform -chdir=infra/environments/dev init -backend=false
 terraform -chdir=infra/environments/dev validate
-terraform -chdir=infra/environments/dev plan -refresh=false -lock=false -var-file=terraform.tfvars
 ```
+
+## plan/apply 実行
+- `cloud {}` ブロックを使っているため、`plan` / `apply` は HCP Terraform Workspace 実行を前提にします。
+- ローカルで `plan` したい場合は、`terraform login` 実施後に `-backend=false` を外して `terraform init` を実行してください。
 
 ## 運用ルール
 - `dev` -> `stg` -> `prod` の順で `template_version` を更新
