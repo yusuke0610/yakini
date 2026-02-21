@@ -80,6 +80,19 @@ npm run dev
 ### その他
 - `GET /health`: ヘルスチェック
 
+## テスト
+### フロントエンド
+```bash
+cd frontend
+npm run test
+```
+
+### バックエンド
+```bash
+cd backend
+.venv/bin/python -m pytest -q
+```
+
 ## メモ
 - DBテーブルはFastAPI起動時に自動作成されます。
 - CORS許可元は `backend/.env` の `CORS_ORIGINS` で調整できます。
