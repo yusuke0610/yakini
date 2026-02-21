@@ -93,6 +93,37 @@ cd backend
 .venv/bin/python -m pytest -q
 ```
 
+## CI (GitHub Actions)
+- ワークフロー: `.github/workflows/ci.yml`
+- 実行タイミング:
+  - `pull_request` (target: `main`)
+  - `push` (`main`)
+- 実行内容:
+  - frontend: `npm run test`, `npm run build`
+  - backend: `pytest -q backend/tests`
+- 低コスト運用の工夫:
+  - Linuxランナーのみ使用
+  - Node/Python依存キャッシュを利用
+  - `concurrency` で古い実行を自動キャンセル
+
+## main ブランチ保護
+### ローカル（ターミナル）での直コミット/直push防止
+```bash
+./scripts/setup-git-hooks.sh
+```
+
+- `.githooks/pre-commit`: `main` への直接コミットを拒否
+- `.githooks/pre-push`: `main` への直接pushを拒否
+
+### GitHub 側での強制保護（推奨）
+1. GitHub リポジトリの `Settings` -> `Branches` -> `Add branch protection rule`
+2. `Branch name pattern` に `main` を設定
+3. 以下を有効化
+   - `Require a pull request before merging`
+   - `Require status checks to pass before merging`（`CI` を選択）
+   - `Do not allow bypassing the above settings`（利用可能な場合）
+4. 保存
+
 ## メモ
 - DBテーブルはFastAPI起動時に自動作成されます。
 - CORS許可元は `backend/.env` の `CORS_ORIGINS` で調整できます。
