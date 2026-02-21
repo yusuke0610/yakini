@@ -1,29 +1,73 @@
-export type Experience = {
+export type BasicQualification = {
+  acquired_date: string;
+  name: string;
+};
+
+export type BasicInfoPayload = {
+  full_name: string;
+  record_date: string;
+  qualifications: BasicQualification[];
+};
+
+export type BasicInfoResponse = BasicInfoPayload & {
+  id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CareerExperience = {
   company: string;
   title: string;
   start_date: string;
-  end_date: string;
+  end_date: string | null;
+  is_current: boolean;
   description: string;
+  achievements: string;
+  employee_count: string;
+  capital: string;
+  technology_stacks: CareerTechnologyStack[];
 };
 
-export type Education = {
-  school: string;
-  degree: string;
-  start_date: string;
-  end_date: string;
+export type CareerTechnologyStackCategory =
+  | "言語"
+  | "OS"
+  | "DB"
+  | "クラウドリソース"
+  | "開発支援ツール";
+
+export type CareerTechnologyStack = {
+  category: CareerTechnologyStackCategory;
+  name: string;
 };
 
-export type ResumePayload = {
-  full_name: string;
+export type CareerResumePayload = {
+  self_pr: string;
+  experiences: CareerExperience[];
+};
+
+export type CareerResumeResponse = CareerResumePayload & {
+  id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RirekishoHistory = {
+  date: string;
+  name: string;
+};
+
+export type RirekishoPayload = {
+  postal_code: string;
+  prefecture: string;
+  address: string;
   email: string;
   phone: string;
-  summary: string;
-  experiences: Experience[];
-  educations: Education[];
-  skills: string[];
+  motivation: string;
+  educations: RirekishoHistory[];
+  work_histories: RirekishoHistory[];
 };
 
-export type ResumeResponse = ResumePayload & {
+export type RirekishoResponse = RirekishoPayload & {
   id: string;
   created_at: string;
   updated_at: string;

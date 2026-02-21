@@ -19,7 +19,7 @@ body {
 }
 
 .container {
-  max-width: 920px;
+  max-width: 980px;
   margin: 0 auto;
   background: #ffffff;
   border: 1px solid #dbe5f3;
@@ -28,14 +28,38 @@ body {
   box-shadow: 0 14px 30px rgba(21, 57, 110, 0.08);
 }
 
+.topHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
 h1 {
   margin: 0;
   font-size: 1.8rem;
 }
 
-.lead {
-  margin-top: 0.3rem;
-  color: #3c5272;
+.tabRow {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tabButton {
+  border: 1px solid #c4d3ea;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  background: #f5f8ff;
+  color: #1b396f;
+  font-weight: 700;
+}
+
+.tabButton.active {
+  background: #1d4aa8;
+  color: #fff;
+  border-color: #1d4aa8;
 }
 
 .form {
@@ -55,6 +79,27 @@ h1 {
   font-size: 1.1rem;
 }
 
+.choiceField {
+  margin-bottom: 0.8rem;
+}
+
+.choiceLabel {
+  margin: 0 0 0.45rem;
+  font-weight: 500;
+}
+
+.choiceOptions {
+  display: flex;
+  gap: 0.9rem;
+}
+
+.choiceItem {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
 label {
   display: grid;
   gap: 0.4rem;
@@ -63,16 +108,19 @@ label {
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid #cad5e7;
   border-radius: 8px;
   padding: 0.6rem 0.7rem;
   font-size: 0.95rem;
+  background: #fff;
 }
 
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
   outline: 2px solid #7ea8ff;
   outline-offset: 1px;
 }
@@ -88,6 +136,25 @@ textarea:focus {
   border-radius: 10px;
   padding: 0.9rem;
   margin-bottom: 0.8rem;
+}
+
+.stackSection {
+  border-top: 1px solid #d7e2f2;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+}
+
+.stackSection h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+}
+
+.stackEntry {
+  border: 1px solid #d9e3f4;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.6rem;
+  background: #ffffff;
 }
 
 .actions {
@@ -141,5 +208,9 @@ button.ghost {
 
   h1 {
     font-size: 1.5rem;
+  }
+
+  .topHeader {
+    align-items: flex-start;
   }
 }

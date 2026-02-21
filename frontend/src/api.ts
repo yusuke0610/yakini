@@ -1,4 +1,11 @@
-import type { ResumePayload, ResumeResponse } from "./types";
+import type {
+  BasicInfoPayload,
+  BasicInfoResponse,
+  CareerResumePayload,
+  CareerResumeResponse,
+  RirekishoPayload,
+  RirekishoResponse
+} from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -19,31 +26,81 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return (await response.json()) as T;
 }
 
-export function createResume(payload: ResumePayload): Promise<ResumeResponse> {
-  return request<ResumeResponse>("/api/resumes", {
+export function createBasicInfo(payload: BasicInfoPayload): Promise<BasicInfoResponse> {
+  return request<BasicInfoResponse>("/api/basic-info", {
     method: "POST",
     body: JSON.stringify(payload)
   });
 }
 
-export function updateResume(id: string, payload: ResumePayload): Promise<ResumeResponse> {
-  return request<ResumeResponse>(`/api/resumes/${id}`, {
+export function updateBasicInfo(id: string, payload: BasicInfoPayload): Promise<BasicInfoResponse> {
+  return request<BasicInfoResponse>(`/api/basic-info/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload)
   });
 }
 
-export async function downloadResumePdf(id: string): Promise<void> {
+export function getLatestBasicInfo(): Promise<BasicInfoResponse> {
+  return request<BasicInfoResponse>("/api/basic-info/latest");
+}
+
+export function createCareerResume(payload: CareerResumePayload): Promise<CareerResumeResponse> {
+  return request<CareerResumeResponse>("/api/resumes", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateCareerResume(
+  id: string,
+  payload: CareerResumePayload
+): Promise<CareerResumeResponse> {
+  return request<CareerResumeResponse>(`/api/resumes/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function downloadCareerResumePdf(id: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/resumes/${id}/pdf`);
   if (!response.ok) {
-    throw new Error("PDFのダウンロードに失敗しました");
+    throw new Error("職務経歴書PDFのダウンロードに失敗しました");
   }
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `resume-${id}.pdf`;
+  anchor.download = `career-resume-${id}.pdf`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export function createRirekisho(payload: RirekishoPayload): Promise<RirekishoResponse> {
+  return request<RirekishoResponse>("/api/rirekisho", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateRirekisho(id: string, payload: RirekishoPayload): Promise<RirekishoResponse> {
+  return request<RirekishoResponse>(`/api/rirekisho/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function downloadRirekishoPdf(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/rirekisho/${id}/pdf`);
+  if (!response.ok) {
+    throw new Error("履歴書PDFのダウンロードに失敗しました");
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `rirekisho-${id}.pdf`;
   anchor.click();
   URL.revokeObjectURL(url);
 }
