@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: yakini-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: yakini
+      POSTGRES_USER: yakini
+      POSTGRES_PASSWORD: yakini
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
