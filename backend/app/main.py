@@ -130,6 +130,7 @@ def download_resume_pdf(resume_id: uuid.UUID, db: Session = Depends(get_db)) -> 
         "full_name": basic_info.full_name if basic_info else "",
         "record_date": basic_info.record_date if basic_info else "",
         "qualifications": basic_info.qualifications if basic_info else [],
+        "career_summary": resume.career_summary,
         "self_pr": resume.self_pr,
         "experiences": resume.experiences,
     }

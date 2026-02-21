@@ -34,7 +34,7 @@ class BasicInfoResponse(BasicInfoBase):
 
 class Experience(BaseModel):
     class TechnologyStackItem(BaseModel):
-        category: Literal["言語", "OS", "DB", "クラウドリソース", "開発支援ツール"]
+        category: Literal["言語", "フレームワーク", "OS", "DB", "クラウドリソース", "開発支援ツール"]
         name: str = Field(min_length=1, max_length=120)
 
     company: str = Field(min_length=1, max_length=120)
@@ -59,6 +59,7 @@ class Experience(BaseModel):
 
 
 class ResumeBase(BaseModel):
+    career_summary: str = Field(min_length=1, max_length=2000)
     self_pr: str = Field(min_length=1, max_length=2000)
     experiences: list[Experience] = Field(default_factory=list)
 

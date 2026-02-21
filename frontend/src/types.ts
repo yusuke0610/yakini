@@ -30,6 +30,7 @@ export type CareerExperience = {
 
 export type CareerTechnologyStackCategory =
   | "言語"
+  | "フレームワーク"
   | "OS"
   | "DB"
   | "クラウドリソース"
@@ -41,6 +42,7 @@ export type CareerTechnologyStack = {
 };
 
 export type CareerResumePayload = {
+  career_summary: string;
   self_pr: string;
   experiences: CareerExperience[];
 };

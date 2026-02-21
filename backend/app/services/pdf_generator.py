@@ -94,6 +94,10 @@ def build_resume_pdf(resume: dict) -> bytes:
     y = _write_basic_header("職務経歴書", resume, pdf, height, font_name)
     y -= 2 * mm
 
+    y = _write_line(pdf, "職務要約", x, y, height, font_name, 13)
+    y = _write_multiline(pdf, resume.get("career_summary", ""), x + 4 * mm, y, height, font_name)
+
+    y -= 2 * mm
     y = _write_line(pdf, "自己PR", x, y, height, font_name, 13)
     y = _write_multiline(pdf, resume.get("self_pr", ""), x + 4 * mm, y, height, font_name)
 

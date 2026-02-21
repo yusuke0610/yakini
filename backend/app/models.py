@@ -25,6 +25,7 @@ class Resume(Base):
     __tablename__ = "resumes"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    career_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     self_pr: Mapped[str] = mapped_column(Text, nullable=False)
     experiences: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

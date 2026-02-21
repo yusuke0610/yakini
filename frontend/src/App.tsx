@@ -46,11 +46,12 @@ type CareerExperienceForm = {
 };
 
 type CareerFormState = {
+  career_summary: string;
   self_pr: string;
   experiences: CareerExperienceForm[];
 };
 
-type CareerTextFieldKey = "self_pr";
+type CareerTextFieldKey = "career_summary" | "self_pr";
 type CareerExperienceFieldKey = Exclude<keyof CareerExperienceForm, "technology_stacks">;
 
 type RirekishoFormState = {
@@ -79,6 +80,7 @@ const blankBasicQualification: BasicQualification = {
 
 const careerTechnologyStackCategories: CareerTechnologyStackCategory[] = [
   "言語",
+  "フレームワーク",
   "OS",
   "DB",
   "クラウドリソース",
@@ -138,6 +140,11 @@ function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
 }
 
 function buildCareerPayload(state: CareerFormState): CareerResumePayload {
+  const career_summary = state.career_summary.trim();
+  if (!career_summary) {
+    throw new Error("職務要約を入力してください。");
+  }
+
   const self_pr = state.self_pr.trim();
   if (!self_pr) {
     throw new Error("自己PRを入力してください。");
@@ -193,6 +200,7 @@ function buildCareerPayload(state: CareerFormState): CareerResumePayload {
   }
 
   return {
+    career_summary,
     self_pr,
     experiences
   };
@@ -434,6 +442,7 @@ function BasicInfoForm() {
 
 function CareerResumeForm() {
   const [form, setForm] = useState<CareerFormState>({
+    career_summary: "",
     self_pr: "",
     experiences: [{ ...blankCareerExperience }]
   });
@@ -611,6 +620,15 @@ function CareerResumeForm() {
   return (
     <form onSubmit={onSubmit} className="form">
       <section className="section">
+        <label>
+          職務要約
+          <textarea
+            rows={4}
+            value={form.career_summary}
+            onChange={(e) => onChangeField("career_summary", e.target.value)}
+            required
+          />
+        </label>
         <label>
           自己PR
           <textarea
