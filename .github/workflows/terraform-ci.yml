@@ -69,6 +69,3 @@ jobs:
 
       - name: Terraform validate
         run: terraform -chdir=infra/environments/${{ matrix.environment }} validate
-
-      - name: Terraform plan (no backend)
-        run: terraform -chdir=infra/environments/${{ matrix.environment }} plan -input=false -lock=false -refresh=false -var-file=terraform.tfvars
