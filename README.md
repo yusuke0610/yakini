@@ -1,6 +1,6 @@
 # Resume Builder
 
-基本情報・職務経歴書・履歴書をUIから入力し、PostgreSQLに保存してPDF出力できるアプリです。
+基本情報・職務経歴書・履歴書をUIから入力し、SQLiteに保存してPDF出力できるアプリです。
 
 ## 入力項目
 ### 基本情報
@@ -27,15 +27,9 @@
 ## 構成
 - `frontend`: TypeScript + React (Vite)
 - `backend`: Python + FastAPI + SQLAlchemy
-- `db`: PostgreSQL (Docker Compose)
+- `db`: SQLite
 
-## 1. PostgreSQL起動
-
-```bash
-docker compose up -d
-```
-
-## 2. バックエンド起動
+## 1. バックエンド起動 (SQLite)
 
 ```bash
 cd backend
@@ -43,10 +37,13 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
+python -m app.bootstrap
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## 3. フロントエンド起動
+`SQLITE_DB_PATH=./local.sqlite` でローカル永続ファイルを使います。
+
+## 2. フロントエンド起動
 
 別ターミナルで:
 
@@ -58,6 +55,11 @@ npm run dev
 ```
 
 ブラウザで `http://localhost:5173` を開きます。
+
+## 3. Docker起動 (FastAPIのみ)
+```bash
+docker compose up --build
+```
 
 ## API概要
 ### 基本情報
@@ -77,8 +79,49 @@ npm run dev
 - `GET /api/rirekisho/{id}`: 取得
 - `GET /api/rirekisho/{id}/pdf`: PDFダウンロード
 
+### 管理
+- `POST /admin/backup`: SQLite DBをGCSへバックアップ（Bearerトークン必須）
+
 ### その他
 - `GET /health`: ヘルスチェック
+
+## SQLite + GCSバックアップ/復元
+### 環境変数
+- `SQLITE_DB_PATH`: SQLiteファイルパス（例: `/tmp/yakini.sqlite`）
+- `GCS_BUCKET_NAME`: バックアップ先バケット名（未設定ならGCS処理はスキップ）
+- `GCS_DB_OBJECT`: バケット内オブジェクトキー（例: `yakini/dev/db.sqlite`）
+- `ADMIN_TOKEN`: `/admin/backup` 用Bearerトークン
+
+### 起動時フロー
+1. `GCS_BUCKET_NAME` と `GCS_DB_OBJECT` が設定されていれば、GCS上のDBを `SQLITE_DB_PATH` へ復元
+2. Alembicで `upgrade head` を適用
+3. アプリ起動
+
+### 復元失敗時の方針
+- 復元失敗は警告ログを出して空DBで起動（初回起動を許容）
+- ログはJSON形式の構造化ログで出力
+
+### バックアップ
+- 明示実行: `POST /admin/backup`（`Authorization: Bearer <ADMIN_TOKEN>`）
+- CLI実行（任意）: `python -m app.backup`
+- GCSアップロードは `tmp object` -> `final object(rewrite)` -> `tmp delete` の順で実施
+
+## Alembicマイグレーション
+- 設定: `backend/alembic.ini`
+- マイグレーション: `backend/alembic_migrations/versions`
+- 手動適用:
+```bash
+cd backend
+alembic upgrade head
+```
+- SQLiteはDDL制約があるため、複雑なALTERはテーブル再作成型マイグレーションを推奨
+
+## Cloud Run IAM最小権限
+- `storage.objects.get`（復元）
+- `storage.objects.create`（バックアップ）
+- `storage.objects.list`（存在確認）
+
+`ADMIN_TOKEN` などの秘密情報は Secret Manager 経由の環境変数注入を推奨。
 
 ## テスト
 ### フロントエンド
@@ -162,6 +205,6 @@ cd backend
 4. 保存
 
 ## メモ
-- DBテーブルはFastAPI起動時に自動作成されます。
+- DBスキーマは起動時にAlembicで適用されます。
 - CORS許可元は `backend/.env` の `CORS_ORIGINS` で調整できます。
-- 旧スキーマのテーブルがある場合は `docker compose down -v` でボリュームを削除して再作成してください。
+- Cloud Runのローカルファイルは永続化されないため、必要に応じてGCSバックアップを実行してください。

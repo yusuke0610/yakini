@@ -1,15 +1,20 @@
 import io
+import logging
 import os
 import uuid
+from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .database import Base, engine, get_db
-from .models import BasicInfo, Resume, Rirekisho
+from .bootstrap import bootstrap
+from .database import get_db
+from .repositories import (
+    BasicInfoRepository,
+    ResumeRepository,
+    RirekishoRepository)
 from .schemas import (
     BasicInfoCreate,
     BasicInfoResponse,
@@ -21,30 +26,43 @@ from .schemas import (
     ResumeResponse,
     ResumeUpdate,
 )
+from .settings import get_admin_token, get_cors_origins
 from .services.pdf_generator import build_rirekisho_pdf, build_resume_pdf
+from .services.sqlite_backup import backup_sqlite_to_gcs
 
-Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Resume Builder API")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if os.getenv("APP_BOOTSTRAPPED", "0") != "1":
+        bootstrap()
+    yield
 
-cors_origins = [
-    origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
-    if origin.strip()
-]
+
+app = FastAPI(title="Resume Builder API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-def _get_latest_basic_info(db: Session) -> BasicInfo | None:
-    statement = select(BasicInfo).order_by(BasicInfo.updated_at.desc()).limit(1)
-    return db.scalar(statement)
+def _verify_admin_token(authorization: str | None = Header(default=None)) -> None:
+    configured_token = get_admin_token()
+    if not configured_token:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ADMIN_TOKEN is not configured",
+        )
+
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
+
+    provided_token = authorization.removeprefix("Bearer ").strip()
+    if provided_token != configured_token:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid admin token")
 
 
 @app.get("/health")
@@ -53,17 +71,15 @@ def healthcheck() -> dict[str, str]:
 
 
 @app.post("/api/basic-info", response_model=BasicInfoResponse, status_code=201)
-def create_basic_info(payload: BasicInfoCreate, db: Session = Depends(get_db)) -> BasicInfo:
-    basic_info = BasicInfo(**payload.model_dump())
-    db.add(basic_info)
-    db.commit()
-    db.refresh(basic_info)
-    return basic_info
+def create_basic_info(payload: BasicInfoCreate, db: Session = Depends(get_db)) -> BasicInfoResponse:
+    repository = BasicInfoRepository(db)
+    return repository.create(payload.model_dump())
 
 
 @app.get("/api/basic-info/latest", response_model=BasicInfoResponse)
-def get_latest_basic_info(db: Session = Depends(get_db)) -> BasicInfo:
-    basic_info = _get_latest_basic_info(db)
+def get_latest_basic_info(db: Session = Depends(get_db)) -> BasicInfoResponse:
+    repository = BasicInfoRepository(db)
+    basic_info = repository.get_latest()
     if not basic_info:
         raise HTTPException(status_code=404, detail="Basic info not found")
     return basic_info
@@ -72,31 +88,25 @@ def get_latest_basic_info(db: Session = Depends(get_db)) -> BasicInfo:
 @app.put("/api/basic-info/{basic_info_id}", response_model=BasicInfoResponse)
 def update_basic_info(
     basic_info_id: uuid.UUID, payload: BasicInfoUpdate, db: Session = Depends(get_db)
-) -> BasicInfo:
-    basic_info = db.get(BasicInfo, basic_info_id)
+) -> BasicInfoResponse:
+    repository = BasicInfoRepository(db)
+    basic_info = repository.get_by_id(str(basic_info_id))
     if not basic_info:
         raise HTTPException(status_code=404, detail="Basic info not found")
 
-    for field, value in payload.model_dump().items():
-        setattr(basic_info, field, value)
-
-    db.commit()
-    db.refresh(basic_info)
-    return basic_info
+    return repository.update(basic_info, payload.model_dump())
 
 
 @app.post("/api/resumes", response_model=ResumeResponse, status_code=201)
-def create_resume(payload: ResumeCreate, db: Session = Depends(get_db)) -> Resume:
-    resume = Resume(**payload.model_dump())
-    db.add(resume)
-    db.commit()
-    db.refresh(resume)
-    return resume
+def create_resume(payload: ResumeCreate, db: Session = Depends(get_db)) -> ResumeResponse:
+    repository = ResumeRepository(db)
+    return repository.create(payload.model_dump())
 
 
 @app.get("/api/resumes/{resume_id}", response_model=ResumeResponse)
-def get_resume(resume_id: uuid.UUID, db: Session = Depends(get_db)) -> Resume:
-    resume = db.get(Resume, resume_id)
+def get_resume(resume_id: uuid.UUID, db: Session = Depends(get_db)) -> ResumeResponse:
+    repository = ResumeRepository(db)
+    resume = repository.get_by_id(str(resume_id))
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
     return resume
@@ -105,26 +115,25 @@ def get_resume(resume_id: uuid.UUID, db: Session = Depends(get_db)) -> Resume:
 @app.put("/api/resumes/{resume_id}", response_model=ResumeResponse)
 def update_resume(
     resume_id: uuid.UUID, payload: ResumeUpdate, db: Session = Depends(get_db)
-) -> Resume:
-    resume = db.get(Resume, resume_id)
+) -> ResumeResponse:
+    repository = ResumeRepository(db)
+    resume = repository.get_by_id(str(resume_id))
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
-    for field, value in payload.model_dump().items():
-        setattr(resume, field, value)
-
-    db.commit()
-    db.refresh(resume)
-    return resume
+    return repository.update(resume, payload.model_dump())
 
 
 @app.get("/api/resumes/{resume_id}/pdf")
 def download_resume_pdf(resume_id: uuid.UUID, db: Session = Depends(get_db)) -> StreamingResponse:
-    resume = db.get(Resume, resume_id)
+    resume_repository = ResumeRepository(db)
+    basic_info_repository = BasicInfoRepository(db)
+
+    resume = resume_repository.get_by_id(str(resume_id))
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
-    basic_info = _get_latest_basic_info(db)
+    basic_info = basic_info_repository.get_latest()
 
     payload = {
         "full_name": basic_info.full_name if basic_info else "",
@@ -143,17 +152,15 @@ def download_resume_pdf(resume_id: uuid.UUID, db: Session = Depends(get_db)) -> 
 
 
 @app.post("/api/rirekisho", response_model=RirekishoResponse, status_code=201)
-def create_rirekisho(payload: RirekishoCreate, db: Session = Depends(get_db)) -> Rirekisho:
-    rirekisho = Rirekisho(**payload.model_dump())
-    db.add(rirekisho)
-    db.commit()
-    db.refresh(rirekisho)
-    return rirekisho
+def create_rirekisho(payload: RirekishoCreate, db: Session = Depends(get_db)) -> RirekishoResponse:
+    repository = RirekishoRepository(db)
+    return repository.create(payload.model_dump())
 
 
 @app.get("/api/rirekisho/{rirekisho_id}", response_model=RirekishoResponse)
-def get_rirekisho(rirekisho_id: uuid.UUID, db: Session = Depends(get_db)) -> Rirekisho:
-    rirekisho = db.get(Rirekisho, rirekisho_id)
+def get_rirekisho(rirekisho_id: uuid.UUID, db: Session = Depends(get_db)) -> RirekishoResponse:
+    repository = RirekishoRepository(db)
+    rirekisho = repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
         raise HTTPException(status_code=404, detail="Rirekisho not found")
     return rirekisho
@@ -162,26 +169,25 @@ def get_rirekisho(rirekisho_id: uuid.UUID, db: Session = Depends(get_db)) -> Rir
 @app.put("/api/rirekisho/{rirekisho_id}", response_model=RirekishoResponse)
 def update_rirekisho(
     rirekisho_id: uuid.UUID, payload: RirekishoUpdate, db: Session = Depends(get_db)
-) -> Rirekisho:
-    rirekisho = db.get(Rirekisho, rirekisho_id)
+) -> RirekishoResponse:
+    repository = RirekishoRepository(db)
+    rirekisho = repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
         raise HTTPException(status_code=404, detail="Rirekisho not found")
 
-    for field, value in payload.model_dump().items():
-        setattr(rirekisho, field, value)
-
-    db.commit()
-    db.refresh(rirekisho)
-    return rirekisho
+    return repository.update(rirekisho, payload.model_dump())
 
 
 @app.get("/api/rirekisho/{rirekisho_id}/pdf")
 def download_rirekisho_pdf(rirekisho_id: uuid.UUID, db: Session = Depends(get_db)) -> StreamingResponse:
-    rirekisho = db.get(Rirekisho, rirekisho_id)
+    rirekisho_repository = RirekishoRepository(db)
+    basic_info_repository = BasicInfoRepository(db)
+
+    rirekisho = rirekisho_repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
         raise HTTPException(status_code=404, detail="Rirekisho not found")
 
-    basic_info = _get_latest_basic_info(db)
+    basic_info = basic_info_repository.get_latest()
 
     payload = {
         "full_name": basic_info.full_name if basic_info else "",
@@ -202,3 +208,14 @@ def download_rirekisho_pdf(rirekisho_id: uuid.UUID, db: Session = Depends(get_db
         "Content-Disposition": f'attachment; filename="rirekisho-{rirekisho.id}.pdf"',
     }
     return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
+
+
+@app.post("/admin/backup")
+def admin_backup(_: None = Depends(_verify_admin_token)) -> dict[str, str]:
+    try:
+        return backup_sqlite_to_gcs()
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except Exception as error:
+        logging.exception("sqlite backup failed")
+        raise HTTPException(status_code=500, detail="Backup failed") from error
