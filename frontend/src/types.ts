@@ -53,23 +53,23 @@ export type CareerResumeResponse = CareerResumePayload & {
   updated_at: string;
 };
 
-export type RirekishoHistory = {
+export type ResumeHistory = {
   date: string;
   name: string;
 };
 
-export type RirekishoPayload = {
+export type ResumePayload = {
   postal_code: string;
   prefecture: string;
   address: string;
   email: string;
   phone: string;
   motivation: string;
-  educations: RirekishoHistory[];
-  work_histories: RirekishoHistory[];
+  educations: ResumeHistory[];
+  work_histories: ResumeHistory[];
 };
 
-export type RirekishoResponse = RirekishoPayload & {
+export type ResumeResponse = ResumePayload & {
   id: string;
   created_at: string;
   updated_at: string;

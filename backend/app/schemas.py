@@ -5,6 +5,16 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1)
+    password: str = Field(min_length=1)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
 class BasicQualification(BaseModel):
     acquired_date: str = Field(min_length=1, max_length=30)
     name: str = Field(min_length=1, max_length=120)
@@ -80,31 +90,31 @@ class ResumeResponse(ResumeBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class RirekishoHistory(BaseModel):
+class ResumeHistory(BaseModel):
     date: str = Field(min_length=1, max_length=30)
     name: str = Field(min_length=1, max_length=300)
 
 
-class RirekishoBase(BaseModel):
+class ResumeBase(BaseModel):
     postal_code: str = Field(min_length=1, max_length=20)
     prefecture: str = Field(min_length=1, max_length=60)
     address: str = Field(min_length=1, max_length=400)
     email: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=1, max_length=50)
     motivation: str = Field(min_length=1, max_length=2000)
-    educations: list[RirekishoHistory] = Field(default_factory=list)
-    work_histories: list[RirekishoHistory] = Field(default_factory=list)
+    educations: list[ResumeHistory] = Field(default_factory=list)
+    work_histories: list[ResumeHistory] = Field(default_factory=list)
 
 
-class RirekishoCreate(RirekishoBase):
+class ResumeCreate(ResumeBase):
     pass
 
 
-class RirekishoUpdate(RirekishoBase):
+class ResumeUpdate(ResumeBase):
     pass
 
 
-class RirekishoResponse(RirekishoBase):
+class ResumeResponse(ResumeBase):
     id: UUID
     created_at: datetime
     updated_at: datetime

@@ -165,7 +165,7 @@ def build_resume_pdf(resume: dict) -> bytes:
     return buffer.getvalue()
 
 
-def build_rirekisho_pdf(rirekisho: dict) -> bytes:
+def build_Resume_pdf(Resume: dict) -> bytes:
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
     _, height = A4
@@ -173,22 +173,22 @@ def build_rirekisho_pdf(rirekisho: dict) -> bytes:
     font_name = _safe_jp_font()
     x = 18 * mm
 
-    y = _write_basic_header("履歴書", rirekisho, pdf, height, font_name)
+    y = _write_basic_header("履歴書", Resume, pdf, height, font_name)
     y -= 2 * mm
 
-    y = _write_line(pdf, f"郵便番号: {rirekisho['postal_code']}", x, y, height, font_name)
-    y = _write_line(pdf, f"都道府県: {rirekisho['prefecture']}", x, y, height, font_name)
-    y = _write_line(pdf, f"住所: {rirekisho['address']}", x, y, height, font_name)
-    y = _write_line(pdf, f"メールアドレス: {rirekisho['email']}", x, y, height, font_name)
-    y = _write_line(pdf, f"電話番号: {rirekisho['phone']}", x, y, height, font_name)
+    y = _write_line(pdf, f"郵便番号: {Resume['postal_code']}", x, y, height, font_name)
+    y = _write_line(pdf, f"都道府県: {Resume['prefecture']}", x, y, height, font_name)
+    y = _write_line(pdf, f"住所: {Resume['address']}", x, y, height, font_name)
+    y = _write_line(pdf, f"メールアドレス: {Resume['email']}", x, y, height, font_name)
+    y = _write_line(pdf, f"電話番号: {Resume['phone']}", x, y, height, font_name)
 
     y -= 2 * mm
     y = _write_line(pdf, "志望動機", x, y, height, font_name, 13)
-    y = _write_multiline(pdf, rirekisho.get("motivation", ""), x + 4 * mm, y, height, font_name)
+    y = _write_multiline(pdf, Resume.get("motivation", ""), x + 4 * mm, y, height, font_name)
 
     y -= 2 * mm
     y = _write_line(pdf, "学歴", x, y, height, font_name, 13)
-    educations = rirekisho.get("educations", [])
+    educations = Resume.get("educations", [])
     if not educations:
         y = _write_line(pdf, "-", x + 4 * mm, y, height, font_name)
     else:
@@ -204,7 +204,7 @@ def build_rirekisho_pdf(rirekisho: dict) -> bytes:
 
     y -= 2 * mm
     y = _write_line(pdf, "職歴", x, y, height, font_name, 13)
-    work_histories = rirekisho.get("work_histories", [])
+    work_histories = Resume.get("work_histories", [])
     if not work_histories:
         y = _write_line(pdf, "-", x + 4 * mm, y, height, font_name)
     else:

@@ -1,4 +1,4 @@
-from app.services.pdf_generator import _experience_period, build_resume_pdf, build_rirekisho_pdf
+from app.services.pdf_generator import _experience_period, build_resume_pdf, build_Resume_pdf
 
 
 def test_experience_period_for_current() -> None:
@@ -22,7 +22,7 @@ def test_build_resume_pdf_returns_pdf_bytes() -> None:
     assert len(pdf_bytes) > 100
 
 
-def test_build_rirekisho_pdf_returns_pdf_bytes() -> None:
+def test_build_Resume_pdf_returns_pdf_bytes() -> None:
     payload = {
         "full_name": "山田 太郎",
         "record_date": "2026-02-21",
@@ -37,7 +37,7 @@ def test_build_rirekisho_pdf_returns_pdf_bytes() -> None:
         "work_histories": [],
     }
 
-    pdf_bytes = build_rirekisho_pdf(payload)
+    pdf_bytes = build_Resume_pdf(payload)
 
     assert pdf_bytes.startswith(b"%PDF")
     assert len(pdf_bytes) > 100
