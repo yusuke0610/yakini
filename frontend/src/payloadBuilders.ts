@@ -4,8 +4,8 @@ import type {
   CareerExperience,
   CareerResumePayload,
   CareerTechnologyStack,
-  RirekishoHistory,
-  RirekishoPayload
+  ResumeHistory,
+  ResumePayload
 } from "./types";
 
 export type BasicFormState = {
@@ -33,15 +33,15 @@ export type CareerFormState = {
   experiences: CareerExperienceForm[];
 };
 
-export type RirekishoFormState = {
+export type ResumeFormState = {
   postal_code: string;
   prefecture: string;
   address: string;
   email: string;
   phone: string;
   motivation: string;
-  educations: RirekishoHistory[];
-  work_histories: RirekishoHistory[];
+  educations: ResumeHistory[];
+  work_histories: ResumeHistory[];
 };
 
 export function hasAnyText(values: Array<string | null | undefined>): boolean {
@@ -140,8 +140,8 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
   };
 }
 
-export function buildRirekishoPayload(state: RirekishoFormState): RirekishoPayload {
-  const payload: RirekishoPayload = {
+export function buildResumePayload(state: ResumeFormState): ResumePayload {
+  const payload: ResumePayload = {
     postal_code: state.postal_code.trim(),
     prefecture: state.prefecture.trim(),
     address: state.address.trim(),

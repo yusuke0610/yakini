@@ -3,20 +3,41 @@ import type {
   BasicInfoResponse,
   CareerResumePayload,
   CareerResumeResponse,
-  RirekishoPayload,
-  RirekishoResponse
+  ResumePayload,
+  ResumeResponse
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
+let _authToken: string | null = null;
+let _onUnauthorized: (() => void) | null = null;
+
+export function setAuthToken(token: string | null): void {
+  _authToken = token;
+}
+
+export function setOnUnauthorized(callback: () => void): void {
+  _onUnauthorized = callback;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string> ?? {})
+  };
+  if (_authToken) {
+    headers["Authorization"] = `Bearer ${_authToken}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers ?? {})
-    },
-    ...options
+    ...options,
+    headers
   });
+
+  if (response.status === 401) {
+    _onUnauthorized?.();
+    throw new Error("認証が必要です。再度ログインしてください。");
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -24,6 +45,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+export function login(
+  username: string,
+  password: string
+): Promise<{ access_token: string; token_type: string }> {
+  return request("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password })
+  });
 }
 
 export function createBasicInfo(payload: BasicInfoPayload): Promise<BasicInfoResponse> {
@@ -62,7 +93,13 @@ export function updateCareerResume(
 }
 
 export async function downloadCareerResumePdf(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/resumes/${id}/pdf`);
+  const headers: Record<string, string> = {};
+  if (_authToken) {
+    headers["Authorization"] = `Bearer ${_authToken}`;
+  }
+  const response = await fetch(`${API_BASE_URL}/api/resumes/${id}/pdf`, {
+    headers
+  });
   if (!response.ok) {
     throw new Error("職務経歴書PDFのダウンロードに失敗しました");
   }
@@ -76,22 +113,28 @@ export async function downloadCareerResumePdf(id: string): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
-export function createRirekisho(payload: RirekishoPayload): Promise<RirekishoResponse> {
-  return request<RirekishoResponse>("/api/rirekisho", {
+export function createResume(payload: ResumePayload): Promise<ResumeResponse> {
+  return request<ResumeResponse>("/api/Resume", {
     method: "POST",
     body: JSON.stringify(payload)
   });
 }
 
-export function updateRirekisho(id: string, payload: RirekishoPayload): Promise<RirekishoResponse> {
-  return request<RirekishoResponse>(`/api/rirekisho/${id}`, {
+export function updateResume(id: string, payload: ResumePayload): Promise<ResumeResponse> {
+  return request<ResumeResponse>(`/api/Resume/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload)
   });
 }
 
-export async function downloadRirekishoPdf(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/rirekisho/${id}/pdf`);
+export async function downloadResumePdf(id: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (_authToken) {
+    headers["Authorization"] = `Bearer ${_authToken}`;
+  }
+  const response = await fetch(`${API_BASE_URL}/api/Resume/${id}/pdf`, {
+    headers
+  });
   if (!response.ok) {
     throw new Error("履歴書PDFのダウンロードに失敗しました");
   }
@@ -100,7 +143,7 @@ export async function downloadRirekishoPdf(id: string): Promise<void> {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `rirekisho-${id}.pdf`;
+  anchor.download = `Resume-${id}.pdf`;
   anchor.click();
   URL.revokeObjectURL(url);
 }
