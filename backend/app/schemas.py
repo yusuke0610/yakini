@@ -90,31 +90,31 @@ class ResumeResponse(ResumeBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ResumeHistory(BaseModel):
+class RirekishoHistory(BaseModel):
     date: str = Field(min_length=1, max_length=30)
     name: str = Field(min_length=1, max_length=300)
 
 
-class ResumeBase(BaseModel):
+class RirekishoBase(BaseModel):
     postal_code: str = Field(min_length=1, max_length=20)
     prefecture: str = Field(min_length=1, max_length=60)
     address: str = Field(min_length=1, max_length=400)
     email: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=1, max_length=50)
     motivation: str = Field(min_length=1, max_length=2000)
-    educations: list[ResumeHistory] = Field(default_factory=list)
-    work_histories: list[ResumeHistory] = Field(default_factory=list)
+    educations: list[RirekishoHistory] = Field(default_factory=list)
+    work_histories: list[RirekishoHistory] = Field(default_factory=list)
 
 
-class ResumeCreate(ResumeBase):
+class RirekishoCreate(RirekishoBase):
     pass
 
 
-class ResumeUpdate(ResumeBase):
+class RirekishoUpdate(RirekishoBase):
     pass
 
 
-class ResumeResponse(ResumeBase):
+class RirekishoResponse(RirekishoBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
