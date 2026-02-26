@@ -30,3 +30,15 @@ def get_gcs_db_object() -> str:
 
 def get_admin_token() -> str:
     return os.getenv("ADMIN_TOKEN", "").strip()
+
+
+def get_secret_key() -> str:
+    return os.getenv("SECRET_KEY", "").strip()
+
+
+def get_initial_username() -> str:
+    return os.getenv("INITIAL_USERNAME", "").strip()
+
+
+def get_initial_password() -> str:
+    return os.getenv("INITIAL_PASSWORD", "").strip()

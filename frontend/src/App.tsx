@@ -3,40 +3,43 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   createBasicInfo,
   createCareerResume,
-  createRirekisho,
+  createResume,
   downloadCareerResumePdf,
-  downloadRirekishoPdf,
+  downloadResumePdf,
   getLatestBasicInfo,
+  login,
+  setAuthToken,
+  setOnUnauthorized,
   updateBasicInfo,
   updateCareerResume,
-  updateRirekisho
+  updateResume
 } from "./api";
 import {
   buildBasicPayload,
   buildCareerPayload,
-  buildRirekishoPayload
+  buildResumePayload
 } from "./payloadBuilders";
 import type {
   BasicFormState,
   CareerExperienceForm,
   CareerFormState,
-  RirekishoFormState
+  ResumeFormState
 } from "./payloadBuilders";
 import type {
   BasicQualification,
   CareerTechnologyStack,
   CareerTechnologyStackCategory,
-  RirekishoHistory
+  ResumeHistory
 } from "./types";
 
-type PageKey = "basic" | "career" | "rirekisho";
+type PageKey = "basic" | "career" | "Resume";
 
 type BasicTextFieldKey = "full_name" | "record_date";
 
 type CareerTextFieldKey = "career_summary" | "self_pr";
 type CareerExperienceFieldKey = Exclude<keyof CareerExperienceForm, "technology_stacks">;
 
-type RirekishoTextFieldKey =
+type ResumeTextFieldKey =
   | "postal_code"
   | "prefecture"
   | "address"
@@ -76,7 +79,7 @@ const blankCareerExperience: CareerExperienceForm = {
   technology_stacks: [{ ...blankCareerTechnologyStack }]
 };
 
-const blankHistory: RirekishoHistory = {
+const blankHistory: ResumeHistory = {
   date: "",
   name: ""
 };
@@ -639,8 +642,8 @@ function CareerResumeForm() {
   );
 }
 
-function RirekishoForm() {
-  const [form, setForm] = useState<RirekishoFormState>({
+function ResumeForm() {
+  const [form, setForm] = useState<ResumeFormState>({
     postal_code: "",
     prefecture: "",
     address: "",
@@ -650,7 +653,7 @@ function RirekishoForm() {
     educations: [{ ...blankHistory }],
     work_histories: [{ ...blankHistory }]
   });
-  const [rirekishoId, setRirekishoId] = useState<string | null>(null);
+  const [ResumeId, setResumeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -660,14 +663,14 @@ function RirekishoForm() {
     if (saving) {
       return "保存中...";
     }
-    return rirekishoId ? "更新する" : "保存する";
-  }, [rirekishoId, saving]);
+    return ResumeId ? "更新する" : "保存する";
+  }, [ResumeId, saving]);
 
-  const onChangeField = (key: RirekishoTextFieldKey, value: string) => {
+  const onChangeField = (key: ResumeTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const updateEducationField = (index: number, key: keyof RirekishoHistory, value: string) => {
+  const updateEducationField = (index: number, key: keyof ResumeHistory, value: string) => {
     setForm((prev) => ({
       ...prev,
       educations: prev.educations.map((education, i) =>
@@ -678,7 +681,7 @@ function RirekishoForm() {
 
   const updateWorkHistoryField = (
     index: number,
-    key: keyof RirekishoHistory,
+    key: keyof ResumeHistory,
     value: string
   ) => {
     setForm((prev) => ({
@@ -727,12 +730,12 @@ function RirekishoForm() {
     setSuccess(null);
 
     try {
-      const payload = buildRirekishoPayload(form);
-      const saved = rirekishoId
-        ? await updateRirekisho(rirekishoId, payload)
-        : await createRirekisho(payload);
+      const payload = buildResumePayload(form);
+      const saved = ResumeId
+        ? await updateResume(ResumeId, payload)
+        : await createResume(payload);
 
-      setRirekishoId(saved.id);
+      setResumeId(saved.id);
       setSuccess("履歴書を保存しました。PDF出力できます。");
     } catch (submitError) {
       const message =
@@ -746,7 +749,7 @@ function RirekishoForm() {
   };
 
   const onDownloadPdf = async () => {
-    if (!rirekishoId) {
+    if (!ResumeId) {
       return;
     }
 
@@ -755,7 +758,7 @@ function RirekishoForm() {
     setSuccess(null);
 
     try {
-      await downloadRirekishoPdf(rirekishoId);
+      await downloadResumePdf(ResumeId);
       setSuccess("履歴書PDFをダウンロードしました。");
     } catch (downloadError) {
       const message =
@@ -901,20 +904,114 @@ function RirekishoForm() {
         <button type="submit" disabled={saving}>
           {saveButtonText}
         </button>
-        <button type="button" onClick={onDownloadPdf} disabled={!rirekishoId || downloading}>
+        <button type="button" onClick={onDownloadPdf} disabled={!ResumeId || downloading}>
           {downloading ? "ダウンロード中..." : "PDF出力"}
         </button>
       </div>
 
-      {rirekishoId && <p className="hint">保存ID: {rirekishoId}</p>}
+      {ResumeId && <p className="hint">保存ID: {ResumeId}</p>}
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
     </form>
   );
 }
 
+function LoginForm({ onLogin }: { onLogin: (token: string) => void }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await login(username, password);
+      onLogin(result.access_token);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "ログインに失敗しました。";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="page">
+      <main className="container">
+        <header className="topHeader">
+          <h1>ログイン</h1>
+        </header>
+        <form onSubmit={onSubmit} className="form">
+          <section className="section">
+            <label>
+              ユーザー名
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                autoComplete="username"
+              />
+            </label>
+            <label>
+              パスワード
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </label>
+          </section>
+          <div className="actions">
+            <button type="submit" disabled={loading}>
+              {loading ? "ログイン中..." : "ログイン"}
+            </button>
+          </div>
+          {error && <p className="error">{error}</p>}
+        </form>
+      </main>
+    </div>
+  );
+}
+
 export default function App() {
+  const [token, setToken] = useState<string | null>(() =>
+    localStorage.getItem("auth_token")
+  );
   const [page, setPage] = useState<PageKey>("basic");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("auth_token");
+    if (saved) {
+      setAuthToken(saved);
+    }
+    setOnUnauthorized(() => {
+      localStorage.removeItem("auth_token");
+      setAuthToken(null);
+      setToken(null);
+    });
+  }, []);
+
+  const handleLogin = (newToken: string) => {
+    localStorage.setItem("auth_token", newToken);
+    setAuthToken(newToken);
+    setToken(newToken);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("auth_token");
+    setAuthToken(null);
+    setToken(null);
+  };
+
+  if (!token) {
+    return <LoginForm onLogin={handleLogin} />;
+  }
 
   return (
     <div className="page">
@@ -944,10 +1041,17 @@ export default function App() {
             </button>
             <button
               type="button"
-              className={`tabButton ${page === "rirekisho" ? "active" : ""}`}
-              onClick={() => setPage("rirekisho")}
+              className={`tabButton ${page === "Resume" ? "active" : ""}`}
+              onClick={() => setPage("Resume")}
             >
               履歴書
+            </button>
+            <button
+              type="button"
+              className="tabButton"
+              onClick={handleLogout}
+            >
+              ログアウト
             </button>
           </div>
         </header>
@@ -959,11 +1063,11 @@ export default function App() {
           <CareerResumeForm />
         </section>
         <section
-          hidden={page !== "rirekisho"}
+          hidden={page !== "Resume"}
           className="pagePanel"
-          aria-hidden={page !== "rirekisho"}
+          aria-hidden={page !== "Resume"}
         >
-          <RirekishoForm />
+          <ResumeForm />
         </section>
       </main>
     </div>
