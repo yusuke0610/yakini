@@ -21,7 +21,7 @@ from .models import User
 from .repositories import (
     BasicInfoRepository,
     ResumeRepository,
-    ResumeRepository,
+    RirekishoRepository,
     UserRepository,
 )
 from .schemas import (
@@ -32,13 +32,13 @@ from .schemas import (
     ResumeCreate,
     ResumeResponse,
     ResumeUpdate,
-    ResumeCreate,
-    ResumeResponse,
-    ResumeUpdate,
+    RirekishoCreate,
+    RirekishoResponse,
+    RirekishoUpdate,
     TokenResponse,
 )
 from .settings import get_admin_token, get_cors_origins
-from .services.pdf_generator import build_Resume_pdf, build_resume_pdf
+from .services.pdf_generator import build_rirekisho_pdf, build_resume_pdf
 from .services.sqlite_backup import backup_sqlite_to_gcs
 
 
@@ -226,60 +226,56 @@ def download_resume_pdf(
     )
 
 
-@app.post(
-    "/api/Resume", response_model=ResumeResponse, status_code=201
-)
-def create_Resume(
-    payload: ResumeCreate,
+@app.post("/api/rirekisho", response_model=RirekishoResponse, status_code=201)
+def create_rirekisho(
+    payload: RirekishoCreate,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
-) -> ResumeResponse:
-    repository = ResumeRepository(db)
+) -> RirekishoResponse:
+    repository = RirekishoRepository(db)
     return repository.create(payload.model_dump())
 
 
-@app.get("/api/Resume/{Resume_id}", response_model=ResumeResponse)
-def get_Resume(
-    Resume_id: uuid.UUID,
+@app.get("/api/rirekisho/{rirekisho_id}", response_model=RirekishoResponse)
+def get_rirekisho(
+    rirekisho_id: uuid.UUID,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
-) -> ResumeResponse:
-    repository = ResumeRepository(db)
-    Resume = repository.get_by_id(str(Resume_id))
-    if not Resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
-    return Resume
+) -> RirekishoResponse:
+    repository = RirekishoRepository(db)
+    rirekisho = repository.get_by_id(str(rirekisho_id))
+    if not rirekisho:
+        raise HTTPException(status_code=404, detail="Rirekisho not found")
+    return rirekisho
 
 
-@app.put(
-    "/api/Resume/{Resume_id}", response_model=ResumeResponse
-)
-def update_Resume(
-    Resume_id: uuid.UUID,
-    payload: ResumeUpdate,
+@app.put("/api/rirekisho/{rirekisho_id}", response_model=RirekishoResponse)
+def update_rirekisho(
+    rirekisho_id: uuid.UUID,
+    payload: RirekishoUpdate,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
-) -> ResumeResponse:
-    repository = ResumeRepository(db)
-    Resume = repository.get_by_id(str(Resume_id))
-    if not Resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+) -> RirekishoResponse:
+    repository = RirekishoRepository(db)
+    rirekisho = repository.get_by_id(str(rirekisho_id))
+    if not rirekisho:
+        raise HTTPException(status_code=404, detail="Rirekisho not found")
 
-    return repository.update(Resume, payload.model_dump())
+    return repository.update(rirekisho, payload.model_dump())
 
 
-@app.get("/api/Resume/{Resume_id}/pdf")
-def download_Resume_pdf(
-    Resume_id: uuid.UUID,
+@app.get("/api/rirekisho/{rirekisho_id}/pdf")
+def download_rirekisho_pdf(
+    rirekisho_id: uuid.UUID,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    Resume_repository = ResumeRepository(db)
+    rirekisho_repository = RirekishoRepository(db)
     basic_info_repository = BasicInfoRepository(db)
 
-    Resume = Resume_repository.get_by_id(str(Resume_id))
-    if not Resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+    rirekisho = rirekisho_repository.get_by_id(str(rirekisho_id))
+    if not rirekisho:
+        raise HTTPException(status_code=404, detail="Rirekisho not found")
 
     basic_info = basic_info_repository.get_latest()
 
@@ -287,20 +283,20 @@ def download_Resume_pdf(
         "full_name": basic_info.full_name if basic_info else "",
         "record_date": basic_info.record_date if basic_info else "",
         "qualifications": basic_info.qualifications if basic_info else [],
-        "postal_code": Resume.postal_code,
-        "prefecture": Resume.prefecture,
-        "address": Resume.address,
-        "email": Resume.email,
-        "phone": Resume.phone,
-        "motivation": Resume.motivation,
-        "educations": Resume.educations,
-        "work_histories": Resume.work_histories,
+        "postal_code": rirekisho.postal_code,
+        "prefecture": rirekisho.prefecture,
+        "address": rirekisho.address,
+        "email": rirekisho.email,
+        "phone": rirekisho.phone,
+        "motivation": rirekisho.motivation,
+        "educations": rirekisho.educations,
+        "work_histories": rirekisho.work_histories,
     }
-    pdf_bytes = build_Resume_pdf(payload)
+    pdf_bytes = build_rirekisho_pdf(payload)
 
     headers = {
         "Content-Disposition": (
-            f'attachment; filename="Resume-{Resume.id}.pdf"'
+            f'attachment; filename="rirekisho-{rirekisho.id}.pdf"'
         ),
     }
     return StreamingResponse(

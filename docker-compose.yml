@@ -6,6 +6,9 @@ services:
     environment:
       SQLITE_DB_PATH: /data/yakini.sqlite
       CORS_ORIGINS: http://localhost:5173
+      SECRET_KEY: ${SECRET_KEY}
+      INITIAL_USERNAME: ${INITIAL_USERNAME}
+      INITIAL_PASSWORD: ${INITIAL_PASSWORD}
     ports:
       - "8000:8000"
     volumes:

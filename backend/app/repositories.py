@@ -4,9 +4,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .encryption import decrypt_field, encrypt_field
-from .models import BasicInfo, Resume, Resume, User
+from .models import BasicInfo, Resume, Rirekisho, User
 
-_ENCRYPTED_Resume_FIELDS = {"email", "phone", "postal_code", "address"}
+_ENCRYPTED_RIREKISHO_FIELDS = {"email", "phone", "postal_code", "address"}
 
 
 class UserRepository:
@@ -83,7 +83,7 @@ class ResumeRepository:
         return resume
 
 
-class ResumeRepository:
+class RirekishoRepository:
     def __init__(self, db: Session):
         self.db = db
 
@@ -91,41 +91,41 @@ class ResumeRepository:
         self, payload: dict[str, Any]
     ) -> dict[str, Any]:
         result = dict(payload)
-        for field in _ENCRYPTED_Resume_FIELDS:
+        for field in _ENCRYPTED_RIREKISHO_FIELDS:
             if field in result and isinstance(result[field], str):
                 result[field] = encrypt_field(result[field])
         return result
 
-    def _decrypt_Resume(self, Resume: Resume) -> None:
-        for field in _ENCRYPTED_Resume_FIELDS:
-            value = getattr(Resume, field, None)
+    def _decrypt_rirekisho(self, rirekisho: Rirekisho) -> None:
+        for field in _ENCRYPTED_RIREKISHO_FIELDS:
+            value = getattr(rirekisho, field, None)
             if isinstance(value, str):
                 try:
-                    setattr(Resume, field, decrypt_field(value))
+                    setattr(rirekisho, field, decrypt_field(value))
                 except Exception:
                     pass  # 暗号化前のデータはそのまま返す
 
-    def create(self, payload: dict[str, Any]) -> Resume:
-        Resume = Resume(**self._encrypt_payload(payload))
-        self.db.add(Resume)
+    def create(self, payload: dict[str, Any]) -> Rirekisho:
+        rirekisho = Rirekisho(**self._encrypt_payload(payload))
+        self.db.add(rirekisho)
         self.db.commit()
-        self.db.refresh(Resume)
-        self._decrypt_Resume(Resume)
-        return Resume
+        self.db.refresh(rirekisho)
+        self._decrypt_rirekisho(rirekisho)
+        return rirekisho
 
-    def get_by_id(self, Resume_id: str) -> Resume | None:
-        Resume = self.db.get(Resume, Resume_id)
-        if Resume:
-            self._decrypt_Resume(Resume)
-        return Resume
+    def get_by_id(self, rirekisho_id: str) -> Rirekisho | None:
+        rirekisho = self.db.get(Rirekisho, rirekisho_id)
+        if rirekisho:
+            self._decrypt_rirekisho(rirekisho)
+        return rirekisho
 
     def update(
-        self, Resume: Resume, payload: dict[str, Any]
-    ) -> Resume:
+        self, rirekisho: Rirekisho, payload: dict[str, Any]
+    ) -> Rirekisho:
         for field, value in self._encrypt_payload(payload).items():
-            setattr(Resume, field, value)
+            setattr(rirekisho, field, value)
 
         self.db.commit()
-        self.db.refresh(Resume)
-        self._decrypt_Resume(Resume)
-        return Resume
+        self.db.refresh(rirekisho)
+        self._decrypt_rirekisho(rirekisho)
+        return rirekisho
