@@ -1,6 +1,7 @@
 module "resume_stack" {
   source = "../../modules/resume_stack"
 
+  project_id       = var.project_id
   app_name         = var.app_name
   environment      = "prod"
   template_version = var.template_version
