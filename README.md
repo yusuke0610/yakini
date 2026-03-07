@@ -204,6 +204,120 @@ cd backend
    - `Do not allow bypassing the above settings`（利用可能な場合）
 4. 保存
 
+---
+
+## GCP デプロイ手順（dev 環境）
+
+### 1. 事前準備
+
+```bash
+# gcloud 認証
+gcloud auth login
+gcloud config set project yakini-dev-20260223
+
+# 必要な GCP API を有効化
+gcloud services enable artifactregistry.googleapis.com
+gcloud services enable run.googleapis.com
+```
+
+### 2. Terraform でインフラを構築する
+
+GCS tfstate バケットが未作成の場合は先に作成する（Terraform 管理外）:
+
+```bash
+gcloud storage buckets create gs://yakini-tfstate-dev \
+  --location=asia-northeast1 --uniform-bucket-level-access
+```
+
+インフラ構築:
+
+```bash
+cd infra/environments/dev
+terraform init
+terraform plan
+terraform apply
+```
+
+### 3. Docker イメージをビルドして push する
+
+> **注意**: Apple Silicon Mac（M1/M2/M3）は必ず `--platform linux/amd64` を付けること。
+> 省略すると Cloud Run で `exec format error` が発生する。
+
+```bash
+# Docker → Artifact Registry の認証設定（初回のみ）
+gcloud auth configure-docker asia-northeast1-docker.pkg.dev
+
+# イメージをビルド（プロジェクトルートで実行）
+docker build --platform linux/amd64 -t yakini-dev ./backend
+
+# Artifact Registry 用にタグ付け
+docker tag yakini-dev asia-northeast1-docker.pkg.dev/yakini-dev-20260223/yakini-dev/yakini-dev:latest
+
+# push
+docker push asia-northeast1-docker.pkg.dev/yakini-dev-20260223/yakini-dev/yakini-dev:latest
+```
+
+### 4. Cloud Run にデプロイする
+
+```bash
+gcloud run deploy yakini-dev \
+  --image asia-northeast1-docker.pkg.dev/yakini-dev-20260223/yakini-dev/yakini-dev:latest \
+  --region asia-northeast1 \
+  --platform managed
+```
+
+デプロイ確認:
+
+```bash
+# サービス情報（URL 含む）を確認
+gcloud run services describe yakini-dev --region asia-northeast1
+
+# URL のみ取得
+gcloud run services describe yakini-dev --region asia-northeast1 \
+  --format "value(status.url)"
+```
+
+### 5. トラブルシューティング
+
+#### GCP API が無効になっている
+
+```
+Error: googleapi: Error 403: ... is disabled
+```
+
+該当 API を有効化して再実行する:
+
+```bash
+gcloud services enable <API名>
+# 例: gcloud services enable artifactregistry.googleapis.com
+```
+
+#### exec format error（arm64/amd64 の不一致）
+
+```
+exec /scripts/entrypoint.sh: exec format error
+```
+
+Apple Silicon Mac でビルドする際に `--platform linux/amd64` が抜けている。
+イメージを再ビルドして push し直す:
+
+```bash
+docker build --platform linux/amd64 -t yakini-dev ./backend
+docker tag yakini-dev asia-northeast1-docker.pkg.dev/yakini-dev-20260223/yakini-dev/yakini-dev:latest
+docker push asia-northeast1-docker.pkg.dev/yakini-dev-20260223/yakini-dev/yakini-dev:latest
+```
+
+#### deletion_protection エラー（terraform destroy 時）
+
+```
+Error: Instance cannot be deleted because deletion protection is enabled
+```
+
+Terraform リソースの `deletion_protection = false` に変更して `terraform apply` 後、
+`terraform destroy` を実行する。
+
+---
+
 ## メモ
 - DBスキーマは起動時にAlembicで適用されます。
 - CORS許可元は `backend/.env` の `CORS_ORIGINS` で調整できます。
