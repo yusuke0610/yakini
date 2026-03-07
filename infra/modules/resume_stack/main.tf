@@ -11,9 +11,9 @@ resource "google_artifact_registry_repository" "app" {
 }
 
 resource "google_cloud_run_v2_service" "app" {
-  project  = var.project_id
-  name     = local.stack_name
-  location = local.region
+  project             = var.project_id
+  name                = local.stack_name
+  location            = local.region
   deletion_protection = false
 
   template {
