@@ -5,6 +5,16 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1)
+    password: str = Field(min_length=1)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
 class BasicQualification(BaseModel):
     acquired_date: str = Field(min_length=1, max_length=30)
     name: str = Field(min_length=1, max_length=120)

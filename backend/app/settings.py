@@ -1,0 +1,44 @@
+import os
+from pathlib import Path
+
+
+def get_sqlite_db_path() -> Path:
+    db_path = os.getenv("SQLITE_DB_PATH", "./local.sqlite").strip()
+    return Path(db_path)
+
+
+def get_database_url() -> str:
+    db_path = get_sqlite_db_path()
+    return f"sqlite:///{db_path}"
+
+
+def get_cors_origins() -> list[str]:
+    return [
+        origin.strip()
+        for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+        if origin.strip()
+    ]
+
+
+def get_gcs_bucket_name() -> str:
+    return os.getenv("GCS_BUCKET_NAME", "").strip()
+
+
+def get_gcs_db_object() -> str:
+    return os.getenv("GCS_DB_OBJECT", "").strip()
+
+
+def get_admin_token() -> str:
+    return os.getenv("ADMIN_TOKEN", "").strip()
+
+
+def get_secret_key() -> str:
+    return os.getenv("SECRET_KEY", "").strip()
+
+
+def get_initial_username() -> str:
+    return os.getenv("INITIAL_USERNAME", "").strip()
+
+
+def get_initial_password() -> str:
+    return os.getenv("INITIAL_PASSWORD", "").strip()

@@ -1,0 +1,11 @@
+terraform {
+  required_version = "~> 1.8"
+
+  cloud {
+    organization = "REPLACE_WITH_YOUR_HCP_ORG"
+
+    workspaces {
+      name = "yakini-prod"
+    }
+  }
+}

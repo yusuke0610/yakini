@@ -1,0 +1,68 @@
+name: Terraform CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  terraform-fmt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive infra
+
+  terraform-validate:
+    name: terraform-validate-${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: terraform-fmt
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - dev
+          - stg
+          - prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init (no backend)
+        run: terraform -chdir=infra/environments/${{ matrix.environment }} init -backend=false -input=false
+
+      - name: Terraform validate
+        run: terraform -chdir=infra/environments/${{ matrix.environment }} validate

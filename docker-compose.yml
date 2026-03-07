@@ -1,16 +1,18 @@
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: yakini-postgres
+  api:
+    build: ./backend
+    container_name: yakini-api
     restart: unless-stopped
     environment:
-      POSTGRES_DB: yakini
-      POSTGRES_USER: yakini
-      POSTGRES_PASSWORD: yakini
+      SQLITE_DB_PATH: /data/yakini.sqlite
+      CORS_ORIGINS: http://localhost:5173
+      SECRET_KEY: ${SECRET_KEY}
+      INITIAL_USERNAME: ${INITIAL_USERNAME}
+      INITIAL_PASSWORD: ${INITIAL_PASSWORD}
     ports:
-      - "5432:5432"
+      - "8000:8000"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - sqlite_data:/data
 
 volumes:
-  postgres_data:
+  sqlite_data:

@@ -11,6 +11,17 @@ dist/
 frontend/.test-dist/
 frontend/tsconfig.app.tsbuildinfo
 
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
 # Env files
 .env
 frontend/.env

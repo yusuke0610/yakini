@@ -4,7 +4,7 @@ const test = require("node:test");
 const {
   buildBasicPayload,
   buildCareerPayload,
-  buildRirekishoPayload
+  buildResumePayload
 } = require("../.test-dist/payloadBuilders.js");
 
 test("buildBasicPayload trims values and excludes empty資格", () => {
@@ -114,10 +114,10 @@ test("buildCareerPayload throws when 離職で終了年月がない", () => {
   );
 });
 
-test("buildRirekishoPayload throws when required fields are empty", () => {
+test("buildResumePayload throws when required fields are empty", () => {
   assert.throws(
     () =>
-      buildRirekishoPayload({
+      buildResumePayload({
         postal_code: "",
         prefecture: "東京都",
         address: "渋谷区",
