@@ -1,3 +1,8 @@
+variable "project_id" {
+  description = "GCP project ID."
+  type        = string
+}
+
 variable "app_name" {
   description = "Application name prefix for this stack."
   type        = string
