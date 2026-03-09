@@ -14,3 +14,7 @@ output "stack_name" {
 output "template_version" {
   value = module.resume_stack.template_version
 }
+
+output "frontend_url" {
+  value = module.resume_stack.frontend_url
+}
