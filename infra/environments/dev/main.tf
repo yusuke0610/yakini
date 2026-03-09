@@ -5,6 +5,7 @@ module "resume_stack" {
   app_name         = var.app_name
   environment      = "dev"
   template_version = var.template_version
+  cors_origins     = var.cors_origins
 }
 
 output "stack_name" {
