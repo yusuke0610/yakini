@@ -12,3 +12,9 @@ variable "template_version" {
   description = "Infrastructure template version."
   type        = string
 }
+
+variable "cors_origins" {
+  description = "Allowed CORS origins for the API."
+  type        = string
+  default     = "https://storage.googleapis.com"
+}
