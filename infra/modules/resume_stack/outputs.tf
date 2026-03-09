@@ -17,3 +17,8 @@ output "template_version" {
   description = "Infrastructure template version."
   value       = var.template_version
 }
+
+output "frontend_url" {
+  description = "Frontend static site URL."
+  value       = "https://storage.googleapis.com/${google_storage_bucket.frontend.name}/index.html"
+}
