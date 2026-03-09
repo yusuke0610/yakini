@@ -215,6 +215,24 @@ merge → main:
 
 ---
 
+## stg / prod 環境の将来構成方針
+
+**現状**: dev のみで開発・動作確認を継続（個人プロジェクト・学習目的）
+
+**将来（実装時期未確定）**: アプリをユーザに提供できる状態になった段階で実装予定
+
+| 項目 | 方針 |
+|---|---|
+| インフラ | GKE または Kubernetes ベースの構成に移行 |
+| DB | RDB（費用対効果の良いもの、例: Cloud SQL / AlloyDB Omni 等を比較検討） |
+| GCP プロジェクト | 環境ごとに分離（`yakini-stg` / `yakini-prod`） |
+| tfstate | GCS backend（`yakini-tfstate-stg` / `yakini-tfstate-prod`） |
+
+stg/prod の Terraform ファイルは現在プレースホルダー状態だが、backend・tfvars・variables・main は整備済み。
+GKE/RDB への切り替え時に合わせて `modules/resume_stack` も再設計する。
+
+---
+
 ## テスト
 
 ```bash
