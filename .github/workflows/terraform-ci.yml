@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform-ci.yml"
   push:
     branches:
       - main
@@ -23,6 +26,32 @@ env:
   TF_IN_AUTOMATION: "true"
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      dev: ${{ steps.filter.outputs.dev }}
+      stg: ${{ steps.filter.outputs.stg }}
+      prod: ${{ steps.filter.outputs.prod }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed environments
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            dev:
+              - 'infra/environments/dev/**'
+              - 'infra/modules/**'
+            stg:
+              - 'infra/environments/stg/**'
+              - 'infra/modules/**'
+            prod:
+              - 'infra/environments/prod/**'
+              - 'infra/modules/**'
+
   terraform-fmt:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -39,18 +68,11 @@ jobs:
       - name: Terraform format check
         run: terraform fmt -check -recursive infra
 
-  terraform-validate:
-    name: terraform-validate-${{ matrix.environment }}
+  terraform-validate-dev:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: terraform-fmt
-    strategy:
-      fail-fast: false
-      matrix:
-        environment:
-          - dev
-          - stg
-          - prod
+    needs: [terraform-fmt, detect-changes]
+    if: needs.detect-changes.outputs.dev == 'true'
 
     steps:
       - name: Checkout
@@ -62,7 +84,49 @@ jobs:
           terraform_version: 1.8.5
 
       - name: Terraform init (no backend)
-        run: terraform -chdir=infra/environments/${{ matrix.environment }} init -backend=false -input=false
+        run: terraform -chdir=infra/environments/dev init -backend=false -input=false
 
       - name: Terraform validate
-        run: terraform -chdir=infra/environments/${{ matrix.environment }} validate
+        run: terraform -chdir=infra/environments/dev validate
+
+  terraform-validate-stg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [terraform-fmt, detect-changes]
+    if: needs.detect-changes.outputs.stg == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init (no backend)
+        run: terraform -chdir=infra/environments/stg init -backend=false -input=false
+
+      - name: Terraform validate
+        run: terraform -chdir=infra/environments/stg validate
+
+  terraform-validate-prod:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [terraform-fmt, detect-changes]
+    if: needs.detect-changes.outputs.prod == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init (no backend)
+        run: terraform -chdir=infra/environments/prod init -backend=false -input=false
+
+      - name: Terraform validate
+        run: terraform -chdir=infra/environments/prod validate
