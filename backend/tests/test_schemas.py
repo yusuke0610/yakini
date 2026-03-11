@@ -7,15 +7,22 @@ from app.schemas import Experience, ResumeCreate, RirekishoCreate
 def experience_payload() -> dict:
     return {
         "company": "Example株式会社",
-        "title": "バックエンドエンジニア",
+        "business_description": "SES事業",
         "start_date": "2021-04",
         "end_date": "2024-03",
         "is_current": False,
-        "description": "API開発",
-        "achievements": "処理速度を改善",
         "employee_count": "300名",
         "capital": "1億円",
-        "technology_stacks": [{"category": "言語", "name": "Python"}],
+        "projects": [
+            {
+                "name": "API開発",
+                "role": "メンバー",
+                "description": "API開発",
+                "achievements": "処理速度を改善",
+                "scale": "5名",
+                "technology_stacks": [{"category": "言語", "name": "Python"}],
+            }
+        ],
     }
 
 
@@ -40,16 +47,16 @@ def test_end_date_is_required_when_not_current() -> None:
 
 def test_framework_category_is_accepted() -> None:
     payload = experience_payload()
-    payload["technology_stacks"] = [{"category": "フレームワーク", "name": "FastAPI"}]
+    payload["projects"][0]["technology_stacks"] = [{"category": "フレームワーク", "name": "FastAPI"}]
 
     experience = Experience(**payload)
 
-    assert experience.technology_stacks[0].category == "フレームワーク"
+    assert experience.projects[0].technology_stacks[0].category == "フレームワーク"
 
 
 def test_unknown_category_is_rejected() -> None:
     payload = experience_payload()
-    payload["technology_stacks"] = [{"category": "ミドルウェア", "name": "Nginx"}]
+    payload["projects"][0]["technology_stacks"] = [{"category": "ミドルウェア", "name": "Nginx"}]
 
     with pytest.raises(ValidationError):
         Experience(**payload)

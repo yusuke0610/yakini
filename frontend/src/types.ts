@@ -15,19 +15,6 @@ export type BasicInfoResponse = BasicInfoPayload & {
   updated_at: string;
 };
 
-export type CareerExperience = {
-  company: string;
-  title: string;
-  start_date: string;
-  end_date: string | null;
-  is_current: boolean;
-  description: string;
-  achievements: string;
-  employee_count: string;
-  capital: string;
-  technology_stacks: CareerTechnologyStack[];
-};
-
 export type CareerTechnologyStackCategory =
   | "言語"
   | "フレームワーク"
@@ -39,6 +26,26 @@ export type CareerTechnologyStackCategory =
 export type CareerTechnologyStack = {
   category: CareerTechnologyStackCategory;
   name: string;
+};
+
+export type CareerProject = {
+  name: string;
+  role: string;
+  description: string;
+  achievements: string;
+  scale: string;
+  technology_stacks: CareerTechnologyStack[];
+};
+
+export type CareerExperience = {
+  company: string;
+  business_description: string;
+  start_date: string;
+  end_date: string | null;
+  is_current: boolean;
+  employee_count: string;
+  capital: string;
+  projects: CareerProject[];
 };
 
 export type CareerResumePayload = {
@@ -67,6 +74,7 @@ export type ResumePayload = {
   motivation: string;
   educations: ResumeHistory[];
   work_histories: ResumeHistory[];
+  photo: string | null;
 };
 
 export type ResumeResponse = ResumePayload & {

@@ -183,6 +183,60 @@ button.ghost {
   color: #163a88;
 }
 
+button.danger {
+  background: #fde8e8;
+  color: #b91c1c;
+  border: 1px solid #f5c6c6;
+}
+
+button.danger:hover {
+  background: #f9cccc;
+}
+
+.inputWithUnit {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.inputWithUnit input {
+  flex: 1;
+}
+
+.inputWithUnit .unit {
+  font-size: 0.85rem;
+  color: #555;
+  white-space: nowrap;
+}
+
+.photoUpload {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.photoPreview {
+  width: 120px;
+  height: 160px;
+  border: 1px solid #cad5e7;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.photoPlaceholder {
+  width: 120px;
+  height: 160px;
+  border: 1px dashed #cad5e7;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 0.8rem;
+  background: #f9fafb;
+}
+
 .hint {
   margin: 0;
   color: #38506f;
@@ -199,6 +253,51 @@ button.ghost {
   margin: 0;
   color: #10653c;
   font-weight: 600;
+}
+
+.githubLogin {
+  background: #24292e;
+  color: #fff;
+  width: 100%;
+}
+
+.githubLogin:hover {
+  background: #3b4249;
+}
+
+.previewOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.previewModal {
+  background: #fff;
+  border-radius: 12px;
+  width: 90vw;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.previewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #dce4f2;
+  font-weight: 700;
+}
+
+.previewFrame {
+  flex: 1;
+  border: none;
+  width: 100%;
 }
 
 @media (max-width: 640px) {
