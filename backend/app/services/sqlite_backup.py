@@ -16,7 +16,7 @@ def _get_storage_client() -> storage.Client:
 
 
 def _snapshot_sqlite(source_db_path: Path) -> Path:
-    with tempfile.NamedTemporaryFile(prefix="yakini-db-", suffix=".sqlite", delete=False) as tmp_file:
+    with tempfile.NamedTemporaryFile(prefix="devforge-db-", suffix=".sqlite", delete=False) as tmp_file:
         snapshot_path = Path(tmp_file.name)
 
     with sqlite3.connect(source_db_path) as source_conn:
