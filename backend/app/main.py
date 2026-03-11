@@ -289,6 +289,7 @@ def download_rirekisho_pdf(
         "email": rirekisho.email,
         "phone": rirekisho.phone,
         "motivation": rirekisho.motivation,
+        "photo": rirekisho.photo,
         "educations": rirekisho.educations,
         "work_histories": rirekisho.work_histories,
     }

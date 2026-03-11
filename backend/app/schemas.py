@@ -42,21 +42,29 @@ class BasicInfoResponse(BasicInfoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class Experience(BaseModel):
-    class TechnologyStackItem(BaseModel):
-        category: Literal["言語", "フレームワーク", "OS", "DB", "クラウドリソース", "開発支援ツール"]
-        name: str = Field(min_length=1, max_length=120)
+class TechnologyStackItem(BaseModel):
+    category: Literal["言語", "フレームワーク", "OS", "DB", "クラウドリソース", "開発支援ツール"]
+    name: str = Field(min_length=1, max_length=120)
 
+
+class Project(BaseModel):
+    name: str = Field(max_length=200, default="")
+    role: str = Field(max_length=200, default="")
+    description: str = Field(max_length=1500, default="")
+    achievements: str = Field(max_length=1500, default="")
+    scale: str = Field(max_length=60, default="")
+    technology_stacks: list[TechnologyStackItem] = Field(default_factory=list)
+
+
+class Experience(BaseModel):
     company: str = Field(min_length=1, max_length=120)
-    title: str = Field(min_length=1, max_length=120)
+    business_description: str = Field(min_length=1, max_length=200)
     start_date: str = Field(min_length=1, max_length=30)
     end_date: str | None = Field(default=None, max_length=30)
     is_current: bool = False
-    description: str = Field(min_length=1, max_length=1500)
-    achievements: str = Field(min_length=1, max_length=1500)
-    employee_count: str = Field(min_length=1, max_length=60)
-    capital: str = Field(min_length=1, max_length=120)
-    technology_stacks: list[TechnologyStackItem] = Field(default_factory=list)
+    employee_count: str = Field(max_length=60, default="")
+    capital: str = Field(max_length=120, default="")
+    projects: list[Project] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_end_date(self) -> "Experience":
@@ -102,6 +110,7 @@ class RirekishoBase(BaseModel):
     email: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=1, max_length=50)
     motivation: str = Field(min_length=1, max_length=2000)
+    photo: str | None = Field(default=None)
     educations: list[RirekishoHistory] = Field(default_factory=list)
     work_histories: list[RirekishoHistory] = Field(default_factory=list)
 

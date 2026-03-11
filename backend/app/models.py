@@ -52,6 +52,7 @@ class Rirekisho(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(50), nullable=False)
     motivation: Mapped[str] = mapped_column(Text, nullable=False)
+    photo: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     educations: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     work_histories: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
