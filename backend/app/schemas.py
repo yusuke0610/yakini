@@ -15,6 +15,10 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class GitHubCallbackRequest(BaseModel):
+    code: str = Field(min_length=1)
+
+
 class BasicQualification(BaseModel):
     acquired_date: str = Field(min_length=1, max_length=30)
     name: str = Field(min_length=1, max_length=120)

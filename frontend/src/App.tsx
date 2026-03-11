@@ -4,9 +4,15 @@ import {
   createBasicInfo,
   createCareerResume,
   createResume,
+  downloadCareerResumeMarkdown,
   downloadCareerResumePdf,
+  downloadResumeMarkdown,
   downloadResumePdf,
+  getCareerResumePdfBlobUrl,
+  getGitHubOAuthUrl,
   getLatestBasicInfo,
+  getResumePdfBlobUrl,
+  githubCallback,
   login,
   setAuthToken,
   setOnUnauthorized,
@@ -496,7 +502,42 @@ function CareerResumeForm() {
     }
   };
 
+  const onDownloadMarkdown = async () => {
+    if (!resumeId) return;
+    setError(null);
+    try {
+      await downloadCareerResumeMarkdown(resumeId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Markdownダウンロードに失敗しました。");
+    }
+  };
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const onPreviewPdf = async () => {
+    if (!resumeId) return;
+    setError(null);
+    try {
+      const url = await getCareerResumePdfBlobUrl(resumeId);
+      setPreviewUrl(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "プレビューに失敗しました。");
+    }
+  };
+
   return (
+    <>
+    {previewUrl && (
+      <div className="previewOverlay" onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }}>
+        <div className="previewModal" onClick={(e) => e.stopPropagation()}>
+          <div className="previewHeader">
+            <span>PDFプレビュー</span>
+            <button type="button" onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }}>閉じる</button>
+          </div>
+          <iframe src={previewUrl} className="previewFrame" title="PDF Preview" />
+        </div>
+      </div>
+    )}
     <form onSubmit={onSubmit} className="form">
       <section className="section">
         <label>
@@ -728,8 +769,14 @@ function CareerResumeForm() {
         <button type="submit" disabled={saving}>
           {saveButtonText}
         </button>
+        <button type="button" onClick={onPreviewPdf} disabled={!resumeId}>
+          プレビュー
+        </button>
         <button type="button" onClick={onDownloadPdf} disabled={!resumeId || downloading}>
           {downloading ? "ダウンロード中..." : "PDF出力"}
+        </button>
+        <button type="button" onClick={onDownloadMarkdown} disabled={!resumeId}>
+          Markdown出力
         </button>
       </div>
 
@@ -737,6 +784,7 @@ function CareerResumeForm() {
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
     </form>
+    </>
   );
 }
 
@@ -884,7 +932,42 @@ function ResumeForm() {
     }
   };
 
+  const onDownloadMarkdown = async () => {
+    if (!ResumeId) return;
+    setError(null);
+    try {
+      await downloadResumeMarkdown(ResumeId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Markdownダウンロードに失敗しました。");
+    }
+  };
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const onPreviewPdf = async () => {
+    if (!ResumeId) return;
+    setError(null);
+    try {
+      const url = await getResumePdfBlobUrl(ResumeId);
+      setPreviewUrl(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "プレビューに失敗しました。");
+    }
+  };
+
   return (
+    <>
+    {previewUrl && (
+      <div className="previewOverlay" onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }}>
+        <div className="previewModal" onClick={(e) => e.stopPropagation()}>
+          <div className="previewHeader">
+            <span>PDFプレビュー</span>
+            <button type="button" onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }}>閉じる</button>
+          </div>
+          <iframe src={previewUrl} className="previewFrame" title="PDF Preview" />
+        </div>
+      </div>
+    )}
     <form onSubmit={onSubmit} className="form">
       <section className="section">
         <h2>証明写真</h2>
@@ -1036,8 +1119,14 @@ function ResumeForm() {
         <button type="submit" disabled={saving}>
           {saveButtonText}
         </button>
+        <button type="button" onClick={onPreviewPdf} disabled={!ResumeId}>
+          プレビュー
+        </button>
         <button type="button" onClick={onDownloadPdf} disabled={!ResumeId || downloading}>
           {downloading ? "ダウンロード中..." : "PDF出力"}
+        </button>
+        <button type="button" onClick={onDownloadMarkdown} disabled={!ResumeId}>
+          Markdown出力
         </button>
       </div>
 
@@ -1045,6 +1134,7 @@ function ResumeForm() {
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
     </form>
+    </>
   );
 }
 
@@ -1104,6 +1194,11 @@ function LoginForm({ onLogin }: { onLogin: (token: string) => void }) {
               {loading ? "ログイン中..." : "ログイン"}
             </button>
           </div>
+          <div className="actions" style={{ marginTop: "1rem" }}>
+            <button type="button" className="githubLogin" onClick={() => { window.location.href = getGitHubOAuthUrl(); }}>
+              Login with GitHub
+            </button>
+          </div>
           {error && <p className="error">{error}</p>}
         </form>
       </main>
@@ -1127,6 +1222,18 @@ export default function App() {
       setAuthToken(null);
       setToken(null);
     });
+
+    // Handle GitHub OAuth callback
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (code && !saved) {
+      window.history.replaceState({}, "", window.location.pathname);
+      githubCallback(code).then((result) => {
+        handleLogin(result.access_token);
+      }).catch(() => {
+        // GitHub OAuth failed, user can retry
+      });
+    }
   }, []);
 
   const handleLogin = (newToken: string) => {

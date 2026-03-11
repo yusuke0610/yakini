@@ -28,6 +28,7 @@ from .schemas import (
     BasicInfoCreate,
     BasicInfoResponse,
     BasicInfoUpdate,
+    GitHubCallbackRequest,
     LoginRequest,
     ResumeCreate,
     ResumeResponse,
@@ -37,7 +38,8 @@ from .schemas import (
     RirekishoUpdate,
     TokenResponse,
 )
-from .settings import get_admin_token, get_cors_origins
+from .settings import get_admin_token, get_cors_origins, get_github_client_id, get_github_client_secret
+from .services.markdown_generator import build_resume_markdown, build_rirekisho_markdown
 from .services.pdf_generator import build_rirekisho_pdf, build_resume_pdf
 from .services.sqlite_backup import backup_sqlite_to_gcs
 
@@ -108,6 +110,72 @@ def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="ユーザー名またはパスワードが正しくありません",
         )
+    token = create_access_token(user.username)
+    return TokenResponse(access_token=token)
+
+
+@app.post("/auth/github/callback", response_model=TokenResponse)
+async def github_callback(
+    payload: GitHubCallbackRequest, db: Session = Depends(get_db)
+) -> TokenResponse:
+    client_id = get_github_client_id()
+    client_secret = get_github_client_secret()
+    if not client_id or not client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="GitHub OAuth is not configured",
+        )
+
+    import httpx
+
+    async with httpx.AsyncClient() as client:
+        token_resp = await client.post(
+            "https://github.com/login/oauth/access_token",
+            json={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": payload.code,
+            },
+            headers={"Accept": "application/json"},
+        )
+        token_data = token_resp.json()
+        access_token = token_data.get("access_token")
+        if not access_token:
+            log_event(
+                logging.WARNING,
+                "github_oauth_failed",
+                error=token_data.get("error_description", "unknown"),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="GitHub認証に失敗しました",
+            )
+
+        user_resp = await client.get(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github+json",
+            },
+        )
+        github_user = user_resp.json()
+
+    github_id = github_user.get("id")
+    github_login = github_user.get("login")
+    if not github_id or not github_login:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="GitHubユーザー情報の取得に失敗しました",
+        )
+
+    repo = UserRepository(db)
+    user = repo.get_by_github_id(github_id)
+    if not user:
+        user = repo.create_github_user(
+            username=f"github:{github_login}", github_id=github_id
+        )
+        log_event(logging.INFO, "github_user_created", username=user.username)
+
     token = create_access_token(user.username)
     return TokenResponse(access_token=token)
 
@@ -226,6 +294,43 @@ def download_resume_pdf(
     )
 
 
+@app.get("/api/resumes/{resume_id}/markdown")
+def download_resume_markdown(
+    resume_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> StreamingResponse:
+    resume_repository = ResumeRepository(db)
+    basic_info_repository = BasicInfoRepository(db)
+
+    resume = resume_repository.get_by_id(str(resume_id))
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    basic_info = basic_info_repository.get_latest()
+
+    payload = {
+        "full_name": basic_info.full_name if basic_info else "",
+        "record_date": basic_info.record_date if basic_info else "",
+        "qualifications": basic_info.qualifications if basic_info else [],
+        "career_summary": resume.career_summary,
+        "self_pr": resume.self_pr,
+        "experiences": resume.experiences,
+    }
+    md_text = build_resume_markdown(payload)
+
+    headers = {
+        "Content-Disposition": (
+            f'attachment; filename="career-resume-{resume.id}.md"'
+        ),
+    }
+    return StreamingResponse(
+        io.BytesIO(md_text.encode("utf-8")),
+        media_type="text/markdown; charset=utf-8",
+        headers=headers,
+    )
+
+
 @app.post("/api/rirekisho", response_model=RirekishoResponse, status_code=201)
 def create_rirekisho(
     payload: RirekishoCreate,
@@ -302,6 +407,48 @@ def download_rirekisho_pdf(
     }
     return StreamingResponse(
         io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers
+    )
+
+
+@app.get("/api/rirekisho/{rirekisho_id}/markdown")
+def download_rirekisho_markdown(
+    rirekisho_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> StreamingResponse:
+    rirekisho_repository = RirekishoRepository(db)
+    basic_info_repository = BasicInfoRepository(db)
+
+    rirekisho = rirekisho_repository.get_by_id(str(rirekisho_id))
+    if not rirekisho:
+        raise HTTPException(status_code=404, detail="Rirekisho not found")
+
+    basic_info = basic_info_repository.get_latest()
+
+    payload = {
+        "full_name": basic_info.full_name if basic_info else "",
+        "record_date": basic_info.record_date if basic_info else "",
+        "qualifications": basic_info.qualifications if basic_info else [],
+        "postal_code": rirekisho.postal_code,
+        "prefecture": rirekisho.prefecture,
+        "address": rirekisho.address,
+        "email": rirekisho.email,
+        "phone": rirekisho.phone,
+        "motivation": rirekisho.motivation,
+        "educations": rirekisho.educations,
+        "work_histories": rirekisho.work_histories,
+    }
+    md_text = build_rirekisho_markdown(payload)
+
+    headers = {
+        "Content-Disposition": (
+            f'attachment; filename="rirekisho-{rirekisho.id}.md"'
+        ),
+    }
+    return StreamingResponse(
+        io.BytesIO(md_text.encode("utf-8")),
+        media_type="text/markdown; charset=utf-8",
+        headers=headers,
     )
 
 

@@ -24,6 +24,17 @@ class UserRepository:
         statement = select(User).where(User.username == username)
         return self.db.scalar(statement)
 
+    def get_by_github_id(self, github_id: int) -> User | None:
+        statement = select(User).where(User.github_id == github_id)
+        return self.db.scalar(statement)
+
+    def create_github_user(self, username: str, github_id: int) -> User:
+        user = User(username=username, hashed_password="", github_id=github_id)
+        self.db.add(user)
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+
     def count(self) -> int:
         statement = select(func.count()).select_from(User)
         return self.db.scalar(statement) or 0
