@@ -23,6 +23,7 @@ import type {
   BasicFormState,
   CareerExperienceForm,
   CareerFormState,
+  CareerProjectForm,
   ResumeFormState
 } from "./payloadBuilders";
 import type {
@@ -37,7 +38,8 @@ type PageKey = "basic" | "career" | "Resume";
 type BasicTextFieldKey = "full_name" | "record_date";
 
 type CareerTextFieldKey = "career_summary" | "self_pr";
-type CareerExperienceFieldKey = Exclude<keyof CareerExperienceForm, "technology_stacks">;
+type CareerExperienceFieldKey = "company" | "business_description" | "start_date" | "end_date" | "is_current" | "employee_count" | "capital";
+type CareerProjectFieldKey = "name" | "role" | "description" | "achievements" | "scale";
 
 type ResumeTextFieldKey =
   | "postal_code"
@@ -66,17 +68,24 @@ const blankCareerTechnologyStack: CareerTechnologyStack = {
   name: ""
 };
 
+const blankCareerProject: CareerProjectForm = {
+  name: "",
+  role: "",
+  description: "",
+  achievements: "",
+  scale: "",
+  technology_stacks: [{ ...blankCareerTechnologyStack }]
+};
+
 const blankCareerExperience: CareerExperienceForm = {
   company: "",
-  title: "",
+  business_description: "",
   start_date: "",
   end_date: "",
   is_current: false,
-  description: "",
-  achievements: "",
   employee_count: "",
   capital: "",
-  technology_stacks: [{ ...blankCareerTechnologyStack }]
+  projects: [{ ...blankCareerProject, technology_stacks: [{ ...blankCareerTechnologyStack }] }]
 };
 
 const blankHistory: ResumeHistory = {
@@ -228,6 +237,14 @@ function BasicInfoForm() {
           <div key={`basic-qualification-${index}`} className="entry">
             <div className="inline">
               <label>
+                資格名
+                <input
+                  type="text"
+                  value={qualification.name}
+                  onChange={(e) => updateQualificationField(index, "name", e.target.value)}
+                />
+              </label>
+              <label>
                 取得日
                 <input
                   type="date"
@@ -237,16 +254,8 @@ function BasicInfoForm() {
                   }
                 />
               </label>
-              <label>
-                名称
-                <input
-                  type="text"
-                  value={qualification.name}
-                  onChange={(e) => updateQualificationField(index, "name", e.target.value)}
-                />
-              </label>
             </div>
-            <button type="button" className="ghost" onClick={() => removeQualification(index)}>
+            <button type="button" className="danger" onClick={() => removeQualification(index)}>
               資格を削除
             </button>
           </div>
@@ -301,50 +310,60 @@ function CareerResumeForm() {
     setForm((prev) => ({
       ...prev,
       experiences: prev.experiences.map((exp, i) => {
-        if (i !== index) {
-          return exp;
-        }
+        if (i !== index) return exp;
         if (key === "is_current") {
           const isCurrent = Boolean(value);
-          return {
-            ...exp,
-            is_current: isCurrent,
-            end_date: isCurrent ? "" : exp.end_date
-          };
+          return { ...exp, is_current: isCurrent, end_date: isCurrent ? "" : exp.end_date };
         }
         return { ...exp, [key]: value };
       })
     }));
   };
 
+  const updateProjectField = (
+    expIndex: number,
+    projIndex: number,
+    key: CareerProjectFieldKey,
+    value: string
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp, ei) => {
+        if (ei !== expIndex) return exp;
+        return {
+          ...exp,
+          projects: exp.projects.map((proj, pi) =>
+            pi === projIndex ? { ...proj, [key]: value } : proj
+          )
+        };
+      })
+    }));
+  };
+
   const updateTechnologyStackField = (
-    experienceIndex: number,
+    expIndex: number,
+    projIndex: number,
     stackIndex: number,
     key: keyof CareerTechnologyStack,
     value: string
   ) => {
     setForm((prev) => ({
       ...prev,
-      experiences: prev.experiences.map((exp, index) => {
-        if (index !== experienceIndex) {
-          return exp;
-        }
-
+      experiences: prev.experiences.map((exp, ei) => {
+        if (ei !== expIndex) return exp;
         return {
           ...exp,
-          technology_stacks: exp.technology_stacks.map((stack, i) => {
-            if (i !== stackIndex) {
-              return stack;
-            }
-            if (key === "category") {
-              return {
-                ...stack,
-                category: value as CareerTechnologyStackCategory
-              };
-            }
+          projects: exp.projects.map((proj, pi) => {
+            if (pi !== projIndex) return proj;
             return {
-              ...stack,
-              name: value
+              ...proj,
+              technology_stacks: proj.technology_stacks.map((stack, si) => {
+                if (si !== stackIndex) return stack;
+                if (key === "category") {
+                  return { ...stack, category: value as CareerTechnologyStackCategory };
+                }
+                return { ...stack, name: value };
+              })
             };
           })
         };
@@ -352,34 +371,67 @@ function CareerResumeForm() {
     }));
   };
 
-  const addTechnologyStack = (experienceIndex: number) => {
+  const addTechnologyStack = (expIndex: number, projIndex: number) => {
     setForm((prev) => ({
       ...prev,
-      experiences: prev.experiences.map((exp, index) =>
-        index === experienceIndex
-          ? {
-              ...exp,
-              technology_stacks: [...exp.technology_stacks, { ...blankCareerTechnologyStack }]
-            }
+      experiences: prev.experiences.map((exp, ei) => {
+        if (ei !== expIndex) return exp;
+        return {
+          ...exp,
+          projects: exp.projects.map((proj, pi) =>
+            pi === projIndex
+              ? { ...proj, technology_stacks: [...proj.technology_stacks, { ...blankCareerTechnologyStack }] }
+              : proj
+          )
+        };
+      })
+    }));
+  };
+
+  const removeTechnologyStack = (expIndex: number, projIndex: number, stackIndex: number) => {
+    setForm((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp, ei) => {
+        if (ei !== expIndex) return exp;
+        return {
+          ...exp,
+          projects: exp.projects.map((proj, pi) => {
+            if (pi !== projIndex) return proj;
+            return {
+              ...proj,
+              technology_stacks:
+                proj.technology_stacks.length === 1
+                  ? [{ ...blankCareerTechnologyStack }]
+                  : proj.technology_stacks.filter((_, si) => si !== stackIndex)
+            };
+          })
+        };
+      })
+    }));
+  };
+
+  const addProject = (expIndex: number) => {
+    setForm((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp, ei) =>
+        ei === expIndex
+          ? { ...exp, projects: [...exp.projects, { ...blankCareerProject, technology_stacks: [{ ...blankCareerTechnologyStack }] }] }
           : exp
       )
     }));
   };
 
-  const removeTechnologyStack = (experienceIndex: number, stackIndex: number) => {
+  const removeProject = (expIndex: number, projIndex: number) => {
     setForm((prev) => ({
       ...prev,
-      experiences: prev.experiences.map((exp, index) => {
-        if (index !== experienceIndex) {
-          return exp;
-        }
-
+      experiences: prev.experiences.map((exp, ei) => {
+        if (ei !== expIndex) return exp;
         return {
           ...exp,
-          technology_stacks:
-            exp.technology_stacks.length === 1
-              ? [{ ...blankCareerTechnologyStack }]
-              : exp.technology_stacks.filter((_, i) => i !== stackIndex)
+          projects:
+            exp.projects.length === 1
+              ? [{ ...blankCareerProject, technology_stacks: [{ ...blankCareerTechnologyStack }] }]
+              : exp.projects.filter((_, pi) => pi !== projIndex)
         };
       })
     }));
@@ -425,10 +477,7 @@ function CareerResumeForm() {
   };
 
   const onDownloadPdf = async () => {
-    if (!resumeId) {
-      return;
-    }
-
+    if (!resumeId) return;
     setDownloading(true);
     setError(null);
     setSuccess(null);
@@ -472,23 +521,24 @@ function CareerResumeForm() {
 
       <section className="section">
         <h2>職務経歴</h2>
-        {form.experiences.map((exp, index) => (
-          <div key={`exp-${index}`} className="entry">
+        {form.experiences.map((exp, expIndex) => (
+          <div key={`exp-${expIndex}`} className="entry">
             <label>
               会社名
               <input
                 type="text"
                 value={exp.company}
-                onChange={(e) => updateExperienceField(index, "company", e.target.value)}
+                onChange={(e) => updateExperienceField(expIndex, "company", e.target.value)}
               />
             </label>
 
             <label>
-              職種
+              事業内容
               <input
                 type="text"
-                value={exp.title}
-                onChange={(e) => updateExperienceField(index, "title", e.target.value)}
+                value={exp.business_description}
+                onChange={(e) => updateExperienceField(expIndex, "business_description", e.target.value)}
+                placeholder="例: SES事業、受託開発"
               />
             </label>
 
@@ -498,7 +548,7 @@ function CareerResumeForm() {
                 <input
                   type="month"
                   value={exp.start_date}
-                  onChange={(e) => updateExperienceField(index, "start_date", e.target.value)}
+                  onChange={(e) => updateExperienceField(expIndex, "start_date", e.target.value)}
                 />
               </label>
               <label>
@@ -506,7 +556,7 @@ function CareerResumeForm() {
                 <select
                   value={exp.is_current ? "current" : "ended"}
                   onChange={(e) =>
-                    updateExperienceField(index, "is_current", e.target.value === "current")
+                    updateExperienceField(expIndex, "is_current", e.target.value === "current")
                   }
                 >
                   <option value="ended">離職</option>
@@ -519,7 +569,7 @@ function CareerResumeForm() {
                   <input
                     type="month"
                     value={exp.end_date}
-                    onChange={(e) => updateExperienceField(index, "end_date", e.target.value)}
+                    onChange={(e) => updateExperienceField(expIndex, "end_date", e.target.value)}
                   />
                 </label>
               )}
@@ -528,94 +578,142 @@ function CareerResumeForm() {
             <div className="inline">
               <label>
                 従業員数
-                <input
-                  type="text"
-                  value={exp.employee_count}
-                  onChange={(e) => updateExperienceField(index, "employee_count", e.target.value)}
-                  placeholder="例: 300名"
-                />
+                <div className="inputWithUnit">
+                  <input
+                    type="number"
+                    value={exp.employee_count}
+                    onChange={(e) => updateExperienceField(expIndex, "employee_count", e.target.value)}
+                    placeholder="例: 300"
+                  />
+                  <span className="unit">名</span>
+                </div>
               </label>
               <label>
                 資本金
-                <input
-                  type="text"
-                  value={exp.capital}
-                  onChange={(e) => updateExperienceField(index, "capital", e.target.value)}
-                  placeholder="例: 1億円"
-                />
+                <div className="inputWithUnit">
+                  <input
+                    type="number"
+                    value={exp.capital}
+                    onChange={(e) => updateExperienceField(expIndex, "capital", e.target.value)}
+                    placeholder="例: 5"
+                  />
+                  <span className="unit">千万円</span>
+                </div>
               </label>
             </div>
 
-            <label>
-              実績
-              <textarea
-                rows={3}
-                value={exp.achievements}
-                onChange={(e) => updateExperienceField(index, "achievements", e.target.value)}
-              />
-            </label>
-
-            <label>
-              業務内容
-              <textarea
-                rows={3}
-                value={exp.description}
-                onChange={(e) => updateExperienceField(index, "description", e.target.value)}
-              />
-            </label>
-
+            {/* Projects */}
             <div className="stackSection">
-              <h3>技術スタック</h3>
-              {exp.technology_stacks.map((stack, stackIndex) => (
-                <div key={`stack-${index}-${stackIndex}`} className="stackEntry">
+              <h3>プロジェクト</h3>
+              {exp.projects.map((proj, projIndex) => (
+                <div key={`proj-${expIndex}-${projIndex}`} className="entry">
+                  <label>
+                    プロジェクト名
+                    <input
+                      type="text"
+                      value={proj.name}
+                      onChange={(e) => updateProjectField(expIndex, projIndex, "name", e.target.value)}
+                      placeholder="例: エネルギー業界 IoT Web API アプリ新規開発"
+                    />
+                  </label>
+
                   <div className="inline">
                     <label>
-                      区分
-                      <select
-                        value={stack.category}
-                        onChange={(e) =>
-                          updateTechnologyStackField(
-                            index,
-                            stackIndex,
-                            "category",
-                            e.target.value
-                          )
-                        }
-                      >
-                        {careerTechnologyStackCategories.map((category) => (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      名称
+                      役割
                       <input
                         type="text"
-                        value={stack.name}
-                        onChange={(e) =>
-                          updateTechnologyStackField(index, stackIndex, "name", e.target.value)
-                        }
-                        placeholder="例: TypeScript"
+                        value={proj.role}
+                        onChange={(e) => updateProjectField(expIndex, projIndex, "role", e.target.value)}
+                        placeholder="例: アジャイル開発メンバー"
                       />
                     </label>
+                    <label>
+                      規模
+                      <div className="inputWithUnit">
+                        <input
+                          type="number"
+                          value={proj.scale}
+                          onChange={(e) => updateProjectField(expIndex, projIndex, "scale", e.target.value)}
+                          placeholder="例: 10"
+                        />
+                        <span className="unit">名</span>
+                      </div>
+                    </label>
                   </div>
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => removeTechnologyStack(index, stackIndex)}
-                  >
-                    技術スタックを削除
+
+                  <label>
+                    業務内容
+                    <textarea
+                      rows={3}
+                      value={proj.description}
+                      onChange={(e) => updateProjectField(expIndex, projIndex, "description", e.target.value)}
+                    />
+                  </label>
+
+                  <label>
+                    実績・取り組み
+                    <textarea
+                      rows={3}
+                      value={proj.achievements}
+                      onChange={(e) => updateProjectField(expIndex, projIndex, "achievements", e.target.value)}
+                    />
+                  </label>
+
+                  <div className="stackSection">
+                    <h3>技術スタック</h3>
+                    {proj.technology_stacks.map((stack, stackIndex) => (
+                      <div key={`stack-${expIndex}-${projIndex}-${stackIndex}`} className="stackEntry">
+                        <div className="inline">
+                          <label>
+                            区分
+                            <select
+                              value={stack.category}
+                              onChange={(e) =>
+                                updateTechnologyStackField(expIndex, projIndex, stackIndex, "category", e.target.value)
+                              }
+                            >
+                              {careerTechnologyStackCategories.map((category) => (
+                                <option key={category} value={category}>{category}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            名称
+                            <input
+                              type="text"
+                              value={stack.name}
+                              onChange={(e) =>
+                                updateTechnologyStackField(expIndex, projIndex, stackIndex, "name", e.target.value)
+                              }
+                              placeholder="例: TypeScript"
+                            />
+                          </label>
+                        </div>
+                        <button
+                          type="button"
+                          className="danger"
+                          onClick={() => removeTechnologyStack(expIndex, projIndex, stackIndex)}
+                        >
+                          技術スタックを削除
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" className="ghost" onClick={() => addTechnologyStack(expIndex, projIndex)}>
+                      技術スタックを追加
+                    </button>
+                  </div>
+
+                  <button type="button" className="danger" onClick={() => removeProject(expIndex, projIndex)}>
+                    プロジェクトを削除
                   </button>
                 </div>
               ))}
-              <button type="button" className="ghost" onClick={() => addTechnologyStack(index)}>
-                技術スタックを追加
+              <button type="button" className="ghost" onClick={() => addProject(expIndex)}>
+                プロジェクトを追加
               </button>
             </div>
 
-            <button type="button" className="ghost" onClick={() => removeExperience(index)}>
+            <button type="button" className="danger" onClick={() => removeExperience(expIndex)}>
               経歴を削除
             </button>
           </div>
@@ -651,7 +749,8 @@ function ResumeForm() {
     phone: "",
     motivation: "",
     educations: [{ ...blankHistory }],
-    work_histories: [{ ...blankHistory }]
+    work_histories: [{ ...blankHistory }],
+    photo: null
   });
   const [ResumeId, setResumeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -668,6 +767,20 @@ function ResumeForm() {
 
   const onChangeField = (key: ResumeTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const onPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm((prev) => ({ ...prev, photo: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    setForm((prev) => ({ ...prev, photo: null }));
   };
 
   const updateEducationField = (index: number, key: keyof ResumeHistory, value: string) => {
@@ -774,6 +887,25 @@ function ResumeForm() {
   return (
     <form onSubmit={onSubmit} className="form">
       <section className="section">
+        <h2>証明写真</h2>
+        <div className="photoUpload">
+          {form.photo ? (
+            <img src={form.photo} alt="証明写真" className="photoPreview" />
+          ) : (
+            <div className="photoPlaceholder">未選択</div>
+          )}
+          <div>
+            <input type="file" accept="image/*" onChange={onPhotoChange} />
+            {form.photo && (
+              <button type="button" className="danger" onClick={removePhoto} style={{ marginTop: "0.5rem" }}>
+                写真を削除
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
         <div className="inline">
           <label>
             郵便番号
@@ -858,7 +990,7 @@ function ResumeForm() {
                 />
               </label>
             </div>
-            <button type="button" className="ghost" onClick={() => removeEducation(index)}>
+            <button type="button" className="danger" onClick={() => removeEducation(index)}>
             学歴を削除
             </button>
           </div>
@@ -890,7 +1022,7 @@ function ResumeForm() {
                 />
               </label>
             </div>
-            <button type="button" className="ghost" onClick={() => removeWorkHistory(index)}>
+            <button type="button" className="danger" onClick={() => removeWorkHistory(index)}>
               職歴を削除
             </button>
           </div>
