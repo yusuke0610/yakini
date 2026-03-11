@@ -39,7 +39,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
-        "Resume",
+        "rirekisho",
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("postal_code", sa.String(length=20), nullable=False),
         sa.Column("prefecture", sa.String(length=60), nullable=False),
@@ -56,6 +56,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table("Resume")
+    op.drop_table("rirekisho")
     op.drop_table("resumes")
     op.drop_table("basic_info")
