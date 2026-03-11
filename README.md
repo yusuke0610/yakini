@@ -213,7 +213,7 @@ cd backend
 ```bash
 # gcloud 認証
 gcloud auth login
-gcloud config set project devforge-dev-20260223
+gcloud config set project devforge-dev-20260311
 
 # 必要な GCP API を有効化
 gcloud services enable artifactregistry.googleapis.com
@@ -251,17 +251,17 @@ gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 docker build --platform linux/amd64 -t devforge-dev ./backend
 
 # Artifact Registry 用にタグ付け
-docker tag devforge-dev asia-northeast1-docker.pkg.dev/devforge-dev-20260223/devforge-dev/devforge-dev:latest
+docker tag devforge-dev asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest
 
 # push
-docker push asia-northeast1-docker.pkg.dev/devforge-dev-20260223/devforge-dev/devforge-dev:latest
+docker push asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest
 ```
 
 ### 4. Cloud Run にデプロイする
 
 ```bash
 gcloud run deploy devforge-dev \
-  --image asia-northeast1-docker.pkg.dev/devforge-dev-20260223/devforge-dev/devforge-dev:latest \
+  --image asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest \
   --region asia-northeast1 \
   --platform managed
 ```
@@ -303,8 +303,8 @@ Apple Silicon Mac でビルドする際に `--platform linux/amd64` が抜けて
 
 ```bash
 docker build --platform linux/amd64 -t devforge-dev ./backend
-docker tag devforge-dev asia-northeast1-docker.pkg.dev/devforge-dev-20260223/devforge-dev/devforge-dev:latest
-docker push asia-northeast1-docker.pkg.dev/devforge-dev-20260223/devforge-dev/devforge-dev:latest
+docker tag devforge-dev asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest
+docker push asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest
 ```
 
 #### deletion_protection エラー（terraform destroy 時）
