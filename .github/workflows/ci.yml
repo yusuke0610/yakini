@@ -117,7 +117,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     timeout-minutes: 20
     env:
-      PROJECT_ID: devforge-dev-20260223
+      PROJECT_ID: devforge-dev-20260311
       REGION: asia-northeast1
       REPO: devforge-dev
       SERVICE: devforge-dev
