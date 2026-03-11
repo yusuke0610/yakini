@@ -87,9 +87,9 @@ docker compose up --build
 
 ## SQLite + GCSバックアップ/復元
 ### 環境変数
-- `SQLITE_DB_PATH`: SQLiteファイルパス（例: `/tmp/yakini.sqlite`）
+- `SQLITE_DB_PATH`: SQLiteファイルパス（例: `/tmp/devforge.sqlite`）
 - `GCS_BUCKET_NAME`: バックアップ先バケット名（未設定ならGCS処理はスキップ）
-- `GCS_DB_OBJECT`: バケット内オブジェクトキー（例: `yakini/dev/db.sqlite`）
+- `GCS_DB_OBJECT`: バケット内オブジェクトキー（例: `devforge/dev/db.sqlite`）
 - `ADMIN_TOKEN`: `/admin/backup` 用Bearerトークン
 
 ### 起動時フロー
@@ -162,9 +162,9 @@ cd backend
 1. このリポジトリを `public` に設定
 2. HCP Terraform で Organization を作成
 3. Workspaces を作成
-   - `yakini-dev`
-   - `yakini-stg`
-   - `yakini-prod`
+   - `devforge-dev`
+   - `devforge-stg`
+   - `devforge-prod`
 4. `infra/environments/*/versions.tf` の `organization` を実値に変更
 
 ### Terraform検証CI
@@ -213,7 +213,7 @@ cd backend
 ```bash
 # gcloud 認証
 gcloud auth login
-gcloud config set project yakini-dev-20260223
+gcloud config set project devforge-dev-20260223
 
 # 必要な GCP API を有効化
 gcloud services enable artifactregistry.googleapis.com
@@ -225,7 +225,7 @@ gcloud services enable run.googleapis.com
 GCS tfstate バケットが未作成の場合は先に作成する（Terraform 管理外）:
 
 ```bash
-gcloud storage buckets create gs://yakini-tfstate-dev \
+gcloud storage buckets create gs://devforge-tfstate-dev \
   --location=asia-northeast1 --uniform-bucket-level-access
 ```
 
@@ -248,20 +248,20 @@ terraform apply
 gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
 # イメージをビルド（プロジェクトルートで実行）
-docker build --platform linux/amd64 -t yakini-dev ./backend
+docker build --platform linux/amd64 -t devforge-dev ./backend
 
 # Artifact Registry 用にタグ付け
-docker tag yakini-dev asia-northeast1-docker.pkg.dev/yakini-dev-20260223/yakini-dev/yakini-dev:latest
+docker tag devforge-dev asia-northeast1-docker.pkg.dev/devforge-dev-20260223/devforge-dev/devforge-dev:latest
 
 # push
-docker push asia-northeast1-docker.pkg.dev/yakini-dev-20260223/yakini-dev/yakini-dev:latest
+docker push asia-northeast1-docker.pkg.dev/devforge-dev-20260223/devforge-dev/devforge-dev:latest
 ```
 
 ### 4. Cloud Run にデプロイする
 
 ```bash
-gcloud run deploy yakini-dev \
-  --image asia-northeast1-docker.pkg.dev/yakini-dev-20260223/yakini-dev/yakini-dev:latest \
+gcloud run deploy devforge-dev \
+  --image asia-northeast1-docker.pkg.dev/devforge-dev-20260223/devforge-dev/devforge-dev:latest \
   --region asia-northeast1 \
   --platform managed
 ```
@@ -270,10 +270,10 @@ gcloud run deploy yakini-dev \
 
 ```bash
 # サービス情報（URL 含む）を確認
-gcloud run services describe yakini-dev --region asia-northeast1
+gcloud run services describe devforge-dev --region asia-northeast1
 
 # URL のみ取得
-gcloud run services describe yakini-dev --region asia-northeast1 \
+gcloud run services describe devforge-dev --region asia-northeast1 \
   --format "value(status.url)"
 ```
 
@@ -302,9 +302,9 @@ Apple Silicon Mac でビルドする際に `--platform linux/amd64` が抜けて
 イメージを再ビルドして push し直す:
 
 ```bash
-docker build --platform linux/amd64 -t yakini-dev ./backend
-docker tag yakini-dev asia-northeast1-docker.pkg.dev/yakini-dev-20260223/yakini-dev/yakini-dev:latest
-docker push asia-northeast1-docker.pkg.dev/yakini-dev-20260223/yakini-dev/yakini-dev:latest
+docker build --platform linux/amd64 -t devforge-dev ./backend
+docker tag devforge-dev asia-northeast1-docker.pkg.dev/devforge-dev-20260223/devforge-dev/devforge-dev:latest
+docker push asia-northeast1-docker.pkg.dev/devforge-dev-20260223/devforge-dev/devforge-dev:latest
 ```
 
 #### deletion_protection エラー（terraform destroy 時）

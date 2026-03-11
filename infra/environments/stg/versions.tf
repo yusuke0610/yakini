@@ -1,7 +1,7 @@
 terraform {
   required_version = "~> 1.8"
   backend "gcs" {
-    bucket = "yakini-tfstate-stg"
+    bucket = "devforge-tfstate-stg"
     prefix = "terraform/state"
   }
 }

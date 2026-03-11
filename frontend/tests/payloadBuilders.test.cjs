@@ -55,22 +55,29 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
     experiences: [
       {
         company: "  Example株式会社  ",
-        title: "  バックエンドエンジニア  ",
+        business_description: "  SES事業  ",
         start_date: "2020-04",
         end_date: "",
         is_current: true,
-        description: "  API開発  ",
-        achievements: "  パフォーマンス改善  ",
         employee_count: "  300名  ",
         capital: "  1億円  ",
-        technology_stacks: [
+        projects: [
           {
-            category: "フレームワーク",
-            name: "  FastAPI  "
-          },
-          {
-            category: "言語",
-            name: "   "
+            name: "  プロジェクトA  ",
+            role: "  メンバー  ",
+            description: "  API開発  ",
+            achievements: "  パフォーマンス改善  ",
+            scale: "  5名  ",
+            technology_stacks: [
+              {
+                category: "フレームワーク",
+                name: "  FastAPI  "
+              },
+              {
+                category: "言語",
+                name: "   "
+              }
+            ]
           }
         ]
       }
@@ -81,7 +88,11 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
   assert.equal(payload.self_pr, "自己PRテスト");
   assert.equal(payload.experiences.length, 1);
   assert.equal(payload.experiences[0].is_current, true);
-  assert.deepEqual(payload.experiences[0].technology_stacks, [
+  assert.equal(payload.experiences[0].business_description, "SES事業");
+  assert.equal(payload.experiences[0].projects.length, 1);
+  assert.equal(payload.experiences[0].projects[0].name, "プロジェクトA");
+  assert.equal(payload.experiences[0].projects[0].role, "メンバー");
+  assert.deepEqual(payload.experiences[0].projects[0].technology_stacks, [
     {
       category: "フレームワーク",
       name: "FastAPI"
@@ -98,15 +109,13 @@ test("buildCareerPayload throws when 離職で終了年月がない", () => {
         experiences: [
           {
             company: "Example株式会社",
-            title: "エンジニア",
+            business_description: "SES事業",
             start_date: "2022-04",
             end_date: "",
             is_current: false,
-            description: "開発",
-            achievements: "改善",
             employee_count: "100名",
             capital: "5000万円",
-            technology_stacks: []
+            projects: []
           }
         ]
       }),
@@ -125,7 +134,8 @@ test("buildResumePayload throws when required fields are empty", () => {
         phone: "09012345678",
         motivation: "志望動機",
         educations: [],
-        work_histories: []
+        work_histories: [],
+        photo: null
       }),
     /郵便番号、都道府県、住所、メールアドレス、電話番号、志望動機は必須です。/
   );

@@ -42,3 +42,11 @@ def get_initial_username() -> str:
 
 def get_initial_password() -> str:
     return os.getenv("INITIAL_PASSWORD", "").strip()
+
+
+def get_github_client_id() -> str:
+    return os.getenv("GITHUB_CLIENT_ID", "").strip()
+
+
+def get_github_client_secret() -> str:
+    return os.getenv("GITHUB_CLIENT_SECRET", "").strip()

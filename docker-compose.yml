@@ -1,10 +1,10 @@
 services:
   api:
     build: ./backend
-    container_name: yakini-api
+    container_name: devforge-api
     restart: unless-stopped
     environment:
-      SQLITE_DB_PATH: /data/yakini.sqlite
+      SQLITE_DB_PATH: /data/devforge.sqlite
       CORS_ORIGINS: http://localhost:5173
       SECRET_KEY: ${SECRET_KEY}
       INITIAL_USERNAME: ${INITIAL_USERNAME}

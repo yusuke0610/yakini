@@ -8,6 +8,8 @@ locals {
     "initial-password",
     "field-encryption-key",
     "admin-token",
+    "github-client-id",
+    "github-client-secret",
   ]
 }
 
@@ -79,7 +81,7 @@ resource "google_cloud_run_v2_service" "app" {
 
       env {
         name  = "SQLITE_DB_PATH"
-        value = "/tmp/yakini.sqlite"
+        value = "/tmp/devforge.sqlite"
       }
       env {
         name  = "GCS_BUCKET_NAME"
@@ -101,6 +103,8 @@ resource "google_cloud_run_v2_service" "app" {
           INITIAL_PASSWORD     = "initial-password"
           FIELD_ENCRYPTION_KEY = "field-encryption-key"
           ADMIN_TOKEN          = "admin-token"
+          GITHUB_CLIENT_ID     = "github-client-id"
+          GITHUB_CLIENT_SECRET = "github-client-secret"
         }
         content {
           name = env.key
