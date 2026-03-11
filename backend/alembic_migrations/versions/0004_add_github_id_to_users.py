@@ -18,10 +18,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("github_id", sa.Integer(), nullable=True))
-    op.create_unique_constraint("uq_users_github_id", "users", ["github_id"])
+    with op.batch_alter_table("users") as batch_op:
+        batch_op.add_column(sa.Column("github_id", sa.Integer(), nullable=True))
+        batch_op.create_unique_constraint("uq_users_github_id", ["github_id"])
 
 
 def downgrade() -> None:
-    op.drop_constraint("uq_users_github_id", "users", type_="unique")
-    op.drop_column("users", "github_id")
+    with op.batch_alter_table("users") as batch_op:
+        batch_op.drop_constraint("uq_users_github_id", type_="unique")
+        batch_op.drop_column("github_id")
