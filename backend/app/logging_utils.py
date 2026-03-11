@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Any
 
-logger = logging.getLogger("yakini")
+logger = logging.getLogger("devforge")
 
 
 def log_event(level: int, event: str, **fields: Any) -> None:

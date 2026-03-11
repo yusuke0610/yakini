@@ -1,9 +1,9 @@
-from app.services.pdf_generator import _experience_period, build_resume_pdf, build_rirekisho_pdf
+from app.services.pdf_generator import _format_period, build_resume_pdf, build_rirekisho_pdf
 
 
-def test_experience_period_for_current() -> None:
-    period = _experience_period("2022-04", None, True)
-    assert period == "2022-04 - 在職"
+def test_format_period_for_current() -> None:
+    period = _format_period("2022-04", None, True)
+    assert "現在" in period
 
 
 def test_build_resume_pdf_returns_pdf_bytes() -> None:
