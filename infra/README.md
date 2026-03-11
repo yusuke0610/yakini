@@ -13,9 +13,9 @@
 ## 初期設定 (HCP Terraform Free)
 1. HCP Terraform で Organization を作成
 2. Workspaces を3つ作成
-   - `yakini-dev`
-   - `yakini-stg`
-   - `yakini-prod`
+   - `devforge-dev`
+   - `devforge-stg`
+   - `devforge-prod`
 3. 各環境の `versions.tf` を編集し、`organization` を自分の組織名に変更
 
 ## ローカル検証コマンド
