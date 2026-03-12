@@ -114,6 +114,7 @@ class RirekishoBase(BaseModel):
     email: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=1, max_length=50)
     motivation: str = Field(min_length=1, max_length=2000)
+    personal_preferences: str = Field(max_length=2000, default="")
     photo: str | None = Field(default=None)
     educations: list[RirekishoHistory] = Field(default_factory=list)
     work_histories: list[RirekishoHistory] = Field(default_factory=list)

@@ -288,6 +288,9 @@ def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
                    _LX, y, _TABLE_W, pref_label_h, font_size=6)
     y -= pref_label_h
     draw_bordered_rect(c, _LX, y, _TABLE_W, pref_area_h)
+    personal_preferences = data.get("personal_preferences", "")
+    if personal_preferences:
+        draw_text_area(c, personal_preferences, _LX, y, _TABLE_W, pref_area_h, font_size=9, leading=14)
     y -= pref_area_h
 
 

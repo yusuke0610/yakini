@@ -48,6 +48,7 @@ export type ResumeFormState = {
   email: string;
   phone: string;
   motivation: string;
+  personal_preferences: string;
   educations: ResumeHistory[];
   work_histories: ResumeHistory[];
   photo: string | null;
@@ -155,6 +156,7 @@ export function buildResumePayload(state: ResumeFormState): ResumePayload {
     email: state.email.trim(),
     phone: state.phone.trim(),
     motivation: state.motivation.trim(),
+    personal_preferences: state.personal_preferences.trim(),
     photo: state.photo || null,
     educations: state.educations
       .map((education) => ({

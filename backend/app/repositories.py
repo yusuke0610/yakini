@@ -41,11 +41,12 @@ class UserRepository:
 
 
 class BasicInfoRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, user_id: str):
         self.db = db
+        self.user_id = user_id
 
     def create(self, payload: dict[str, Any]) -> BasicInfo:
-        basic_info = BasicInfo(**payload)
+        basic_info = BasicInfo(**payload, user_id=self.user_id)
         self.db.add(basic_info)
         self.db.commit()
         self.db.refresh(basic_info)
@@ -53,12 +54,20 @@ class BasicInfoRepository:
 
     def get_latest(self) -> BasicInfo | None:
         statement = (
-            select(BasicInfo).order_by(BasicInfo.updated_at.desc()).limit(1)
+            select(BasicInfo)
+            .where(BasicInfo.user_id == self.user_id)
+            .order_by(BasicInfo.updated_at.desc())
+            .limit(1)
         )
         return self.db.scalar(statement)
 
     def get_by_id(self, basic_info_id: str) -> BasicInfo | None:
-        return self.db.get(BasicInfo, basic_info_id)
+        statement = (
+            select(BasicInfo)
+            .where(BasicInfo.id == basic_info_id)
+            .where(BasicInfo.user_id == self.user_id)
+        )
+        return self.db.scalar(statement)
 
     def update(
         self, basic_info: BasicInfo, payload: dict[str, Any]
@@ -72,18 +81,33 @@ class BasicInfoRepository:
 
 
 class ResumeRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, user_id: str):
         self.db = db
+        self.user_id = user_id
 
     def create(self, payload: dict[str, Any]) -> Resume:
-        resume = Resume(**payload)
+        resume = Resume(**payload, user_id=self.user_id)
         self.db.add(resume)
         self.db.commit()
         self.db.refresh(resume)
         return resume
 
+    def get_latest(self) -> Resume | None:
+        statement = (
+            select(Resume)
+            .where(Resume.user_id == self.user_id)
+            .order_by(Resume.updated_at.desc())
+            .limit(1)
+        )
+        return self.db.scalar(statement)
+
     def get_by_id(self, resume_id: str) -> Resume | None:
-        return self.db.get(Resume, resume_id)
+        statement = (
+            select(Resume)
+            .where(Resume.id == resume_id)
+            .where(Resume.user_id == self.user_id)
+        )
+        return self.db.scalar(statement)
 
     def update(self, resume: Resume, payload: dict[str, Any]) -> Resume:
         for field, value in payload.items():
@@ -95,8 +119,9 @@ class ResumeRepository:
 
 
 class RirekishoRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, user_id: str):
         self.db = db
+        self.user_id = user_id
 
     def _encrypt_payload(
         self, payload: dict[str, Any]
@@ -117,15 +142,32 @@ class RirekishoRepository:
                     pass  # 暗号化前のデータはそのまま返す
 
     def create(self, payload: dict[str, Any]) -> Rirekisho:
-        rirekisho = Rirekisho(**self._encrypt_payload(payload))
+        rirekisho = Rirekisho(**self._encrypt_payload(payload), user_id=self.user_id)
         self.db.add(rirekisho)
         self.db.commit()
         self.db.refresh(rirekisho)
         self._decrypt_rirekisho(rirekisho)
         return rirekisho
 
+    def get_latest(self) -> Rirekisho | None:
+        statement = (
+            select(Rirekisho)
+            .where(Rirekisho.user_id == self.user_id)
+            .order_by(Rirekisho.updated_at.desc())
+            .limit(1)
+        )
+        rirekisho = self.db.scalar(statement)
+        if rirekisho:
+            self._decrypt_rirekisho(rirekisho)
+        return rirekisho
+
     def get_by_id(self, rirekisho_id: str) -> Rirekisho | None:
-        rirekisho = self.db.get(Rirekisho, rirekisho_id)
+        statement = (
+            select(Rirekisho)
+            .where(Rirekisho.id == rirekisho_id)
+            .where(Rirekisho.user_id == self.user_id)
+        )
+        rirekisho = self.db.scalar(statement)
         if rirekisho:
             self._decrypt_rirekisho(rirekisho)
         return rirekisho
