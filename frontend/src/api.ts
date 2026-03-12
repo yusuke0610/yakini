@@ -90,6 +90,10 @@ export function getLatestBasicInfo(): Promise<BasicInfoResponse> {
   return request<BasicInfoResponse>("/api/basic-info/latest");
 }
 
+export function getLatestCareerResume(): Promise<CareerResumeResponse> {
+  return request<CareerResumeResponse>("/api/resumes/latest");
+}
+
 export function createCareerResume(payload: CareerResumePayload): Promise<CareerResumeResponse> {
   return request<CareerResumeResponse>("/api/resumes", {
     method: "POST",
@@ -162,6 +166,10 @@ export async function getCareerResumePdfBlobUrl(id: string): Promise<string> {
   }
   const blob = await response.blob();
   return URL.createObjectURL(blob);
+}
+
+export function getLatestResume(): Promise<ResumeResponse> {
+  return request<ResumeResponse>("/api/rirekisho/latest");
 }
 
 export function createResume(payload: ResumePayload): Promise<ResumeResponse> {

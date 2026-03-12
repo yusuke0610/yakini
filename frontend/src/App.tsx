@@ -11,6 +11,8 @@ import {
   getCareerResumePdfBlobUrl,
   getGitHubOAuthUrl,
   getLatestBasicInfo,
+  getLatestCareerResume,
+  getLatestResume,
   getResumePdfBlobUrl,
   githubCallback,
   login,
@@ -53,7 +55,8 @@ type ResumeTextFieldKey =
   | "address"
   | "email"
   | "phone"
-  | "motivation";
+  | "motivation"
+  | "personal_preferences";
 
 const blankBasicQualification: BasicQualification = {
   acquired_date: "",
@@ -296,6 +299,39 @@ function CareerResumeForm() {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      try {
+        const latest = await getLatestCareerResume();
+        if (!active) return;
+        setResumeId(latest.id);
+        setForm({
+          career_summary: latest.career_summary,
+          self_pr: latest.self_pr,
+          experiences:
+            latest.experiences.length > 0
+              ? latest.experiences.map((exp) => ({
+                  ...exp,
+                  end_date: exp.end_date ?? "",
+                  projects:
+                    exp.projects.length > 0
+                      ? exp.projects
+                      : [{ ...blankCareerProject }]
+                }))
+              : [{ ...blankCareerExperience }]
+        });
+      } catch {
+        if (!active) return;
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const saveButtonText = useMemo(() => {
     if (saving) {
@@ -796,6 +832,7 @@ function ResumeForm() {
     email: "",
     phone: "",
     motivation: "",
+    personal_preferences: "",
     educations: [{ ...blankHistory }],
     work_histories: [{ ...blankHistory }],
     photo: null
@@ -805,6 +842,42 @@ function ResumeForm() {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      try {
+        const latest = await getLatestResume();
+        if (!active) return;
+        setResumeId(latest.id);
+        setForm({
+          postal_code: latest.postal_code,
+          prefecture: latest.prefecture,
+          address: latest.address,
+          email: latest.email,
+          phone: latest.phone,
+          motivation: latest.motivation,
+          personal_preferences: latest.personal_preferences ?? "",
+          educations:
+            latest.educations.length > 0
+              ? latest.educations
+              : [{ ...blankHistory }],
+          work_histories:
+            latest.work_histories.length > 0
+              ? latest.work_histories
+              : [{ ...blankHistory }],
+          photo: latest.photo ?? null
+        });
+      } catch {
+        if (!active) return;
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const saveButtonText = useMemo(() => {
     if (saving) {
@@ -1047,6 +1120,14 @@ function ResumeForm() {
             value={form.motivation}
             onChange={(e) => onChangeField("motivation", e.target.value)}
             required
+          />
+        </label>
+        <label>
+          本人希望記入欄
+          <textarea
+            rows={4}
+            value={form.personal_preferences}
+            onChange={(e) => onChangeField("personal_preferences", e.target.value)}
           />
         </label>
       </section>

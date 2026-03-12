@@ -65,4 +65,11 @@ def build_rirekisho_markdown(payload: dict[str, Any]) -> str:
         lines.append(motivation)
         lines.append("")
 
+    personal_preferences = payload.get("personal_preferences", "")
+    if personal_preferences:
+        lines.append(tpl.SECTION_PERSONAL_PREFERENCES)
+        lines.append("")
+        lines.append(personal_preferences)
+        lines.append("")
+
     return "\n".join(lines)

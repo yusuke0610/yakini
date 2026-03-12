@@ -186,18 +186,18 @@ async def github_callback(
 def create_basic_info(
     payload: BasicInfoCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> BasicInfoResponse:
-    repository = BasicInfoRepository(db)
+    repository = BasicInfoRepository(db, current_user.id)
     return repository.create(payload.model_dump())
 
 
 @app.get("/api/basic-info/latest", response_model=BasicInfoResponse)
 def get_latest_basic_info(
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> BasicInfoResponse:
-    repository = BasicInfoRepository(db)
+    repository = BasicInfoRepository(db, current_user.id)
     basic_info = repository.get_latest()
     if not basic_info:
         raise HTTPException(status_code=404, detail="Basic info not found")
@@ -211,9 +211,9 @@ def update_basic_info(
     basic_info_id: uuid.UUID,
     payload: BasicInfoUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> BasicInfoResponse:
-    repository = BasicInfoRepository(db)
+    repository = BasicInfoRepository(db, current_user.id)
     basic_info = repository.get_by_id(str(basic_info_id))
     if not basic_info:
         raise HTTPException(status_code=404, detail="Basic info not found")
@@ -225,19 +225,31 @@ def update_basic_info(
 def create_resume(
     payload: ResumeCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> ResumeResponse:
-    repository = ResumeRepository(db)
+    repository = ResumeRepository(db, current_user.id)
     return repository.create(payload.model_dump())
+
+
+@app.get("/api/resumes/latest", response_model=ResumeResponse)
+def get_latest_resume(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ResumeResponse:
+    repository = ResumeRepository(db, current_user.id)
+    resume = repository.get_latest()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    return resume
 
 
 @app.get("/api/resumes/{resume_id}", response_model=ResumeResponse)
 def get_resume(
     resume_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> ResumeResponse:
-    repository = ResumeRepository(db)
+    repository = ResumeRepository(db, current_user.id)
     resume = repository.get_by_id(str(resume_id))
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -249,9 +261,9 @@ def update_resume(
     resume_id: uuid.UUID,
     payload: ResumeUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> ResumeResponse:
-    repository = ResumeRepository(db)
+    repository = ResumeRepository(db, current_user.id)
     resume = repository.get_by_id(str(resume_id))
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -263,10 +275,10 @@ def update_resume(
 def download_resume_pdf(
     resume_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    resume_repository = ResumeRepository(db)
-    basic_info_repository = BasicInfoRepository(db)
+    resume_repository = ResumeRepository(db, current_user.id)
+    basic_info_repository = BasicInfoRepository(db, current_user.id)
 
     resume = resume_repository.get_by_id(str(resume_id))
     if not resume:
@@ -298,10 +310,10 @@ def download_resume_pdf(
 def download_resume_markdown(
     resume_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    resume_repository = ResumeRepository(db)
-    basic_info_repository = BasicInfoRepository(db)
+    resume_repository = ResumeRepository(db, current_user.id)
+    basic_info_repository = BasicInfoRepository(db, current_user.id)
 
     resume = resume_repository.get_by_id(str(resume_id))
     if not resume:
@@ -335,19 +347,31 @@ def download_resume_markdown(
 def create_rirekisho(
     payload: RirekishoCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> RirekishoResponse:
-    repository = RirekishoRepository(db)
+    repository = RirekishoRepository(db, current_user.id)
     return repository.create(payload.model_dump())
+
+
+@app.get("/api/rirekisho/latest", response_model=RirekishoResponse)
+def get_latest_rirekisho(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RirekishoResponse:
+    repository = RirekishoRepository(db, current_user.id)
+    rirekisho = repository.get_latest()
+    if not rirekisho:
+        raise HTTPException(status_code=404, detail="Rirekisho not found")
+    return rirekisho
 
 
 @app.get("/api/rirekisho/{rirekisho_id}", response_model=RirekishoResponse)
 def get_rirekisho(
     rirekisho_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> RirekishoResponse:
-    repository = RirekishoRepository(db)
+    repository = RirekishoRepository(db, current_user.id)
     rirekisho = repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
         raise HTTPException(status_code=404, detail="Rirekisho not found")
@@ -359,9 +383,9 @@ def update_rirekisho(
     rirekisho_id: uuid.UUID,
     payload: RirekishoUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> RirekishoResponse:
-    repository = RirekishoRepository(db)
+    repository = RirekishoRepository(db, current_user.id)
     rirekisho = repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
         raise HTTPException(status_code=404, detail="Rirekisho not found")
@@ -373,10 +397,10 @@ def update_rirekisho(
 def download_rirekisho_pdf(
     rirekisho_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    rirekisho_repository = RirekishoRepository(db)
-    basic_info_repository = BasicInfoRepository(db)
+    rirekisho_repository = RirekishoRepository(db, current_user.id)
+    basic_info_repository = BasicInfoRepository(db, current_user.id)
 
     rirekisho = rirekisho_repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
@@ -414,10 +438,10 @@ def download_rirekisho_pdf(
 def download_rirekisho_markdown(
     rirekisho_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    rirekisho_repository = RirekishoRepository(db)
-    basic_info_repository = BasicInfoRepository(db)
+    rirekisho_repository = RirekishoRepository(db, current_user.id)
+    basic_info_repository = BasicInfoRepository(db, current_user.id)
 
     rirekisho = rirekisho_repository.get_by_id(str(rirekisho_id))
     if not rirekisho:

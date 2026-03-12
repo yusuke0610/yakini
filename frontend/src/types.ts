@@ -72,6 +72,7 @@ export type ResumePayload = {
   email: string;
   phone: string;
   motivation: string;
+  personal_preferences: string;
   educations: ResumeHistory[];
   work_histories: ResumeHistory[];
   photo: string | null;
