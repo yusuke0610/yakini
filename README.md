@@ -1,6 +1,6 @@
-# Resume Builder
+# DevForge
 
-基本情報・職務経歴書・履歴書をUIから入力し、SQLiteに保存してPDF出力できるアプリです。
+基本情報・職務経歴書・履歴書をUIから入力し、SQLiteに保存してPDF/Markdownで出力できるアプリです。
 
 ## 入力項目
 ### 基本情報
@@ -23,6 +23,8 @@
 - 学歴（複数追加/削除）
 - 職歴（複数追加/削除）
 - 志望動機
+- 本人希望欄
+- 証明写真
 
 ## 構成
 - `frontend`: TypeScript + React (Vite)
@@ -62,6 +64,12 @@ docker compose up --build
 ```
 
 ## API概要
+
+### 認証
+- `POST /auth/register`: 新規ユーザー登録（username, email, password）
+- `POST /auth/login`: ログイン
+- `POST /auth/github/callback`: GitHub OAuth コールバック
+
 ### 基本情報
 - `POST /api/basic-info`: 作成
 - `PUT /api/basic-info/{id}`: 更新
@@ -70,14 +78,18 @@ docker compose up --build
 ### 職務経歴書
 - `POST /api/resumes`: 作成
 - `PUT /api/resumes/{id}`: 更新
+- `GET /api/resumes/latest`: 最新データ取得
 - `GET /api/resumes/{id}`: 取得
 - `GET /api/resumes/{id}/pdf`: PDFダウンロード
+- `GET /api/resumes/{id}/markdown`: Markdownダウンロード
 
 ### 履歴書
 - `POST /api/rirekisho`: 作成
 - `PUT /api/rirekisho/{id}`: 更新
+- `GET /api/rirekisho/latest`: 最新データ取得
 - `GET /api/rirekisho/{id}`: 取得
 - `GET /api/rirekisho/{id}/pdf`: PDFダウンロード
+- `GET /api/rirekisho/{id}/markdown`: Markdownダウンロード
 
 ### 管理
 - `POST /admin/backup`: SQLite DBをGCSへバックアップ（Bearerトークン必須）
@@ -85,12 +97,23 @@ docker compose up --build
 ### その他
 - `GET /health`: ヘルスチェック
 
-## SQLite + GCSバックアップ/復元
-### 環境変数
+## 環境変数
+### バックエンド（`backend/.env`）
 - `SQLITE_DB_PATH`: SQLiteファイルパス（例: `/tmp/devforge.sqlite`）
+- `SECRET_KEY`: JWT署名キー
+- `FIELD_ENCRYPTION_KEY`: Fernet暗号化キー
 - `GCS_BUCKET_NAME`: バックアップ先バケット名（未設定ならGCS処理はスキップ）
 - `GCS_DB_OBJECT`: バケット内オブジェクトキー（例: `devforge/dev/db.sqlite`）
 - `ADMIN_TOKEN`: `/admin/backup` 用Bearerトークン
+- `CORS_ORIGINS`: 許可するオリジン（カンマ区切り）
+- `GITHUB_CLIENT_ID`: GitHub OAuth Client ID
+- `GITHUB_CLIENT_SECRET`: GitHub OAuth Client Secret
+
+### フロントエンド（`frontend/.env`）
+- `VITE_API_BASE_URL`: バックエンドAPI URL（デフォルト: `http://localhost:8000`）
+- `VITE_GITHUB_CLIENT_ID`: GitHub OAuth Client ID
+
+## SQLite + GCSバックアップ/復元
 
 ### 起動時フロー
 1. `GCS_BUCKET_NAME` と `GCS_DB_OBJECT` が設定されていれば、GCS上のDBを `SQLITE_DB_PATH` へ復元
@@ -149,7 +172,7 @@ cd backend
   - Node/Python依存キャッシュを利用
   - `concurrency` で古い実行を自動キャンセル
 
-## Terraform (HCP Terraform Free)
+## Terraform (GCS backend)
 - テンプレート配置: `infra/`
 - 構成:
   - `infra/environments/dev|stg|prod`
@@ -159,13 +182,19 @@ cd backend
   - テンプレート版: 各環境の `terraform.tfvars` (`template_version`)
 
 ### 初期設定
-1. このリポジトリを `public` に設定
-2. HCP Terraform で Organization を作成
-3. Workspaces を作成
-   - `devforge-dev`
-   - `devforge-stg`
-   - `devforge-prod`
-4. `infra/environments/*/versions.tf` の `organization` を実値に変更
+1. GCS tfstateバケットを作成:
+```bash
+gcloud storage buckets create gs://devforge-tfstate-dev \
+  --location=asia-northeast1 --uniform-bucket-level-access
+```
+
+2. インフラ構築:
+```bash
+cd infra/environments/dev
+terraform init
+terraform plan
+terraform apply
+```
 
 ### Terraform検証CI
 - ワークフロー: `.github/workflows/terraform-ci.yml`
@@ -176,10 +205,6 @@ cd backend
   - `terraform fmt -check -recursive`
   - `terraform init -backend=false`
   - `terraform validate`
-
-### HCP Terraform での plan / apply
-- `cloud {}` を使っているため、実際の `plan` / `apply` は HCP Terraform Workspace で実行
-- GitHub Actions 側は無料枠を意識して静的検証 (`fmt/init/validate`) のみを実施
 
 ## main ブランチ保護
 ### ローカル（ターミナル）での直コミット/直push防止
@@ -221,15 +246,6 @@ gcloud services enable run.googleapis.com
 ```
 
 ### 2. Terraform でインフラを構築する
-
-GCS tfstate バケットが未作成の場合は先に作成する（Terraform 管理外）:
-
-```bash
-gcloud storage buckets create gs://devforge-tfstate-dev \
-  --location=asia-northeast1 --uniform-bucket-level-access
-```
-
-インフラ構築:
 
 ```bash
 cd infra/environments/dev

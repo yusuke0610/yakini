@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from sqlalchemy import func, select
@@ -143,7 +144,7 @@ class RirekishoRepository:
                 try:
                     setattr(rirekisho, field, decrypt_field(value))
                 except Exception:
-                    pass  # 暗号化前のデータはそのまま返す
+                    logging.warning("Failed to decrypt field %s, returning raw value", field, exc_info=True)
 
     def create(self, payload: dict[str, Any]) -> Rirekisho:
         rirekisho = Rirekisho(**self._encrypt_payload(payload), user_id=self.user_id)

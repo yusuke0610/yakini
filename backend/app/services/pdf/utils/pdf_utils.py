@@ -1,4 +1,5 @@
 import base64
+import logging
 import re
 from io import BytesIO
 from pathlib import Path
@@ -124,6 +125,7 @@ def decode_photo(data_url: str | None) -> BytesIO | None:
         raw = base64.b64decode(match.group(1))
         return BytesIO(raw)
     except Exception:
+        logging.warning("Failed to decode photo data URL", exc_info=True)
         return None
 
 

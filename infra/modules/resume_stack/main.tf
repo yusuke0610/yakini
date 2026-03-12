@@ -4,8 +4,6 @@ locals {
 
   secret_names = [
     "secret-key",
-    "initial-username",
-    "initial-password",
     "field-encryption-key",
     "admin-token",
     "github-client-id",
@@ -99,8 +97,6 @@ resource "google_cloud_run_v2_service" "app" {
       dynamic "env" {
         for_each = {
           SECRET_KEY           = "secret-key"
-          INITIAL_USERNAME     = "initial-username"
-          INITIAL_PASSWORD     = "initial-password"
           FIELD_ENCRYPTION_KEY = "field-encryption-key"
           ADMIN_TOKEN          = "admin-token"
           GITHUB_CLIENT_ID     = "github-client-id"

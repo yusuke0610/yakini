@@ -1,3 +1,4 @@
+import logging
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -60,7 +61,7 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
             c.drawImage(ImageReader(photo_io), photo_x, photo_y_top - _PHOTO_H,
                         _PHOTO_W, _PHOTO_H, preserveAspectRatio=True, anchor="c")
         except Exception:
-            pass
+            logging.warning("Failed to render photo on rirekisho PDF", exc_info=True)
     else:
         c.setFont(FONT_NAME, 7)
         c.setFillColor(colors.HexColor("#999999"))

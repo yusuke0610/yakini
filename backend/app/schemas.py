@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -12,7 +12,7 @@ class LoginRequest(BaseModel):
 
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=1, max_length=120)
-    email: str = Field(min_length=1, max_length=255)
+    email: EmailStr
     password: str = Field(min_length=8)
 
 
