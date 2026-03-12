@@ -36,7 +36,6 @@ def get_secret_key() -> str:
     return os.getenv("SECRET_KEY", "").strip()
 
 
-
 def get_github_client_id() -> str:
     return os.getenv("GITHUB_CLIENT_ID", "").strip()
 
