@@ -6,7 +6,7 @@ import type {
   CareerResumePayload,
   CareerTechnologyStack,
   ResumeHistory,
-  ResumePayload
+  ResumePayload,
 } from "./types";
 
 export type CareerProjectForm = {
@@ -48,6 +48,7 @@ export type ResumeFormState = {
   email: string;
   phone: string;
   motivation: string;
+  personal_preferences: string;
   educations: ResumeHistory[];
   work_histories: ResumeHistory[];
   photo: string | null;
@@ -64,9 +65,9 @@ export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
     qualifications: state.qualifications
       .map((qualification) => ({
         acquired_date: qualification.acquired_date.trim(),
-        name: qualification.name.trim()
+        name: qualification.name.trim(),
       }))
-      .filter((qualification) => hasAnyText([qualification.acquired_date, qualification.name]))
+      .filter((qualification) => hasAnyText([qualification.acquired_date, qualification.name])),
   };
 
   if (!payload.full_name || !payload.record_date) {
@@ -92,9 +93,9 @@ function buildProject(proj: CareerProjectForm): CareerProject {
     technology_stacks: proj.technology_stacks
       .map((stack) => ({
         category: stack.category,
-        name: stack.name.trim()
+        name: stack.name.trim(),
       }))
-      .filter((stack) => Boolean(stack.name))
+      .filter((stack) => Boolean(stack.name)),
   };
 }
 
@@ -120,15 +121,10 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
       capital: exp.capital.trim(),
       projects: exp.projects
         .map(buildProject)
-        .filter((p) => hasAnyText([p.name, p.description, p.achievements]))
+        .filter((p) => hasAnyText([p.name, p.description, p.achievements])),
     }))
     .filter((exp) =>
-      hasAnyText([
-        exp.company,
-        exp.business_description,
-        exp.start_date,
-        exp.end_date ?? ""
-      ])
+      hasAnyText([exp.company, exp.business_description, exp.start_date, exp.end_date ?? ""]),
     );
 
   for (const exp of experiences) {
@@ -143,7 +139,7 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
   return {
     career_summary,
     self_pr,
-    experiences
+    experiences,
   };
 }
 
@@ -155,19 +151,20 @@ export function buildResumePayload(state: ResumeFormState): ResumePayload {
     email: state.email.trim(),
     phone: state.phone.trim(),
     motivation: state.motivation.trim(),
+    personal_preferences: state.personal_preferences.trim(),
     photo: state.photo || null,
     educations: state.educations
       .map((education) => ({
         date: education.date.trim(),
-        name: education.name.trim()
+        name: education.name.trim(),
       }))
       .filter((education) => hasAnyText([education.date, education.name])),
     work_histories: state.work_histories
       .map((workHistory) => ({
         date: workHistory.date.trim(),
-        name: workHistory.name.trim()
+        name: workHistory.name.trim(),
       }))
-      .filter((workHistory) => hasAnyText([workHistory.date, workHistory.name]))
+      .filter((workHistory) => hasAnyText([workHistory.date, workHistory.name])),
   };
 
   if (
