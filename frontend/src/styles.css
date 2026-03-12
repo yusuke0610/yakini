@@ -255,10 +255,68 @@ button.danger:hover {
   font-weight: 600;
 }
 
+.passwordField {
+  display: flex;
+  align-items: center;
+  border: 1px solid #cad5e7;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.passwordField input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 0.6rem 0.7rem;
+  font-size: 0.95rem;
+  background: transparent;
+  min-width: 0;
+}
+
+.passwordField:focus-within {
+  outline: 2px solid #7ea8ff;
+  outline-offset: 1px;
+}
+
+.passwordToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  color: #888;
+  flex-shrink: 0;
+}
+
+.passwordToggle:hover {
+  color: #333;
+}
+
+.loginActions {
+  display: flex;
+  gap: 0.5rem;
+}
+.loginActions button {
+  flex: 1;
+}
+
+.authLink {
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.authLink button {
+  background: none;
+  color: #1d4aa8;
+  text-decoration: underline;
+  padding: 0;
+  font-weight: 500;
+}
+
 .githubLogin {
   background: #24292e;
   color: #fff;
-  width: 100%;
 }
 
 .githubLogin:hover {

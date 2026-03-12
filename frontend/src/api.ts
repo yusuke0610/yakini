@@ -57,6 +57,17 @@ export function login(
   });
 }
 
+export function register(
+  username: string,
+  email: string,
+  password: string
+): Promise<{ access_token: string; token_type: string }> {
+  return request("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ username, email, password })
+  });
+}
+
 export function getGitHubOAuthUrl(): string {
   const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID ?? "";
   const redirectUri = `${window.location.origin}/`;
