@@ -263,3 +263,24 @@ docker compose down -v && docker compose up --build
 
 `.env`（ルート）は `docker-compose.yml` が参照。
 `backend/.env` はローカル uvicorn 用（Docker には自動で読み込まれない）。
+
+---
+
+## Pending / Future Features
+
+### PDF Generation History
+
+**現在の動作:**
+- PDF はオンデマンドで生成し、即時ダウンロード
+- 生成されたファイルは保存されない
+
+**将来の計画:**
+- 生成した PDF を保存し、過去のドキュメントを閲覧可能にする
+- 実装案:
+  - PDF をクラウドストレージ（例: Google Cloud Storage）に保存
+  - メタデータを DB に保存（user_id, document_type, created_at, file_path）
+
+**備考:**
+- 現在の実装をシンプルに保つため意図的に後回しにしている
+- 実装時、PDF サービスは「直接ダウンロード」と「永続ストレージ」の両方をサポートする設計にすること
+- 現在のアーキテクチャ（`build_resume_pdf` / `build_rirekisho_pdf` が bytes を返す設計）は将来のストレージ対応と互換性がある
