@@ -13,8 +13,8 @@ class UserRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, username: str, hashed_password: str) -> User:
-        user = User(username=username, hashed_password=hashed_password)
+    def create(self, username: str, hashed_password: str, email: str | None = None) -> User:
+        user = User(username=username, hashed_password=hashed_password, email=email)
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)
@@ -22,6 +22,10 @@ class UserRepository:
 
     def get_by_username(self, username: str) -> User | None:
         statement = select(User).where(User.username == username)
+        return self.db.scalar(statement)
+
+    def get_by_email(self, email: str) -> User | None:
+        statement = select(User).where(User.email == email)
         return self.db.scalar(statement)
 
     def get_by_github_id(self, github_id: int) -> User | None:

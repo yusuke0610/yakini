@@ -16,6 +16,7 @@ import {
   getResumePdfBlobUrl,
   githubCallback,
   login,
+  register,
   setAuthToken,
   setOnUnauthorized,
   updateBasicInfo,
@@ -1219,7 +1220,47 @@ function ResumeForm() {
   );
 }
 
-function LoginForm({ onLogin }: { onLogin: (token: string) => void }) {
+function EyeIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="20" height="20" fill="currentColor">
+      <path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4 142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 92.9-131.1 3.3-7.9 3.3-16.7 0-24.6-14.8-35.7-46.1-87.7-92.9-131.1C433.5 68.8 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1-288 0zm144-64a64 64 0 1 0 0 128 64 64 0 1 0 0-128z"/>
+    </svg>
+  );
+}
+
+function EyeSlashIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" width="20" height="20" fill="currentColor">
+      <path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2s-6.3 25.5 4.1 33.7l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4 3.3-7.9 3.3-16.7 0-24.6-14.8-35.7-46.1-87.7-92.9-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C261.2 111.2 314.6 96 320 96c79.5 0 144 64.5 144 144 0 24.9-6.3 48.3-17.4 68.7L408 277.4c5.2-12.4 8-26 8-40.4 0-53-43-96-96-96-5.2 0-10.2.4-15.1 1.2l-81.8-64.2zM174.7 272c-2.5-11-3.7-22.3-3.7-34 0-5.3.3-10.5.9-15.6L68.6 142.5C45.5 167.7 26.2 196.7 12.6 225.5c-3.3 7.9-3.3 16.7 0 24.6C27.3 285.7 58.6 337.7 105.4 381.1 152.5 424.9 217.2 461.7 298 461.7c55.7 0 104-16.7 143.8-41.2l-73.6-57.8C341.4 381.4 309.8 392 276 392c-79.5 0-144-64.5-144-144 0-6.9.5-13.6 1.4-20.2l-58.7-46.1z"/>
+    </svg>
+  );
+}
+
+function PasswordInput({ value, onChange, autoComplete, minLength }: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  autoComplete: string;
+  minLength?: number;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="passwordField">
+      <input
+        type={visible ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        required
+        autoComplete={autoComplete}
+        minLength={minLength}
+      />
+      <span className="passwordToggle" onClick={() => setVisible(!visible)} role="button" aria-label={visible ? "パスワードを隠す" : "パスワードを表示"}>
+        {visible ? <EyeSlashIcon /> : <EyeIcon />}
+      </span>
+    </div>
+  );
+}
+
+function LoginForm({ onLogin, onSwitchToRegister }: { onLogin: (token: string) => void; onSwitchToRegister: () => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1261,26 +1302,101 @@ function LoginForm({ onLogin }: { onLogin: (token: string) => void }) {
             </label>
             <label>
               パスワード
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
+              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
             </label>
           </section>
-          <div className="actions">
+          <div className="loginActions">
             <button type="submit" disabled={loading}>
               {loading ? "ログイン中..." : "ログイン"}
             </button>
-          </div>
-          <div className="actions" style={{ marginTop: "1rem" }}>
             <button type="button" className="githubLogin" onClick={() => { window.location.href = getGitHubOAuthUrl(); }}>
               Login with GitHub
             </button>
           </div>
           {error && <p className="error">{error}</p>}
+          <div className="authLink">
+            <button type="button" onClick={onSwitchToRegister}>新規登録はこちら</button>
+          </div>
+        </form>
+      </main>
+    </div>
+  );
+}
+
+function RegisterForm({ onLogin, onSwitchToLogin }: { onLogin: (token: string) => void; onSwitchToLogin: () => void }) {
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (password !== passwordConfirm) {
+      setError("パスワードが一致しません。");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await register(username, email, password);
+      onLogin(result.access_token);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "登録に失敗しました。";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="page">
+      <main className="container">
+        <header className="topHeader">
+          <h1>新規登録</h1>
+        </header>
+        <form onSubmit={onSubmit} className="form">
+          <section className="section">
+            <label>
+              ユーザー名
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                autoComplete="username"
+              />
+            </label>
+            <label>
+              メールアドレス
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </label>
+            <label>
+              パスワード（8文字以上）
+              <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={8} />
+            </label>
+            <label>
+              パスワード（確認）
+              <PasswordInput value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} autoComplete="new-password" minLength={8} />
+            </label>
+          </section>
+          <div className="actions">
+            <button type="submit" disabled={loading}>
+              {loading ? "登録中..." : "登録"}
+            </button>
+          </div>
+          {error && <p className="error">{error}</p>}
+          <div className="authLink">
+            <button type="button" onClick={onSwitchToLogin}>ログインに戻る</button>
+          </div>
         </form>
       </main>
     </div>
@@ -1291,7 +1407,21 @@ export default function App() {
   const [token, setToken] = useState<string | null>(() =>
     localStorage.getItem("auth_token")
   );
-  const [page, setPage] = useState<PageKey>("basic");
+  const [page, setPage] = useState<PageKey>(() => {
+    const saved = sessionStorage.getItem("current_page");
+    return saved === "career" || saved === "Resume" ? saved : "basic";
+  });
+  const [authMode, setAuthMode] = useState<"login" | "register">(() => {
+    return sessionStorage.getItem("auth_mode") === "register" ? "register" : "login";
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem("current_page", page);
+  }, [page]);
+
+  useEffect(() => {
+    sessionStorage.setItem("auth_mode", authMode);
+  }, [authMode]);
 
   useEffect(() => {
     const saved = localStorage.getItem("auth_token");
@@ -1321,16 +1451,22 @@ export default function App() {
     localStorage.setItem("auth_token", newToken);
     setAuthToken(newToken);
     setToken(newToken);
+    setPage("basic");
   };
 
   const handleLogout = () => {
     localStorage.removeItem("auth_token");
+    sessionStorage.removeItem("current_page");
     setAuthToken(null);
     setToken(null);
+    setAuthMode("login");
   };
 
   if (!token) {
-    return <LoginForm onLogin={handleLogin} />;
+    if (authMode === "register") {
+      return <RegisterForm onLogin={handleLogin} onSwitchToLogin={() => setAuthMode("login")} />;
+    }
+    return <LoginForm onLogin={handleLogin} onSwitchToRegister={() => setAuthMode("register")} />;
   }
 
   return (

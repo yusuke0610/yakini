@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from .auth import create_access_token, get_current_user, verify_password
+from .auth import create_access_token, get_current_user, hash_password, verify_password
 from .bootstrap import bootstrap
 from .database import get_db
 from .logging_utils import log_event
@@ -30,6 +30,7 @@ from .schemas import (
     BasicInfoUpdate,
     GitHubCallbackRequest,
     LoginRequest,
+    RegisterRequest,
     ResumeCreate,
     ResumeResponse,
     ResumeUpdate,
@@ -89,6 +90,26 @@ def _verify_admin_token(
 @app.get("/health")
 def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post("/auth/register", response_model=TokenResponse, status_code=201)
+def register(
+    payload: RegisterRequest, db: Session = Depends(get_db)
+) -> TokenResponse:
+    repo = UserRepository(db)
+    if repo.get_by_username(payload.username):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="このユーザー名は既に使用されています",
+        )
+    if repo.get_by_email(payload.email):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="このメールアドレスは既に使用されています",
+        )
+    user = repo.create(payload.username, hash_password(payload.password), email=payload.email)
+    token = create_access_token(user.username)
+    return TokenResponse(access_token=token)
 
 
 @app.post("/auth/login", response_model=TokenResponse)
