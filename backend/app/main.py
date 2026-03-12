@@ -8,9 +8,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from .auth import create_access_token, get_current_user, hash_password, verify_password
@@ -52,7 +55,19 @@ async def lifespan(_: FastAPI):
     yield
 
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Resume Builder API", lifespan=lifespan)
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "リクエストが多すぎます。しばらくしてからお試しください。"},
+    )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -93,8 +108,9 @@ def healthcheck() -> dict[str, str]:
 
 
 @app.post("/auth/register", response_model=TokenResponse, status_code=201)
+@limiter.limit("5/minute")
 def register(
-    payload: RegisterRequest, db: Session = Depends(get_db)
+    request: Request, payload: RegisterRequest, db: Session = Depends(get_db)
 ) -> TokenResponse:
     repo = UserRepository(db)
     if repo.get_by_username(payload.username):
@@ -113,10 +129,10 @@ def register(
 
 
 @app.post("/auth/login", response_model=TokenResponse)
+@limiter.limit("5/minute")
 def login(
-    payload: LoginRequest, db: Session = Depends(get_db)
+    request: Request, payload: LoginRequest, db: Session = Depends(get_db)
 ) -> TokenResponse:
-    print("ログイン開始")
     user = UserRepository(db).get_by_username(payload.username)
     if not user or not verify_password(
         payload.password, user.hashed_password
