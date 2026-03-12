@@ -1,0 +1,5 @@
+TITLE = "# 職務経歴書"
+SECTION_QUALIFICATIONS = "## 資格"
+SECTION_CAREER_SUMMARY = "## 職務要約"
+SECTION_EXPERIENCES = "## 職務経歴"
+SECTION_SELF_PR = "## 自己PR"
