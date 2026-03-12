@@ -133,6 +133,7 @@ test("buildResumePayload throws when required fields are empty", () => {
         email: "test@example.com",
         phone: "09012345678",
         motivation: "志望動機",
+        personal_preferences: "",
         educations: [],
         work_histories: [],
         photo: null

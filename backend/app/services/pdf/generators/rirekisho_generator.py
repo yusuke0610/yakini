@@ -1,3 +1,4 @@
+import logging
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -60,7 +61,7 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
             c.drawImage(ImageReader(photo_io), photo_x, photo_y_top - _PHOTO_H,
                         _PHOTO_W, _PHOTO_H, preserveAspectRatio=True, anchor="c")
         except Exception:
-            pass
+            logging.warning("Failed to render photo on rirekisho PDF", exc_info=True)
     else:
         c.setFont(FONT_NAME, 7)
         c.setFillColor(colors.HexColor("#999999"))
@@ -213,7 +214,10 @@ def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
         draw_bordered_rect(c, _LX + _COL_YEAR, y, _COL_MONTH, header_h)
         draw_cell_text(c, "月", _LX + _COL_YEAR, y, _COL_MONTH, header_h, font_size=8, align="center")
         draw_bordered_rect(c, _LX + _COL_YEAR + _COL_MONTH, y, _COL_CONTENT, header_h)
-        draw_cell_text(c, "学歴・職歴（続き）", _LX + _COL_YEAR + _COL_MONTH, y, _COL_CONTENT, header_h, font_size=8, align="center")
+        draw_cell_text(
+            c, "学歴・職歴（続き）", _LX + _COL_YEAR + _COL_MONTH, y,
+            _COL_CONTENT, header_h, font_size=8, align="center",
+        )
         y -= header_h
 
         for yr, mo, content in overflow_rows:
@@ -236,7 +240,10 @@ def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
     draw_bordered_rect(c, _LX + _COL_YEAR, y, _COL_MONTH, qual_header_h)
     draw_cell_text(c, "月", _LX + _COL_YEAR, y, _COL_MONTH, qual_header_h, font_size=8, align="center")
     draw_bordered_rect(c, _LX + _COL_YEAR + _COL_MONTH, y, _COL_CONTENT, qual_header_h)
-    draw_cell_text(c, "免許・資格", _LX + _COL_YEAR + _COL_MONTH, y, _COL_CONTENT, qual_header_h, font_size=8, align="center")
+    draw_cell_text(
+        c, "免許・資格", _LX + _COL_YEAR + _COL_MONTH, y,
+        _COL_CONTENT, qual_header_h, font_size=8, align="center",
+    )
     y -= qual_header_h
 
     qual_max_rows = 10
@@ -288,6 +295,9 @@ def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
                    _LX, y, _TABLE_W, pref_label_h, font_size=6)
     y -= pref_label_h
     draw_bordered_rect(c, _LX, y, _TABLE_W, pref_area_h)
+    personal_preferences = data.get("personal_preferences", "")
+    if personal_preferences:
+        draw_text_area(c, personal_preferences, _LX, y, _TABLE_W, pref_area_h, font_size=9, leading=14)
     y -= pref_area_h
 
 

@@ -8,12 +8,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
-from .auth import create_access_token, get_current_user, verify_password
+from .auth import create_access_token, get_current_user, hash_password, verify_password
 from .bootstrap import bootstrap
 from .database import get_db
 from .logging_utils import log_event
@@ -30,6 +33,7 @@ from .schemas import (
     BasicInfoUpdate,
     GitHubCallbackRequest,
     LoginRequest,
+    RegisterRequest,
     ResumeCreate,
     ResumeResponse,
     ResumeUpdate,
@@ -39,8 +43,14 @@ from .schemas import (
     TokenResponse,
 )
 from .settings import get_admin_token, get_cors_origins, get_github_client_id, get_github_client_secret
-from .services.markdown.markdown_service import generate_resume_markdown as build_resume_markdown, generate_rirekisho_markdown as build_rirekisho_markdown
-from .services.pdf.pdf_service import generate_resume as build_resume_pdf, generate_rirekisho as build_rirekisho_pdf
+from .services.markdown.markdown_service import (
+    generate_resume_markdown as build_resume_markdown,
+    generate_rirekisho_markdown as build_rirekisho_markdown,
+)
+from .services.pdf.pdf_service import (
+    generate_resume as build_resume_pdf,
+    generate_rirekisho as build_rirekisho_pdf,
+)
 from .services.sqlite_backup import backup_sqlite_to_gcs
 
 
@@ -51,7 +61,19 @@ async def lifespan(_: FastAPI):
     yield
 
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Resume Builder API", lifespan=lifespan)
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "リクエストが多すぎます。しばらくしてからお試しください。"},
+    )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -91,11 +113,32 @@ def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/auth/login", response_model=TokenResponse)
-def login(
-    payload: LoginRequest, db: Session = Depends(get_db)
+@app.post("/auth/register", response_model=TokenResponse, status_code=201)
+@limiter.limit("5/minute")
+def register(
+    request: Request, payload: RegisterRequest, db: Session = Depends(get_db)
 ) -> TokenResponse:
-    print("ログイン開始")
+    repo = UserRepository(db)
+    if repo.get_by_username(payload.username):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="このユーザー名は既に使用されています",
+        )
+    if repo.get_by_email(payload.email):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="このメールアドレスは既に使用されています",
+        )
+    user = repo.create(payload.username, hash_password(payload.password), email=payload.email)
+    token = create_access_token(user.username)
+    return TokenResponse(access_token=token)
+
+
+@app.post("/auth/login", response_model=TokenResponse)
+@limiter.limit("5/minute")
+def login(
+    request: Request, payload: LoginRequest, db: Session = Depends(get_db)
+) -> TokenResponse:
     user = UserRepository(db).get_by_username(payload.username)
     if not user or not verify_password(
         payload.password, user.hashed_password
@@ -186,18 +229,18 @@ async def github_callback(
 def create_basic_info(
     payload: BasicInfoCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> BasicInfoResponse:
-    repository = BasicInfoRepository(db)
+    repository = BasicInfoRepository(db, current_user.id)
     return repository.create(payload.model_dump())
 
 
 @app.get("/api/basic-info/latest", response_model=BasicInfoResponse)
 def get_latest_basic_info(
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> BasicInfoResponse:
-    repository = BasicInfoRepository(db)
+    repository = BasicInfoRepository(db, current_user.id)
     basic_info = repository.get_latest()
     if not basic_info:
         raise HTTPException(status_code=404, detail="Basic info not found")
@@ -211,9 +254,9 @@ def update_basic_info(
     basic_info_id: uuid.UUID,
     payload: BasicInfoUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> BasicInfoResponse:
-    repository = BasicInfoRepository(db)
+    repository = BasicInfoRepository(db, current_user.id)
     basic_info = repository.get_by_id(str(basic_info_id))
     if not basic_info:
         raise HTTPException(status_code=404, detail="Basic info not found")
@@ -225,19 +268,31 @@ def update_basic_info(
 def create_resume(
     payload: ResumeCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> ResumeResponse:
-    repository = ResumeRepository(db)
+    repository = ResumeRepository(db, current_user.id)
     return repository.create(payload.model_dump())
+
+
+@app.get("/api/resumes/latest", response_model=ResumeResponse)
+def get_latest_resume(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ResumeResponse:
+    repository = ResumeRepository(db, current_user.id)
+    resume = repository.get_latest()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    return resume
 
 
 @app.get("/api/resumes/{resume_id}", response_model=ResumeResponse)
 def get_resume(
     resume_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> ResumeResponse:
-    repository = ResumeRepository(db)
+    repository = ResumeRepository(db, current_user.id)
     resume = repository.get_by_id(str(resume_id))
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -249,9 +304,9 @@ def update_resume(
     resume_id: uuid.UUID,
     payload: ResumeUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> ResumeResponse:
-    repository = ResumeRepository(db)
+    repository = ResumeRepository(db, current_user.id)
     resume = repository.get_by_id(str(resume_id))
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -263,10 +318,10 @@ def update_resume(
 def download_resume_pdf(
     resume_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    resume_repository = ResumeRepository(db)
-    basic_info_repository = BasicInfoRepository(db)
+    resume_repository = ResumeRepository(db, current_user.id)
+    basic_info_repository = BasicInfoRepository(db, current_user.id)
 
     resume = resume_repository.get_by_id(str(resume_id))
     if not resume:
@@ -298,10 +353,10 @@ def download_resume_pdf(
 def download_resume_markdown(
     resume_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    resume_repository = ResumeRepository(db)
-    basic_info_repository = BasicInfoRepository(db)
+    resume_repository = ResumeRepository(db, current_user.id)
+    basic_info_repository = BasicInfoRepository(db, current_user.id)
 
     resume = resume_repository.get_by_id(str(resume_id))
     if not resume:
@@ -335,19 +390,31 @@ def download_resume_markdown(
 def create_rirekisho(
     payload: RirekishoCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> RirekishoResponse:
-    repository = RirekishoRepository(db)
+    repository = RirekishoRepository(db, current_user.id)
     return repository.create(payload.model_dump())
+
+
+@app.get("/api/rirekisho/latest", response_model=RirekishoResponse)
+def get_latest_rirekisho(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RirekishoResponse:
+    repository = RirekishoRepository(db, current_user.id)
+    rirekisho = repository.get_latest()
+    if not rirekisho:
+        raise HTTPException(status_code=404, detail="Rirekisho not found")
+    return rirekisho
 
 
 @app.get("/api/rirekisho/{rirekisho_id}", response_model=RirekishoResponse)
 def get_rirekisho(
     rirekisho_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> RirekishoResponse:
-    repository = RirekishoRepository(db)
+    repository = RirekishoRepository(db, current_user.id)
     rirekisho = repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
         raise HTTPException(status_code=404, detail="Rirekisho not found")
@@ -359,9 +426,9 @@ def update_rirekisho(
     rirekisho_id: uuid.UUID,
     payload: RirekishoUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> RirekishoResponse:
-    repository = RirekishoRepository(db)
+    repository = RirekishoRepository(db, current_user.id)
     rirekisho = repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
         raise HTTPException(status_code=404, detail="Rirekisho not found")
@@ -373,10 +440,10 @@ def update_rirekisho(
 def download_rirekisho_pdf(
     rirekisho_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    rirekisho_repository = RirekishoRepository(db)
-    basic_info_repository = BasicInfoRepository(db)
+    rirekisho_repository = RirekishoRepository(db, current_user.id)
+    basic_info_repository = BasicInfoRepository(db, current_user.id)
 
     rirekisho = rirekisho_repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
@@ -414,10 +481,10 @@ def download_rirekisho_pdf(
 def download_rirekisho_markdown(
     rirekisho_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    rirekisho_repository = RirekishoRepository(db)
-    basic_info_repository = BasicInfoRepository(db)
+    rirekisho_repository = RirekishoRepository(db, current_user.id)
+    basic_info_repository = BasicInfoRepository(db, current_user.id)
 
     rirekisho = rirekisho_repository.get_by_id(str(rirekisho_id))
     if not rirekisho:

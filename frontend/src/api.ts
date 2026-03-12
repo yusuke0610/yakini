@@ -4,7 +4,7 @@ import type {
   CareerResumePayload,
   CareerResumeResponse,
   ResumePayload,
-  ResumeResponse
+  ResumeResponse,
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -23,7 +23,7 @@ export function setOnUnauthorized(callback: () => void): void {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(options.headers as Record<string, string> ?? {})
+    ...((options.headers as Record<string, string>) ?? {}),
   };
   if (_authToken) {
     headers["Authorization"] = `Bearer ${_authToken}`;
@@ -31,7 +31,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    headers
+    headers,
   });
 
   if (response.status === 401) {
@@ -49,11 +49,22 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export function login(
   username: string,
-  password: string
+  password: string,
 ): Promise<{ access_token: string; token_type: string }> {
   return request("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ username, password })
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export function register(
+  username: string,
+  email: string,
+  password: string,
+): Promise<{ access_token: string; token_type: string }> {
+  return request("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ username, email, password }),
   });
 }
 
@@ -64,25 +75,25 @@ export function getGitHubOAuthUrl(): string {
 }
 
 export function githubCallback(
-  code: string
+  code: string,
 ): Promise<{ access_token: string; token_type: string }> {
   return request("/auth/github/callback", {
     method: "POST",
-    body: JSON.stringify({ code })
+    body: JSON.stringify({ code }),
   });
 }
 
 export function createBasicInfo(payload: BasicInfoPayload): Promise<BasicInfoResponse> {
   return request<BasicInfoResponse>("/api/basic-info", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
 export function updateBasicInfo(id: string, payload: BasicInfoPayload): Promise<BasicInfoResponse> {
   return request<BasicInfoResponse>(`/api/basic-info/${id}`, {
     method: "PUT",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
@@ -90,20 +101,24 @@ export function getLatestBasicInfo(): Promise<BasicInfoResponse> {
   return request<BasicInfoResponse>("/api/basic-info/latest");
 }
 
+export function getLatestCareerResume(): Promise<CareerResumeResponse> {
+  return request<CareerResumeResponse>("/api/resumes/latest");
+}
+
 export function createCareerResume(payload: CareerResumePayload): Promise<CareerResumeResponse> {
   return request<CareerResumeResponse>("/api/resumes", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
 export function updateCareerResume(
   id: string,
-  payload: CareerResumePayload
+  payload: CareerResumePayload,
 ): Promise<CareerResumeResponse> {
   return request<CareerResumeResponse>(`/api/resumes/${id}`, {
     method: "PUT",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
@@ -113,7 +128,7 @@ export async function downloadCareerResumePdf(id: string): Promise<void> {
     headers["Authorization"] = `Bearer ${_authToken}`;
   }
   const response = await fetch(`${API_BASE_URL}/api/resumes/${id}/pdf`, {
-    headers
+    headers,
   });
   if (!response.ok) {
     throw new Error("職務経歴書PDFのダウンロードに失敗しました");
@@ -134,7 +149,7 @@ export async function downloadCareerResumeMarkdown(id: string): Promise<void> {
     headers["Authorization"] = `Bearer ${_authToken}`;
   }
   const response = await fetch(`${API_BASE_URL}/api/resumes/${id}/markdown`, {
-    headers
+    headers,
   });
   if (!response.ok) {
     throw new Error("職務経歴書Markdownのダウンロードに失敗しました");
@@ -155,7 +170,7 @@ export async function getCareerResumePdfBlobUrl(id: string): Promise<string> {
     headers["Authorization"] = `Bearer ${_authToken}`;
   }
   const response = await fetch(`${API_BASE_URL}/api/resumes/${id}/pdf`, {
-    headers
+    headers,
   });
   if (!response.ok) {
     throw new Error("職務経歴書PDFのプレビューに失敗しました");
@@ -164,17 +179,21 @@ export async function getCareerResumePdfBlobUrl(id: string): Promise<string> {
   return URL.createObjectURL(blob);
 }
 
+export function getLatestResume(): Promise<ResumeResponse> {
+  return request<ResumeResponse>("/api/rirekisho/latest");
+}
+
 export function createResume(payload: ResumePayload): Promise<ResumeResponse> {
   return request<ResumeResponse>("/api/rirekisho", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
 export function updateResume(id: string, payload: ResumePayload): Promise<ResumeResponse> {
   return request<ResumeResponse>(`/api/rirekisho/${id}`, {
     method: "PUT",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
@@ -184,7 +203,7 @@ export async function downloadResumePdf(id: string): Promise<void> {
     headers["Authorization"] = `Bearer ${_authToken}`;
   }
   const response = await fetch(`${API_BASE_URL}/api/rirekisho/${id}/pdf`, {
-    headers
+    headers,
   });
   if (!response.ok) {
     throw new Error("履歴書PDFのダウンロードに失敗しました");
@@ -205,7 +224,7 @@ export async function downloadResumeMarkdown(id: string): Promise<void> {
     headers["Authorization"] = `Bearer ${_authToken}`;
   }
   const response = await fetch(`${API_BASE_URL}/api/rirekisho/${id}/markdown`, {
-    headers
+    headers,
   });
   if (!response.ok) {
     throw new Error("履歴書Markdownのダウンロードに失敗しました");
@@ -226,7 +245,7 @@ export async function getResumePdfBlobUrl(id: string): Promise<string> {
     headers["Authorization"] = `Bearer ${_authToken}`;
   }
   const response = await fetch(`${API_BASE_URL}/api/rirekisho/${id}/pdf`, {
-    headers
+    headers,
   });
   if (!response.ok) {
     throw new Error("履歴書PDFのプレビューに失敗しました");
