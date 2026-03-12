@@ -1,7 +1,14 @@
 import base64
 
-from app.services.pdf.pdf_service import generate_resume as build_resume_pdf, generate_rirekisho as build_rirekisho_pdf
-from app.services.pdf.utils.pdf_utils import decode_photo as _decode_photo, format_period as _format_period, parse_date_ym as _parse_date_ym
+from app.services.pdf.pdf_service import (
+    generate_resume as build_resume_pdf,
+    generate_rirekisho as build_rirekisho_pdf,
+)
+from app.services.pdf.utils.pdf_utils import (
+    decode_photo as _decode_photo,
+    format_period as _format_period,
+    parse_date_ym as _parse_date_ym,
+)
 
 
 def test_format_period_for_current() -> None:

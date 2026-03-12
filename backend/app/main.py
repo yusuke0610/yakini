@@ -43,8 +43,14 @@ from .schemas import (
     TokenResponse,
 )
 from .settings import get_admin_token, get_cors_origins, get_github_client_id, get_github_client_secret
-from .services.markdown.markdown_service import generate_resume_markdown as build_resume_markdown, generate_rirekisho_markdown as build_rirekisho_markdown
-from .services.pdf.pdf_service import generate_resume as build_resume_pdf, generate_rirekisho as build_rirekisho_pdf
+from .services.markdown.markdown_service import (
+    generate_resume_markdown as build_resume_markdown,
+    generate_rirekisho_markdown as build_rirekisho_markdown,
+)
+from .services.pdf.pdf_service import (
+    generate_resume as build_resume_pdf,
+    generate_rirekisho as build_rirekisho_pdf,
+)
 from .services.sqlite_backup import backup_sqlite_to_gcs
 
 

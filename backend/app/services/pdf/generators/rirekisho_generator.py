@@ -214,7 +214,10 @@ def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
         draw_bordered_rect(c, _LX + _COL_YEAR, y, _COL_MONTH, header_h)
         draw_cell_text(c, "月", _LX + _COL_YEAR, y, _COL_MONTH, header_h, font_size=8, align="center")
         draw_bordered_rect(c, _LX + _COL_YEAR + _COL_MONTH, y, _COL_CONTENT, header_h)
-        draw_cell_text(c, "学歴・職歴（続き）", _LX + _COL_YEAR + _COL_MONTH, y, _COL_CONTENT, header_h, font_size=8, align="center")
+        draw_cell_text(
+            c, "学歴・職歴（続き）", _LX + _COL_YEAR + _COL_MONTH, y,
+            _COL_CONTENT, header_h, font_size=8, align="center",
+        )
         y -= header_h
 
         for yr, mo, content in overflow_rows:
@@ -237,7 +240,10 @@ def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
     draw_bordered_rect(c, _LX + _COL_YEAR, y, _COL_MONTH, qual_header_h)
     draw_cell_text(c, "月", _LX + _COL_YEAR, y, _COL_MONTH, qual_header_h, font_size=8, align="center")
     draw_bordered_rect(c, _LX + _COL_YEAR + _COL_MONTH, y, _COL_CONTENT, qual_header_h)
-    draw_cell_text(c, "免許・資格", _LX + _COL_YEAR + _COL_MONTH, y, _COL_CONTENT, qual_header_h, font_size=8, align="center")
+    draw_cell_text(
+        c, "免許・資格", _LX + _COL_YEAR + _COL_MONTH, y,
+        _COL_CONTENT, qual_header_h, font_size=8, align="center",
+    )
     y -= qual_header_h
 
     qual_max_rows = 10
