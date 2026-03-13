@@ -15,7 +15,9 @@ import type { ResumeHistory } from "../../types";
 import { blankHistory } from "../../constants";
 import type { ResumeTextFieldKey } from "../../formTypes";
 import { usePdfActions } from "../../hooks/usePdfActions";
+import shared from "../../styles/shared.module.css";
 import { PdfPreviewModal } from "./PdfPreviewModal";
+import styles from "./ResumeForm.module.css";
 
 export function ResumeForm() {
   const [form, setForm] = useState<ResumeFormState>({
@@ -185,9 +187,9 @@ export function ResumeForm() {
     <>
       {previewUrl && <PdfPreviewModal previewUrl={previewUrl} onClose={closePreview} />}
       <form onSubmit={onSubmit}>
-        <div className="pageHeader">
+        <div className={shared.pageHeader}>
           <h1>履歴書</h1>
-          <div className="pageHeaderActions">
+          <div className={shared.pageHeaderActions}>
             <button type="submit" className="primary" disabled={saving}>
               {saveButtonText}
             </button>
@@ -218,18 +220,18 @@ export function ResumeForm() {
           </div>
         </div>
 
-        <div className="pageBody">
-          <div className="form">
-            {error && <p className="error">{error}</p>}
-            {success && <p className="success">{success}</p>}
+        <div className={shared.pageBody}>
+          <div className={shared.form}>
+            {error && <p className={shared.error}>{error}</p>}
+            {success && <p className={shared.success}>{success}</p>}
 
-            <section className="section">
+            <section className={shared.section}>
               <h2>証明写真</h2>
-          <div className="photoUpload">
+          <div className={styles.photoUpload}>
             {form.photo ? (
-              <img src={form.photo} alt="証明写真" className="photoPreview" />
+              <img src={form.photo} alt="証明写真" className={styles.photoPreview} />
             ) : (
-              <div className="photoPlaceholder">未選択</div>
+              <div className={styles.photoPlaceholder}>未選択</div>
             )}
             <div>
               <input type="file" accept="image/*" onChange={onPhotoChange} />
@@ -247,10 +249,10 @@ export function ResumeForm() {
           </div>
         </section>
 
-        <section className="section">
-          <div className="inline">
+        <section className={shared.section}>
+          <div className={shared.inline}>
             <label>
-              <span className="labelText">郵便番号<span className="requiredBadge">必須</span></span>
+              <span className={shared.labelText}>郵便番号<span className={shared.requiredBadge}>必須</span></span>
               <input
                 type="text"
                 value={form.postal_code}
@@ -260,7 +262,7 @@ export function ResumeForm() {
               />
             </label>
             <label>
-              <span className="labelText">都道府県<span className="requiredBadge">必須</span></span>
+              <span className={shared.labelText}>都道府県<span className={shared.requiredBadge}>必須</span></span>
               <input
                 type="text"
                 value={form.prefecture}
@@ -271,7 +273,7 @@ export function ResumeForm() {
             </label>
           </div>
           <label>
-            <span className="labelText">住所<span className="requiredBadge">必須</span></span>
+            <span className={shared.labelText}>住所<span className={shared.requiredBadge}>必須</span></span>
             <input
               type="text"
               value={form.address}
@@ -279,9 +281,9 @@ export function ResumeForm() {
               required
             />
           </label>
-          <div className="inline">
+          <div className={shared.inline}>
             <label>
-              <span className="labelText">メールアドレス<span className="requiredBadge">必須</span></span>
+              <span className={shared.labelText}>メールアドレス<span className={shared.requiredBadge}>必須</span></span>
               <input
                 type="email"
                 value={form.email}
@@ -290,7 +292,7 @@ export function ResumeForm() {
               />
             </label>
             <label>
-              <span className="labelText">電話番号<span className="requiredBadge">必須</span></span>
+              <span className={shared.labelText}>電話番号<span className={shared.requiredBadge}>必須</span></span>
               <input
                 type="text"
                 value={form.phone}
@@ -300,7 +302,7 @@ export function ResumeForm() {
             </label>
           </div>
           <label>
-            <span className="labelText">志望動機<span className="requiredBadge">必須</span></span>
+            <span className={shared.labelText}>志望動機<span className={shared.requiredBadge}>必須</span></span>
             <textarea
               rows={4}
               value={form.motivation}
@@ -318,11 +320,11 @@ export function ResumeForm() {
           </label>
         </section>
 
-        <section className="section">
+        <section className={shared.section}>
           <h2>学歴</h2>
           {form.educations.map((education, index) => (
-            <div key={`education-${index}`} className="entry">
-              <div className="inline">
+            <div key={`education-${index}`} className={shared.entry}>
+              <div className={shared.inline}>
                 <label>
                   日付
                   <input
@@ -350,11 +352,11 @@ export function ResumeForm() {
           </button>
         </section>
 
-        <section className="section">
+        <section className={shared.section}>
           <h2>職歴</h2>
           {form.work_histories.map((workHistory, index) => (
-            <div key={`work-${index}`} className="entry">
-              <div className="inline">
+            <div key={`work-${index}`} className={shared.entry}>
+              <div className={shared.inline}>
                 <label>
                   日付
                   <input
@@ -382,7 +384,7 @@ export function ResumeForm() {
           </button>
         </section>
 
-            {ResumeId && <p className="hint">保存ID: {ResumeId}</p>}
+            {ResumeId && <p className={shared.hint}>保存ID: {ResumeId}</p>}
           </div>
         </div>
       </form>
