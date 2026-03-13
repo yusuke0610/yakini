@@ -121,70 +121,78 @@ export function BasicInfoForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="form">
-      <section className="section">
-        <label>
-          氏名
-          <input
-            type="text"
-            value={form.full_name}
-            onChange={(e) => onChangeField("full_name", e.target.value)}
-            required
-          />
-        </label>
-        <label>
-          記載日
-          <input
-            type="date"
-            value={form.record_date}
-            onChange={(e) => onChangeField("record_date", e.target.value)}
-            required
-          />
-        </label>
-      </section>
-
-      <section className="section">
-        <h2>資格</h2>
-        {form.qualifications.map((qualification, index) => (
-          <div key={`basic-qualification-${index}`} className="entry">
-            <div className="inline">
-              <label>
-                資格名
-                <input
-                  type="text"
-                  value={qualification.name}
-                  onChange={(e) => updateQualificationField(index, "name", e.target.value)}
-                />
-              </label>
-              <label>
-                取得日
-                <input
-                  type="date"
-                  value={qualification.acquired_date}
-                  onChange={(e) => updateQualificationField(index, "acquired_date", e.target.value)}
-                />
-              </label>
-            </div>
-            <button type="button" className="danger" onClick={() => removeQualification(index)}>
-              資格を削除
-            </button>
-          </div>
-        ))}
-
-        <button type="button" className="ghost" onClick={addQualification}>
-          資格を追加
-        </button>
-      </section>
-
-      <div className="actions">
-        <button type="submit" disabled={saving}>
-          {saveButtonText}
-        </button>
+    <form onSubmit={onSubmit}>
+      <div className="pageHeader">
+        <h1>基本情報</h1>
+        <div className="pageHeaderActions">
+          <button type="submit" disabled={saving}>
+            {saveButtonText}
+          </button>
+        </div>
       </div>
 
-      {basicInfoId && <p className="hint">保存ID: {basicInfoId}</p>}
-      {error && <p className="error">{error}</p>}
-      {success && <p className="success">{success}</p>}
+      <div className="pageBody">
+        <div className="form">
+          {error && <p className="error">{error}</p>}
+          {success && <p className="success">{success}</p>}
+
+          <section className="section">
+            <label>
+              <span className="labelText">氏名<span className="requiredBadge">必須</span></span>
+              <input
+                type="text"
+                value={form.full_name}
+                onChange={(e) => onChangeField("full_name", e.target.value)}
+                required
+              />
+            </label>
+            <label>
+              <span className="labelText">記載日<span className="requiredBadge">必須</span></span>
+              <input
+                type="date"
+                value={form.record_date}
+                onChange={(e) => onChangeField("record_date", e.target.value)}
+                required
+              />
+            </label>
+          </section>
+
+          <section className="section">
+            <h2>資格</h2>
+            {form.qualifications.map((qualification, index) => (
+              <div key={`basic-qualification-${index}`} className="entry">
+                <div className="inline">
+                  <label>
+                    資格名
+                    <input
+                      type="text"
+                      value={qualification.name}
+                      onChange={(e) => updateQualificationField(index, "name", e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    取得日
+                    <input
+                      type="date"
+                      value={qualification.acquired_date}
+                      onChange={(e) => updateQualificationField(index, "acquired_date", e.target.value)}
+                    />
+                  </label>
+                </div>
+                <button type="button" className="danger" onClick={() => removeQualification(index)}>
+                  資格を削除
+                </button>
+              </div>
+            ))}
+
+            <button type="button" className="ghost" onClick={addQualification}>
+              資格を追加
+            </button>
+          </section>
+
+          {basicInfoId && <p className="hint">保存ID: {basicInfoId}</p>}
+        </div>
+      </div>
     </form>
   );
 }

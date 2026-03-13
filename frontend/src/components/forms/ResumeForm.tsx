@@ -4,6 +4,7 @@ import {
   createResume,
   downloadResumeMarkdown,
   downloadResumePdf,
+  getLatestBasicInfo,
   getLatestResume,
   getResumePdfBlobUrl,
   updateResume,
@@ -153,6 +154,19 @@ export function ResumeForm() {
     setSuccess(null);
 
     try {
+      try {
+        const basicInfo = await getLatestBasicInfo();
+        if (!basicInfo.full_name || !basicInfo.record_date) {
+          setError("基本情報の氏名と記載日を先に登録してください。");
+          setSaving(false);
+          return;
+        }
+      } catch {
+        setError("基本情報の氏名と記載日を先に登録してください。");
+        setSaving(false);
+        return;
+      }
+
       const payload = buildResumePayload(form);
       const saved = ResumeId ? await updateResume(ResumeId, payload) : await createResume(payload);
 
@@ -170,9 +184,47 @@ export function ResumeForm() {
   return (
     <>
       {previewUrl && <PdfPreviewModal previewUrl={previewUrl} onClose={closePreview} />}
-      <form onSubmit={onSubmit} className="form">
-        <section className="section">
-          <h2>証明写真</h2>
+      <form onSubmit={onSubmit}>
+        <div className="pageHeader">
+          <h1>履歴書</h1>
+          <div className="pageHeaderActions">
+            <button type="submit" disabled={saving}>
+              {saveButtonText}
+            </button>
+            <button
+              type="button"
+              onClick={() => ResumeId && onPreviewPdf(ResumeId, setError)}
+              disabled={!ResumeId}
+            >
+              プレビュー
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                ResumeId &&
+                onDownloadPdf(ResumeId, setError, setSuccess, "履歴書PDFをダウンロードしました。")
+              }
+              disabled={!ResumeId || downloading}
+            >
+              {downloading ? "ダウンロード中..." : "PDF出力"}
+            </button>
+            <button
+              type="button"
+              onClick={() => ResumeId && onDownloadMarkdown(ResumeId, setError)}
+              disabled={!ResumeId}
+            >
+              Markdown出力
+            </button>
+          </div>
+        </div>
+
+        <div className="pageBody">
+          <div className="form">
+            {error && <p className="error">{error}</p>}
+            {success && <p className="success">{success}</p>}
+
+            <section className="section">
+              <h2>証明写真</h2>
           <div className="photoUpload">
             {form.photo ? (
               <img src={form.photo} alt="証明写真" className="photoPreview" />
@@ -198,7 +250,7 @@ export function ResumeForm() {
         <section className="section">
           <div className="inline">
             <label>
-              郵便番号
+              <span className="labelText">郵便番号<span className="requiredBadge">必須</span></span>
               <input
                 type="text"
                 value={form.postal_code}
@@ -208,7 +260,7 @@ export function ResumeForm() {
               />
             </label>
             <label>
-              都道府県
+              <span className="labelText">都道府県<span className="requiredBadge">必須</span></span>
               <input
                 type="text"
                 value={form.prefecture}
@@ -219,7 +271,7 @@ export function ResumeForm() {
             </label>
           </div>
           <label>
-            住所
+            <span className="labelText">住所<span className="requiredBadge">必須</span></span>
             <input
               type="text"
               value={form.address}
@@ -229,7 +281,7 @@ export function ResumeForm() {
           </label>
           <div className="inline">
             <label>
-              メールアドレス
+              <span className="labelText">メールアドレス<span className="requiredBadge">必須</span></span>
               <input
                 type="email"
                 value={form.email}
@@ -238,7 +290,7 @@ export function ResumeForm() {
               />
             </label>
             <label>
-              電話番号
+              <span className="labelText">電話番号<span className="requiredBadge">必須</span></span>
               <input
                 type="text"
                 value={form.phone}
@@ -248,7 +300,7 @@ export function ResumeForm() {
             </label>
           </div>
           <label>
-            志望動機
+            <span className="labelText">志望動機<span className="requiredBadge">必須</span></span>
             <textarea
               rows={4}
               value={form.motivation}
@@ -330,39 +382,9 @@ export function ResumeForm() {
           </button>
         </section>
 
-        <div className="actions">
-          <button type="submit" disabled={saving}>
-            {saveButtonText}
-          </button>
-          <button
-            type="button"
-            onClick={() => ResumeId && onPreviewPdf(ResumeId, setError)}
-            disabled={!ResumeId}
-          >
-            プレビュー
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              ResumeId &&
-              onDownloadPdf(ResumeId, setError, setSuccess, "履歴書PDFをダウンロードしました。")
-            }
-            disabled={!ResumeId || downloading}
-          >
-            {downloading ? "ダウンロード中..." : "PDF出力"}
-          </button>
-          <button
-            type="button"
-            onClick={() => ResumeId && onDownloadMarkdown(ResumeId, setError)}
-            disabled={!ResumeId}
-          >
-            Markdown出力
-          </button>
+            {ResumeId && <p className="hint">保存ID: {ResumeId}</p>}
+          </div>
         </div>
-
-        {ResumeId && <p className="hint">保存ID: {ResumeId}</p>}
-        {error && <p className="error">{error}</p>}
-        {success && <p className="success">{success}</p>}
       </form>
     </>
   );

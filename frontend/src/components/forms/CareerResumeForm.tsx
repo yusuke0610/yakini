@@ -5,6 +5,7 @@ import {
   downloadCareerResumeMarkdown,
   downloadCareerResumePdf,
   getCareerResumePdfBlobUrl,
+  getLatestBasicInfo,
   getLatestCareerResume,
   updateCareerResume,
 } from "../../api";
@@ -252,6 +253,19 @@ export function CareerResumeForm() {
     setSuccess(null);
 
     try {
+      try {
+        const basicInfo = await getLatestBasicInfo();
+        if (!basicInfo.full_name || !basicInfo.record_date) {
+          setError("基本情報の氏名と記載日を先に登録してください。");
+          setSaving(false);
+          return;
+        }
+      } catch {
+        setError("基本情報の氏名と記載日を先に登録してください。");
+        setSaving(false);
+        return;
+      }
+
       const payload = buildCareerPayload(form);
       const saved = resumeId
         ? await updateCareerResume(resumeId, payload)
@@ -271,27 +285,65 @@ export function CareerResumeForm() {
   return (
     <>
       {previewUrl && <PdfPreviewModal previewUrl={previewUrl} onClose={closePreview} />}
-      <form onSubmit={onSubmit} className="form">
-        <section className="section">
-          <label>
-            職務要約
-            <textarea
-              rows={4}
-              value={form.career_summary}
-              onChange={(e) => onChangeField("career_summary", e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            自己PR
-            <textarea
-              rows={4}
-              value={form.self_pr}
-              onChange={(e) => onChangeField("self_pr", e.target.value)}
-              required
-            />
-          </label>
-        </section>
+      <form onSubmit={onSubmit}>
+        <div className="pageHeader">
+          <h1>職務経歴書</h1>
+          <div className="pageHeaderActions">
+            <button type="submit" disabled={saving}>
+              {saveButtonText}
+            </button>
+            <button
+              type="button"
+              onClick={() => resumeId && onPreviewPdf(resumeId, setError)}
+              disabled={!resumeId}
+            >
+              プレビュー
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                resumeId &&
+                onDownloadPdf(resumeId, setError, setSuccess, "職務経歴書PDFをダウンロードしました。")
+              }
+              disabled={!resumeId || downloading}
+            >
+              {downloading ? "ダウンロード中..." : "PDF出力"}
+            </button>
+            <button
+              type="button"
+              onClick={() => resumeId && onDownloadMarkdown(resumeId, setError)}
+              disabled={!resumeId}
+            >
+              Markdown出力
+            </button>
+          </div>
+        </div>
+
+        <div className="pageBody">
+          <div className="form">
+            {error && <p className="error">{error}</p>}
+            {success && <p className="success">{success}</p>}
+
+            <section className="section">
+              <label>
+                <span className="labelText">職務要約<span className="requiredBadge">必須</span></span>
+                <textarea
+                  rows={4}
+                  value={form.career_summary}
+                  onChange={(e) => onChangeField("career_summary", e.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                <span className="labelText">自己PR<span className="requiredBadge">必須</span></span>
+                <textarea
+                  rows={4}
+                  value={form.self_pr}
+                  onChange={(e) => onChangeField("self_pr", e.target.value)}
+                  required
+                />
+              </label>
+            </section>
 
         <section className="section">
           <h2>職務経歴</h2>
@@ -537,39 +589,9 @@ export function CareerResumeForm() {
           </button>
         </section>
 
-        <div className="actions">
-          <button type="submit" disabled={saving}>
-            {saveButtonText}
-          </button>
-          <button
-            type="button"
-            onClick={() => resumeId && onPreviewPdf(resumeId, setError)}
-            disabled={!resumeId}
-          >
-            プレビュー
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              resumeId &&
-              onDownloadPdf(resumeId, setError, setSuccess, "職務経歴書PDFをダウンロードしました。")
-            }
-            disabled={!resumeId || downloading}
-          >
-            {downloading ? "ダウンロード中..." : "PDF出力"}
-          </button>
-          <button
-            type="button"
-            onClick={() => resumeId && onDownloadMarkdown(resumeId, setError)}
-            disabled={!resumeId}
-          >
-            Markdown出力
-          </button>
+            {resumeId && <p className="hint">保存ID: {resumeId}</p>}
+          </div>
         </div>
-
-        {resumeId && <p className="hint">保存ID: {resumeId}</p>}
-        {error && <p className="error">{error}</p>}
-        {success && <p className="success">{success}</p>}
       </form>
     </>
   );

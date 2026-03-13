@@ -10,6 +10,11 @@ import { ResumeForm } from "./components/forms/ResumeForm";
 
 export default function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("auth_token"));
+  const [githubError, setGithubError] = useState<string | null>(null);
+  const [githubLoading, setGithubLoading] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return !!params.get("code") && !localStorage.getItem("auth_token");
+  });
   const [page, setPage] = useState<PageKey>(() => {
     const saved = sessionStorage.getItem("current_page");
     return saved === "career" || saved === "Resume" ? saved : "basic";
@@ -57,12 +62,16 @@ export default function App() {
     const code = params.get("code");
     if (code && !saved) {
       window.history.replaceState({}, "", window.location.pathname);
+      setGithubLoading(true);
       githubCallback(code)
         .then((result) => {
           handleLogin(result.access_token);
         })
         .catch(() => {
-          // GitHub OAuth failed, user can retry
+          setGithubError("GitHub認証に失敗しました。もう一度お試しください。");
+        })
+        .finally(() => {
+          setGithubLoading(false);
         });
     }
   }, []);
@@ -71,52 +80,56 @@ export default function App() {
     if (authMode === "register") {
       return <RegisterForm onLogin={handleLogin} onSwitchToLogin={() => setAuthMode("login")} />;
     }
-    return <LoginForm onLogin={handleLogin} onSwitchToRegister={() => setAuthMode("register")} />;
+    return <LoginForm onLogin={handleLogin} onSwitchToRegister={() => setAuthMode("register")} githubError={githubError} githubLoading={githubLoading} />;
   }
 
   return (
     <div className="page">
-      <main className="container">
-        <header className="topHeader">
-          <h1>{page === "basic" ? "基本情報" : page === "career" ? "職務経歴書" : "履歴書"}</h1>
-          <div className="tabRow">
+      <div className="appLayout">
+        <aside className="sidebar">
+          <p className="sidebarTitle">DevForge</p>
+          <nav className="sidebarNav">
             <button
               type="button"
-              className={`tabButton ${page === "basic" ? "active" : ""}`}
+              className={`sidebarItem ${page === "basic" ? "active" : ""}`}
               onClick={() => setPage("basic")}
             >
               基本情報
             </button>
             <button
               type="button"
-              className={`tabButton ${page === "career" ? "active" : ""}`}
+              className={`sidebarItem ${page === "career" ? "active" : ""}`}
               onClick={() => setPage("career")}
             >
               職務経歴書
             </button>
             <button
               type="button"
-              className={`tabButton ${page === "Resume" ? "active" : ""}`}
+              className={`sidebarItem ${page === "Resume" ? "active" : ""}`}
               onClick={() => setPage("Resume")}
             >
               履歴書
             </button>
-            <button type="button" className="tabButton" onClick={handleLogout}>
+          </nav>
+          <div className="sidebarLogout">
+            <button type="button" className="sidebarItem" onClick={handleLogout}>
               ログアウト
             </button>
           </div>
-        </header>
+        </aside>
 
-        <section hidden={page !== "basic"} className="pagePanel" aria-hidden={page !== "basic"}>
-          <BasicInfoForm />
-        </section>
-        <section hidden={page !== "career"} className="pagePanel" aria-hidden={page !== "career"}>
-          <CareerResumeForm />
-        </section>
-        <section hidden={page !== "Resume"} className="pagePanel" aria-hidden={page !== "Resume"}>
-          <ResumeForm />
-        </section>
-      </main>
+        <main className="mainContent">
+          <section hidden={page !== "basic"} className="pagePanel" aria-hidden={page !== "basic"}>
+            <BasicInfoForm />
+          </section>
+          <section hidden={page !== "career"} className="pagePanel" aria-hidden={page !== "career"}>
+            <CareerResumeForm />
+          </section>
+          <section hidden={page !== "Resume"} className="pagePanel" aria-hidden={page !== "Resume"}>
+            <ResumeForm />
+          </section>
+        </main>
+      </div>
     </div>
   );
 }
