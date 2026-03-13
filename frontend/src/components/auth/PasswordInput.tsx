@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { EyeIcon } from "../icons/EyeIcon";
 import { EyeSlashIcon } from "../icons/EyeSlashIcon";
+import styles from "./PasswordInput.module.css";
 
 export function PasswordInput({
   value,
@@ -16,7 +17,7 @@ export function PasswordInput({
 }) {
   const [visible, setVisible] = useState(false);
   return (
-    <div className="passwordField">
+    <div className={styles.passwordField}>
       <input
         type={visible ? "text" : "password"}
         value={value}
@@ -26,7 +27,7 @@ export function PasswordInput({
         minLength={minLength}
       />
       <span
-        className="passwordToggle"
+        className={styles.passwordToggle}
         onClick={() => setVisible(!visible)}
         role="button"
         aria-label={visible ? "パスワードを隠す" : "パスワードを表示"}

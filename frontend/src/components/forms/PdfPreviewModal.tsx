@@ -1,3 +1,5 @@
+import styles from "./PdfPreviewModal.module.css";
+
 export function PdfPreviewModal({
   previewUrl,
   onClose,
@@ -6,15 +8,15 @@ export function PdfPreviewModal({
   onClose: () => void;
 }) {
   return (
-    <div className="previewOverlay" onClick={onClose}>
-      <div className="previewModal" onClick={(e) => e.stopPropagation()}>
-        <div className="previewHeader">
+    <div className={styles.previewOverlay} onClick={onClose}>
+      <div className={styles.previewModal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.previewHeader}>
           <span>PDFプレビュー</span>
           <button type="button" onClick={onClose}>
             閉じる
           </button>
         </div>
-        <iframe src={previewUrl} className="previewFrame" title="PDF Preview" />
+        <iframe src={previewUrl} className={styles.previewFrame} title="PDF Preview" />
       </div>
     </div>
   );

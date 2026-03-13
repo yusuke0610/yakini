@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 
 import { register } from "../../api";
+import shared from "../../styles/shared.module.css";
 import { PasswordInput } from "./PasswordInput";
 
 export function RegisterForm({
@@ -37,13 +38,13 @@ export function RegisterForm({
   };
 
   return (
-    <div className="page">
-      <main className="container">
-        <header className="topHeader">
+    <div className={shared.page}>
+      <main className={shared.container}>
+        <header>
           <h1>新規登録</h1>
         </header>
-        <form onSubmit={onSubmit} className="form">
-          <section className="section">
+        <form onSubmit={onSubmit} className={shared.form}>
+          <section className={shared.section}>
             <label>
               ユーザー名
               <input
@@ -83,13 +84,13 @@ export function RegisterForm({
               />
             </label>
           </section>
-          <div className="actions">
+          <div className={shared.actions}>
             <button type="submit" disabled={loading}>
               {loading ? "登録中..." : "登録"}
             </button>
           </div>
-          {error && <p className="error">{error}</p>}
-          <div className="authLink">
+          {error && <p className={shared.error}>{error}</p>}
+          <div className={shared.authLink}>
             <button type="button" onClick={onSwitchToLogin}>
               ログインに戻る
             </button>
