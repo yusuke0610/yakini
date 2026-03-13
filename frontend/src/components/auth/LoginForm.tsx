@@ -6,9 +6,13 @@ import { PasswordInput } from "./PasswordInput";
 export function LoginForm({
   onLogin,
   onSwitchToRegister,
+  githubError,
+  githubLoading,
 }: {
   onLogin: (token: string) => void;
   onSwitchToRegister: () => void;
+  githubError?: string | null;
+  githubLoading?: boolean;
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -29,6 +33,19 @@ export function LoginForm({
       setLoading(false);
     }
   };
+
+  if (githubLoading) {
+    return (
+      <div className="page">
+        <main className="container">
+          <div className="githubLoadingContainer">
+            <div className="spinner" />
+            <p>GitHub認証中...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -71,7 +88,7 @@ export function LoginForm({
               Login with GitHub
             </button>
           </div>
-          {error && <p className="error">{error}</p>}
+          {(error || githubError) && <p className="error">{error || githubError}</p>}
           <div className="authLink">
             <button type="button" onClick={onSwitchToRegister}>
               新規登録はこちら
