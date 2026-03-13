@@ -1,0 +1,470 @@
+/* ── Input Phase ─────────────────────────────────────────────── */
+
+.inputCard {
+  max-width: 520px;
+  margin: 2rem auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 2rem;
+  box-shadow: var(--shadow-card);
+}
+
+.inputCard h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.3rem;
+}
+
+.inputCard p {
+  margin: 0 0 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.inputField {
+  margin-bottom: 1rem;
+}
+
+.inputField label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.advancedToggle {
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.advancedToggle:hover {
+  color: var(--text-primary);
+  background: none;
+}
+
+.advancedOptions {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-section);
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.checkbox input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.checkbox label {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.analyzeButton {
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 1rem;
+}
+
+.errorMessage {
+  margin: 1rem 0 0;
+  color: var(--error);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* ── Loading Phase ──────────────────────────────────────────── */
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1.2rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--spinner-track);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* ── Dashboard ──────────────────────────────────────────────── */
+
+.dashboard {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.2rem;
+}
+
+.dashboardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.dashboardHeader h1 {
+  font-size: 1.4rem;
+}
+
+.backButton {
+  background: var(--ghost-bg);
+  color: var(--ghost-text);
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+}
+
+.backButton:hover {
+  background: var(--ghost-hover);
+}
+
+/* ── Section shared ─────────────────────────────────────────── */
+
+.section {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.2rem;
+  background: var(--bg-section);
+}
+
+.section h2 {
+  margin: 0 0 0.8rem;
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+}
+
+/* ── Overview ───────────────────────────────────────────────── */
+
+.overviewCards {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.statCard {
+  flex: 1;
+  min-width: 140px;
+  text-align: center;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.statValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.statLabel {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+/* ── AI Summary ─────────────────────────────────────────────── */
+
+.summaryText {
+  color: var(--text-primary);
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+.summaryLoading {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Skill Timeline ─────────────────────────────────────────── */
+
+.timelineGrid {
+  display: grid;
+  gap: 0;
+  overflow-x: auto;
+}
+
+.timelineRow {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.timelineRow:last-child {
+  border-bottom: none;
+}
+
+.timelineHeaderRow {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.timelineCell {
+  flex: 1;
+  min-width: 70px;
+  padding: 0.4rem 0.3rem;
+  text-align: center;
+}
+
+.timelineSkillCell {
+  width: 100px;
+  flex-shrink: 0;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.timelineDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.timelineDotNew {
+  background: var(--success);
+  box-shadow: 0 0 4px var(--success);
+}
+
+.timelineEmpty {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+}
+
+/* ── Growth Trends ──────────────────────────────────────────── */
+
+.growthGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.growthColumn h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.growthEmerging h3 {
+  color: var(--success);
+}
+
+.growthStable h3 {
+  color: var(--text-muted);
+}
+
+.growthDeclining h3 {
+  color: var(--error);
+}
+
+.growthItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.growthBadge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.badgeEmerging {
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success);
+}
+
+.badgeStable {
+  background: var(--ghost-bg);
+  color: var(--text-muted);
+}
+
+.badgeDeclining {
+  background: color-mix(in srgb, var(--error) 15%, transparent);
+  color: var(--error);
+}
+
+.badgeNew {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+}
+
+.velocity {
+  font-size: 0.75rem;
+  color: var(--text-hint);
+}
+
+/* ── Career Prediction ──────────────────────────────────────── */
+
+.currentRole {
+  padding: 1rem;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  background: var(--bg-card);
+  margin-bottom: 1rem;
+}
+
+.roleName {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.confidenceBar {
+  height: 6px;
+  background: var(--spinner-track);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0.4rem 0;
+}
+
+.confidenceFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.confidenceLabel {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.roleCards {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.roleCard {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.roleCard .roleName {
+  font-size: 1rem;
+}
+
+.missingSkills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+
+.missingTag {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  background: var(--ghost-bg);
+  color: var(--text-muted);
+}
+
+.roleSubheading {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 1rem 0 0.5rem;
+}
+
+/* ── Career Path Simulation ─────────────────────────────────── */
+
+.pathList {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.pathItem {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.pathFlow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+}
+
+.pathRole {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.pathArrow {
+  color: var(--text-hint);
+  font-size: 0.85rem;
+}
+
+.pathDescription {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
+
+.pathConfidence {
+  font-size: 0.75rem;
+  color: var(--text-hint);
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .growthGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .overviewCards {
+    flex-direction: column;
+  }
+
+  .roleCards {
+    flex-direction: column;
+  }
+
+  .inputCard {
+    margin: 1rem;
+  }
+
+  .dashboard {
+    margin: 0;
+  }
+}

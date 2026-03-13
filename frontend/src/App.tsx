@@ -10,6 +10,7 @@ import { UserMenu } from "./components/UserMenu";
 import { BasicInfoForm } from "./components/forms/BasicInfoForm";
 import { CareerResumeForm } from "./components/forms/CareerResumeForm";
 import { ResumeForm } from "./components/forms/ResumeForm";
+import { GitHubAnalysisPage } from "./components/analysis/GitHubAnalysisPage";
 import shared from "./styles/shared.module.css";
 import styles from "./App.module.css";
 
@@ -31,7 +32,7 @@ export default function App() {
   });
   const [page, setPage] = useState<PageKey>(() => {
     const saved = sessionStorage.getItem("current_page");
-    return saved === "career" || saved === "Resume" ? saved : "basic";
+    return saved === "career" || saved === "Resume" || saved === "github" ? saved : "basic";
   });
   const [authMode, setAuthMode] = useState<"login" | "register">(() => {
     return sessionStorage.getItem("auth_mode") === "register" ? "register" : "login";
@@ -121,6 +122,13 @@ export default function App() {
             >
               履歴書
             </button>
+            <button
+              type="button"
+              className={`${styles.sidebarItem} ${page === "github" ? styles.active : ""}`}
+              onClick={() => setPage("github")}
+            >
+              GitHub分析
+            </button>
           </nav>
           <div className={styles.sidebarFooter}>
             <UserMenu
@@ -136,6 +144,7 @@ export default function App() {
           {page === "basic" && <BasicInfoForm />}
           {page === "career" && <CareerResumeForm />}
           {page === "Resume" && <ResumeForm />}
+          {page === "github" && <GitHubAnalysisPage />}
         </main>
       </div>
     </div>

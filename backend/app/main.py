@@ -17,6 +17,7 @@ from .routers import (
     auth_router,
     basic_info_router,
     health_router,
+    intelligence_router,
     resumes_router,
     rirekisho_router,
 )
@@ -55,4 +56,5 @@ app.include_router(auth_router)
 app.include_router(basic_info_router)
 app.include_router(resumes_router)
 app.include_router(rirekisho_router)
+app.include_router(intelligence_router)
 app.include_router(admin_router)
