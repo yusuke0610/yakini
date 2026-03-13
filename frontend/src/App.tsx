@@ -9,7 +9,13 @@ import { CareerResumeForm } from "./components/forms/CareerResumeForm";
 import { ResumeForm } from "./components/forms/ResumeForm";
 
 export default function App() {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("auth_token"));
+  const [token, setToken] = useState<string | null>(() => {
+    const saved = localStorage.getItem("auth_token");
+    if (saved) {
+      setAuthToken(saved);
+    }
+    return saved;
+  });
   const [githubError, setGithubError] = useState<string | null>(null);
   const [githubLoading, setGithubLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -47,10 +53,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem("auth_token");
-    if (saved) {
-      setAuthToken(saved);
-    }
     setOnUnauthorized(() => {
       localStorage.removeItem("auth_token");
       setAuthToken(null);
@@ -60,6 +62,7 @@ export default function App() {
     // Handle GitHub OAuth callback
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
+    const saved = localStorage.getItem("auth_token");
     if (code && !saved) {
       window.history.replaceState({}, "", window.location.pathname);
       setGithubLoading(true);
@@ -119,15 +122,9 @@ export default function App() {
         </aside>
 
         <main className="mainContent">
-          <section hidden={page !== "basic"} className="pagePanel" aria-hidden={page !== "basic"}>
-            <BasicInfoForm />
-          </section>
-          <section hidden={page !== "career"} className="pagePanel" aria-hidden={page !== "career"}>
-            <CareerResumeForm />
-          </section>
-          <section hidden={page !== "Resume"} className="pagePanel" aria-hidden={page !== "Resume"}>
-            <ResumeForm />
-          </section>
+          {page === "basic" && <BasicInfoForm />}
+          {page === "career" && <CareerResumeForm />}
+          {page === "Resume" && <ResumeForm />}
         </main>
       </div>
     </div>

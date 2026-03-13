@@ -8,11 +8,14 @@ from ..database import get_db
 from ..dependencies import limiter
 from ..logging_utils import log_event
 from ..repositories import UserRepository
+from ..auth import get_current_user
+from ..models import User
 from ..schemas import (
     GitHubCallbackRequest,
     LoginRequest,
     RegisterRequest,
     TokenResponse,
+    UserResponse,
 )
 from ..settings import get_github_client_id, get_github_client_secret
 
@@ -45,19 +48,19 @@ def register(
 def login(
     request: Request, payload: LoginRequest, db: Session = Depends(get_db)
 ) -> TokenResponse:
-    user = UserRepository(db).get_by_username(payload.username)
+    user = UserRepository(db).get_by_email(payload.email)
     if not user or not verify_password(
         payload.password, user.hashed_password
     ):
         log_event(
             logging.WARNING,
             "login_failed",
-            username=payload.username,
-            reason="invalid username or password",
+            email=payload.email,
+            reason="invalid email or password",
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="ユーザー名またはパスワードが正しくありません",
+            detail="メールアドレスまたはパスワードが正しくありません",
         )
     token = create_access_token(user.username)
     return TokenResponse(access_token=token)

@@ -289,7 +289,7 @@ export function CareerResumeForm() {
         <div className="pageHeader">
           <h1>職務経歴書</h1>
           <div className="pageHeaderActions">
-            <button type="submit" disabled={saving}>
+            <button type="submit" className="primary" disabled={saving}>
               {saveButtonText}
             </button>
             <button

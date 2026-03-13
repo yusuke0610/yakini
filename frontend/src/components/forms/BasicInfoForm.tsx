@@ -125,7 +125,7 @@ export function BasicInfoForm() {
       <div className="pageHeader">
         <h1>基本情報</h1>
         <div className="pageHeaderActions">
-          <button type="submit" disabled={saving}>
+          <button type="submit" className="primary" disabled={saving}>
             {saveButtonText}
           </button>
         </div>
