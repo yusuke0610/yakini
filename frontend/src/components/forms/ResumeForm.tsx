@@ -188,7 +188,7 @@ export function ResumeForm() {
         <div className="pageHeader">
           <h1>履歴書</h1>
           <div className="pageHeaderActions">
-            <button type="submit" disabled={saving}>
+            <button type="submit" className="primary" disabled={saving}>
               {saveButtonText}
             </button>
             <button

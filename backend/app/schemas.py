@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(min_length=1)
+    email: EmailStr
     password: str = Field(min_length=1)
 
 
@@ -19,6 +19,13 @@ class RegisterRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class UserResponse(BaseModel):
+    username: str
+    email: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GitHubCallbackRequest(BaseModel):
