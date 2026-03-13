@@ -1,0 +1,27 @@
+.photoUpload {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.photoPreview {
+  width: 120px;
+  height: 160px;
+  border: 1px solid var(--border-input);
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.photoPlaceholder {
+  width: 120px;
+  height: 160px;
+  border: 1px dashed var(--border-input);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-hint);
+  font-size: 0.8rem;
+  background: var(--photo-placeholder-bg);
+}

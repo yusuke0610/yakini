@@ -1,0 +1,139 @@
+.appLayout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 220px;
+  background: var(--sidebar-bg);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 1.2rem 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 100;
+}
+
+.sidebarTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 0 1.2rem 1rem;
+  margin: 0;
+  border-bottom: 1px solid var(--sidebar-border);
+  color: var(--sidebar-title);
+}
+
+.sidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0;
+  flex: 1;
+}
+
+.sidebarItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  color: var(--sidebar-text);
+  border: none;
+  border-radius: 0;
+  padding: 0.7rem 1.2rem;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebarItem:hover {
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-hover-text);
+}
+
+.sidebarItem.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+  font-weight: 700;
+  border-left: 3px solid var(--accent);
+  padding-left: calc(1.2rem - 3px);
+}
+
+.sidebarFooter {
+  margin-top: auto;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--sidebar-border);
+}
+
+.mainContent {
+  flex: 1;
+  margin-left: 220px;
+  overflow-y: auto;
+  height: 100vh;
+  background: var(--bg-page);
+}
+
+@media (max-width: 768px) {
+  .appLayout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: auto;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+    overflow-x: auto;
+    z-index: 100;
+  }
+
+  .sidebarTitle {
+    padding: 0.8rem 1rem;
+    border-bottom: none;
+    border-right: 1px solid var(--sidebar-border);
+    white-space: nowrap;
+    font-size: 1rem;
+  }
+
+  .sidebarNav {
+    flex-direction: row;
+    gap: 0;
+    padding: 0;
+    flex: 1;
+  }
+
+  .sidebarItem {
+    padding: 0.8rem 1rem;
+    white-space: nowrap;
+    font-size: 0.85rem;
+  }
+
+  .sidebarItem.active {
+    border-left: none;
+    padding-left: 1rem;
+    border-bottom: 3px solid var(--accent);
+  }
+
+  .sidebarFooter {
+    margin-top: 0;
+    padding: 0;
+    border-top: none;
+    border-left: 1px solid var(--sidebar-border);
+  }
+
+  .mainContent {
+    margin-left: 0;
+    margin-top: 48px;
+  }
+}

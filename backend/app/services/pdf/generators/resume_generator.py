@@ -1,13 +1,7 @@
 from io import BytesIO
-from pathlib import Path
 
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     Paragraph,
     SimpleDocTemplate,
@@ -16,104 +10,27 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-_FONT_DIR = Path(__file__).resolve().parent.parent / "fonts"
-_FONT_REGISTERED = False
-FONT_NAME = "NotoSansJP"
+from ..utils.pdf_utils import (
+    FONT_NAME,
+    HEADER_BG,
+    MARGIN,
+    PAGE_W,
+    TABLE_BORDER,
+    TABLE_INNER,
+    escape,
+    format_period,
+    nl2br,
+    register_font,
+    styles,
+)
 
 
-def _register_font() -> None:
-    global _FONT_REGISTERED
-    if _FONT_REGISTERED:
-        return
-    font_path = _FONT_DIR / "NotoSansJP-Regular.ttf"
-    if font_path.exists():
-        pdfmetrics.registerFont(TTFont(FONT_NAME, str(font_path)))
-    else:
-        raise FileNotFoundError(f"Font not found: {font_path}")
-    _FONT_REGISTERED = True
-
-
-PAGE_W, PAGE_H = A4
-MARGIN = 15 * mm
-
-TABLE_BORDER = colors.HexColor("#666666")
-TABLE_INNER = colors.HexColor("#999999")
-HEADER_BG = colors.HexColor("#d6dce8")
-
-
-def _styles() -> dict:
-    _register_font()
-    base = getSampleStyleSheet()
-
-    s = {}
-    s["title"] = ParagraphStyle(
-        "title", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=18, leading=24,
-        alignment=TA_CENTER, spaceAfter=2 * mm,
-    )
-    s["date"] = ParagraphStyle(
-        "date", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=10, alignment=TA_RIGHT,
-    )
-    s["name"] = ParagraphStyle(
-        "name", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=11, alignment=TA_RIGHT,
-        spaceAfter=4 * mm,
-    )
-    s["section_header"] = ParagraphStyle(
-        "section_header", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=12, leading=16,
-        spaceBefore=4 * mm, spaceAfter=2 * mm,
-    )
-    s["body"] = ParagraphStyle(
-        "body", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=9, leading=14,
-        spaceBefore=1 * mm,
-    )
-    s["body_small"] = ParagraphStyle(
-        "body_small", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=8, leading=12,
-    )
-    s["company_header"] = ParagraphStyle(
-        "company_header", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=10, leading=14,
-        spaceBefore=3 * mm, spaceAfter=1 * mm,
-    )
-    s["project_header"] = ParagraphStyle(
-        "project_header", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=9, leading=13,
-        spaceBefore=2 * mm, spaceAfter=1 * mm,
-    )
-    s["qual"] = ParagraphStyle(
-        "qual", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=9, leading=14,
-    )
-    return s
-
-
-def _escape(text: str) -> str:
-    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-
-def _nl2br(text: str) -> str:
-    return _escape(text).replace("\n", "<br/>")
-
-
-def _format_period(start_date: str, end_date: str | None, is_current: bool) -> str:
-    start = start_date.replace("-", " 年 ") + " 月" if "-" in start_date else start_date
-    if is_current:
-        return f"{start}～現在"
-    end = end_date.replace("-", " 年 ") + " 月" if end_date and "-" in end_date else (end_date or "")
-    return f"{start}～{end}"
-
-
-def _build_project_table(project: dict, styles: dict) -> list:
+def _build_project_table(project: dict, s: dict) -> list:
     """Build table rows for a single project."""
     elements = []
-    s = styles
 
-    proj_name = _escape(project.get("name", ""))
-    role = _escape(project.get("role", ""))
+    proj_name = escape(project.get("name", ""))
+    role = escape(project.get("role", ""))
     header_parts = []
     if proj_name:
         header_parts.append(proj_name)
@@ -128,9 +45,9 @@ def _build_project_table(project: dict, styles: dict) -> list:
     # Left column: description + achievements
     left_parts = []
     if project.get("description"):
-        left_parts.append(f"<b>【業務内容】</b><br/>{_nl2br(project['description'])}")
+        left_parts.append(f"<b>【業務内容】</b><br/>{nl2br(project['description'])}")
     if project.get("achievements"):
-        left_parts.append(f"<b>【実績・取り組み】</b><br/>{_nl2br(project['achievements'])}")
+        left_parts.append(f"<b>【実績・取り組み】</b><br/>{nl2br(project['achievements'])}")
     left_content = "<br/><br/>".join(left_parts) if left_parts else "-"
 
     # Right column: tech stacks
@@ -145,11 +62,11 @@ def _build_project_table(project: dict, styles: dict) -> list:
 
     right_parts = []
     for cat, names in grouped.items():
-        right_parts.append(f"<b>【{_escape(cat)}】</b><br/>{_escape(', '.join(names))}")
+        right_parts.append(f"<b>【{escape(cat)}】</b><br/>{escape(', '.join(names))}")
     right_content = "<br/>".join(right_parts) if right_parts else "-"
 
     scale_raw = project.get("scale", "")
-    scale = f"{_escape(scale_raw)}名" if scale_raw else "-"
+    scale = f"{escape(scale_raw)}名" if scale_raw else "-"
 
     col_widths = [105 * mm, 45 * mm, 25 * mm]
     header_data = [[
@@ -182,7 +99,7 @@ def _build_project_table(project: dict, styles: dict) -> list:
 
 
 def _add_page_number(canvas_obj, doc):
-    _register_font()
+    register_font()
     canvas_obj.saveState()
     canvas_obj.setFont(FONT_NAME, 8)
     canvas_obj.drawCentredString(PAGE_W / 2, 10 * mm, f"{canvas_obj.getPageNumber()}")
@@ -197,7 +114,7 @@ def build_resume_pdf(resume: dict) -> bytes:
         topMargin=MARGIN, bottomMargin=MARGIN,
     )
 
-    s = _styles()
+    s = styles()
     elements = []
 
     # Title
@@ -211,13 +128,13 @@ def build_resume_pdf(resume: dict) -> bytes:
             record_date = f"{parts[0]} 年 {parts[1].lstrip('0')} 月"
         if len(parts) == 3:
             record_date += f" {parts[2].lstrip('0')} 日"
-    elements.append(Paragraph(f"{_escape(record_date)}現在", s["date"]))
+    elements.append(Paragraph(f"{escape(record_date)}現在", s["date"]))
     full_name = resume.get("full_name") or ""
-    elements.append(Paragraph(f"氏名　{_escape(full_name)}", s["name"]))
+    elements.append(Paragraph(f"氏名　{escape(full_name)}", s["name"]))
 
     # 職務要約
     elements.append(Paragraph("■職務要約", s["section_header"]))
-    elements.append(Paragraph(_nl2br(resume.get("career_summary", "")), s["body"]))
+    elements.append(Paragraph(nl2br(resume.get("career_summary", "")), s["body"]))
 
     # 職務経歴
     elements.append(Paragraph("■職務経歴", s["section_header"]))
@@ -226,17 +143,17 @@ def build_resume_pdf(resume: dict) -> bytes:
         elements.append(Paragraph("-", s["body"]))
     else:
         for exp in experiences:
-            period = _format_period(
+            period = format_period(
                 exp["start_date"], exp.get("end_date"), exp.get("is_current", False)
             )
-            company = _escape(exp["company"])
+            company = escape(exp["company"])
 
             # Company info
-            biz = _escape(exp.get("business_description") or exp.get("title", ""))
+            biz = escape(exp.get("business_description") or exp.get("title", ""))
             capital_raw = exp.get("capital", "")
             emp_raw = exp.get("employee_count", "")
-            capital = f"{_escape(capital_raw)}千万円" if capital_raw else ""
-            emp = f"{_escape(emp_raw)}名" if emp_raw else ""
+            capital = f"{escape(capital_raw)}千万円" if capital_raw else ""
+            emp = f"{escape(emp_raw)}名" if emp_raw else ""
             info_parts = [f"事業内容：{biz}"]
             if capital:
                 info_parts.append(f"資本金：{capital}")
@@ -298,7 +215,7 @@ def build_resume_pdf(resume: dict) -> bytes:
     else:
         qual_data = []
         for q in qualifications:
-            name = _escape(q.get("name", ""))
+            name = escape(q.get("name", ""))
             raw_date = q.get("acquired_date", "")
             if raw_date and "-" in raw_date:
                 dp = raw_date.split("-")
@@ -307,9 +224,9 @@ def build_resume_pdf(resume: dict) -> bytes:
                 elif len(dp) == 2:
                     date_str = f"{dp[0]}年{dp[1].lstrip('0')}月取得"
                 else:
-                    date_str = f"{_escape(raw_date)}取得"
+                    date_str = f"{escape(raw_date)}取得"
             else:
-                date_str = f"{_escape(raw_date)}取得" if raw_date else ""
+                date_str = f"{escape(raw_date)}取得" if raw_date else ""
             qual_data.append([
                 Paragraph(name, s["qual"]),
                 Paragraph(date_str, s["qual"]),
@@ -327,85 +244,7 @@ def build_resume_pdf(resume: dict) -> bytes:
 
     # 自己PR
     elements.append(Paragraph("■自己PR", s["section_header"]))
-    elements.append(Paragraph(_nl2br(resume.get("self_pr", "")), s["body"]))
-
-    doc.build(elements, onFirstPage=_add_page_number, onLaterPages=_add_page_number)
-    buffer.seek(0)
-    return buffer.getvalue()
-
-
-def build_rirekisho_pdf(rirekisho: dict) -> bytes:
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(
-        buffer, pagesize=A4,
-        leftMargin=MARGIN, rightMargin=MARGIN,
-        topMargin=MARGIN, bottomMargin=MARGIN,
-    )
-
-    s = _styles()
-    elements = []
-
-    elements.append(Paragraph("履 歴 書", s["title"]))
-
-    record_date = rirekisho.get("record_date") or ""
-    if record_date and "-" in record_date:
-        parts = record_date.split("-")
-        if len(parts) >= 2:
-            record_date = f"{parts[0]} 年 {parts[1].lstrip('0')} 月"
-        if len(parts) == 3:
-            record_date += f" {parts[2].lstrip('0')} 日"
-    elements.append(Paragraph(f"{_escape(record_date)}現在", s["date"]))
-    full_name = rirekisho.get("full_name") or ""
-    elements.append(Paragraph(f"氏名　{_escape(full_name)}", s["name"]))
-
-    elements.append(Paragraph("■連絡先", s["section_header"]))
-    contact_data = [
-        ["郵便番号", rirekisho.get("postal_code", "")],
-        ["都道府県", rirekisho.get("prefecture", "")],
-        ["住所", rirekisho.get("address", "")],
-        ["メールアドレス", rirekisho.get("email", "")],
-        ["電話番号", rirekisho.get("phone", "")],
-    ]
-    contact_table_data = [
-        [
-            Paragraph(f"<b>{_escape(label)}</b>", s["body_small"]),
-            Paragraph(_escape(value), s["body_small"]),
-        ]
-        for label, value in contact_data
-    ]
-    ct = Table(contact_table_data, colWidths=[35 * mm, 140 * mm])
-    ct.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    elements.append(ct)
-
-    elements.append(Paragraph("■志望動機", s["section_header"]))
-    elements.append(Paragraph(_nl2br(rirekisho.get("motivation", "")), s["body"]))
-
-    elements.append(Paragraph("■学歴", s["section_header"]))
-    educations = rirekisho.get("educations", [])
-    if not educations:
-        elements.append(Paragraph("-", s["body"]))
-    else:
-        for edu in educations:
-            elements.append(Paragraph(
-                f"{_escape(edu.get('date', ''))}　{_escape(edu.get('name', ''))}",
-                s["body"],
-            ))
-
-    elements.append(Paragraph("■職歴", s["section_header"]))
-    work_histories = rirekisho.get("work_histories", [])
-    if not work_histories:
-        elements.append(Paragraph("-", s["body"]))
-    else:
-        for wh in work_histories:
-            elements.append(Paragraph(
-                f"{_escape(wh.get('date', ''))}　{_escape(wh.get('name', ''))}",
-                s["body"],
-            ))
+    elements.append(Paragraph(nl2br(resume.get("self_pr", "")), s["body"]))
 
     doc.build(elements, onFirstPage=_add_page_number, onLaterPages=_add_page_number)
     buffer.seek(0)
