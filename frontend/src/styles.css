@@ -1,8 +1,123 @@
 :root {
   color-scheme: light;
   font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
-  background: #f9f6f1;
-  color: #2d2a26;
+
+  /* Backgrounds */
+  --bg-page: #f9f6f1;
+  --bg-card: #ffffff;
+  --bg-section: #fdfcfa;
+  --bg-header: #f5f0ea;
+  --bg-input: #fff;
+
+  /* Text */
+  --text-primary: #2d2a26;
+  --text-secondary: #3d3830;
+  --text-muted: #6b5d4f;
+  --text-hint: #9a8e80;
+  --text-disabled: #bfb5a8;
+
+  /* Borders */
+  --border: #e5ddd3;
+  --border-input: #d6cdc2;
+  --border-dashed: #d1c7bb;
+
+  /* Accent */
+  --accent: #c96442;
+  --accent-hover: #b5573a;
+
+  /* Buttons - ghost */
+  --ghost-bg: #f0e9e0;
+  --ghost-text: #6b5d4f;
+  --ghost-hover: #e5dbd0;
+
+  /* Buttons - danger */
+  --danger-bg: #fde8e8;
+  --danger-text: #b91c1c;
+  --danger-border: #f5c6c6;
+  --danger-hover: #f9cccc;
+
+  /* Status */
+  --error: #a72323;
+  --success: #2e7d4f;
+
+  /* Shadow */
+  --shadow-card: 0 14px 30px rgba(80, 60, 30, 0.06);
+
+  /* Header actions */
+  --header-btn-hover: rgba(0, 0, 0, 0.04);
+
+  /* Sidebar */
+  --sidebar-bg: #1a1714;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-title: #e8ddd0;
+  --sidebar-text: rgba(255, 255, 255, 0.6);
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.06);
+  --sidebar-hover-text: #e8ddd0;
+  --sidebar-active-bg: rgba(255, 255, 255, 0.1);
+  --sidebar-active-text: #f5ebe0;
+  --sidebar-username: #c4b8a8;
+
+  /* Misc */
+  --spinner-track: #e5ddd3;
+  --github-bg: #24292e;
+  --github-hover: #3b4249;
+  --photo-placeholder-bg: #f5f0ea;
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-page: #1c1917;
+  --bg-card: #292524;
+  --bg-section: #231f1e;
+  --bg-header: #292524;
+  --bg-input: #1c1917;
+
+  --text-primary: #e7e5e4;
+  --text-secondary: #d6d3d1;
+  --text-muted: #a8a29e;
+  --text-hint: #78716c;
+  --text-disabled: #78716c;
+
+  --border: #44403c;
+  --border-input: #57534e;
+  --border-dashed: #57534e;
+
+  --accent: #c96442;
+  --accent-hover: #e07a56;
+
+  --ghost-bg: #44403c;
+  --ghost-text: #d6d3d1;
+  --ghost-hover: #57534e;
+
+  --danger-bg: #451a1a;
+  --danger-text: #fca5a5;
+  --danger-border: #7f1d1d;
+  --danger-hover: #5c1e1e;
+
+  --error: #f87171;
+  --success: #4ade80;
+
+  --shadow-card: 0 14px 30px rgba(0, 0, 0, 0.3);
+
+  --header-btn-hover: rgba(255, 255, 255, 0.06);
+
+  --sidebar-bg: #0c0a09;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-title: #d6d3d1;
+  --sidebar-text: rgba(255, 255, 255, 0.5);
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.05);
+  --sidebar-hover-text: #e7e5e4;
+  --sidebar-active-bg: rgba(255, 255, 255, 0.08);
+  --sidebar-active-text: #f5f5f4;
+  --sidebar-username: #a8a29e;
+
+  --spinner-track: #44403c;
+  --github-bg: #1a1a1a;
+  --github-hover: #2d2d2d;
+  --photo-placeholder-bg: #292524;
+  --overlay-bg: rgba(0, 0, 0, 0.7);
 }
 
 * {
@@ -11,12 +126,14 @@
 
 body {
   margin: 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
 }
 
 h1 {
   margin: 0;
   font-size: 1.5rem;
-  color: #2d2a26;
+  color: var(--text-primary);
 }
 
 label {
@@ -24,25 +141,25 @@ label {
   gap: 0.4rem;
   margin-bottom: 0.8rem;
   font-weight: 500;
-  color: #3d3830;
+  color: var(--text-secondary);
 }
 
 input,
 textarea,
 select {
   width: 100%;
-  border: 1px solid #d6cdc2;
+  border: 1px solid var(--border-input);
   border-radius: 8px;
   padding: 0.6rem 0.7rem;
   font-size: 0.95rem;
-  background: #fff;
-  color: #2d2a26;
+  background: var(--bg-input);
+  color: var(--text-primary);
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid #c96442;
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -51,14 +168,14 @@ button {
   border-radius: 8px;
   padding: 0.7rem 1.1rem;
   font-weight: 700;
-  background: #c96442;
+  background: var(--accent);
   color: #fff;
   cursor: pointer;
   transition: background 0.15s;
 }
 
 button:hover {
-  background: #b5573a;
+  background: var(--accent-hover);
 }
 
 button:disabled {
@@ -67,22 +184,22 @@ button:disabled {
 }
 
 button.ghost {
-  background: #f0e9e0;
-  color: #6b5d4f;
+  background: var(--ghost-bg);
+  color: var(--ghost-text);
 }
 
 button.ghost:hover {
-  background: #e5dbd0;
+  background: var(--ghost-hover);
 }
 
 button.danger {
-  background: #fde8e8;
-  color: #b91c1c;
-  border: 1px solid #f5c6c6;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border: 1px solid var(--danger-border);
 }
 
 button.danger:hover {
-  background: #f9cccc;
+  background: var(--danger-hover);
 }
 
 @keyframes spin {
