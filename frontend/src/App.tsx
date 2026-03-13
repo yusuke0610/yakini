@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { setAuthToken, setOnUnauthorized, githubCallback } from "./api";
 import { parseUsernameFromToken } from "./auth-utils";
 import type { PageKey } from "./formTypes";
+import { useTheme } from "./hooks/useTheme";
 import { LoginForm } from "./components/auth/LoginForm";
 import { RegisterForm } from "./components/auth/RegisterForm";
+import { UserMenu } from "./components/UserMenu";
 import { BasicInfoForm } from "./components/forms/BasicInfoForm";
 import { CareerResumeForm } from "./components/forms/CareerResumeForm";
 import { ResumeForm } from "./components/forms/ResumeForm";
@@ -12,6 +14,7 @@ import shared from "./styles/shared.module.css";
 import styles from "./App.module.css";
 
 export default function App() {
+  const { theme, toggleTheme } = useTheme();
   const [token, setToken] = useState<string | null>(() => {
     const saved = localStorage.getItem("auth_token");
     if (saved) {
@@ -119,11 +122,13 @@ export default function App() {
               履歴書
             </button>
           </nav>
-          <div className={styles.sidebarLogout}>
-            {username && <p className={styles.sidebarUsername}>{username}</p>}
-            <button type="button" className={styles.sidebarItem} onClick={handleLogout}>
-              ログアウト
-            </button>
+          <div className={styles.sidebarFooter}>
+            <UserMenu
+              username={username}
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              onLogout={handleLogout}
+            />
           </div>
         </aside>
 
