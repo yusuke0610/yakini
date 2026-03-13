@@ -2,17 +2,30 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(min_length=1)
+    email: EmailStr
     password: str = Field(min_length=1)
+
+
+class RegisterRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8)
 
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class UserResponse(BaseModel):
+    username: str
+    email: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GitHubCallbackRequest(BaseModel):
@@ -114,6 +127,7 @@ class RirekishoBase(BaseModel):
     email: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=1, max_length=50)
     motivation: str = Field(min_length=1, max_length=2000)
+    personal_preferences: str = Field(max_length=2000, default="")
     photo: str | None = Field(default=None)
     educations: list[RirekishoHistory] = Field(default_factory=list)
     work_histories: list[RirekishoHistory] = Field(default_factory=list)
