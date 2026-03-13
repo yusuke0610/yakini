@@ -70,7 +70,7 @@ def test_login_success(client: TestClient) -> None:
     })
 
     resp = client.post("/auth/login", json={
-        "username": "frank",
+        "email": "frank@example.com",
         "password": "securepass123",
     })
     assert resp.status_code == 200
@@ -85,7 +85,7 @@ def test_login_wrong_password(client: TestClient) -> None:
     })
 
     resp = client.post("/auth/login", json={
-        "username": "grace",
+        "email": "grace@example.com",
         "password": "wrongpassword",
     })
     assert resp.status_code == 401
@@ -93,7 +93,7 @@ def test_login_wrong_password(client: TestClient) -> None:
 
 def test_login_nonexistent_user(client: TestClient) -> None:
     resp = client.post("/auth/login", json={
-        "username": "nobody",
+        "email": "nobody@example.com",
         "password": "securepass123",
     })
     assert resp.status_code == 401
@@ -125,7 +125,7 @@ def _auth_header(client: TestClient, username: str = "testuser") -> dict:
         "password": "securepass123",
     })
     resp = client.post("/auth/login", json={
-        "username": username,
+        "email": f"{username}@example.com",
         "password": "securepass123",
     })
     token = resp.json()["access_token"]

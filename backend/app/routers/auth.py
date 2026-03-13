@@ -8,14 +8,11 @@ from ..database import get_db
 from ..dependencies import limiter
 from ..logging_utils import log_event
 from ..repositories import UserRepository
-from ..auth import get_current_user
-from ..models import User
 from ..schemas import (
     GitHubCallbackRequest,
     LoginRequest,
     RegisterRequest,
     TokenResponse,
-    UserResponse,
 )
 from ..settings import get_github_client_id, get_github_client_secret
 

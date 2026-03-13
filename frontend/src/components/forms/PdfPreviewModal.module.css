@@ -1,0 +1,34 @@
+.previewOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.previewModal {
+  background: #fff;
+  border-radius: 12px;
+  width: 90vw;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.previewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #e5ddd3;
+  font-weight: 700;
+}
+
+.previewFrame {
+  flex: 1;
+  border: none;
+  width: 100%;
+}
