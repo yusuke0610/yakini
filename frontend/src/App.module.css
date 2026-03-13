@@ -6,7 +6,7 @@
 
 .sidebar {
   width: 220px;
-  background: #1a1714;
+  background: var(--sidebar-bg);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -24,8 +24,8 @@
   font-weight: 700;
   padding: 0 1.2rem 1rem;
   margin: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  color: #e8ddd0;
+  border-bottom: 1px solid var(--sidebar-border);
+  color: var(--sidebar-title);
 }
 
 .sidebarNav {
@@ -41,7 +41,7 @@
   width: 100%;
   text-align: left;
   background: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--sidebar-text);
   border: none;
   border-radius: 0;
   padding: 0.7rem 1.2rem;
@@ -52,32 +52,22 @@
 }
 
 .sidebarItem:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #e8ddd0;
+  background: var(--sidebar-hover-bg);
+  color: var(--sidebar-hover-text);
 }
 
 .sidebarItem.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f5ebe0;
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
   font-weight: 700;
-  border-left: 3px solid #c96442;
+  border-left: 3px solid var(--accent);
   padding-left: calc(1.2rem - 3px);
 }
 
-.sidebarLogout {
+.sidebarFooter {
   margin-top: auto;
   padding: 0.6rem 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.sidebarUsername {
-  margin: 0;
-  padding: 0.4rem 1.2rem 0.2rem;
-  font-size: 0.85rem;
-  color: #c4b8a8;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  border-top: 1px solid var(--sidebar-border);
 }
 
 .mainContent {
@@ -85,7 +75,7 @@
   margin-left: 220px;
   overflow-y: auto;
   height: 100vh;
-  background: #f9f6f1;
+  background: var(--bg-page);
 }
 
 @media (max-width: 768px) {
@@ -111,7 +101,7 @@
   .sidebarTitle {
     padding: 0.8rem 1rem;
     border-bottom: none;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-right: 1px solid var(--sidebar-border);
     white-space: nowrap;
     font-size: 1rem;
   }
@@ -132,14 +122,14 @@
   .sidebarItem.active {
     border-left: none;
     padding-left: 1rem;
-    border-bottom: 3px solid #c96442;
+    border-bottom: 3px solid var(--accent);
   }
 
-  .sidebarLogout {
+  .sidebarFooter {
     margin-top: 0;
     padding: 0;
     border-top: none;
-    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 1px solid var(--sidebar-border);
   }
 
   .mainContent {
