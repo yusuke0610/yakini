@@ -48,12 +48,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export function login(
-  username: string,
+  email: string,
   password: string,
 ): Promise<{ access_token: string; token_type: string }> {
   return request("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ email, password }),
   });
 }
 

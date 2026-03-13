@@ -6,6 +6,7 @@ import type { BasicFormState } from "../../payloadBuilders";
 import type { BasicQualification } from "../../types";
 import { blankBasicQualification } from "../../constants";
 import type { BasicTextFieldKey } from "../../formTypes";
+import shared from "../../styles/shared.module.css";
 
 export function BasicInfoForm() {
   const [form, setForm] = useState<BasicFormState>({
@@ -117,28 +118,28 @@ export function BasicInfoForm() {
   };
 
   if (loading) {
-    return <p className="hint">基本情報を読み込み中です...</p>;
+    return <p className={shared.hint}>基本情報を読み込み中です...</p>;
   }
 
   return (
     <form onSubmit={onSubmit}>
-      <div className="pageHeader">
+      <div className={shared.pageHeader}>
         <h1>基本情報</h1>
-        <div className="pageHeaderActions">
+        <div className={shared.pageHeaderActions}>
           <button type="submit" className="primary" disabled={saving}>
             {saveButtonText}
           </button>
         </div>
       </div>
 
-      <div className="pageBody">
-        <div className="form">
-          {error && <p className="error">{error}</p>}
-          {success && <p className="success">{success}</p>}
+      <div className={shared.pageBody}>
+        <div className={shared.form}>
+          {error && <p className={shared.error}>{error}</p>}
+          {success && <p className={shared.success}>{success}</p>}
 
-          <section className="section">
+          <section className={shared.section}>
             <label>
-              <span className="labelText">氏名<span className="requiredBadge">必須</span></span>
+              <span className={shared.labelText}>氏名<span className={shared.requiredBadge}>必須</span></span>
               <input
                 type="text"
                 value={form.full_name}
@@ -147,7 +148,7 @@ export function BasicInfoForm() {
               />
             </label>
             <label>
-              <span className="labelText">記載日<span className="requiredBadge">必須</span></span>
+              <span className={shared.labelText}>記載日<span className={shared.requiredBadge}>必須</span></span>
               <input
                 type="date"
                 value={form.record_date}
@@ -157,11 +158,11 @@ export function BasicInfoForm() {
             </label>
           </section>
 
-          <section className="section">
+          <section className={shared.section}>
             <h2>資格</h2>
             {form.qualifications.map((qualification, index) => (
-              <div key={`basic-qualification-${index}`} className="entry">
-                <div className="inline">
+              <div key={`basic-qualification-${index}`} className={shared.entry}>
+                <div className={shared.inline}>
                   <label>
                     資格名
                     <input
@@ -190,7 +191,7 @@ export function BasicInfoForm() {
             </button>
           </section>
 
-          {basicInfoId && <p className="hint">保存ID: {basicInfoId}</p>}
+          {basicInfoId && <p className={shared.hint}>保存ID: {basicInfoId}</p>}
         </div>
       </div>
     </form>

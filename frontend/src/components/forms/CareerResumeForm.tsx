@@ -24,7 +24,9 @@ import type {
   CareerProjectFieldKey,
 } from "../../formTypes";
 import { usePdfActions } from "../../hooks/usePdfActions";
+import shared from "../../styles/shared.module.css";
 import { PdfPreviewModal } from "./PdfPreviewModal";
+import styles from "./CareerResumeForm.module.css";
 
 export function CareerResumeForm() {
   const [form, setForm] = useState<CareerFormState>({
@@ -286,9 +288,9 @@ export function CareerResumeForm() {
     <>
       {previewUrl && <PdfPreviewModal previewUrl={previewUrl} onClose={closePreview} />}
       <form onSubmit={onSubmit}>
-        <div className="pageHeader">
+        <div className={shared.pageHeader}>
           <h1>職務経歴書</h1>
-          <div className="pageHeaderActions">
+          <div className={shared.pageHeaderActions}>
             <button type="submit" className="primary" disabled={saving}>
               {saveButtonText}
             </button>
@@ -319,14 +321,14 @@ export function CareerResumeForm() {
           </div>
         </div>
 
-        <div className="pageBody">
-          <div className="form">
-            {error && <p className="error">{error}</p>}
-            {success && <p className="success">{success}</p>}
+        <div className={shared.pageBody}>
+          <div className={shared.form}>
+            {error && <p className={shared.error}>{error}</p>}
+            {success && <p className={shared.success}>{success}</p>}
 
-            <section className="section">
+            <section className={shared.section}>
               <label>
-                <span className="labelText">職務要約<span className="requiredBadge">必須</span></span>
+                <span className={shared.labelText}>職務要約<span className={shared.requiredBadge}>必須</span></span>
                 <textarea
                   rows={4}
                   value={form.career_summary}
@@ -335,7 +337,7 @@ export function CareerResumeForm() {
                 />
               </label>
               <label>
-                <span className="labelText">自己PR<span className="requiredBadge">必須</span></span>
+                <span className={shared.labelText}>自己PR<span className={shared.requiredBadge}>必須</span></span>
                 <textarea
                   rows={4}
                   value={form.self_pr}
@@ -345,10 +347,10 @@ export function CareerResumeForm() {
               </label>
             </section>
 
-        <section className="section">
+        <section className={shared.section}>
           <h2>職務経歴</h2>
           {form.experiences.map((exp, expIndex) => (
-            <div key={`exp-${expIndex}`} className="entry">
+            <div key={`exp-${expIndex}`} className={shared.entry}>
               <label>
                 会社名
                 <input
@@ -370,7 +372,7 @@ export function CareerResumeForm() {
                 />
               </label>
 
-              <div className="inline">
+              <div className={shared.inline}>
                 <label>
                   開始
                   <input
@@ -403,10 +405,10 @@ export function CareerResumeForm() {
                 )}
               </div>
 
-              <div className="inline">
+              <div className={shared.inline}>
                 <label>
                   従業員数
-                  <div className="inputWithUnit">
+                  <div className={styles.inputWithUnit}>
                     <input
                       type="number"
                       value={exp.employee_count}
@@ -415,28 +417,28 @@ export function CareerResumeForm() {
                       }
                       placeholder="例: 300"
                     />
-                    <span className="unit">名</span>
+                    <span className={styles.unit}>名</span>
                   </div>
                 </label>
                 <label>
                   資本金
-                  <div className="inputWithUnit">
+                  <div className={styles.inputWithUnit}>
                     <input
                       type="number"
                       value={exp.capital}
                       onChange={(e) => updateExperienceField(expIndex, "capital", e.target.value)}
                       placeholder="例: 5"
                     />
-                    <span className="unit">千万円</span>
+                    <span className={styles.unit}>千万円</span>
                   </div>
                 </label>
               </div>
 
               {/* Projects */}
-              <div className="stackSection">
+              <div className={styles.stackSection}>
                 <h3>プロジェクト</h3>
                 {exp.projects.map((proj, projIndex) => (
-                  <div key={`proj-${expIndex}-${projIndex}`} className="entry">
+                  <div key={`proj-${expIndex}-${projIndex}`} className={shared.entry}>
                     <label>
                       プロジェクト名
                       <input
@@ -449,7 +451,7 @@ export function CareerResumeForm() {
                       />
                     </label>
 
-                    <div className="inline">
+                    <div className={shared.inline}>
                       <label>
                         役割
                         <input
@@ -463,7 +465,7 @@ export function CareerResumeForm() {
                       </label>
                       <label>
                         規模
-                        <div className="inputWithUnit">
+                        <div className={styles.inputWithUnit}>
                           <input
                             type="number"
                             value={proj.scale}
@@ -472,7 +474,7 @@ export function CareerResumeForm() {
                             }
                             placeholder="例: 10"
                           />
-                          <span className="unit">名</span>
+                          <span className={styles.unit}>名</span>
                         </div>
                       </label>
                     </div>
@@ -499,14 +501,14 @@ export function CareerResumeForm() {
                       />
                     </label>
 
-                    <div className="stackSection">
+                    <div className={styles.stackSection}>
                       <h3>技術スタック</h3>
                       {proj.technology_stacks.map((stack, stackIndex) => (
                         <div
                           key={`stack-${expIndex}-${projIndex}-${stackIndex}`}
-                          className="stackEntry"
+                          className={styles.stackEntry}
                         >
-                          <div className="inline">
+                          <div className={shared.inline}>
                             <label>
                               区分
                               <select
@@ -589,7 +591,7 @@ export function CareerResumeForm() {
           </button>
         </section>
 
-            {resumeId && <p className="hint">保存ID: {resumeId}</p>}
+            {resumeId && <p className={shared.hint}>保存ID: {resumeId}</p>}
           </div>
         </div>
       </form>

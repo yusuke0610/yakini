@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 
 import { setAuthToken, setOnUnauthorized, githubCallback } from "./api";
+import { parseUsernameFromToken } from "./auth-utils";
 import type { PageKey } from "./formTypes";
 import { LoginForm } from "./components/auth/LoginForm";
 import { RegisterForm } from "./components/auth/RegisterForm";
 import { BasicInfoForm } from "./components/forms/BasicInfoForm";
 import { CareerResumeForm } from "./components/forms/CareerResumeForm";
 import { ResumeForm } from "./components/forms/ResumeForm";
+import shared from "./styles/shared.module.css";
+import styles from "./App.module.css";
 
 export default function App() {
   const [token, setToken] = useState<string | null>(() => {
@@ -16,6 +19,8 @@ export default function App() {
     }
     return saved;
   });
+
+  const username = parseUsernameFromToken(token);
   const [githubError, setGithubError] = useState<string | null>(null);
   const [githubLoading, setGithubLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -87,41 +92,42 @@ export default function App() {
   }
 
   return (
-    <div className="page">
-      <div className="appLayout">
-        <aside className="sidebar">
-          <p className="sidebarTitle">DevForge</p>
-          <nav className="sidebarNav">
+    <div className={shared.page}>
+      <div className={styles.appLayout}>
+        <aside className={styles.sidebar}>
+          <p className={styles.sidebarTitle}>DevForge</p>
+          <nav className={styles.sidebarNav}>
             <button
               type="button"
-              className={`sidebarItem ${page === "basic" ? "active" : ""}`}
+              className={`${styles.sidebarItem} ${page === "basic" ? styles.active : ""}`}
               onClick={() => setPage("basic")}
             >
               基本情報
             </button>
             <button
               type="button"
-              className={`sidebarItem ${page === "career" ? "active" : ""}`}
+              className={`${styles.sidebarItem} ${page === "career" ? styles.active : ""}`}
               onClick={() => setPage("career")}
             >
               職務経歴書
             </button>
             <button
               type="button"
-              className={`sidebarItem ${page === "Resume" ? "active" : ""}`}
+              className={`${styles.sidebarItem} ${page === "Resume" ? styles.active : ""}`}
               onClick={() => setPage("Resume")}
             >
               履歴書
             </button>
           </nav>
-          <div className="sidebarLogout">
-            <button type="button" className="sidebarItem" onClick={handleLogout}>
+          <div className={styles.sidebarLogout}>
+            {username && <p className={styles.sidebarUsername}>{username}</p>}
+            <button type="button" className={styles.sidebarItem} onClick={handleLogout}>
               ログアウト
             </button>
           </div>
         </aside>
 
-        <main className="mainContent">
+        <main className={styles.mainContent}>
           {page === "basic" && <BasicInfoForm />}
           {page === "career" && <CareerResumeForm />}
           {page === "Resume" && <ResumeForm />}

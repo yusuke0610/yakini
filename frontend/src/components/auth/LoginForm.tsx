@@ -1,7 +1,9 @@
 import { FormEvent, useState } from "react";
 
 import { getGitHubOAuthUrl, login } from "../../api";
+import shared from "../../styles/shared.module.css";
 import { PasswordInput } from "./PasswordInput";
+import styles from "./LoginForm.module.css";
 
 export function LoginForm({
   onLogin,
@@ -14,7 +16,7 @@ export function LoginForm({
   githubError?: string | null;
   githubLoading?: boolean;
 }) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +26,7 @@ export function LoginForm({
     setLoading(true);
     setError(null);
     try {
-      const result = await login(username, password);
+      const result = await login(email, password);
       onLogin(result.access_token);
     } catch (err) {
       const message = err instanceof Error ? err.message : "ログインに失敗しました。";
@@ -36,10 +38,10 @@ export function LoginForm({
 
   if (githubLoading) {
     return (
-      <div className="page">
-        <main className="container">
-          <div className="githubLoadingContainer">
-            <div className="spinner" />
+      <div className={shared.page}>
+        <main className={shared.container}>
+          <div className={styles.githubLoadingContainer}>
+            <div className={styles.spinner} />
             <p>GitHub認証中...</p>
           </div>
         </main>
@@ -48,21 +50,21 @@ export function LoginForm({
   }
 
   return (
-    <div className="page">
-      <main className="container">
-        <header className="topHeader">
+    <div className={shared.page}>
+      <main className={shared.container}>
+        <header>
           <h1>ログイン</h1>
         </header>
-        <form onSubmit={onSubmit} className="form">
-          <section className="section">
+        <form onSubmit={onSubmit} className={shared.form}>
+          <section className={shared.section}>
             <label>
-              ユーザー名
+              メールアドレス
               <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                autoComplete="username"
+                autoComplete="email"
               />
             </label>
             <label>
@@ -74,13 +76,13 @@ export function LoginForm({
               />
             </label>
           </section>
-          <div className="loginActions">
+          <div className={styles.loginActions}>
             <button type="submit" disabled={loading}>
               {loading ? "ログイン中..." : "ログイン"}
             </button>
             <button
               type="button"
-              className="githubLogin"
+              className={styles.githubLogin}
               onClick={() => {
                 window.location.href = getGitHubOAuthUrl();
               }}
@@ -88,8 +90,8 @@ export function LoginForm({
               Login with GitHub
             </button>
           </div>
-          {(error || githubError) && <p className="error">{error || githubError}</p>}
-          <div className="authLink">
+          {(error || githubError) && <p className={shared.error}>{error || githubError}</p>}
+          <div className={shared.authLink}>
             <button type="button" onClick={onSwitchToRegister}>
               新規登録はこちら
             </button>
