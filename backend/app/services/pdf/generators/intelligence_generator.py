@@ -16,7 +16,6 @@ from ..utils.pdf_utils import (
     MARGIN,
     PAGE_W,
     TABLE_BORDER,
-    TABLE_INNER,
     escape,
     register_font,
     styles,
@@ -81,51 +80,6 @@ def build_intelligence_pdf(payload: dict) -> bytes:
     if summary:
         elements.append(Paragraph("■ AI要約", s["section_header"]))
         elements.append(Paragraph(escape(summary).replace("\n", "<br/>"), s["body"]))
-        elements.append(Spacer(1, 3 * mm))
-
-    # Growth Trends
-    growth = payload.get("growth", [])
-    if growth:
-        elements.append(Paragraph("■ スキル成長トレンド", s["section_header"]))
-
-        emerging = [g for g in growth if g.get("trend") in ("emerging", "new")]
-        stable = [g for g in growth if g.get("trend") == "stable"]
-        declining = [g for g in growth if g.get("trend") == "declining"]
-
-        trend_data = [
-            [Paragraph("<b>カテゴリ</b>", s["body_small"]),
-             Paragraph("<b>スキル</b>", s["body_small"])],
-        ]
-        if emerging:
-            names = ", ".join(g["skill_name"] for g in emerging)
-            trend_data.append([
-                Paragraph("Emerging / New", s["body_small"]),
-                Paragraph(escape(names), s["body_small"]),
-            ])
-        if stable:
-            names = ", ".join(g["skill_name"] for g in stable)
-            trend_data.append([
-                Paragraph("Stable", s["body_small"]),
-                Paragraph(escape(names), s["body_small"]),
-            ])
-        if declining:
-            names = ", ".join(g["skill_name"] for g in declining)
-            trend_data.append([
-                Paragraph("Declining", s["body_small"]),
-                Paragraph(escape(names), s["body_small"]),
-            ])
-
-        trend_table = Table(trend_data, colWidths=[35 * mm, content_width - 35 * mm])
-        trend_table.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.5, TABLE_BORDER),
-            ("BACKGROUND", (0, 0), (-1, 0), HEADER_BG),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ]))
-        elements.append(trend_table)
         elements.append(Spacer(1, 3 * mm))
 
     # Career Prediction
@@ -206,61 +160,6 @@ def build_intelligence_pdf(payload: dict) -> bytes:
             if desc:
                 elements.append(Paragraph(f"　{escape(desc)}", s["body_small"]))
         elements.append(Spacer(1, 3 * mm))
-
-    # Skill Timeline
-    year_snapshots = payload.get("year_snapshots", [])
-    if year_snapshots:
-        elements.append(Paragraph("■ スキルタイムライン", s["section_header"]))
-
-        all_skills = []
-        seen = set()
-        for snap in year_snapshots:
-            for skill in snap.get("skills", []):
-                if skill not in seen:
-                    all_skills.append(skill)
-                    seen.add(skill)
-
-        years = [snap["year"] for snap in year_snapshots]
-        skills_by_year = {snap["year"]: set(snap.get("skills", [])) for snap in year_snapshots}
-        new_by_year = {snap["year"]: set(snap.get("new_skills", [])) for snap in year_snapshots}
-
-        # Build table
-        skill_col_w = 35 * mm
-        year_col_w = (content_width - skill_col_w) / max(len(years), 1)
-
-        header_row = [Paragraph("<b>スキル</b>", s["body_small"])]
-        for y in years:
-            header_row.append(Paragraph(f"<b>{y}</b>", s["body_small"]))
-
-        data_rows = [header_row]
-        for skill in all_skills:
-            row = [Paragraph(escape(skill), s["body_small"])]
-            for y in years:
-                if skill in new_by_year.get(y, set()):
-                    row.append(Paragraph("NEW", s["body_small"]))
-                elif skill in skills_by_year.get(y, set()):
-                    row.append(Paragraph("o", s["body_small"]))
-                else:
-                    row.append(Paragraph("", s["body_small"]))
-            data_rows.append(row)
-
-        col_widths = [skill_col_w] + [year_col_w] * len(years)
-        timeline_table = Table(data_rows, colWidths=col_widths)
-        timeline_table.setStyle(TableStyle([
-            ("GRID", (0, 0), (-1, -1), 0.3, TABLE_INNER),
-            ("BOX", (0, 0), (-1, -1), 0.5, TABLE_BORDER),
-            ("BACKGROUND", (0, 0), (-1, 0), HEADER_BG),
-            ("BACKGROUND", (0, 0), (0, -1), HEADER_BG),
-            ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("FONTNAME", (0, 0), (-1, -1), FONT_NAME),
-            ("FONTSIZE", (0, 0), (-1, -1), 7),
-            ("TOPPADDING", (0, 0), (-1, -1), 2),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-            ("LEFTPADDING", (0, 0), (-1, -1), 3),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-        ]))
-        elements.append(timeline_table)
 
     doc.build(elements, onFirstPage=_add_page_number, onLaterPages=_add_page_number)
     buffer.seek(0)

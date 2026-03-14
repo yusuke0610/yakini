@@ -24,7 +24,7 @@ SYSTEM_PROMPT = (
 
 
 def _build_user_prompt(analysis: Dict[str, Any]) -> str:
-    """Build a concise prompt from the analysis data."""
+    """分析データから簡潔なプロンプトを構築します。"""
     summary_parts = []
 
     summary_parts.append(f"ユーザー: {analysis.get('username', 'N/A')}")
@@ -35,46 +35,26 @@ def _build_user_prompt(analysis: Dict[str, Any]) -> str:
         f"ユニークスキル数: {analysis.get('unique_skills', 0)}"
     )
 
-    # Current role
-    prediction = analysis.get("prediction", {})
-    current = prediction.get("current_role", {})
-    if current:
-        summary_parts.append(
-            f"現在のロール: {current.get('role_name', 'N/A')} "
-            f"(確信度: {current.get('confidence', 0):.0%})"
-        )
-        if current.get("matching_skills"):
-            summary_parts.append(
-                f"マッチするスキル: {', '.join(current['matching_skills'][:10])}"
-            )
-
-    # Growth trends
+    # 成長トレンド（データがある場合のみ）
     growth = analysis.get("growth", [])
-    emerging = [g["skill_name"] for g in growth if g.get("trend") == "emerging"]
-    stable = [g["skill_name"] for g in growth if g.get("trend") == "stable"]
-    declining = [g["skill_name"] for g in growth if g.get("trend") == "declining"]
+    if growth:
+        emerging = [g["skill_name"] for g in growth if g.get("trend") == "emerging"]
+        stable = [g["skill_name"] for g in growth if g.get("trend") == "stable"]
+        declining = [g["skill_name"] for g in growth if g.get("trend") == "declining"]
 
-    if emerging:
-        summary_parts.append(f"成長中のスキル: {', '.join(emerging[:5])}")
-    if stable:
-        summary_parts.append(f"安定スキル: {', '.join(stable[:5])}")
-    if declining:
-        summary_parts.append(f"低下傾向: {', '.join(declining[:5])}")
+        if emerging:
+            summary_parts.append(f"成長中のスキル: {', '.join(emerging[:5])}")
+        if stable:
+            summary_parts.append(f"安定スキル: {', '.join(stable[:5])}")
+        if declining:
+            summary_parts.append(f"低下傾向: {', '.join(declining[:5])}")
 
-    # Timeline range
+    # 活動期間（データがある場合のみ）
     snapshots = analysis.get("year_snapshots", [])
     if snapshots:
         years = [s["year"] for s in snapshots]
-        summary_parts.append(f"活動期間: {min(years)} 〜 {max(years)}")
-
-    # Next roles
-    next_roles = prediction.get("next_roles", [])
-    if next_roles:
-        roles_str = ", ".join(
-            f"{r.get('role_name', '')} ({r.get('confidence', 0):.0%})"
-            for r in next_roles[:3]
-        )
-        summary_parts.append(f"次のキャリア候補: {roles_str}")
+        if years:
+            summary_parts.append(f"活動期間: {min(years)} 〜 {max(years)}")
 
     return "\n".join(summary_parts)
 
