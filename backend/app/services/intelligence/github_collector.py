@@ -80,6 +80,8 @@ async def collect_repos(
 
         # 2. For each repo, fetch language breakdown
         for raw in raw_repos:
+            if raw.get("private"):
+                continue
             if raw.get("fork") and not include_forks:
                 continue
 

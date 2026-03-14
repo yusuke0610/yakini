@@ -28,10 +28,15 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
     headers["Authorization"] = `Bearer ${_authToken}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch {
+    throw new Error("サーバーに接続できません。ネットワーク接続を確認してください。");
+  }
 
   if (response.status === 401) {
     _onUnauthorized?.();
@@ -39,8 +44,17 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   }
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || "API request failed");
+    let message = "API request failed";
+    try {
+      const body = await response.json();
+      if (body.detail) {
+        message = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+      }
+    } catch {
+      const text = await response.text();
+      if (text) message = text;
+    }
+    throw new Error(message);
   }
 
   return (await response.json()) as T;

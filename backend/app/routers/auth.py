@@ -125,5 +125,8 @@ async def github_callback(
         )
         log_event(logging.INFO, "github_user_created", username=user.username)
 
+    user.github_token = access_token
+    db.commit()
+
     token = create_access_token(user.username)
     return TokenResponse(access_token=token)

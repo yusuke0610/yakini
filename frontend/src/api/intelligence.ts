@@ -1,8 +1,6 @@
-import { request } from "./client";
+import { request, getAuthHeaders, API_BASE_URL } from "./client";
 
 export interface AnalyzeGitHubPayload {
-  github_username: string;
-  github_token?: string | null;
   include_forks?: boolean;
 }
 
@@ -87,4 +85,52 @@ export function summarizeAnalysis(analysis: AnalysisResponse): Promise<Summarize
     method: "POST",
     body: JSON.stringify({ analysis }),
   });
+}
+
+export async function downloadAnalysisPdf(
+  analysis: AnalysisResponse,
+  summary?: string | null,
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/intelligence/download/pdf`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ analysis, summary: summary ?? null }),
+  });
+  if (!response.ok) {
+    throw new Error("分析レポートPDFのダウンロードに失敗しました");
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `github-analysis-${analysis.username}.pdf`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadAnalysisMarkdown(
+  analysis: AnalysisResponse,
+  summary?: string | null,
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/intelligence/download/markdown`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ analysis, summary: summary ?? null }),
+  });
+  if (!response.ok) {
+    throw new Error("分析レポートMarkdownのダウンロードに失敗しました");
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `github-analysis-${analysis.username}.md`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }

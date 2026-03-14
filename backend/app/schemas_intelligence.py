@@ -8,14 +8,6 @@ from pydantic import BaseModel, Field
 # ── Request ─────────────────────────────────────────────────────────────
 
 class AnalyzeRequest(BaseModel):
-    github_username: str = Field(
-        ..., min_length=1, max_length=39,
-        description="GitHub username to analyze",
-    )
-    github_token: Optional[str] = Field(
-        None,
-        description="Optional GitHub token for private repos / higher rate limits",
-    )
     include_forks: bool = Field(
         False,
         description="Include forked repositories in analysis",
@@ -109,4 +101,12 @@ class SummarizeResponse(BaseModel):
     available: bool = Field(
         True,
         description="Whether the LLM service is available",
+    )
+
+
+class DownloadRequest(BaseModel):
+    analysis: AnalysisResponse
+    summary: Optional[str] = Field(
+        None,
+        description="AI summary text to include in the report",
     )
