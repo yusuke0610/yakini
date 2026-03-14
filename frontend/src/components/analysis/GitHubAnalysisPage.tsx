@@ -6,6 +6,7 @@ import {
   downloadAnalysisMarkdown,
   type AnalysisResponse,
 } from "../../api";
+import { SkillTimelineChart } from "../SkillTimelineChart";
 import shared from "../../styles/shared.module.css";
 import styles from "./GitHubAnalysisPage.module.css";
 
@@ -14,6 +15,9 @@ const CACHE_KEY_SUMMARY = "github_analysis_summary";
 
 type Phase = "input" | "loading" | "result";
 
+/**
+ * キャッシュされた分析結果を読み込みます。
+ */
 function loadCachedResult(): AnalysisResponse | null {
   try {
     const raw = sessionStorage.getItem(CACHE_KEY_RESULT);
@@ -23,6 +27,9 @@ function loadCachedResult(): AnalysisResponse | null {
   }
 }
 
+/**
+ * GitHub 分析結果を表示するダッシュボードコンポーネント。
+ */
 export function GitHubAnalysisPage() {
   const cachedResult = loadCachedResult();
   const [phase, setPhase] = useState<Phase>(cachedResult ? "result" : "input");
@@ -31,15 +38,18 @@ export function GitHubAnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResponse | null>(cachedResult);
 
-  // AI summary
+  // AI 要約
   const [summary, setSummary] = useState<string | null>(
     () => sessionStorage.getItem(CACHE_KEY_SUMMARY),
   );
   const [summaryLoading, setSummaryLoading] = useState(false);
 
-  // Download state
+  // ダウンロード状態
   const [downloading, setDownloading] = useState(false);
 
+  /**
+   * GitHub 分析を実行します。
+   */
   const handleAnalyze = async () => {
     setError(null);
     setPhase("loading");
@@ -56,10 +66,12 @@ export function GitHubAnalysisPage() {
     }
   };
 
-  // Fetch AI summary after result is available (only if not cached)
+  /**
+   * 結果が利用可能になった後、AI 要約を取得します（キャッシュがない場合）。
+   */
   useEffect(() => {
     if (!result) return;
-    if (summary) return; // already have cached summary
+    if (summary) return; // キャッシュされた要約がすでにある場合
     let cancelled = false;
     setSummaryLoading(true);
     summarizeAnalysis(result)
@@ -76,8 +88,11 @@ export function GitHubAnalysisPage() {
     return () => {
       cancelled = true;
     };
-  }, [result]);
+  }, [result, summary]);
 
+  /**
+   * 入力画面に戻ります。
+   */
   const handleBack = () => {
     setPhase("input");
     setResult(null);
@@ -86,6 +101,9 @@ export function GitHubAnalysisPage() {
     sessionStorage.removeItem(CACHE_KEY_SUMMARY);
   };
 
+  /**
+   * PDF レポートをダウンロードします。
+   */
   const handleDownloadPdf = async () => {
     if (!result) return;
     setDownloading(true);
@@ -98,6 +116,9 @@ export function GitHubAnalysisPage() {
     }
   };
 
+  /**
+   * Markdown レポートをダウンロードします。
+   */
   const handleDownloadMarkdown = async () => {
     if (!result) return;
     setDownloading(true);
@@ -110,7 +131,7 @@ export function GitHubAnalysisPage() {
     }
   };
 
-  // ── Phase: Input ──────────────────────────────────────────
+  // ── フェーズ: 入力 ──────────────────────────────────────────
   if (phase === "input") {
     return (
       <div className={shared.pageBody}>
@@ -154,7 +175,7 @@ export function GitHubAnalysisPage() {
     );
   }
 
-  // ── Phase: Loading ────────────────────────────────────────
+  // ── フェーズ: ローディング ────────────────────────────────────────
   if (phase === "loading") {
     return (
       <div className={shared.pageBody}>
@@ -166,12 +187,12 @@ export function GitHubAnalysisPage() {
     );
   }
 
-  // ── Phase: Result Dashboard ───────────────────────────────
+  // ── フェーズ: 分析結果ダッシュボード ───────────────────────────────
   if (!result) return null;
 
   const { prediction, simulation, growth, year_snapshots } = result;
 
-  // Collect all skills across snapshots for timeline rows
+  // タイムライン行のためにすべてのスナップショットからユニークなスキルを収集
   const allSkills = Array.from(
     new Set(year_snapshots.flatMap((s) => s.skills)),
   );
@@ -183,7 +204,7 @@ export function GitHubAnalysisPage() {
     year_snapshots.map((s) => [s.year, new Set(s.skills)]),
   );
 
-  // Growth categorization
+  // 成長トレンドのカテゴリ分け
   const emerging = growth.filter(
     (g) => g.trend === "emerging" || g.trend === "new",
   );
@@ -193,7 +214,7 @@ export function GitHubAnalysisPage() {
   return (
     <div className={shared.pageBody}>
       <div className={styles.dashboard}>
-        {/* Header */}
+        {/* ヘッダー */}
         <div className={styles.dashboardHeader}>
           <h1>{result.username} の分析結果</h1>
           <div className={styles.headerActions}>
@@ -221,7 +242,7 @@ export function GitHubAnalysisPage() {
 
         {error && <p className={styles.errorMessage}>{error}</p>}
 
-        {/* Overview */}
+        {/* 概要 */}
         <div className={styles.section}>
           <h2>Overview</h2>
           <div className={styles.overviewCards}>
@@ -244,7 +265,7 @@ export function GitHubAnalysisPage() {
           </div>
         </div>
 
-        {/* AI Summary */}
+        {/* AI 要約 */}
         {(summaryLoading || summary) && (
           <div className={styles.section}>
             <h2>AI要約</h2>
@@ -256,12 +277,17 @@ export function GitHubAnalysisPage() {
           </div>
         )}
 
-        {/* Skill Timeline */}
+        {/* スキル成熟度グラフ */}
+        <div className={styles.section}>
+          <SkillTimelineChart />
+        </div>
+
+        {/* スキルタイムライン */}
         {year_snapshots.length > 0 && (
           <div className={styles.section}>
             <h2>スキルタイムライン</h2>
             <div className={styles.timelineGrid}>
-              {/* Header row */}
+              {/* ヘッダー行 */}
               <div className={`${styles.timelineRow} ${styles.timelineHeaderRow}`}>
                 <div className={styles.timelineSkillCell} />
                 {years.map((y) => (
@@ -270,7 +296,7 @@ export function GitHubAnalysisPage() {
                   </div>
                 ))}
               </div>
-              {/* Skill rows */}
+              {/* スキル行 */}
               {allSkills.map((skill) => (
                 <div key={skill} className={styles.timelineRow}>
                   <div className={styles.timelineSkillCell}>{skill}</div>
@@ -295,7 +321,7 @@ export function GitHubAnalysisPage() {
           </div>
         )}
 
-        {/* Growth Trends */}
+        {/* 成長トレンド */}
         {growth.length > 0 && (
           <div className={styles.section}>
             <h2>スキル成長トレンド</h2>
@@ -355,7 +381,7 @@ export function GitHubAnalysisPage() {
           </div>
         )}
 
-        {/* Career Prediction */}
+        {/* キャリア予測 */}
         <div className={styles.section}>
           <h2>キャリア予測</h2>
           <div className={styles.currentRole}>
@@ -423,7 +449,7 @@ export function GitHubAnalysisPage() {
           )}
         </div>
 
-        {/* Career Path Simulation */}
+        {/* キャリアパスシミュレーション */}
         {simulation.paths.length > 0 && (
           <div className={styles.section}>
             <h2>キャリアパスシミュレーション</h2>

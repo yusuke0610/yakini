@@ -2,6 +2,9 @@
 
 ## コーディング規約
 
+### 共通ルール
+- **コメント・ドキュメント**: コード内のコメント、docstring、JSDoc はすべて**日本語**で記述すること。
+
 ### Python (backend)
 - PEP 8 / flake8 に準拠すること
 - flake8 の設定は `backend/setup.cfg` に定義済み（max-line-length=120）
