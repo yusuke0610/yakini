@@ -1,5 +1,6 @@
 import type { CareerResumePayload, CareerResumeResponse } from "../types";
-import { request, getAuthHeaders, API_BASE_URL } from "./client";
+import { request } from "./client";
+import { downloadBlob, getBlobUrl } from "./download";
 
 export function getLatestCareerResume(): Promise<CareerResumeResponse> {
   return request<CareerResumeResponse>("/api/resumes/latest");
@@ -22,47 +23,14 @@ export function updateCareerResume(
   });
 }
 
-export async function downloadCareerResumePdf(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/resumes/${id}/pdf`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error("職務経歴書PDFのダウンロードに失敗しました");
-  }
-
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `career-resume-${id}.pdf`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+export function downloadCareerResumePdf(id: string): Promise<void> {
+  return downloadBlob(`/api/resumes/${id}/pdf`, `career-resume-${id}.pdf`);
 }
 
-export async function downloadCareerResumeMarkdown(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/resumes/${id}/markdown`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error("職務経歴書Markdownのダウンロードに失敗しました");
-  }
-
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `career-resume-${id}.md`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+export function downloadCareerResumeMarkdown(id: string): Promise<void> {
+  return downloadBlob(`/api/resumes/${id}/markdown`, `career-resume-${id}.md`);
 }
 
-export async function getCareerResumePdfBlobUrl(id: string): Promise<string> {
-  const response = await fetch(`${API_BASE_URL}/api/resumes/${id}/pdf`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error("職務経歴書PDFのプレビューに失敗しました");
-  }
-  const blob = await response.blob();
-  return URL.createObjectURL(blob);
+export function getCareerResumePdfBlobUrl(id: string): Promise<string> {
+  return getBlobUrl(`/api/resumes/${id}/pdf`);
 }

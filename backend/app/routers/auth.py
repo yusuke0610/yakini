@@ -14,6 +14,7 @@ from ..schemas import (
     RegisterRequest,
     TokenResponse,
 )
+from ..encryption import encrypt_field
 from ..settings import get_github_client_id, get_github_client_secret
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -125,7 +126,7 @@ async def github_callback(
         )
         log_event(logging.INFO, "github_user_created", username=user.username)
 
-    user.github_token = access_token
+    user.github_token = encrypt_field(access_token)
     db.commit()
 
     token = create_access_token(user.username)

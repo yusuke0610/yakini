@@ -1,5 +1,6 @@
 import type { ResumePayload, ResumeResponse } from "../types";
-import { request, getAuthHeaders, API_BASE_URL } from "./client";
+import { request } from "./client";
+import { downloadBlob, getBlobUrl } from "./download";
 
 export function getLatestResume(): Promise<ResumeResponse> {
   return request<ResumeResponse>("/api/rirekisho/latest");
@@ -19,47 +20,14 @@ export function updateResume(id: string, payload: ResumePayload): Promise<Resume
   });
 }
 
-export async function downloadResumePdf(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/rirekisho/${id}/pdf`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error("履歴書PDFのダウンロードに失敗しました");
-  }
-
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `Resume-${id}.pdf`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+export function downloadResumePdf(id: string): Promise<void> {
+  return downloadBlob(`/api/rirekisho/${id}/pdf`, `Resume-${id}.pdf`);
 }
 
-export async function downloadResumeMarkdown(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/rirekisho/${id}/markdown`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error("履歴書Markdownのダウンロードに失敗しました");
-  }
-
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `rirekisho-${id}.md`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+export function downloadResumeMarkdown(id: string): Promise<void> {
+  return downloadBlob(`/api/rirekisho/${id}/markdown`, `rirekisho-${id}.md`);
 }
 
-export async function getResumePdfBlobUrl(id: string): Promise<string> {
-  const response = await fetch(`${API_BASE_URL}/api/rirekisho/${id}/pdf`, {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error("履歴書PDFのプレビューに失敗しました");
-  }
-  const blob = await response.blob();
-  return URL.createObjectURL(blob);
+export function getResumePdfBlobUrl(id: string): Promise<string> {
+  return getBlobUrl(`/api/rirekisho/${id}/pdf`);
 }

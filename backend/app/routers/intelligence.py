@@ -7,27 +7,19 @@ POST /api/intelligence/download/markdown — generate Markdown from analysis dat
 """
 
 import asyncio
-import io
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
 
 from ..auth import get_current_user
+from ..encryption import decrypt_field
 from ..models import User
 from ..schemas_intelligence import (
     AnalysisResponse,
     AnalyzeRequest,
-    CareerPredictionResponse,
-    CareerSimulationResponse,
     DownloadRequest,
-    PredictedRoleItem,
-    SimulatedPathItem,
-    SkillGrowthItem,
-    SkillTimelineItem,
     SummarizeRequest,
     SummarizeResponse,
-    YearSnapshotItem,
 )
 from ..services.intelligence.github_collector import (
     GitHubUserNotFoundError,
@@ -37,8 +29,12 @@ from ..services.intelligence.llm_summarizer import (
     summarize_analysis,
 )
 from ..services.intelligence.pipeline import run_pipeline
-from ..services.markdown.markdown_service import generate_intelligence_markdown
-from ..services.pdf.pdf_service import generate_intelligence_report
+from ..services.intelligence.response_mapper import map_pipeline_result
+from ..services.markdown.generators.intelligence_generator import (
+    build_intelligence_markdown,
+)
+from ..services.pdf.generators.intelligence_generator import build_intelligence_pdf
+from .download_utils import stream_markdown, stream_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +67,7 @@ async def analyze(
         result = await asyncio.wait_for(
             run_pipeline(
                 username=github_username,
-                token=user.github_token,
+                token=decrypt_field(user.github_token) if user.github_token else None,
                 include_forks=request.include_forks,
             ),
             timeout=120.0,
@@ -79,7 +75,7 @@ async def analyze(
     except GitHubUserNotFoundError:
         raise HTTPException(
             status_code=404,
-            detail=f"GitHub user not found: {github_username}",
+            detail=f"GitHubユーザーが見つかりません: {github_username}",
         )
     except asyncio.TimeoutError:
         logger.warning(
@@ -97,91 +93,10 @@ async def analyze(
         )
         raise HTTPException(
             status_code=502,
-            detail="Failed to analyze GitHub profile. Please try again later.",
+            detail="GitHubプロフィールの分析に失敗しました。しばらくしてから再度お試しください。",
         )
 
-    # Convert dataclasses to Pydantic response
-    return AnalysisResponse(
-        username=result.username,
-        repos_analyzed=result.repos_analyzed,
-        unique_skills=result.unique_skills,
-        timelines=[
-            SkillTimelineItem(
-                skill_name=t.skill_name,
-                category=t.category,
-                first_seen=t.first_seen,
-                last_seen=t.last_seen,
-                usage_frequency=t.usage_frequency,
-                repositories=t.repositories,
-                yearly_usage=t.yearly_usage,
-            )
-            for t in result.timelines
-        ],
-        year_snapshots=[
-            YearSnapshotItem(
-                year=s.year,
-                skills=s.skills,
-                new_skills=s.new_skills,
-            )
-            for s in result.year_snapshots
-        ],
-        growth=[
-            SkillGrowthItem(
-                skill_name=g.skill_name,
-                category=g.category,
-                trend=g.trend.value,
-                velocity=g.velocity,
-                yearly_usage=g.yearly_usage,
-                first_seen=g.first_seen,
-                last_seen=g.last_seen,
-                total_repos=g.total_repos,
-            )
-            for g in result.growth
-        ],
-        prediction=CareerPredictionResponse(
-            current_role=PredictedRoleItem(
-                role_name=result.prediction.current_role.role_name,
-                confidence=result.prediction.current_role.confidence,
-                matching_skills=result.prediction.current_role.matching_skills,
-                missing_skills=result.prediction.current_role.missing_skills,
-                seniority=result.prediction.current_role.seniority,
-            ),
-            next_roles=[
-                PredictedRoleItem(
-                    role_name=r.role_name,
-                    confidence=r.confidence,
-                    matching_skills=r.matching_skills,
-                    missing_skills=r.missing_skills,
-                    seniority=r.seniority,
-                )
-                for r in result.prediction.next_roles
-            ],
-            long_term_roles=[
-                PredictedRoleItem(
-                    role_name=r.role_name,
-                    confidence=r.confidence,
-                    matching_skills=r.matching_skills,
-                    missing_skills=r.missing_skills,
-                    seniority=r.seniority,
-                )
-                for r in result.prediction.long_term_roles
-            ],
-            skill_summary=result.prediction.skill_summary,
-        ),
-        simulation=CareerSimulationResponse(
-            current_role=result.simulation.current_role,
-            paths=[
-                SimulatedPathItem(
-                    path=p.path,
-                    confidence=p.confidence,
-                    description=p.description,
-                )
-                for p in result.simulation.paths
-            ],
-            total_paths_explored=result.simulation.total_paths_explored,
-        ),
-        analyzed_at=result.analyzed_at,
-    )
+    return map_pipeline_result(result)
 
 
 @router.post("/summarize", response_model=SummarizeResponse)
@@ -211,17 +126,9 @@ async def download_pdf(
     if request.summary:
         payload["summary"] = request.summary
 
-    pdf_bytes = generate_intelligence_report(payload)
+    pdf_bytes = build_intelligence_pdf(payload)
     username = payload.get("username", "analysis")
-    return StreamingResponse(
-        io.BytesIO(pdf_bytes),
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": (
-                f'attachment; filename="github-analysis-{username}.pdf"'
-            ),
-        },
-    )
+    return stream_pdf(pdf_bytes, f"github-analysis-{username}.pdf")
 
 
 @router.post("/download/markdown")
@@ -234,14 +141,6 @@ async def download_markdown(
     if request.summary:
         payload["summary"] = request.summary
 
-    md_text = generate_intelligence_markdown(payload)
+    md_text = build_intelligence_markdown(payload)
     username = payload.get("username", "analysis")
-    return StreamingResponse(
-        io.BytesIO(md_text.encode("utf-8")),
-        media_type="text/markdown; charset=utf-8",
-        headers={
-            "Content-Disposition": (
-                f'attachment; filename="github-analysis-{username}.md"'
-            ),
-        },
-    )
+    return stream_markdown(md_text, f"github-analysis-{username}.md")

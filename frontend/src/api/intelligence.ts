@@ -1,4 +1,5 @@
-import { request, getAuthHeaders, API_BASE_URL } from "./client";
+import { request } from "./client";
+import { downloadBlob } from "./download";
 
 export interface AnalyzeGitHubPayload {
   include_forks?: boolean;
@@ -87,50 +88,32 @@ export function summarizeAnalysis(analysis: AnalysisResponse): Promise<Summarize
   });
 }
 
-export async function downloadAnalysisPdf(
+export function downloadAnalysisPdf(
   analysis: AnalysisResponse,
   summary?: string | null,
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/intelligence/download/pdf`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
+  return downloadBlob(
+    "/api/intelligence/download/pdf",
+    `github-analysis-${analysis.username}.pdf`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ analysis, summary: summary ?? null }),
     },
-    body: JSON.stringify({ analysis, summary: summary ?? null }),
-  });
-  if (!response.ok) {
-    throw new Error("分析レポートPDFのダウンロードに失敗しました");
-  }
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `github-analysis-${analysis.username}.pdf`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  );
 }
 
-export async function downloadAnalysisMarkdown(
+export function downloadAnalysisMarkdown(
   analysis: AnalysisResponse,
   summary?: string | null,
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/intelligence/download/markdown`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
+  return downloadBlob(
+    "/api/intelligence/download/markdown",
+    `github-analysis-${analysis.username}.md`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ analysis, summary: summary ?? null }),
     },
-    body: JSON.stringify({ analysis, summary: summary ?? null }),
-  });
-  if (!response.ok) {
-    throw new Error("分析レポートMarkdownのダウンロードに失敗しました");
-  }
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `github-analysis-${analysis.username}.md`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  );
 }
