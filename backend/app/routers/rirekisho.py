@@ -1,4 +1,3 @@
-import io
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,10 +9,11 @@ from ..database import get_db
 from ..models import User
 from ..repositories import BasicInfoRepository, RirekishoRepository
 from ..schemas import RirekishoCreate, RirekishoResponse, RirekishoUpdate
-from ..services.markdown.markdown_service import (
-    generate_rirekisho_markdown as build_rirekisho_markdown,
+from ..services.markdown.generators.rirekisho_generator import (
+    build_rirekisho_markdown,
 )
-from ..services.pdf.pdf_service import generate_rirekisho as build_rirekisho_pdf
+from ..services.pdf.generators.rirekisho_generator import build_rirekisho_pdf
+from .download_utils import stream_markdown, stream_pdf
 
 router = APIRouter(prefix="/api/rirekisho", tags=["rirekisho"])
 
@@ -36,7 +36,7 @@ def get_latest_rirekisho(
     repository = RirekishoRepository(db, current_user.id)
     rirekisho = repository.get_latest()
     if not rirekisho:
-        raise HTTPException(status_code=404, detail="Rirekisho not found")
+        raise HTTPException(status_code=404, detail="履歴書が見つかりません")
     return rirekisho
 
 
@@ -49,7 +49,7 @@ def get_rirekisho(
     repository = RirekishoRepository(db, current_user.id)
     rirekisho = repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
-        raise HTTPException(status_code=404, detail="Rirekisho not found")
+        raise HTTPException(status_code=404, detail="履歴書が見つかりません")
     return rirekisho
 
 
@@ -63,7 +63,7 @@ def update_rirekisho(
     repository = RirekishoRepository(db, current_user.id)
     rirekisho = repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
-        raise HTTPException(status_code=404, detail="Rirekisho not found")
+        raise HTTPException(status_code=404, detail="履歴書が見つかりません")
 
     return repository.update(rirekisho, payload.model_dump())
 
@@ -79,7 +79,7 @@ def download_rirekisho_pdf(
 
     rirekisho = rirekisho_repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
-        raise HTTPException(status_code=404, detail="Rirekisho not found")
+        raise HTTPException(status_code=404, detail="履歴書が見つかりません")
 
     basic_info = basic_info_repository.get_latest()
 
@@ -98,15 +98,7 @@ def download_rirekisho_pdf(
         "work_histories": rirekisho.work_histories,
     }
     pdf_bytes = build_rirekisho_pdf(payload)
-
-    headers = {
-        "Content-Disposition": (
-            f'attachment; filename="rirekisho-{rirekisho.id}.pdf"'
-        ),
-    }
-    return StreamingResponse(
-        io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers
-    )
+    return stream_pdf(pdf_bytes, f"rirekisho-{rirekisho.id}.pdf")
 
 
 @router.get("/{rirekisho_id}/markdown")
@@ -120,7 +112,7 @@ def download_rirekisho_markdown(
 
     rirekisho = rirekisho_repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
-        raise HTTPException(status_code=404, detail="Rirekisho not found")
+        raise HTTPException(status_code=404, detail="履歴書が見つかりません")
 
     basic_info = basic_info_repository.get_latest()
 
@@ -138,14 +130,4 @@ def download_rirekisho_markdown(
         "work_histories": rirekisho.work_histories,
     }
     md_text = build_rirekisho_markdown(payload)
-
-    headers = {
-        "Content-Disposition": (
-            f'attachment; filename="rirekisho-{rirekisho.id}.md"'
-        ),
-    }
-    return StreamingResponse(
-        io.BytesIO(md_text.encode("utf-8")),
-        media_type="text/markdown; charset=utf-8",
-        headers=headers,
-    )
+    return stream_markdown(md_text, f"rirekisho-{rirekisho.id}.md")
