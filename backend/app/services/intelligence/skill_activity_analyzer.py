@@ -57,9 +57,30 @@ async def get_skill_activity(
     for repo_info in repos_data:
         try:
             # このリポジトリのスキルを抽出
-            skills = [s.skill_name for s in _extract_from_repo(repo_info)]
-            if not skills:
+            extracted_skills = _extract_from_repo(repo_info)
+            if not extracted_skills:
                 continue
+
+            # 言語バイト比率による重み付けを計算
+            total_bytes = sum(repo_info.languages.values()) or 1
+            # 主要言語の重みを算出（フレームワークに継承させるため）
+            max_lang_weight = (
+                max(repo_info.languages.values()) / total_bytes
+                if repo_info.languages else 0.1
+            )
+            skill_weights: Dict[str, float] = {}
+            for extracted in extracted_skills:
+                if extracted.language_bytes > 0:
+                    # 言語系スキル: バイト比率を重みとして使用
+                    skill_weights[extracted.skill_name] = (
+                        extracted.language_bytes / total_bytes
+                    )
+                elif extracted.source == "dependency":
+                    # フレームワーク系スキル: 主要言語の重みを継承
+                    skill_weights[extracted.skill_name] = max_lang_weight
+                else:
+                    # インフラ系スキル (Docker, CI等): 固定の小さい重み
+                    skill_weights[extracted.skill_name] = 0.1
 
             repo = g.get_repo(f"{repo_info.owner}/{repo_info.name}")
 
@@ -73,10 +94,11 @@ async def get_skill_activity(
                 # コミット日時を取得
                 commit_date = commit.commit.author.date
                 if commit_date:
-                    for skill in skills:
+                    for skill, weight in skill_weights.items():
                         all_commit_data.append({
                             "date": commit_date,
-                            "skill": skill
+                            "skill": skill,
+                            "weight": weight,
                         })
 
                 count += 1
@@ -112,8 +134,11 @@ async def get_skill_activity(
     for skill in unique_skills:
         skill_df = df[df['skill'] == skill].copy()
 
-        # 期間でグループ化
-        grouped = skill_df.set_index('date').resample(freq).size().reset_index(name='activity')
+        # 期間でグループ化（重みの合計でアクティビティを算出）
+        grouped = (
+            skill_df.set_index('date')['weight']
+            .resample(freq).sum().reset_index(name='activity')
+        )
 
         # 期間文字列をフォーマット
         if interval == "month":
