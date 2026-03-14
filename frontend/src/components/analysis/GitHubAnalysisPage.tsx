@@ -2,37 +2,53 @@ import { useState, useEffect } from "react";
 import {
   analyzeGitHub,
   summarizeAnalysis,
+  downloadAnalysisPdf,
+  downloadAnalysisMarkdown,
   type AnalysisResponse,
 } from "../../api";
 import shared from "../../styles/shared.module.css";
 import styles from "./GitHubAnalysisPage.module.css";
 
+const CACHE_KEY_RESULT = "github_analysis_result";
+const CACHE_KEY_SUMMARY = "github_analysis_summary";
+
 type Phase = "input" | "loading" | "result";
 
+function loadCachedResult(): AnalysisResponse | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY_RESULT);
+    return raw ? (JSON.parse(raw) as AnalysisResponse) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function GitHubAnalysisPage() {
-  const [phase, setPhase] = useState<Phase>("input");
-  const [username, setUsername] = useState("");
-  const [token, setToken] = useState("");
+  const cachedResult = loadCachedResult();
+  const [phase, setPhase] = useState<Phase>(cachedResult ? "result" : "input");
   const [includeForks, setIncludeForks] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AnalysisResponse | null>(null);
+  const [result, setResult] = useState<AnalysisResponse | null>(cachedResult);
 
   // AI summary
-  const [summary, setSummary] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(
+    () => sessionStorage.getItem(CACHE_KEY_SUMMARY),
+  );
   const [summaryLoading, setSummaryLoading] = useState(false);
 
+  // Download state
+  const [downloading, setDownloading] = useState(false);
+
   const handleAnalyze = async () => {
-    if (!username.trim()) return;
     setError(null);
     setPhase("loading");
     try {
       const data = await analyzeGitHub({
-        github_username: username.trim(),
-        github_token: token || null,
         include_forks: includeForks,
       });
       setResult(data);
+      sessionStorage.setItem(CACHE_KEY_RESULT, JSON.stringify(data));
       setPhase("result");
     } catch (e) {
       setError(e instanceof Error ? e.message : "分析に失敗しました");
@@ -40,15 +56,17 @@ export function GitHubAnalysisPage() {
     }
   };
 
-  // Fetch AI summary after result is available
+  // Fetch AI summary after result is available (only if not cached)
   useEffect(() => {
     if (!result) return;
+    if (summary) return; // already have cached summary
     let cancelled = false;
     setSummaryLoading(true);
     summarizeAnalysis(result)
       .then((res) => {
         if (!cancelled && res.available) {
           setSummary(res.summary);
+          sessionStorage.setItem(CACHE_KEY_SUMMARY, res.summary);
         }
       })
       .catch(() => {})
@@ -64,6 +82,32 @@ export function GitHubAnalysisPage() {
     setPhase("input");
     setResult(null);
     setSummary(null);
+    sessionStorage.removeItem(CACHE_KEY_RESULT);
+    sessionStorage.removeItem(CACHE_KEY_SUMMARY);
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!result) return;
+    setDownloading(true);
+    try {
+      await downloadAnalysisPdf(result, summary);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "PDFダウンロードに失敗しました");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleDownloadMarkdown = async () => {
+    if (!result) return;
+    setDownloading(true);
+    try {
+      await downloadAnalysisMarkdown(result, summary);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Markdownダウンロードに失敗しました");
+    } finally {
+      setDownloading(false);
+    }
   };
 
   // ── Phase: Input ──────────────────────────────────────────
@@ -72,20 +116,7 @@ export function GitHubAnalysisPage() {
       <div className={shared.pageBody}>
         <div className={styles.inputCard}>
           <h2>GitHub分析</h2>
-          <p>GitHubのアクティビティからスキルとキャリアを分析します</p>
-
-          <div className={styles.inputField}>
-            <label>
-              GitHubユーザー名
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="例: octocat"
-                onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
-              />
-            </label>
-          </div>
+          <p>あなたのGitHubアクティビティからスキルとキャリアを分析します</p>
 
           <button
             type="button"
@@ -97,17 +128,6 @@ export function GitHubAnalysisPage() {
 
           {showAdvanced && (
             <div className={styles.advancedOptions}>
-              <div className={styles.inputField}>
-                <label>
-                  GitHubトークン（オプション）
-                  <input
-                    type="password"
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                    placeholder="ghp_..."
-                  />
-                </label>
-              </div>
               <div className={styles.checkbox}>
                 <input
                   type="checkbox"
@@ -124,7 +144,6 @@ export function GitHubAnalysisPage() {
             type="button"
             className={styles.analyzeButton}
             onClick={handleAnalyze}
-            disabled={!username.trim()}
           >
             分析開始
           </button>
@@ -177,12 +196,32 @@ export function GitHubAnalysisPage() {
         {/* Header */}
         <div className={styles.dashboardHeader}>
           <h1>{result.username} の分析結果</h1>
-          <button type="button" className={styles.backButton} onClick={handleBack}>
-            新しい分析
-          </button>
+          <div className={styles.headerActions}>
+            <button
+              type="button"
+              className={styles.downloadButton}
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+            >
+              PDF
+            </button>
+            <button
+              type="button"
+              className={styles.downloadButton}
+              onClick={handleDownloadMarkdown}
+              disabled={downloading}
+            >
+              Markdown
+            </button>
+            <button type="button" className={styles.backButton} onClick={handleBack}>
+              再分析
+            </button>
+          </div>
         </div>
 
-        {/* ① Overview */}
+        {error && <p className={styles.errorMessage}>{error}</p>}
+
+        {/* Overview */}
         <div className={styles.section}>
           <h2>Overview</h2>
           <div className={styles.overviewCards}>
@@ -205,7 +244,7 @@ export function GitHubAnalysisPage() {
           </div>
         </div>
 
-        {/* ② AI Summary */}
+        {/* AI Summary */}
         {(summaryLoading || summary) && (
           <div className={styles.section}>
             <h2>AI要約</h2>
@@ -217,7 +256,7 @@ export function GitHubAnalysisPage() {
           </div>
         )}
 
-        {/* ③ Skill Timeline */}
+        {/* Skill Timeline */}
         {year_snapshots.length > 0 && (
           <div className={styles.section}>
             <h2>スキルタイムライン</h2>
@@ -256,7 +295,7 @@ export function GitHubAnalysisPage() {
           </div>
         )}
 
-        {/* ④ Growth Trends */}
+        {/* Growth Trends */}
         {growth.length > 0 && (
           <div className={styles.section}>
             <h2>スキル成長トレンド</h2>
@@ -316,7 +355,7 @@ export function GitHubAnalysisPage() {
           </div>
         )}
 
-        {/* ⑤ Career Prediction */}
+        {/* Career Prediction */}
         <div className={styles.section}>
           <h2>キャリア予測</h2>
           <div className={styles.currentRole}>
@@ -384,7 +423,7 @@ export function GitHubAnalysisPage() {
           )}
         </div>
 
-        {/* ⑥ Career Path Simulation */}
+        {/* Career Path Simulation */}
         {simulation.paths.length > 0 && (
           <div className={styles.section}>
             <h2>キャリアパスシミュレーション</h2>

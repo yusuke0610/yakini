@@ -130,6 +130,12 @@
   font-size: 1.4rem;
 }
 
+.headerActions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .backButton {
   background: var(--ghost-bg);
   color: var(--ghost-text);
@@ -139,6 +145,25 @@
 
 .backButton:hover {
   background: var(--ghost-hover);
+}
+
+.downloadButton {
+  background: var(--ghost-bg);
+  color: var(--accent);
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.downloadButton:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.downloadButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── Section shared ─────────────────────────────────────────── */

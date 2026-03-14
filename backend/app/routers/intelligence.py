@@ -2,17 +2,25 @@
 Career intelligence API endpoints.
 
 POST /api/intelligence/analyze — run the full analysis pipeline.
+POST /api/intelligence/download/pdf — generate PDF from analysis data.
+POST /api/intelligence/download/markdown — generate Markdown from analysis data.
 """
 
+import asyncio
+import io
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
+from ..auth import get_current_user
+from ..models import User
 from ..schemas_intelligence import (
     AnalysisResponse,
     AnalyzeRequest,
     CareerPredictionResponse,
     CareerSimulationResponse,
+    DownloadRequest,
     PredictedRoleItem,
     SimulatedPathItem,
     SkillGrowthItem,
@@ -29,6 +37,8 @@ from ..services.intelligence.llm_summarizer import (
     summarize_analysis,
 )
 from ..services.intelligence.pipeline import run_pipeline
+from ..services.markdown.markdown_service import generate_intelligence_markdown
+from ..services.pdf.pdf_service import generate_intelligence_report
 
 logger = logging.getLogger(__name__)
 
@@ -36,30 +46,54 @@ router = APIRouter(prefix="/api/intelligence", tags=["intelligence"])
 
 
 @router.post("/analyze", response_model=AnalysisResponse)
-async def analyze(request: AnalyzeRequest):
+async def analyze(
+    request: AnalyzeRequest,
+    user: User = Depends(get_current_user),
+):
     """
-    Run the full career intelligence pipeline for a GitHub user.
+    Run the full career intelligence pipeline for the logged-in GitHub user.
 
     Stages: GitHub collection → Skill extraction → Timeline →
     Growth analysis → Career prediction → Career simulation.
 
     All stages are deterministic (no LLM).
+    Requires GitHub OAuth login (username format: "github:{login}").
     """
+    if not user.username.startswith("github:"):
+        raise HTTPException(
+            status_code=403,
+            detail="GitHub分析にはGitHubアカウントでのログインが必要です",
+        )
+
+    github_username = user.username.removeprefix("github:")
+
     try:
-        result = await run_pipeline(
-            username=request.github_username,
-            token=request.github_token,
-            include_forks=request.include_forks,
+        result = await asyncio.wait_for(
+            run_pipeline(
+                username=github_username,
+                token=user.github_token,
+                include_forks=request.include_forks,
+            ),
+            timeout=120.0,
         )
     except GitHubUserNotFoundError:
         raise HTTPException(
             status_code=404,
-            detail=f"GitHub user not found: {request.github_username}",
+            detail=f"GitHub user not found: {github_username}",
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "Intelligence pipeline timed out for %s",
+            github_username,
+        )
+        raise HTTPException(
+            status_code=504,
+            detail="分析がタイムアウトしました。しばらくしてから再度お試しください。",
         )
     except Exception:
         logger.exception(
             "Intelligence pipeline failed for %s",
-            request.github_username,
+            github_username,
         )
         raise HTTPException(
             status_code=502,
@@ -165,3 +199,49 @@ async def summarize(request: SummarizeRequest):
     analysis_dict = request.analysis.model_dump()
     summary = await summarize_analysis(analysis_dict)
     return SummarizeResponse(summary=summary, available=True)
+
+
+@router.post("/download/pdf")
+async def download_pdf(
+    request: DownloadRequest,
+    user: User = Depends(get_current_user),
+):
+    """Generate a PDF report from the analysis data."""
+    payload = request.analysis.model_dump()
+    if request.summary:
+        payload["summary"] = request.summary
+
+    pdf_bytes = generate_intelligence_report(payload)
+    username = payload.get("username", "analysis")
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="github-analysis-{username}.pdf"'
+            ),
+        },
+    )
+
+
+@router.post("/download/markdown")
+async def download_markdown(
+    request: DownloadRequest,
+    user: User = Depends(get_current_user),
+):
+    """Generate a Markdown report from the analysis data."""
+    payload = request.analysis.model_dump()
+    if request.summary:
+        payload["summary"] = request.summary
+
+    md_text = generate_intelligence_markdown(payload)
+    username = payload.get("username", "analysis")
+    return StreamingResponse(
+        io.BytesIO(md_text.encode("utf-8")),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="github-analysis-{username}.md"'
+            ),
+        },
+    )

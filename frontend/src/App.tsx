@@ -25,6 +25,7 @@ export default function App() {
   });
 
   const username = parseUsernameFromToken(token);
+  const isGitHubUser = username?.startsWith("github:") ?? false;
   const [githubError, setGithubError] = useState<string | null>(null);
   const [githubLoading, setGithubLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -32,7 +33,9 @@ export default function App() {
   });
   const [page, setPage] = useState<PageKey>(() => {
     const saved = sessionStorage.getItem("current_page");
-    return saved === "career" || saved === "Resume" || saved === "github" ? saved : "basic";
+    if (saved === "career" || saved === "Resume") return saved;
+    if (saved === "github" && isGitHubUser) return saved;
+    return "basic";
   });
   const [authMode, setAuthMode] = useState<"login" | "register">(() => {
     return sessionStorage.getItem("auth_mode") === "register" ? "register" : "login";
@@ -122,13 +125,15 @@ export default function App() {
             >
               履歴書
             </button>
-            <button
-              type="button"
-              className={`${styles.sidebarItem} ${page === "github" ? styles.active : ""}`}
-              onClick={() => setPage("github")}
-            >
-              GitHub分析
-            </button>
+            {isGitHubUser && (
+              <button
+                type="button"
+                className={`${styles.sidebarItem} ${page === "github" ? styles.active : ""}`}
+                onClick={() => setPage("github")}
+              >
+                GitHub分析
+              </button>
+            )}
           </nav>
           <div className={styles.sidebarFooter}>
             <UserMenu
