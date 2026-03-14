@@ -23,6 +23,7 @@ SKILL_CATEGORIES: Dict[str, List[str]] = {
     "backend_framework": [
         "FastAPI", "Django", "Flask", "Express", "NestJS", "Spring Boot",
         "Rails", "Laravel", "Gin", "Echo", "Actix", "Phoenix", "ASP.NET",
+        "Fiber", "SQLAlchemy", "Celery",
     ],
     "mobile": [
         "React Native", "Flutter", "SwiftUI", "Jetpack Compose", "Ionic",
@@ -32,8 +33,8 @@ SKILL_CATEGORIES: Dict[str, List[str]] = {
         "Elasticsearch", "Cassandra", "Neo4j", "Firebase",
     ],
     "infrastructure": [
-        "Docker", "Kubernetes", "Terraform", "Pulumi", "Ansible",
-        "CloudFormation", "Helm",
+        "Docker", "Docker Compose", "Kubernetes", "Terraform", "Pulumi",
+        "Ansible", "CloudFormation", "Helm",
     ],
     "cloud": [
         "AWS", "GCP", "Azure",
@@ -57,7 +58,7 @@ SKILL_CATEGORIES: Dict[str, List[str]] = {
     ],
     "other": [
         "GraphQL", "gRPC", "REST API", "WebSocket", "Nginx", "Linux",
-        "Git", "Figma",
+        "Git", "Figma", "Build Automation",
     ],
 }
 

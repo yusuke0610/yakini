@@ -1,20 +1,20 @@
-"""Pydantic schemas for the career intelligence API."""
+"""キャリアインテリジェンス API 用の Pydantic スキーマ。"""
 
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
 
-# ── Request ─────────────────────────────────────────────────────────────
+# ── リクエスト ─────────────────────────────────────────────────────────────
 
 class AnalyzeRequest(BaseModel):
     include_forks: bool = Field(
         False,
-        description="Include forked repositories in analysis",
+        description="分析にフォークしたリポジトリを含めるかどうか",
     )
 
 
-# ── Skill Timeline ─────────────────────────────────────────────────────
+# ── スキルタイムライン ─────────────────────────────────────────────────────
 
 class SkillTimelineItem(BaseModel):
     skill_name: str
@@ -32,7 +32,7 @@ class YearSnapshotItem(BaseModel):
     new_skills: List[str]
 
 
-# ── Skill Growth ────────────────────────────────────────────────────────
+# ── スキル成長 ────────────────────────────────────────────────────────
 
 class SkillGrowthItem(BaseModel):
     skill_name: str
@@ -45,7 +45,7 @@ class SkillGrowthItem(BaseModel):
     total_repos: int
 
 
-# ── Career Prediction ───────────────────────────────────────────────────
+# ── キャリア予測 ───────────────────────────────────────────────────
 
 class PredictedRoleItem(BaseModel):
     role_name: str
@@ -62,7 +62,7 @@ class CareerPredictionResponse(BaseModel):
     skill_summary: Dict[str, List[str]]
 
 
-# ── Career Simulation ───────────────────────────────────────────────────
+# ── キャリアシミュレーション ───────────────────────────────────────────────────
 
 class SimulatedPathItem(BaseModel):
     path: List[str]
@@ -76,7 +76,7 @@ class CareerSimulationResponse(BaseModel):
     total_paths_explored: int
 
 
-# ── Full Analysis Response ──────────────────────────────────────────────
+# ── 全分析レスポンス ──────────────────────────────────────────────
 
 class AnalysisResponse(BaseModel):
     username: str
@@ -90,17 +90,17 @@ class AnalysisResponse(BaseModel):
     analyzed_at: str
 
 
-# ── Summarize (Ollama) ────────────────────────────────────────────────
+# ── 要約 (Ollama) ────────────────────────────────────────────────
 
 class SummarizeRequest(BaseModel):
     analysis: AnalysisResponse
 
 
 class SummarizeResponse(BaseModel):
-    summary: str = Field("", description="Natural language summary from LLM")
+    summary: str = Field("", description="LLM による自然言語の要約")
     available: bool = Field(
         True,
-        description="Whether the LLM service is available",
+        description="LLM サービスが利用可能かどうか",
     )
 
 
@@ -108,5 +108,21 @@ class DownloadRequest(BaseModel):
     analysis: AnalysisResponse
     summary: Optional[str] = Field(
         None,
-        description="AI summary text to include in the report",
+        description="レポートに含める AI 要約テキスト",
     )
+
+
+# ── スキルアクティビティ ─────────────────────────────────────────────────────
+
+class SkillTimelinePoint(BaseModel):
+    period: str
+    activity: int
+
+
+class SkillActivityItem(BaseModel):
+    skill: str
+    timeline: List[SkillTimelinePoint]
+
+
+class SkillActivityResponse(BaseModel):
+    skills: List[SkillActivityItem]

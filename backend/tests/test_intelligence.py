@@ -31,6 +31,9 @@ def _make_repo(
     description="",
     created_at="2022-01-01T00:00:00Z",
     pushed_at="2023-06-01T00:00:00Z",
+    dependencies=None,
+    root_files=None,
+    detected_frameworks=None,
 ):
     return RepoData(
         name=name,
@@ -43,6 +46,9 @@ def _make_repo(
         fork=False,
         stargazers_count=0,
         default_branch="main",
+        dependencies=dependencies or [],
+        root_files=root_files or [],
+        detected_frameworks=detected_frameworks or [],
     )
 
 
@@ -155,6 +161,210 @@ class TestSkillExtractor:
         sources = {s.source for s in result.skills}
         assert "language" in sources
         assert "topic" in sources
+
+    def test_extracts_from_dependencies(self):
+        repos = [_make_repo(
+            dependencies=["fastapi", "sqlalchemy", "uvicorn"],
+        )]
+        result = extract_skills(repos)
+        names = {s.skill_name for s in result.skills}
+        assert "FastAPI" in names
+        assert "SQLAlchemy" in names
+
+    def test_extracts_from_detected_frameworks(self):
+        repos = [_make_repo(
+            detected_frameworks=["Docker", "GitHub Actions", "Terraform"],
+        )]
+        result = extract_skills(repos)
+        names = {s.skill_name for s in result.skills}
+        assert "Docker" in names
+        assert "GitHub Actions" in names
+        assert "Terraform" in names
+
+    def test_dependency_source_label(self):
+        repos = [_make_repo(dependencies=["fastapi"])]
+        result = extract_skills(repos)
+        sources = {s.source for s in result.skills}
+        assert "dependency" in sources
+
+    def test_root_file_source_label(self):
+        repos = [_make_repo(detected_frameworks=["Docker"])]
+        result = extract_skills(repos)
+        sources = {s.source for s in result.skills}
+        assert "root_file" in sources
+
+    def test_dedup_dependency_and_topic(self):
+        """Same skill from topic + dependency should appear once."""
+        repos = [_make_repo(
+            topics=["fastapi"],
+            dependencies=["fastapi"],
+        )]
+        result = extract_skills(repos)
+        fastapi_count = sum(
+            1 for s in result.skills if s.skill_name == "FastAPI"
+        )
+        assert fastapi_count == 1
+
+    def test_dedup_root_file_and_language(self):
+        """Docker from language + root_file should appear once."""
+        repos = [_make_repo(
+            languages={"Dockerfile": 500},
+            detected_frameworks=["Docker"],
+        )]
+        result = extract_skills(repos)
+        docker_count = sum(
+            1 for s in result.skills if s.skill_name == "Docker"
+        )
+        assert docker_count == 1
+
+    def test_full_repo_with_all_sources(self):
+        """A realistic repo should produce rich skill set."""
+        repos = [_make_repo(
+            name="fullstack-app",
+            languages={"Python": 50000, "Dockerfile": 500},
+            topics=["fastapi", "postgresql"],
+            description="Backend API",
+            dependencies=["fastapi", "sqlalchemy", "boto3"],
+            root_files=["Dockerfile", ".github", "terraform"],
+            detected_frameworks=["Docker", "GitHub Actions", "Terraform"],
+        )]
+        result = extract_skills(repos)
+        names = {s.skill_name for s in result.skills}
+        assert "Python" in names
+        assert "FastAPI" in names
+        assert "PostgreSQL" in names
+        assert "Docker" in names
+        assert "GitHub Actions" in names
+        assert "Terraform" in names
+        assert "SQLAlchemy" in names
+        assert "AWS" in names  # from boto3 dependency
+
+
+# ── Root File Detection ─────────────────────────────────────────────────
+
+class TestRootFileDetection:
+
+    def test_dockerfile_detected(self):
+        from app.services.intelligence.github_collector import (
+            _detect_from_root_files,
+        )
+        result = _detect_from_root_files(["Dockerfile"])
+        assert "Docker" in result
+
+    def test_docker_compose_detected(self):
+        from app.services.intelligence.github_collector import (
+            _detect_from_root_files,
+        )
+        result = _detect_from_root_files(["docker-compose.yml"])
+        assert "Docker Compose" in result
+
+    def test_github_actions_detected(self):
+        from app.services.intelligence.github_collector import (
+            _detect_from_root_files,
+        )
+        result = _detect_from_root_files([".github"])
+        assert "GitHub Actions" in result
+
+    def test_terraform_detected(self):
+        from app.services.intelligence.github_collector import (
+            _detect_from_root_files,
+        )
+        result = _detect_from_root_files(["terraform"])
+        assert "Terraform" in result
+
+    def test_makefile_detected(self):
+        from app.services.intelligence.github_collector import (
+            _detect_from_root_files,
+        )
+        result = _detect_from_root_files(["Makefile"])
+        assert "Build Automation" in result
+
+    def test_no_duplicates(self):
+        from app.services.intelligence.github_collector import (
+            _detect_from_root_files,
+        )
+        result = _detect_from_root_files([
+            "terraform", ".terraform",
+        ])
+        assert result.count("Terraform") == 1
+
+
+# ── Dependency Parsing ──────────────────────────────────────────────────
+
+class TestDependencyParsing:
+
+    def test_parse_requirements_txt(self):
+        from app.services.intelligence.github_collector import (
+            _parse_requirements_txt,
+        )
+        content = "fastapi>=0.100\nuvicorn\nsqlalchemy==2.0\n# comment\n"
+        result = _parse_requirements_txt(content)
+        assert "fastapi" in result
+        assert "uvicorn" in result
+        assert "sqlalchemy" in result
+
+    def test_parse_requirements_txt_with_extras(self):
+        from app.services.intelligence.github_collector import (
+            _parse_requirements_txt,
+        )
+        content = "uvicorn[standard]>=0.20\nboto3\n"
+        result = _parse_requirements_txt(content)
+        assert "uvicorn" in result
+        assert "boto3" in result
+
+    def test_parse_package_json(self):
+        from app.services.intelligence.github_collector import (
+            _parse_package_json,
+        )
+        content = '{"dependencies":{"react":"^18","next":"^14"}}'
+        result = _parse_package_json(content)
+        assert "react" in result
+        assert "next" in result
+
+    def test_parse_package_json_with_dev_deps(self):
+        from app.services.intelligence.github_collector import (
+            _parse_package_json,
+        )
+        content = '{"dependencies":{"react":"^18"},"devDependencies":{"jest":"^29"}}'
+        result = _parse_package_json(content)
+        assert "react" in result
+        assert "jest" in result
+
+    def test_parse_package_json_invalid(self):
+        from app.services.intelligence.github_collector import (
+            _parse_package_json,
+        )
+        result = _parse_package_json("not json")
+        assert result == []
+
+    def test_parse_pom_xml(self):
+        from app.services.intelligence.github_collector import (
+            _parse_pom_xml,
+        )
+        content = (
+            "<project><dependencies><dependency>"
+            "<artifactId>spring-boot-starter-web</artifactId>"
+            "</dependency></dependencies></project>"
+        )
+        result = _parse_pom_xml(content)
+        assert "spring-boot-starter-web" in result
+
+    def test_parse_go_mod(self):
+        from app.services.intelligence.github_collector import (
+            _parse_go_mod,
+        )
+        content = "module example.com/app\n\nrequire (\n\tgithub.com/gin-gonic/gin v1.9\n)\n"
+        result = _parse_go_mod(content)
+        assert "github.com/gin-gonic/gin" in result
+
+    def test_dependency_to_framework_mapping(self):
+        from app.services.intelligence.github_collector import (
+            DEPENDENCY_TO_FRAMEWORK,
+        )
+        assert DEPENDENCY_TO_FRAMEWORK["fastapi"] == "FastAPI"
+        assert DEPENDENCY_TO_FRAMEWORK["react"] == "React"
+        assert DEPENDENCY_TO_FRAMEWORK["torch"] == "PyTorch"
+        assert DEPENDENCY_TO_FRAMEWORK["boto3"] == "AWS"
 
 
 # ── Skill Timeline ──────────────────────────────────────────────────────

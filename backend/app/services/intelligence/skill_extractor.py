@@ -5,6 +5,8 @@ Extracts skills using:
   1. Language detection (GitHub's linguist)
   2. Repository topics
   3. Description keyword matching
+  4. Dependency analysis (requirements.txt, package.json, etc.)
+  5. Root file / directory detection (Dockerfile, .github, terraform, etc.)
 
 No LLM usage.
 """
@@ -13,7 +15,10 @@ import logging
 from dataclasses import dataclass, field
 from typing import List, Set
 
-from .github_collector import RepoData
+from .github_collector import (
+    DEPENDENCY_TO_FRAMEWORK,
+    RepoData,
+)
 from .skill_taxonomy import (
     DESCRIPTION_KEYWORDS,
     LANGUAGE_TO_SKILL,
@@ -122,5 +127,32 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
                             repo_created_at=repo.created_at,
                             repo_pushed_at=repo.pushed_at,
                         ))
+
+    # 4. Dependencies (parsed from requirements.txt, package.json, etc.)
+    for dep in repo.dependencies:
+        framework = DEPENDENCY_TO_FRAMEWORK.get(dep)
+        if framework and framework not in seen:
+            seen.add(framework)
+            skills.append(ExtractedSkill(
+                skill_name=framework,
+                category=get_skill_category(framework),
+                source="dependency",
+                repo_name=repo.name,
+                repo_created_at=repo.created_at,
+                repo_pushed_at=repo.pushed_at,
+            ))
+
+    # 5. Root file / directory detection
+    for framework in repo.detected_frameworks:
+        if framework not in seen:
+            seen.add(framework)
+            skills.append(ExtractedSkill(
+                skill_name=framework,
+                category=get_skill_category(framework),
+                source="root_file",
+                repo_name=repo.name,
+                repo_created_at=repo.created_at,
+                repo_pushed_at=repo.pushed_at,
+            ))
 
     return skills

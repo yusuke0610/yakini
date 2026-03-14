@@ -1,9 +1,10 @@
 """
-Career intelligence API endpoints.
+キャリアインテリジェンス API エンドポイント。
 
-POST /api/intelligence/analyze — run the full analysis pipeline.
-POST /api/intelligence/download/pdf — generate PDF from analysis data.
-POST /api/intelligence/download/markdown — generate Markdown from analysis data.
+POST /api/intelligence/analyze — 全分析パイプラインを実行。
+POST /api/intelligence/download/pdf — 分析データから PDF を生成。
+POST /api/intelligence/download/markdown — 分析データから Markdown を生成。
+POST /api/intelligence/skill-activity — スキルアクティビティを集計。
 """
 
 import asyncio
@@ -18,6 +19,7 @@ from ..schemas_intelligence import (
     AnalysisResponse,
     AnalyzeRequest,
     DownloadRequest,
+    SkillActivityResponse,
     SummarizeRequest,
     SummarizeResponse,
 )
@@ -30,6 +32,7 @@ from ..services.intelligence.llm_summarizer import (
 )
 from ..services.intelligence.pipeline import run_pipeline
 from ..services.intelligence.response_mapper import map_pipeline_result
+from ..services.intelligence.skill_activity_analyzer import get_skill_activity
 from ..services.markdown.generators.intelligence_generator import (
     build_intelligence_markdown,
 )
@@ -47,13 +50,13 @@ async def analyze(
     user: User = Depends(get_current_user),
 ):
     """
-    Run the full career intelligence pipeline for the logged-in GitHub user.
+    ログイン中の GitHub ユーザーに対して全キャリアインテリジェンスパイプラインを実行します。
 
-    Stages: GitHub collection → Skill extraction → Timeline →
-    Growth analysis → Career prediction → Career simulation.
+    ステージ: GitHub データ収集 → スキル抽出 → タイムライン生成 →
+    成長分析 → キャリア予測 → キャリアシミュレーション。
 
-    All stages are deterministic (no LLM).
-    Requires GitHub OAuth login (username format: "github:{login}").
+    すべてのステージは決定的です（LLM 不使用）。
+    GitHub OAuth ログインが必要です（ユーザー名形式: "github:{login}"）。
     """
     if not user.username.startswith("github:"):
         raise HTTPException(
@@ -79,7 +82,7 @@ async def analyze(
         )
     except asyncio.TimeoutError:
         logger.warning(
-            "Intelligence pipeline timed out for %s",
+            "%s のインテリジェンスパイプラインがタイムアウトしました",
             github_username,
         )
         raise HTTPException(
@@ -88,7 +91,7 @@ async def analyze(
         )
     except Exception:
         logger.exception(
-            "Intelligence pipeline failed for %s",
+            "%s のインテリジェンスパイプラインが失敗しました",
             github_username,
         )
         raise HTTPException(
@@ -102,10 +105,10 @@ async def analyze(
 @router.post("/summarize", response_model=SummarizeResponse)
 async def summarize(request: SummarizeRequest):
     """
-    Generate a natural language summary of analysis results using Ollama.
+    Ollama を使用して分析結果の自然言語要約を生成します。
 
-    Returns ``available: false`` when the Ollama server is not reachable,
-    allowing the frontend to gracefully hide the summary section.
+    Ollama サーバーに接続できない場合は available: false を返します。
+    これによりフロントエンドで要約セクションを適切に非表示にできます。
     """
     available = await check_ollama_available()
     if not available:
@@ -121,7 +124,7 @@ async def download_pdf(
     request: DownloadRequest,
     user: User = Depends(get_current_user),
 ):
-    """Generate a PDF report from the analysis data."""
+    """分析データから PDF レポートを生成します。"""
     payload = request.analysis.model_dump()
     if request.summary:
         payload["summary"] = request.summary
@@ -136,7 +139,7 @@ async def download_markdown(
     request: DownloadRequest,
     user: User = Depends(get_current_user),
 ):
-    """Generate a Markdown report from the analysis data."""
+    """分析データから Markdown レポートを生成します。"""
     payload = request.analysis.model_dump()
     if request.summary:
         payload["summary"] = request.summary
@@ -144,3 +147,36 @@ async def download_markdown(
     md_text = build_intelligence_markdown(payload)
     username = payload.get("username", "analysis")
     return stream_markdown(md_text, f"github-analysis-{username}.md")
+
+
+@router.post("/skill-activity", response_model=SkillActivityResponse)
+async def skill_activity(
+    interval: str = "month",
+    user: User = Depends(get_current_user),
+):
+    """
+    スキルアクティビティ（コミット数）を取得し、時系列で集計します。
+    GitHub OAuth ログインが必要です。
+    """
+    if not user.username.startswith("github:"):
+        raise HTTPException(
+            status_code=403,
+            detail="GitHub分析にはGitHubアカウントでのログインが必要です",
+        )
+
+    github_username = user.username.removeprefix("github:")
+    token = decrypt_field(user.github_token) if user.github_token else None
+
+    try:
+        results = await get_skill_activity(
+            username=github_username,
+            token=token,
+            interval=interval,  # type: ignore
+        )
+        return SkillActivityResponse(skills=results)
+    except Exception:
+        logger.exception("%s のスキルアクティビティ分析に失敗しました", github_username)
+        raise HTTPException(
+            status_code=502,
+            detail="GitHubアクティビティの分析に失敗しました。",
+        )
