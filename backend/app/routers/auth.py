@@ -65,8 +65,9 @@ def login(
 
 
 @router.post("/github/callback", response_model=TokenResponse)
+@limiter.limit("5/minute")
 async def github_callback(
-    payload: GitHubCallbackRequest, db: Session = Depends(get_db)
+    request: Request, payload: GitHubCallbackRequest, db: Session = Depends(get_db)
 ) -> TokenResponse:
     client_id = get_github_client_id()
     client_secret = get_github_client_secret()

@@ -94,7 +94,10 @@ async def analyze(
 
 
 @router.post("/summarize", response_model=SummarizeResponse)
-async def summarize(request: SummarizeRequest):
+async def summarize(
+    request: SummarizeRequest,
+    user: User = Depends(get_current_user),
+):
     """
     Ollama を使用して分析結果の自然言語要約を生成します。
 
