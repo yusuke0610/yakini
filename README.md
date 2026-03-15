@@ -63,6 +63,16 @@ npm run dev
 docker compose up --build
 ```
 
+### マスタデータ変更時の再起動
+
+シードデータ（`backend/app/seed.py`）を変更した場合、キャッシュを使わずにイメージを再ビルドし、DBを再作成する必要があります。
+
+```bash
+docker compose build --no-cache
+rm data/devforge.sqlite
+docker compose up
+```
+
 ## DBクライアント（DBeaver等）からSQLiteに接続する
 
 Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` にバインドマウントされます。
