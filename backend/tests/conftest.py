@@ -11,7 +11,7 @@ os.environ.setdefault("APP_BOOTSTRAPPED", "1")
 os.environ.setdefault("FIELD_ENCRYPTION_KEY", "pVo6M_raAWEpAv25F4p4RziywsjfPENokI10DZbNO7E=")
 
 from app.database import Base, get_db
-from app.models import BasicInfo, Resume, Rirekisho, User  # noqa: F401 — ensure models registered
+from app.models import BasicInfo, MasterData, Resume, Rirekisho, User  # noqa: F401 — ensure models registered
 from app.main import app, limiter
 
 

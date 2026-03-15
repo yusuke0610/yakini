@@ -5,3 +5,4 @@ export * from "./download";
 export * from "./resumes";
 export * from "./rirekisho";
 export * from "./intelligence";
+export * from "./master-data";

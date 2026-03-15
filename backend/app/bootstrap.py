@@ -15,6 +15,16 @@ def bootstrap() -> None:
     run_migrations()
     log_event(logging.INFO, "sqlite_bootstrap_migration_succeeded")
 
+    from .database import SessionLocal
+    from .seed import seed_master_data
+
+    db = SessionLocal()
+    try:
+        seed_master_data(db)
+        log_event(logging.INFO, "sqlite_bootstrap_seed_succeeded")
+    finally:
+        db.close()
+
 
 if __name__ == "__main__":
     bootstrap()

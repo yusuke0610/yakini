@@ -23,8 +23,10 @@ import type {
   CareerExperienceFieldKey,
   CareerProjectFieldKey,
 } from "../../formTypes";
+import { useMasterData } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
+import { Combobox } from "./Combobox";
 import { PdfPreviewModal } from "./PdfPreviewModal";
 import styles from "./CareerResumeForm.module.css";
 
@@ -38,6 +40,9 @@ export function CareerResumeForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const { items: techStackOptions } = useMasterData("technology_stack");
+  const techStackNames = techStackOptions.map((item) => item.name);
 
   const { downloading, previewUrl, closePreview, onDownloadPdf, onDownloadMarkdown, onPreviewPdf } =
     usePdfActions({
@@ -532,19 +537,20 @@ export function CareerResumeForm() {
                             </label>
                             <label>
                               名称
-                              <input
-                                type="text"
+                              <Combobox
                                 value={stack.name}
-                                onChange={(e) =>
+                                onChange={(val) =>
                                   updateTechnologyStackField(
                                     expIndex,
                                     projIndex,
                                     stackIndex,
                                     "name",
-                                    e.target.value,
+                                    val,
                                   )
                                 }
+                                options={techStackNames}
                                 placeholder="例: TypeScript"
+                                allowCustom
                               />
                             </label>
                           </div>
