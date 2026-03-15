@@ -20,7 +20,7 @@ def experience_payload() -> dict:
                 "description": "API開発",
                 "achievements": "処理速度を改善",
                 "scale": "5名",
-                "technology_stacks": [{"category": "言語", "name": "Python"}],
+                "technology_stacks": [{"category": "language", "name": "Python"}],
             }
         ],
     }
@@ -47,11 +47,11 @@ def test_end_date_is_required_when_not_current() -> None:
 
 def test_framework_category_is_accepted() -> None:
     payload = experience_payload()
-    payload["projects"][0]["technology_stacks"] = [{"category": "フレームワーク", "name": "FastAPI"}]
+    payload["projects"][0]["technology_stacks"] = [{"category": "framework", "name": "FastAPI"}]
 
     experience = Experience(**payload)
 
-    assert experience.projects[0].technology_stacks[0].category == "フレームワーク"
+    assert experience.projects[0].technology_stacks[0].category == "framework"
 
 
 def test_unknown_category_is_rejected() -> None:

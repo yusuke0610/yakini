@@ -221,3 +221,73 @@ def test_rirekisho_crud(client: TestClient) -> None:
     }, headers=headers)
     assert resp.status_code == 200
     assert resp.json()["postal_code"] == "150-0002"
+
+
+# ── Health Check ───────────────────────────────────────────────
+
+
+def test_health_check(client: TestClient) -> None:
+    resp = client.get("/health")
+    assert resp.status_code == 200
+
+
+# ── 404: Not Found ─────────────────────────────────────────────
+
+
+def test_basic_info_not_found(client: TestClient) -> None:
+    headers = _auth_header(client, "bi404user")
+    resp = client.get("/api/basic-info/latest", headers=headers)
+    assert resp.status_code == 404
+
+
+def test_resume_get_by_id(client: TestClient) -> None:
+    headers = _auth_header(client, "resumegetuser")
+    resp = client.post("/api/resumes", json={
+        "career_summary": "サマリー",
+        "self_pr": "自己PR",
+        "experiences": [],
+    }, headers=headers)
+    assert resp.status_code == 201
+    resume_id = resp.json()["id"]
+
+    resp = client.get(f"/api/resumes/{resume_id}", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["career_summary"] == "サマリー"
+
+
+def test_resume_not_found(client: TestClient) -> None:
+    headers = _auth_header(client, "resume404user")
+    resp = client.get(
+        "/api/resumes/00000000-0000-0000-0000-000000000000",
+        headers=headers,
+    )
+    assert resp.status_code == 404
+
+
+def test_rirekisho_get_by_id(client: TestClient) -> None:
+    headers = _auth_header(client, "ririgetuser")
+    resp = client.post("/api/rirekisho", json={
+        "postal_code": "150-0001",
+        "prefecture": "東京都",
+        "address": "渋谷区神南1-1-1",
+        "email": "test@example.com",
+        "phone": "09012345678",
+        "motivation": "志望動機",
+        "educations": [],
+        "work_histories": [],
+    }, headers=headers)
+    assert resp.status_code == 201
+    rirekisho_id = resp.json()["id"]
+
+    resp = client.get(f"/api/rirekisho/{rirekisho_id}", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["prefecture"] == "東京都"
+
+
+def test_rirekisho_not_found(client: TestClient) -> None:
+    headers = _auth_header(client, "riri404user")
+    resp = client.get(
+        "/api/rirekisho/00000000-0000-0000-0000-000000000000",
+        headers=headers,
+    )
+    assert resp.status_code == 404

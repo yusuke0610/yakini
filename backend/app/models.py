@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -15,6 +15,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, default=None)
     github_id: Mapped[int | None] = mapped_column(nullable=True, unique=True, default=None)
+    github_token: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
@@ -65,3 +66,38 @@ class Rirekisho(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+class MQualification(Base):
+    """資格マスタ。"""
+
+    __tablename__ = "m_qualification"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    sort_order: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class MTechnologyStack(Base):
+    """技術スタックマスタ。カテゴリ別に技術名を管理する。"""
+
+    __tablename__ = "m_technology_stack"
+    __table_args__ = (UniqueConstraint("category", "name", name="uq_m_technology_stack_category_name"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    category: Mapped[str] = mapped_column(String(60), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    sort_order: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class MPrefecture(Base):
+    """都道府県マスタ。"""
+
+    __tablename__ = "m_prefecture"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
+    sort_order: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

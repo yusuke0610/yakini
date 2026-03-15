@@ -14,8 +14,10 @@ import type { ResumeFormState } from "../../payloadBuilders";
 import type { ResumeHistory } from "../../types";
 import { blankHistory } from "../../constants";
 import type { ResumeTextFieldKey } from "../../formTypes";
+import { usePrefectures } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
+import { Combobox } from "./Combobox";
 import { PdfPreviewModal } from "./PdfPreviewModal";
 import styles from "./ResumeForm.module.css";
 
@@ -32,8 +34,10 @@ export function ResumeForm() {
     work_histories: [{ ...blankHistory }],
     photo: null,
   });
-  const [ResumeId, setResumeId] = useState<string | null>(null);
+  const [resumeId, setresumeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const { items: prefectureOptions } = usePrefectures();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -51,7 +55,7 @@ export function ResumeForm() {
       try {
         const latest = await getLatestResume();
         if (!active) return;
-        setResumeId(latest.id);
+        setresumeId(latest.id);
         setForm({
           postal_code: latest.postal_code,
           prefecture: latest.prefecture,
@@ -79,8 +83,8 @@ export function ResumeForm() {
     if (saving) {
       return "保存中...";
     }
-    return ResumeId ? "更新する" : "保存する";
-  }, [ResumeId, saving]);
+    return resumeId ? "更新する" : "保存する";
+  }, [resumeId, saving]);
 
   const onChangeField = (key: ResumeTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -170,9 +174,9 @@ export function ResumeForm() {
       }
 
       const payload = buildResumePayload(form);
-      const saved = ResumeId ? await updateResume(ResumeId, payload) : await createResume(payload);
+      const saved = resumeId ? await updateResume(resumeId, payload) : await createResume(payload);
 
-      setResumeId(saved.id);
+      setresumeId(saved.id);
       setSuccess("履歴書を保存しました。PDF出力できます。");
     } catch (submitError) {
       const message =
@@ -195,25 +199,25 @@ export function ResumeForm() {
             </button>
             <button
               type="button"
-              onClick={() => ResumeId && onPreviewPdf(ResumeId, setError)}
-              disabled={!ResumeId}
+              onClick={() => resumeId && onPreviewPdf(resumeId, setError)}
+              disabled={!resumeId}
             >
               プレビュー
             </button>
             <button
               type="button"
               onClick={() =>
-                ResumeId &&
-                onDownloadPdf(ResumeId, setError, setSuccess, "履歴書PDFをダウンロードしました。")
+                resumeId &&
+                onDownloadPdf(resumeId, setError, setSuccess, "履歴書PDFをダウンロードしました。")
               }
-              disabled={!ResumeId || downloading}
+              disabled={!resumeId || downloading}
             >
               {downloading ? "ダウンロード中..." : "PDF出力"}
             </button>
             <button
               type="button"
-              onClick={() => ResumeId && onDownloadMarkdown(ResumeId, setError)}
-              disabled={!ResumeId}
+              onClick={() => resumeId && onDownloadMarkdown(resumeId, setError)}
+              disabled={!resumeId}
             >
               Markdown出力
             </button>
@@ -263,12 +267,11 @@ export function ResumeForm() {
             </label>
             <label>
               <span className={shared.labelText}>都道府県<span className={shared.requiredBadge}>必須</span></span>
-              <input
-                type="text"
+              <Combobox
                 value={form.prefecture}
-                onChange={(e) => onChangeField("prefecture", e.target.value)}
+                onChange={(val) => onChangeField("prefecture", val)}
+                options={prefectureOptions.map((pref) => pref.name)}
                 placeholder="例: 東京都"
-                required
               />
             </label>
           </div>
@@ -384,7 +387,6 @@ export function ResumeForm() {
           </button>
         </section>
 
-            {ResumeId && <p className={shared.hint}>保存ID: {ResumeId}</p>}
           </div>
         </div>
       </form>

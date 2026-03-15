@@ -1,0 +1,95 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* ── カラーバー ────────────────────────────────────────────── */
+
+.barWrapper {
+  position: relative;
+}
+
+.bar {
+  display: flex;
+  height: 10px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--spinner-track);
+}
+
+.segment {
+  transition: opacity 0.15s ease;
+}
+
+.segment:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.segment:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.segment:only-child {
+  border-radius: 6px;
+}
+
+.segmentHovered {
+  opacity: 0.75;
+}
+
+/* ── ツールチップ ─────────────────────────────────────────── */
+
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── 凡例 ─────────────────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: default;
+  font-size: 0.8rem;
+  transition: opacity 0.15s ease;
+}
+
+.legendItemHovered {
+  opacity: 0.7;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.langName {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.langPercent {
+  color: var(--text-muted);
+}

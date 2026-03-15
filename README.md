@@ -63,6 +63,30 @@ npm run dev
 docker compose up --build
 ```
 
+### マスタデータ変更時の再起動
+
+シードデータ（`backend/app/seed.py`）を変更した場合、キャッシュを使わずにイメージを再ビルドし、DBを再作成する必要があります。
+
+```bash
+docker compose build --no-cache
+rm data/devforge.sqlite
+docker compose up
+```
+
+## DBクライアント（DBeaver等）からSQLiteに接続する
+
+Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` にバインドマウントされます。
+
+1. `docker compose up --build` でコンテナを起動する
+2. DBeaver で **新規接続** → **SQLite** を選択
+3. **Path** に以下のファイルパスを指定する
+   ```
+   <プロジェクトルート>/data/devforge.sqlite
+   ```
+4. **テスト接続** → **完了**
+
+> **注意**: SQLite はファイルロックで排他制御するため、DBeaver で書き込みを行うとアプリ側と競合する場合があります。参照のみの利用を推奨します。
+
 ## API概要
 
 ### 認証
@@ -98,53 +122,33 @@ docker compose up --build
 - `GET /health`: ヘルスチェック
 
 ## 環境変数
-### バックエンド（`backend/.env`）
-- `SQLITE_DB_PATH`: SQLiteファイルパス（例: `/tmp/devforge.sqlite`）
-- `SECRET_KEY`: JWT署名キー
-- `FIELD_ENCRYPTION_KEY`: Fernet暗号化キー
-- `GCS_BUCKET_NAME`: バックアップ先バケット名（未設定ならGCS処理はスキップ）
-- `GCS_DB_OBJECT`: バケット内オブジェクトキー（例: `devforge/dev/db.sqlite`）
-- `ADMIN_TOKEN`: `/admin/backup` 用Bearerトークン
-- `CORS_ORIGINS`: 許可するオリジン（カンマ区切り）
-- `GITHUB_CLIENT_ID`: GitHub OAuth Client ID
-- `GITHUB_CLIENT_SECRET`: GitHub OAuth Client Secret
 
-### フロントエンド（`frontend/.env`）
-- `VITE_API_BASE_URL`: バックエンドAPI URL（デフォルト: `http://localhost:8000`）
-- `VITE_GITHUB_CLIENT_ID`: GitHub OAuth Client ID
+各 `.env.example` を参照。主要な設定:
+
+| 変数 | 用途 |
+|---|---|
+| `SQLITE_DB_PATH` | SQLiteファイルパス（例: `/tmp/devforge.sqlite`） |
+| `SECRET_KEY` | JWT署名キー |
+| `FIELD_ENCRYPTION_KEY` | Fernet暗号化キー |
+| `GCS_BUCKET_NAME` / `GCS_DB_OBJECT` | GCSバックアップ先（未設定ならスキップ） |
+| `CORS_ORIGINS` | 許可するオリジン（カンマ区切り） |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth（任意） |
+| `VITE_API_BASE_URL` | フロントエンド→バックエンドURL（デフォルト: `http://localhost:8000`） |
 
 ## SQLite + GCSバックアップ/復元
 
-### 起動時フロー
-1. `GCS_BUCKET_NAME` と `GCS_DB_OBJECT` が設定されていれば、GCS上のDBを `SQLITE_DB_PATH` へ復元
-2. Alembicで `upgrade head` を適用
-3. アプリ起動
-
-### 復元失敗時の方針
-- 復元失敗は警告ログを出して空DBで起動（初回起動を許容）
-- ログはJSON形式の構造化ログで出力
-
-### バックアップ
-- 明示実行: `POST /admin/backup`（`Authorization: Bearer <ADMIN_TOKEN>`）
-- CLI実行（任意）: `python -m app.backup`
-- GCSアップロードは `tmp object` -> `final object(rewrite)` -> `tmp delete` の順で実施
+- **起動時**: GCS→ローカル復元 → Alembic `upgrade head` → アプリ起動（復元失敗時は空DBで起動）
+- **バックアップ**: `POST /admin/backup` または `python -m app.backup`
+- **Cloud Run IAM**: `storage.objects.{get,create,list}`
 
 ## Alembicマイグレーション
-- 設定: `backend/alembic.ini`
-- マイグレーション: `backend/alembic_migrations/versions`
-- 手動適用:
+
 ```bash
-cd backend
-alembic upgrade head
+cd backend && alembic upgrade head
 ```
-- SQLiteはDDL制約があるため、複雑なALTERはテーブル再作成型マイグレーションを推奨
 
-## Cloud Run IAM最小権限
-- `storage.objects.get`（復元）
-- `storage.objects.create`（バックアップ）
-- `storage.objects.list`（存在確認）
-
-`ADMIN_TOKEN` などの秘密情報は Secret Manager 経由の環境変数注入を推奨。
+設定: `backend/alembic.ini` / `backend/alembic_migrations/versions`
+SQLiteはDDL制約があるため、複雑なALTERはテーブル再作成型マイグレーションを推奨。
 
 ## テスト
 ### フロントエンド
@@ -174,26 +178,18 @@ cd backend
 
 ## Terraform (GCS backend)
 - テンプレート配置: `infra/`
-- 構成:
-  - `infra/environments/dev|stg|prod`
-  - `infra/modules/resume_stack`
-- バージョン管理:
-  - Terraform本体: 各環境の `versions.tf` (`required_version`)
-  - テンプレート版: 各環境の `terraform.tfvars` (`template_version`)
+- 構成: `infra/environments/dev|stg|prod`, `infra/modules/resume_stack`
+- バージョン管理: 各環境の `versions.tf` (`required_version`) / `terraform.tfvars` (`template_version`)
 
 ### 初期設定
-1. GCS tfstateバケットを作成:
 ```bash
+# 1. GCS tfstateバケットを作成
 gcloud storage buckets create gs://devforge-tfstate-dev \
   --location=asia-northeast1 --uniform-bucket-level-access
-```
 
-2. インフラ構築:
-```bash
+# 2. インフラ構築
 cd infra/environments/dev
-terraform init
-terraform plan
-terraform apply
+terraform init && terraform plan && terraform apply
 ```
 
 ### Terraform検証CI
@@ -247,12 +243,7 @@ gcloud services enable run.googleapis.com
 
 ### 2. Terraform でインフラを構築する
 
-```bash
-cd infra/environments/dev
-terraform init
-terraform plan
-terraform apply
-```
+上記「[Terraform (GCS backend) > 初期設定](#初期設定)」を参照。
 
 ### 3. Docker イメージをビルドして push する
 
@@ -263,13 +254,9 @@ terraform apply
 # Docker → Artifact Registry の認証設定（初回のみ）
 gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
-# イメージをビルド（プロジェクトルートで実行）
+# ビルド → タグ付け → push
 docker build --platform linux/amd64 -t devforge-dev ./backend
-
-# Artifact Registry 用にタグ付け
 docker tag devforge-dev asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest
-
-# push
 docker push asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest
 ```
 
@@ -280,61 +267,20 @@ gcloud run deploy devforge-dev \
   --image asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest \
   --region asia-northeast1 \
   --platform managed
-```
 
-デプロイ確認:
-
-```bash
-# サービス情報（URL 含む）を確認
-gcloud run services describe devforge-dev --region asia-northeast1
-
-# URL のみ取得
+# デプロイ確認（URL取得）
 gcloud run services describe devforge-dev --region asia-northeast1 \
   --format "value(status.url)"
 ```
 
 ### 5. トラブルシューティング
 
-#### GCP API が無効になっている
-
-```
-Error: googleapi: Error 403: ... is disabled
-```
-
-該当 API を有効化して再実行する:
-
-```bash
-gcloud services enable <API名>
-# 例: gcloud services enable artifactregistry.googleapis.com
-```
-
-#### exec format error（arm64/amd64 の不一致）
-
-```
-exec /scripts/entrypoint.sh: exec format error
-```
-
-Apple Silicon Mac でビルドする際に `--platform linux/amd64` が抜けている。
-イメージを再ビルドして push し直す:
-
-```bash
-docker build --platform linux/amd64 -t devforge-dev ./backend
-docker tag devforge-dev asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest
-docker push asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest
-```
-
-#### deletion_protection エラー（terraform destroy 時）
-
-```
-Error: Instance cannot be deleted because deletion protection is enabled
-```
-
-Terraform リソースの `deletion_protection = false` に変更して `terraform apply` 後、
-`terraform destroy` を実行する。
+| エラー | 原因 | 対処 |
+|---|---|---|
+| `Error 403: ... is disabled` | GCP API が未有効 | `gcloud services enable <API名>` |
+| `exec format error` | Apple Silicon で `--platform linux/amd64` が未指定 | 上記手順3でビルドし直す |
+| `deletion protection is enabled` | Terraform destroy 時 | リソースの `deletion_protection = false` に変更 → `apply` → `destroy` |
 
 ---
 
-## メモ
-- DBスキーマは起動時にAlembicで適用されます。
-- CORS許可元は `backend/.env` の `CORS_ORIGINS` で調整できます。
-- Cloud Runのローカルファイルは永続化されないため、必要に応じてGCSバックアップを実行してください。
+秘密情報（`ADMIN_TOKEN` 等）は Secret Manager 経由の環境変数注入を推奨。

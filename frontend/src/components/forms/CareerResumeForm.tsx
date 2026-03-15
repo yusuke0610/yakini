@@ -17,14 +17,17 @@ import {
   blankCareerProject,
   blankCareerTechnologyStack,
   careerTechnologyStackCategories,
+  careerTechnologyStackCategoryLabels,
 } from "../../constants";
 import type {
   CareerTextFieldKey,
   CareerExperienceFieldKey,
   CareerProjectFieldKey,
 } from "../../formTypes";
+import { useTechnologyStacks } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
+import { Combobox } from "./Combobox";
 import { PdfPreviewModal } from "./PdfPreviewModal";
 import styles from "./CareerResumeForm.module.css";
 
@@ -38,6 +41,18 @@ export function CareerResumeForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const { items: techStackOptions } = useTechnologyStacks();
+  /** カテゴリごとの名称リストを生成する */
+  const techStackNamesByCategory = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const item of techStackOptions) {
+      const list = map.get(item.category) ?? [];
+      list.push(item.name);
+      map.set(item.category, list);
+    }
+    return map;
+  }, [techStackOptions]);
 
   const { downloading, previewUrl, closePreview, onDownloadPdf, onDownloadMarkdown, onPreviewPdf } =
     usePdfActions({
@@ -145,7 +160,7 @@ export function CareerResumeForm() {
               technology_stacks: proj.technology_stacks.map((stack, si) => {
                 if (si !== stackIndex) return stack;
                 if (key === "category") {
-                  return { ...stack, category: value as CareerTechnologyStackCategory };
+                  return { ...stack, category: value as CareerTechnologyStackCategory, name: "" };
                 }
                 return { ...stack, name: value };
               }),
@@ -523,28 +538,29 @@ export function CareerResumeForm() {
                                   )
                                 }
                               >
-                                {careerTechnologyStackCategories.map((category) => (
-                                  <option key={category} value={category}>
-                                    {category}
+                                {careerTechnologyStackCategories.map((cat) => (
+                                  <option key={cat} value={cat}>
+                                    {careerTechnologyStackCategoryLabels[cat]}
                                   </option>
                                 ))}
                               </select>
                             </label>
                             <label>
                               名称
-                              <input
-                                type="text"
+                              <Combobox
                                 value={stack.name}
-                                onChange={(e) =>
+                                onChange={(val) =>
                                   updateTechnologyStackField(
                                     expIndex,
                                     projIndex,
                                     stackIndex,
                                     "name",
-                                    e.target.value,
+                                    val,
                                   )
                                 }
+                                options={techStackNamesByCategory.get(stack.category) ?? []}
                                 placeholder="例: TypeScript"
+                                allowCustom
                               />
                             </label>
                           </div>
@@ -591,7 +607,6 @@ export function CareerResumeForm() {
           </button>
         </section>
 
-            {resumeId && <p className={shared.hint}>保存ID: {resumeId}</p>}
           </div>
         </div>
       </form>

@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .encryption import decrypt_field, encrypt_field
-from .models import BasicInfo, Resume, Rirekisho, User
+from .models import BasicInfo, MPrefecture, MQualification, MTechnologyStack, Resume, Rirekisho, User
 
 _ENCRYPTED_RIREKISHO_FIELDS = {"email", "phone", "postal_code", "address"}
 
@@ -187,3 +187,163 @@ class RirekishoRepository:
         self.db.refresh(rirekisho)
         self._decrypt_rirekisho(rirekisho)
         return rirekisho
+
+
+class MQualificationRepository:
+    """資格マスタの永続化操作を管理するリポジトリ。"""
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def list_all(self) -> list[MQualification]:
+        """資格マスタ一覧を取得する。"""
+        statement = select(MQualification).order_by(MQualification.sort_order, MQualification.name)
+        return list(self.db.scalars(statement).all())
+
+    def create(self, name: str, sort_order: int = 0) -> MQualification:
+        """資格マスタを作成する。"""
+        item = MQualification(name=name, sort_order=sort_order)
+        self.db.add(item)
+        self.db.commit()
+        self.db.refresh(item)
+        return item
+
+    def update(self, item_id: str, name: str, sort_order: int = 0) -> MQualification | None:
+        """資格マスタを更新する。"""
+        item = self.db.scalar(select(MQualification).where(MQualification.id == item_id))
+        if not item:
+            return None
+        item.name = name
+        item.sort_order = sort_order
+        self.db.commit()
+        self.db.refresh(item)
+        return item
+
+    def delete(self, item_id: str) -> bool:
+        """資格マスタを削除する。"""
+        item = self.db.scalar(select(MQualification).where(MQualification.id == item_id))
+        if not item:
+            return False
+        self.db.delete(item)
+        self.db.commit()
+        return True
+
+    def seed_if_empty(self, items: list[dict]) -> None:
+        """テーブルが空の場合のみ一括投入する。"""
+        count = self.db.scalar(select(func.count()).select_from(MQualification))
+        if count:
+            return
+        for item in items:
+            self.db.add(MQualification(**item))
+        self.db.commit()
+
+
+class MTechnologyStackRepository:
+    """技術スタックマスタの永続化操作を管理するリポジトリ。"""
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def list_all(self) -> list[MTechnologyStack]:
+        """技術スタックマスタ一覧を取得する。"""
+        statement = select(MTechnologyStack).order_by(MTechnologyStack.sort_order, MTechnologyStack.name)
+        return list(self.db.scalars(statement).all())
+
+    def list_by_category(self, category: str) -> list[MTechnologyStack]:
+        """カテゴリ別に技術スタックマスタを取得する。"""
+        statement = (
+            select(MTechnologyStack)
+            .where(MTechnologyStack.category == category)
+            .order_by(MTechnologyStack.sort_order, MTechnologyStack.name)
+        )
+        return list(self.db.scalars(statement).all())
+
+    def create(self, category: str, name: str, sort_order: int = 0) -> MTechnologyStack:
+        """技術スタックマスタを作成する。"""
+        item = MTechnologyStack(category=category, name=name, sort_order=sort_order)
+        self.db.add(item)
+        self.db.commit()
+        self.db.refresh(item)
+        return item
+
+    def update(
+        self, item_id: str, name: str, sort_order: int = 0, category: str | None = None
+    ) -> MTechnologyStack | None:
+        """技術スタックマスタを更新する。"""
+        item = self.db.scalar(select(MTechnologyStack).where(MTechnologyStack.id == item_id))
+        if not item:
+            return None
+        item.name = name
+        item.sort_order = sort_order
+        if category is not None:
+            item.category = category
+        self.db.commit()
+        self.db.refresh(item)
+        return item
+
+    def delete(self, item_id: str) -> bool:
+        """技術スタックマスタを削除する。"""
+        item = self.db.scalar(select(MTechnologyStack).where(MTechnologyStack.id == item_id))
+        if not item:
+            return False
+        self.db.delete(item)
+        self.db.commit()
+        return True
+
+    def seed_if_empty(self, items: list[dict]) -> None:
+        """テーブルが空の場合のみ一括投入する。"""
+        count = self.db.scalar(select(func.count()).select_from(MTechnologyStack))
+        if count:
+            return
+        for item in items:
+            self.db.add(MTechnologyStack(**item))
+        self.db.commit()
+
+
+class MPrefectureRepository:
+    """都道府県マスタの永続化操作を管理するリポジトリ。"""
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def list_all(self) -> list[MPrefecture]:
+        """都道府県マスタ一覧を取得する。"""
+        statement = select(MPrefecture).order_by(MPrefecture.sort_order, MPrefecture.name)
+        return list(self.db.scalars(statement).all())
+
+    def create(self, name: str, sort_order: int = 0) -> MPrefecture:
+        """都道府県マスタを作成する。"""
+        item = MPrefecture(name=name, sort_order=sort_order)
+        self.db.add(item)
+        self.db.commit()
+        self.db.refresh(item)
+        return item
+
+    def update(self, item_id: str, name: str, sort_order: int = 0) -> MPrefecture | None:
+        """都道府県マスタを更新する。"""
+        item = self.db.scalar(select(MPrefecture).where(MPrefecture.id == item_id))
+        if not item:
+            return None
+        item.name = name
+        item.sort_order = sort_order
+        self.db.commit()
+        self.db.refresh(item)
+        return item
+
+    def delete(self, item_id: str) -> bool:
+        """都道府県マスタを削除する。"""
+        item = self.db.scalar(select(MPrefecture).where(MPrefecture.id == item_id))
+        if not item:
+            return False
+        self.db.delete(item)
+        self.db.commit()
+        return True
+
+    def seed_if_empty(self, items: list[dict]) -> None:
+        """テーブルが空の場合のみ一括投入する。"""
+        count = self.db.scalar(select(func.count()).select_from(MPrefecture))
+        if count:
+            return
+        for item in items:
+            self.db.add(MPrefecture(**item))
+        self.db.commit()
