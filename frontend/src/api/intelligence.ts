@@ -1,5 +1,4 @@
 import { request } from "./client";
-import { downloadBlob } from "./download";
 
 export interface AnalyzeGitHubPayload {
   include_forks?: boolean;
@@ -10,6 +9,7 @@ export interface AnalysisResponse {
   repos_analyzed: number;
   unique_skills: number;
   analyzed_at: string;
+  languages: Record<string, number>;
 }
 
 export interface SummarizeResponse {
@@ -49,42 +49,6 @@ export function summarizeAnalysis(analysis: AnalysisResponse): Promise<Summarize
     method: "POST",
     body: JSON.stringify({ analysis }),
   });
-}
-
-/**
- * 分析結果を PDF としてダウンロードします。
- */
-export function downloadAnalysisPdf(
-  analysis: AnalysisResponse,
-  summary?: string | null,
-): Promise<void> {
-  return downloadBlob(
-    "/api/intelligence/download/pdf",
-    `github-analysis-${analysis.username}.pdf`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ analysis, summary: summary ?? null }),
-    },
-  );
-}
-
-/**
- * 分析結果を Markdown としてダウンロードします。
- */
-export function downloadAnalysisMarkdown(
-  analysis: AnalysisResponse,
-  summary?: string | null,
-): Promise<void> {
-  return downloadBlob(
-    "/api/intelligence/download/markdown",
-    `github-analysis-${analysis.username}.md`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ analysis, summary: summary ?? null }),
-    },
-  );
 }
 
 /**

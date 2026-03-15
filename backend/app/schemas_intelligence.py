@@ -1,6 +1,6 @@
 """キャリアインテリジェンス API 用の Pydantic スキーマ。"""
 
-from typing import List, Optional
+from typing import Dict, List
 
 from pydantic import BaseModel, Field
 
@@ -21,6 +21,10 @@ class AnalysisResponse(BaseModel):
     repos_analyzed: int
     unique_skills: int
     analyzed_at: str
+    languages: Dict[str, int] = Field(
+        default_factory=dict,
+        description="言語ごとのバイト数（GitHub linguist ベース）",
+    )
 
 
 # ── 要約 (Ollama) ────────────────────────────────────────────────
@@ -34,14 +38,6 @@ class SummarizeResponse(BaseModel):
     available: bool = Field(
         True,
         description="LLM サービスが利用可能かどうか",
-    )
-
-
-class DownloadRequest(BaseModel):
-    analysis: AnalysisResponse
-    summary: Optional[str] = Field(
-        None,
-        description="レポートに含める AI 要約テキスト",
     )
 
 
