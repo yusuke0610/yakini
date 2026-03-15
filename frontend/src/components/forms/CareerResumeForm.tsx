@@ -43,7 +43,16 @@ export function CareerResumeForm() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const { items: techStackOptions } = useTechnologyStacks();
-  const techStackNames = techStackOptions.map((item) => item.name);
+  /** カテゴリごとの名称リストを生成する */
+  const techStackNamesByCategory = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const item of techStackOptions) {
+      const list = map.get(item.category) ?? [];
+      list.push(item.name);
+      map.set(item.category, list);
+    }
+    return map;
+  }, [techStackOptions]);
 
   const { downloading, previewUrl, closePreview, onDownloadPdf, onDownloadMarkdown, onPreviewPdf } =
     usePdfActions({
@@ -151,7 +160,7 @@ export function CareerResumeForm() {
               technology_stacks: proj.technology_stacks.map((stack, si) => {
                 if (si !== stackIndex) return stack;
                 if (key === "category") {
-                  return { ...stack, category: value as CareerTechnologyStackCategory };
+                  return { ...stack, category: value as CareerTechnologyStackCategory, name: "" };
                 }
                 return { ...stack, name: value };
               }),
@@ -549,7 +558,7 @@ export function CareerResumeForm() {
                                     val,
                                   )
                                 }
-                                options={techStackNames}
+                                options={techStackNamesByCategory.get(stack.category) ?? []}
                                 placeholder="例: TypeScript"
                                 allowCustom
                               />
