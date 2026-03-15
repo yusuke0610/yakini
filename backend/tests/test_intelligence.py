@@ -4,7 +4,11 @@ Unit tests for the career intelligence services.
 Tests cover deterministic modules only (no GitHub API calls).
 """
 
+from fastapi.testclient import TestClient
+
 from app.services.intelligence.github_collector import RepoData
+from app.services.intelligence.pipeline import IntelligenceResult
+from app.services.intelligence.response_mapper import map_pipeline_result
 from app.services.intelligence.skill_extractor import extract_skills
 from app.services.intelligence.skill_timeline_builder import (
     build_timeline,
@@ -644,3 +648,77 @@ class TestConfidenceScorer:
             categories, {},
         )
         assert high >= low
+
+
+# ── Intelligence Endpoint Tests ────────────────────────────────────────
+
+
+def _auth_header(client: TestClient, username: str = "testuser") -> dict:
+    """テスト用の認証ヘッダーを取得するヘルパー。"""
+    client.post("/auth/register", json={
+        "username": username,
+        "email": f"{username}@example.com",
+        "password": "securepass123",
+    })
+    resp = client.post("/auth/login", json={
+        "email": f"{username}@example.com",
+        "password": "securepass123",
+    })
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_analyze_requires_github_user(client: TestClient) -> None:
+    """通常ユーザー（非 GitHub）で analyze を呼ぶと 403 になること。"""
+    headers = _auth_header(client, "normal_analyze")
+    resp = client.post(
+        "/api/intelligence/analyze",
+        json={"include_forks": False},
+        headers=headers,
+    )
+    assert resp.status_code == 403
+
+
+def test_summarize_requires_auth(client: TestClient) -> None:
+    """認証なしで summarize を呼ぶと 401 になること。"""
+    resp = client.post(
+        "/api/intelligence/summarize",
+        json={
+            "analysis": {
+                "username": "test",
+                "repos_analyzed": 0,
+                "unique_skills": 0,
+                "analyzed_at": "2024-01-01T00:00:00",
+                "languages": {},
+            }
+        },
+    )
+    assert resp.status_code == 401
+
+
+def test_skill_activity_requires_github_user(client: TestClient) -> None:
+    """通常ユーザーで skill-activity を呼ぶと 403 になること。"""
+    headers = _auth_header(client, "normal_skill")
+    resp = client.post(
+        "/api/intelligence/skill-activity",
+        headers=headers,
+    )
+    assert resp.status_code == 403
+
+
+# ── Response Mapper Tests ──────────────────────────────────────────────
+
+
+def test_map_pipeline_result_includes_languages() -> None:
+    """languages フィールドが正しくマッピングされること。"""
+    result = IntelligenceResult(
+        username="testuser",
+        repos_analyzed=3,
+        unique_skills=5,
+        analyzed_at="2024-01-01T00:00:00",
+        languages={"Python": 50000, "TypeScript": 30000},
+    )
+    response = map_pipeline_result(result)
+    assert response.languages == {"Python": 50000, "TypeScript": 30000}
+    assert response.username == "testuser"
+    assert response.repos_analyzed == 3

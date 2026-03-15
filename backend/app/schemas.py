@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
 
 class GitHubCallbackRequest(BaseModel):
     code: str = Field(min_length=1)
+    state: str = Field(min_length=1)
 
 
 class BasicQualification(BaseModel):

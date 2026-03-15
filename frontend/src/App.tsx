@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { setAuthToken, setOnUnauthorized, githubCallback } from "./api";
+import { setAuthToken, setOnUnauthorized, githubCallback, verifyOAuthState } from "./api";
 import { parseUsernameFromToken } from "./auth-utils";
 import type { PageKey } from "./formTypes";
 import { useTheme } from "./hooks/useTheme";
@@ -91,13 +91,19 @@ export default function App() {
     // GitHub OAuth コールバックを処理
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
+    const state = params.get("state");
     const saved = localStorage.getItem("auth_token");
-    if (code && !saved) {
+    if (code && state && !saved) {
       // クエリパラメータをクリアしてリロード時の再実行を防止
       window.history.replaceState({}, "", window.location.pathname);
+      // CSRF 対策: state パラメータを検証
+      if (!verifyOAuthState(state)) {
+        setTimeout(() => setGithubError("OAuth state の検証に失敗しました。もう一度お試しください。"), 0);
+        return;
+      }
       // カスケードレンダリングを避けるために setTimeout を使用
       setTimeout(() => setGithubLoading(true), 0);
-      githubCallback(code)
+      githubCallback(code, state)
         .then((result) => {
           handleLogin(result.access_token);
         })
