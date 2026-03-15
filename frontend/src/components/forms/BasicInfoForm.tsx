@@ -6,7 +6,9 @@ import type { BasicFormState } from "../../payloadBuilders";
 import type { BasicQualification } from "../../types";
 import { blankBasicQualification } from "../../constants";
 import type { BasicTextFieldKey } from "../../formTypes";
+import { useMasterData } from "../../hooks/useMasterData";
 import shared from "../../styles/shared.module.css";
+import { Combobox } from "./Combobox";
 
 export function BasicInfoForm() {
   const [form, setForm] = useState<BasicFormState>({
@@ -19,6 +21,9 @@ export function BasicInfoForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const { items: qualificationOptions } = useMasterData("qualification");
+  const qualificationNames = qualificationOptions.map((item) => item.name);
 
   useEffect(() => {
     let active = true;
@@ -165,10 +170,12 @@ export function BasicInfoForm() {
                 <div className={shared.inline}>
                   <label>
                     資格名
-                    <input
-                      type="text"
+                    <Combobox
                       value={qualification.name}
-                      onChange={(e) => updateQualificationField(index, "name", e.target.value)}
+                      onChange={(val) => updateQualificationField(index, "name", val)}
+                      options={qualificationNames}
+                      placeholder="例: 基本情報技術者試験"
+                      allowCustom
                     />
                   </label>
                   <label>

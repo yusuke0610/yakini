@@ -148,3 +148,26 @@ class RirekishoResponse(RirekishoBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MasterDataItem(BaseModel):
+    """マスタデータのレスポンス。"""
+    id: UUID
+    category: str
+    name: str
+    sort_order: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MasterDataCreate(BaseModel):
+    """マスタデータの作成リクエスト。"""
+    category: str = Field(min_length=1, max_length=60)
+    name: str = Field(min_length=1, max_length=200)
+    sort_order: int = Field(default=0)
+
+
+class MasterDataUpdate(BaseModel):
+    """マスタデータの更新リクエスト。"""
+    name: str = Field(min_length=1, max_length=200)
+    sort_order: int = Field(default=0)

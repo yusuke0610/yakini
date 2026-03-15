@@ -83,3 +83,10 @@ export type ResumeResponse = ResumePayload & {
   created_at: string;
   updated_at: string;
 };
+
+export type MasterDataItem = {
+  id: string;
+  category: string;
+  name: string;
+  sort_order: number;
+};

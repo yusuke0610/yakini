@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .encryption import decrypt_field, encrypt_field
-from .models import BasicInfo, Resume, Rirekisho, User
+from .models import BasicInfo, MasterData, Resume, Rirekisho, User
 
 _ENCRYPTED_RIREKISHO_FIELDS = {"email", "phone", "postal_code", "address"}
 
@@ -187,3 +187,60 @@ class RirekishoRepository:
         self.db.refresh(rirekisho)
         self._decrypt_rirekisho(rirekisho)
         return rirekisho
+
+
+class MasterDataRepository:
+    """マスタデータの永続化操作を管理するリポジトリ。"""
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def list_by_category(self, category: str) -> list[MasterData]:
+        """カテゴリ別にマスタデータを取得する。"""
+        statement = (
+            select(MasterData)
+            .where(MasterData.category == category)
+            .order_by(MasterData.sort_order, MasterData.name)
+        )
+        return list(self.db.scalars(statement).all())
+
+    def create(self, category: str, name: str, sort_order: int = 0) -> MasterData:
+        """マスタデータを作成する。"""
+        item = MasterData(category=category, name=name, sort_order=sort_order)
+        self.db.add(item)
+        self.db.commit()
+        self.db.refresh(item)
+        return item
+
+    def update(self, item_id: str, name: str, sort_order: int = 0) -> MasterData | None:
+        """マスタデータを更新する。"""
+        statement = select(MasterData).where(MasterData.id == item_id)
+        item = self.db.scalar(statement)
+        if not item:
+            return None
+        item.name = name
+        item.sort_order = sort_order
+        self.db.commit()
+        self.db.refresh(item)
+        return item
+
+    def delete(self, item_id: str) -> bool:
+        """マスタデータを削除する。"""
+        statement = select(MasterData).where(MasterData.id == item_id)
+        item = self.db.scalar(statement)
+        if not item:
+            return False
+        self.db.delete(item)
+        self.db.commit()
+        return True
+
+    def seed_if_empty(self, category: str, items: list[dict]) -> None:
+        """カテゴリが空の場合のみ一括投入する。"""
+        existing = self.db.scalar(
+            select(func.count()).select_from(MasterData).where(MasterData.category == category)
+        )
+        if existing:
+            return
+        for item in items:
+            self.db.add(MasterData(category=category, **item))
+        self.db.commit()
