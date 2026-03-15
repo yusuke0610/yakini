@@ -384,7 +384,6 @@ export function ResumeForm() {
           </button>
         </section>
 
-            {resumeId && <p className={shared.hint}>保存ID: {resumeId}</p>}
           </div>
         </div>
       </form>
