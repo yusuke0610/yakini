@@ -1,6 +1,14 @@
-import type { MasterDataItem } from "../types";
+import type { MasterItem, TechStackMasterItem } from "../types";
 import { request } from "./client";
 
-export function getMasterData(category: string): Promise<MasterDataItem[]> {
-  return request<MasterDataItem[]>(`/api/master-data/${category}`);
+export function getQualifications(): Promise<MasterItem[]> {
+  return request<MasterItem[]>("/api/master-data/qualification");
+}
+
+export function getTechnologyStacks(): Promise<TechStackMasterItem[]> {
+  return request<TechStackMasterItem[]>("/api/master-data/technology-stack");
+}
+
+export function getPrefectures(): Promise<MasterItem[]> {
+  return request<MasterItem[]>("/api/master-data/prefecture");
 }

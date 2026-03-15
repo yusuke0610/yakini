@@ -63,6 +63,20 @@ npm run dev
 docker compose up --build
 ```
 
+## DBクライアント（DBeaver等）からSQLiteに接続する
+
+Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` にバインドマウントされます。
+
+1. `docker compose up --build` でコンテナを起動する
+2. DBeaver で **新規接続** → **SQLite** を選択
+3. **Path** に以下のファイルパスを指定する
+   ```
+   <プロジェクトルート>/data/devforge.sqlite
+   ```
+4. **テスト接続** → **完了**
+
+> **注意**: SQLite はファイルロックで排他制御するため、DBeaver で書き込みを行うとアプリ側と競合する場合があります。参照のみの利用を推奨します。
+
 ## API概要
 
 ### 認証

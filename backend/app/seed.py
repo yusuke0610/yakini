@@ -1,7 +1,7 @@
 """マスタデータの初期シードを投入するモジュール。"""
 from sqlalchemy.orm import Session
 
-from .repositories import MasterDataRepository
+from .repositories import MPrefectureRepository, MQualificationRepository, MTechnologyStackRepository
 
 # 資格マスタ
 _QUALIFICATIONS = [
@@ -32,75 +32,79 @@ _QUALIFICATIONS = [
     {"name": "PMP", "sort_order": 25},
 ]
 
-# 技術スタックマスタ
+# 技術スタックマスタ（カテゴリ付き）
 _TECHNOLOGY_STACKS = [
     # 言語
-    {"name": "Python", "sort_order": 1},
-    {"name": "JavaScript", "sort_order": 2},
-    {"name": "TypeScript", "sort_order": 3},
-    {"name": "Java", "sort_order": 4},
-    {"name": "Go", "sort_order": 5},
-    {"name": "Rust", "sort_order": 6},
-    {"name": "C", "sort_order": 7},
-    {"name": "C++", "sort_order": 8},
-    {"name": "C#", "sort_order": 9},
-    {"name": "Ruby", "sort_order": 10},
-    {"name": "PHP", "sort_order": 11},
-    {"name": "Kotlin", "sort_order": 12},
-    {"name": "Swift", "sort_order": 13},
-    {"name": "Scala", "sort_order": 14},
-    {"name": "R", "sort_order": 15},
-    {"name": "SQL", "sort_order": 16},
-    {"name": "HTML", "sort_order": 17},
-    {"name": "CSS", "sort_order": 18},
-    {"name": "Bash", "sort_order": 19},
+    {"category": "language", "name": "Python", "sort_order": 1},
+    {"category": "language", "name": "JavaScript", "sort_order": 2},
+    {"category": "language", "name": "TypeScript", "sort_order": 3},
+    {"category": "language", "name": "Java", "sort_order": 4},
+    {"category": "language", "name": "Go", "sort_order": 5},
+    {"category": "language", "name": "Rust", "sort_order": 6},
+    {"category": "language", "name": "C", "sort_order": 7},
+    {"category": "language", "name": "C++", "sort_order": 8},
+    {"category": "language", "name": "C#", "sort_order": 9},
+    {"category": "language", "name": "Ruby", "sort_order": 10},
+    {"category": "language", "name": "PHP", "sort_order": 11},
+    {"category": "language", "name": "Kotlin", "sort_order": 12},
+    {"category": "language", "name": "Swift", "sort_order": 13},
+    {"category": "language", "name": "Scala", "sort_order": 14},
+    {"category": "language", "name": "R", "sort_order": 15},
+    {"category": "language", "name": "SQL", "sort_order": 16},
+    {"category": "language", "name": "HTML", "sort_order": 17},
+    {"category": "language", "name": "CSS", "sort_order": 18},
+    {"category": "language", "name": "Bash", "sort_order": 19},
     # フレームワーク
-    {"name": "React", "sort_order": 20},
-    {"name": "Vue.js", "sort_order": 21},
-    {"name": "Angular", "sort_order": 22},
-    {"name": "Next.js", "sort_order": 23},
-    {"name": "Nuxt.js", "sort_order": 24},
-    {"name": "Express", "sort_order": 25},
-    {"name": "NestJS", "sort_order": 26},
-    {"name": "FastAPI", "sort_order": 27},
-    {"name": "Django", "sort_order": 28},
-    {"name": "Flask", "sort_order": 29},
-    {"name": "Spring Boot", "sort_order": 30},
-    {"name": "Ruby on Rails", "sort_order": 31},
-    {"name": "Laravel", "sort_order": 32},
-    {"name": ".NET", "sort_order": 33},
-    # データベース
-    {"name": "PostgreSQL", "sort_order": 34},
-    {"name": "MySQL", "sort_order": 35},
-    {"name": "SQLite", "sort_order": 36},
-    {"name": "MongoDB", "sort_order": 37},
-    {"name": "Redis", "sort_order": 38},
-    {"name": "DynamoDB", "sort_order": 39},
-    {"name": "Oracle Database", "sort_order": 40},
-    {"name": "SQL Server", "sort_order": 41},
-    # クラウド・インフラ
-    {"name": "AWS", "sort_order": 42},
-    {"name": "Google Cloud", "sort_order": 43},
-    {"name": "Azure", "sort_order": 44},
-    {"name": "Docker", "sort_order": 45},
-    {"name": "Kubernetes", "sort_order": 46},
-    {"name": "Terraform", "sort_order": 47},
-    {"name": "Ansible", "sort_order": 48},
-    # ツール
-    {"name": "Git", "sort_order": 49},
-    {"name": "GitHub", "sort_order": 50},
-    {"name": "GitLab", "sort_order": 51},
-    {"name": "Jenkins", "sort_order": 52},
-    {"name": "CircleCI", "sort_order": 53},
-    {"name": "GitHub Actions", "sort_order": 54},
-    {"name": "Jira", "sort_order": 55},
-    {"name": "Confluence", "sort_order": 56},
-    {"name": "Slack", "sort_order": 57},
-    {"name": "Datadog", "sort_order": 58},
-    {"name": "Grafana", "sort_order": 59},
-    {"name": "Elasticsearch", "sort_order": 60},
-    {"name": "Nginx", "sort_order": 61},
-    {"name": "Apache", "sort_order": 62},
+    {"category": "framework", "name": "React", "sort_order": 20},
+    {"category": "framework", "name": "Vue.js", "sort_order": 21},
+    {"category": "framework", "name": "Angular", "sort_order": 22},
+    {"category": "framework", "name": "Next.js", "sort_order": 23},
+    {"category": "framework", "name": "Nuxt.js", "sort_order": 24},
+    {"category": "framework", "name": "Express", "sort_order": 25},
+    {"category": "framework", "name": "NestJS", "sort_order": 26},
+    {"category": "framework", "name": "FastAPI", "sort_order": 27},
+    {"category": "framework", "name": "Django", "sort_order": 28},
+    {"category": "framework", "name": "Flask", "sort_order": 29},
+    {"category": "framework", "name": "Spring Boot", "sort_order": 30},
+    {"category": "framework", "name": "Ruby on Rails", "sort_order": 31},
+    {"category": "framework", "name": "Laravel", "sort_order": 32},
+    {"category": "framework", "name": ".NET", "sort_order": 33},
+    # OS
+    {"category": "os", "name": "Linux", "sort_order": 34},
+    {"category": "os", "name": "Windows Server", "sort_order": 35},
+    {"category": "os", "name": "macOS", "sort_order": 36},
+    # DB
+    {"category": "db", "name": "PostgreSQL", "sort_order": 37},
+    {"category": "db", "name": "MySQL", "sort_order": 38},
+    {"category": "db", "name": "SQLite", "sort_order": 39},
+    {"category": "db", "name": "MongoDB", "sort_order": 40},
+    {"category": "db", "name": "Redis", "sort_order": 41},
+    {"category": "db", "name": "DynamoDB", "sort_order": 42},
+    {"category": "db", "name": "Oracle Database", "sort_order": 43},
+    {"category": "db", "name": "SQL Server", "sort_order": 44},
+    # クラウドリソース
+    {"category": "cloud_resource", "name": "AWS", "sort_order": 45},
+    {"category": "cloud_resource", "name": "Google Cloud", "sort_order": 46},
+    {"category": "cloud_resource", "name": "Azure", "sort_order": 47},
+    {"category": "cloud_resource", "name": "Docker", "sort_order": 48},
+    {"category": "cloud_resource", "name": "Kubernetes", "sort_order": 49},
+    {"category": "cloud_resource", "name": "Terraform", "sort_order": 50},
+    {"category": "cloud_resource", "name": "Ansible", "sort_order": 51},
+    # 開発支援ツール
+    {"category": "dev_tool", "name": "Git", "sort_order": 52},
+    {"category": "dev_tool", "name": "GitHub", "sort_order": 53},
+    {"category": "dev_tool", "name": "GitLab", "sort_order": 54},
+    {"category": "dev_tool", "name": "Jenkins", "sort_order": 55},
+    {"category": "dev_tool", "name": "CircleCI", "sort_order": 56},
+    {"category": "dev_tool", "name": "GitHub Actions", "sort_order": 57},
+    {"category": "dev_tool", "name": "Jira", "sort_order": 58},
+    {"category": "dev_tool", "name": "Confluence", "sort_order": 59},
+    {"category": "dev_tool", "name": "Slack", "sort_order": 60},
+    {"category": "dev_tool", "name": "Datadog", "sort_order": 61},
+    {"category": "dev_tool", "name": "Grafana", "sort_order": 62},
+    {"category": "dev_tool", "name": "Elasticsearch", "sort_order": 63},
+    {"category": "dev_tool", "name": "Nginx", "sort_order": 64},
+    {"category": "dev_tool", "name": "Apache", "sort_order": 65},
 ]
 
 # 都道府県マスタ（JIS X 0401 順）
@@ -156,8 +160,7 @@ _PREFECTURES = [
 
 
 def seed_master_data(db: Session) -> None:
-    """マスタデータの初期シードを投入する。カテゴリが空の場合のみ投入される。"""
-    repo = MasterDataRepository(db)
-    repo.seed_if_empty("qualification", _QUALIFICATIONS)
-    repo.seed_if_empty("technology_stack", _TECHNOLOGY_STACKS)
-    repo.seed_if_empty("prefecture", _PREFECTURES)
+    """マスタデータの初期シードを投入する。各テーブルが空の場合のみ投入される。"""
+    MQualificationRepository(db).seed_if_empty(_QUALIFICATIONS)
+    MTechnologyStackRepository(db).seed_if_empty(_TECHNOLOGY_STACKS)
+    MPrefectureRepository(db).seed_if_empty(_PREFECTURES)

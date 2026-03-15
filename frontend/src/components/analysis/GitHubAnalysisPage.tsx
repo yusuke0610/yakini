@@ -188,7 +188,7 @@ export function GitHubAnalysisPage() {
           </div>
         </div>
 
-        {/* 言語構成 */}
+        {/* 構成 */}
         {result.languages && Object.keys(result.languages).length > 0 && (
           <div className={styles.section}>
             <h2>Languages</h2>

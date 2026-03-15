@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
 
-import { getMasterData } from "../api";
-import type { MasterDataItem } from "../types";
+import { getPrefectures, getQualifications, getTechnologyStacks } from "../api";
+import type { MasterItem, TechStackMasterItem } from "../types";
 
 /** モジュールレベルのキャッシュ */
-const cache = new Map<string, MasterDataItem[]>();
+let qualificationsCache: MasterItem[] | null = null;
+let techStacksCache: TechStackMasterItem[] | null = null;
+let prefecturesCache: MasterItem[] | null = null;
 
-/** マスタデータを取得するフック */
-export function useMasterData(category: string): { items: MasterDataItem[]; loading: boolean } {
-  const [items, setItems] = useState<MasterDataItem[]>(cache.get(category) ?? []);
-  const [loading, setLoading] = useState(!cache.has(category));
+/** 資格マスタを取得するフック */
+export function useQualifications(): { items: MasterItem[]; loading: boolean } {
+  const [items, setItems] = useState<MasterItem[]>(qualificationsCache ?? []);
+  const [loading, setLoading] = useState(qualificationsCache === null);
 
   useEffect(() => {
-    if (cache.has(category)) {
-      setItems(cache.get(category)!);
+    if (qualificationsCache !== null) {
+      setItems(qualificationsCache);
       setLoading(false);
       return;
     }
@@ -21,26 +23,80 @@ export function useMasterData(category: string): { items: MasterDataItem[]; load
     let active = true;
     (async () => {
       try {
-        const data = await getMasterData(category);
-        cache.set(category, data);
-        if (active) {
-          setItems(data);
-        }
+        const data = await getQualifications();
+        qualificationsCache = data;
+        if (active) setItems(data);
       } catch {
-        if (active) {
-          setItems([]);
-        }
+        if (active) setItems([]);
       } finally {
-        if (active) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     })();
 
-    return () => {
-      active = false;
-    };
-  }, [category]);
+    return () => { active = false; };
+  }, []);
+
+  return { items, loading };
+}
+
+/** 技術スタックマスタを取得するフック */
+export function useTechnologyStacks(): { items: TechStackMasterItem[]; loading: boolean } {
+  const [items, setItems] = useState<TechStackMasterItem[]>(techStacksCache ?? []);
+  const [loading, setLoading] = useState(techStacksCache === null);
+
+  useEffect(() => {
+    if (techStacksCache !== null) {
+      setItems(techStacksCache);
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    (async () => {
+      try {
+        const data = await getTechnologyStacks();
+        techStacksCache = data;
+        if (active) setItems(data);
+      } catch {
+        if (active) setItems([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => { active = false; };
+  }, []);
+
+  return { items, loading };
+}
+
+/** 都道府県マスタを取得するフック */
+export function usePrefectures(): { items: MasterItem[]; loading: boolean } {
+  const [items, setItems] = useState<MasterItem[]>(prefecturesCache ?? []);
+  const [loading, setLoading] = useState(prefecturesCache === null);
+
+  useEffect(() => {
+    if (prefecturesCache !== null) {
+      setItems(prefecturesCache);
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    (async () => {
+      try {
+        const data = await getPrefectures();
+        prefecturesCache = data;
+        if (active) setItems(data);
+      } catch {
+        if (active) setItems([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+
+    return () => { active = false; };
+  }, []);
 
   return { items, loading };
 }

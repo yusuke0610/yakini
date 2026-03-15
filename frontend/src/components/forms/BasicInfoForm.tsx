@@ -6,7 +6,7 @@ import type { BasicFormState } from "../../payloadBuilders";
 import type { BasicQualification } from "../../types";
 import { blankBasicQualification } from "../../constants";
 import type { BasicTextFieldKey } from "../../formTypes";
-import { useMasterData } from "../../hooks/useMasterData";
+import { useQualifications } from "../../hooks/useMasterData";
 import shared from "../../styles/shared.module.css";
 import { Combobox } from "./Combobox";
 
@@ -22,7 +22,7 @@ export function BasicInfoForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const { items: qualificationOptions } = useMasterData("qualification");
+  const { items: qualificationOptions } = useQualifications();
   const qualificationNames = qualificationOptions.map((item) => item.name);
 
   useEffect(() => {
