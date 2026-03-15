@@ -1,22 +1,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
-let _authToken: string | null = null;
 let _onUnauthorized: (() => void) | null = null;
-
-export function setAuthToken(token: string | null): void {
-  _authToken = token;
-}
 
 export function setOnUnauthorized(callback: () => void): void {
   _onUnauthorized = callback;
-}
-
-export function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {};
-  if (_authToken) {
-    headers["Authorization"] = `Bearer ${_authToken}`;
-  }
-  return headers;
 }
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -24,15 +11,13 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
     "Content-Type": "application/json",
     ...((options.headers as Record<string, string>) ?? {}),
   };
-  if (_authToken) {
-    headers["Authorization"] = `Bearer ${_authToken}`;
-  }
 
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
       headers,
+      credentials: "include",
     });
   } catch {
     throw new Error("サーバーに接続できません。ネットワーク接続を確認してください。");

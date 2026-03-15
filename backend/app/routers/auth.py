@@ -1,9 +1,9 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
-from ..auth import create_access_token, verify_password, hash_password
+from ..auth import create_access_token, verify_password, hash_password, _COOKIE_NAME, _COOKIE_MAX_AGE
 from ..database import get_db
 from ..dependencies import limiter
 from ..logging_utils import log_event
@@ -15,7 +15,23 @@ from ..schemas import (
     TokenResponse,
 )
 from ..encryption import encrypt_field
-from ..settings import get_github_client_id, get_github_client_secret
+from ..settings import get_cors_origins, get_github_client_id, get_github_client_secret
+
+
+def _set_auth_cookie(response: Response, token: str) -> None:
+    """認証トークンを HttpOnly Cookie にセットする。"""
+    origins = get_cors_origins()
+    is_https = all(o.startswith("https://") for o in origins) if origins else False
+    response.set_cookie(
+        key=_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=is_https,
+        samesite="lax",
+        max_age=_COOKIE_MAX_AGE,
+        path="/",
+    )
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -23,7 +39,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=TokenResponse, status_code=201)
 @limiter.limit("5/minute")
 def register(
-    request: Request, payload: RegisterRequest, db: Session = Depends(get_db)
+    request: Request, response: Response, payload: RegisterRequest, db: Session = Depends(get_db)
 ) -> TokenResponse:
     repo = UserRepository(db)
     if repo.get_by_username(payload.username):
@@ -38,13 +54,14 @@ def register(
         )
     user = repo.create(payload.username, hash_password(payload.password), email=payload.email)
     token = create_access_token(user.username)
-    return TokenResponse(access_token=token)
+    _set_auth_cookie(response, token)
+    return TokenResponse(username=user.username)
 
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("5/minute")
 def login(
-    request: Request, payload: LoginRequest, db: Session = Depends(get_db)
+    request: Request, response: Response, payload: LoginRequest, db: Session = Depends(get_db)
 ) -> TokenResponse:
     user = UserRepository(db).get_by_email(payload.email)
     if not user or not verify_password(
@@ -61,13 +78,15 @@ def login(
             detail="メールアドレスまたはパスワードが正しくありません",
         )
     token = create_access_token(user.username)
-    return TokenResponse(access_token=token)
+    _set_auth_cookie(response, token)
+    return TokenResponse(username=user.username)
 
 
 @router.post("/github/callback", response_model=TokenResponse)
 @limiter.limit("5/minute")
 async def github_callback(
-    request: Request, payload: GitHubCallbackRequest, db: Session = Depends(get_db)
+    request: Request, response: Response, payload: GitHubCallbackRequest,
+    db: Session = Depends(get_db),
 ) -> TokenResponse:
     client_id = get_github_client_id()
     client_secret = get_github_client_secret()
@@ -131,4 +150,11 @@ async def github_callback(
     db.commit()
 
     token = create_access_token(user.username)
-    return TokenResponse(access_token=token)
+    _set_auth_cookie(response, token)
+    return TokenResponse(username=user.username, is_github_user=True)
+
+
+@router.post("/logout", status_code=204)
+def logout(response: Response) -> None:
+    """認証 Cookie を削除してログアウトする。"""
+    response.delete_cookie(key=_COOKIE_NAME, path="/")

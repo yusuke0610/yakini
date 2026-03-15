@@ -1,9 +1,8 @@
-import { request } from "./client";
+import { request, API_BASE_URL } from "./client";
 
-export function login(
-  email: string,
-  password: string,
-): Promise<{ access_token: string; token_type: string }> {
+type AuthResponse = { username: string; is_github_user: boolean };
+
+export function login(email: string, password: string): Promise<AuthResponse> {
   return request("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
@@ -14,10 +13,17 @@ export function register(
   username: string,
   email: string,
   password: string,
-): Promise<{ access_token: string; token_type: string }> {
+): Promise<AuthResponse> {
   return request("/auth/register", {
     method: "POST",
     body: JSON.stringify({ username, email, password }),
+  });
+}
+
+export async function logout(): Promise<void> {
+  await fetch(`${API_BASE_URL}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
   });
 }
 
@@ -38,7 +44,7 @@ export function verifyOAuthState(state: string): boolean {
 export function githubCallback(
   code: string,
   state: string,
-): Promise<{ access_token: string; token_type: string }> {
+): Promise<AuthResponse> {
   return request("/auth/github/callback", {
     method: "POST",
     body: JSON.stringify({ code, state }),

@@ -11,7 +11,7 @@ export function LoginForm({
   githubError,
   githubLoading,
 }: {
-  onLogin: (token: string) => void;
+  onLogin: (username: string, isGitHubUser: boolean) => void;
   onSwitchToRegister: () => void;
   githubError?: string | null;
   githubLoading?: boolean;
@@ -27,7 +27,7 @@ export function LoginForm({
     setError(null);
     try {
       const result = await login(email, password);
-      onLogin(result.access_token);
+      onLogin(result.username, result.is_github_user);
     } catch (err) {
       const message = err instanceof Error ? err.message : "ログインに失敗しました。";
       setError(message);

@@ -1,4 +1,4 @@
-import { API_BASE_URL, getAuthHeaders } from "./client";
+import { API_BASE_URL } from "./client";
 
 export async function downloadBlob(
   url: string,
@@ -7,10 +7,7 @@ export async function downloadBlob(
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}${url}`, {
     ...options,
-    headers: {
-      ...getAuthHeaders(),
-      ...((options?.headers as Record<string, string>) ?? {}),
-    },
+    credentials: "include",
   });
   if (!response.ok) {
     throw new Error(`ダウンロードに失敗しました: ${filename}`);
@@ -26,7 +23,7 @@ export async function downloadBlob(
 
 export async function getBlobUrl(url: string): Promise<string> {
   const response = await fetch(`${API_BASE_URL}${url}`, {
-    headers: getAuthHeaders(),
+    credentials: "include",
   });
   if (!response.ok) {
     throw new Error("プレビューの取得に失敗しました");

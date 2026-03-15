@@ -6,6 +6,7 @@ Tests cover deterministic modules only (no GitHub API calls).
 
 from fastapi.testclient import TestClient
 
+from conftest import auth_header
 from app.services.intelligence.github_collector import RepoData
 from app.services.intelligence.pipeline import IntelligenceResult
 from app.services.intelligence.response_mapper import map_pipeline_result
@@ -653,24 +654,9 @@ class TestConfidenceScorer:
 # ── Intelligence Endpoint Tests ────────────────────────────────────────
 
 
-def _auth_header(client: TestClient, username: str = "testuser") -> dict:
-    """テスト用の認証ヘッダーを取得するヘルパー。"""
-    client.post("/auth/register", json={
-        "username": username,
-        "email": f"{username}@example.com",
-        "password": "securepass123",
-    })
-    resp = client.post("/auth/login", json={
-        "email": f"{username}@example.com",
-        "password": "securepass123",
-    })
-    token = resp.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
-
-
 def test_analyze_requires_github_user(client: TestClient) -> None:
     """通常ユーザー（非 GitHub）で analyze を呼ぶと 403 になること。"""
-    headers = _auth_header(client, "normal_analyze")
+    headers = auth_header(client, "normal_analyze")
     resp = client.post(
         "/api/intelligence/analyze",
         json={"include_forks": False},
@@ -698,7 +684,7 @@ def test_summarize_requires_auth(client: TestClient) -> None:
 
 def test_skill_activity_requires_github_user(client: TestClient) -> None:
     """通常ユーザーで skill-activity を呼ぶと 403 になること。"""
-    headers = _auth_header(client, "normal_skill")
+    headers = auth_header(client, "normal_skill")
     resp = client.post(
         "/api/intelligence/skill-activity",
         headers=headers,
