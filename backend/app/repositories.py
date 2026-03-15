@@ -5,7 +5,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .encryption import decrypt_field, encrypt_field
-from .models import BasicInfo, MPrefecture, MQualification, MTechnologyStack, Resume, Rirekisho, User
+from .models import (
+    BasicInfo, BlogAccount, BlogArticle, MPrefecture, MQualification,
+    MTechnologyStack, Resume, Rirekisho, User,
+)
 
 _ENCRYPTED_RIREKISHO_FIELDS = {"email", "phone", "postal_code", "address"}
 
@@ -134,6 +137,125 @@ class RirekishoRepository(BaseUserDocRepository):
         rirekisho = super().update(entity, self._encrypt_payload(payload))
         self._decrypt_rirekisho(rirekisho)
         return rirekisho
+
+
+class BlogAccountRepository:
+    """ブログ連携アカウントリポジトリ。"""
+
+    def __init__(self, db: Session, user_id: str):
+        self.db = db
+        self.user_id = user_id
+
+    def list_by_user(self) -> list[BlogAccount]:
+        """ユーザーの連携アカウント一覧を取得する。"""
+        statement = (
+            select(BlogAccount)
+            .where(BlogAccount.user_id == self.user_id)
+            .order_by(BlogAccount.created_at)
+        )
+        return list(self.db.scalars(statement).all())
+
+    def get_by_id(self, account_id: str) -> BlogAccount | None:
+        """アカウントIDで取得する。"""
+        statement = (
+            select(BlogAccount)
+            .where(BlogAccount.id == account_id)
+            .where(BlogAccount.user_id == self.user_id)
+        )
+        return self.db.scalar(statement)
+
+    def get_by_platform(self, platform: str) -> BlogAccount | None:
+        """プラットフォーム名で取得する。"""
+        statement = (
+            select(BlogAccount)
+            .where(BlogAccount.user_id == self.user_id)
+            .where(BlogAccount.platform == platform)
+        )
+        return self.db.scalar(statement)
+
+    def upsert(self, platform: str, username: str) -> BlogAccount:
+        """アカウントを登録または更新する。"""
+        existing = self.get_by_platform(platform)
+        if existing:
+            existing.username = username
+            self.db.commit()
+            self.db.refresh(existing)
+            return existing
+        account = BlogAccount(user_id=self.user_id, platform=platform, username=username)
+        self.db.add(account)
+        self.db.commit()
+        self.db.refresh(account)
+        return account
+
+    def delete(self, account_id: str) -> bool:
+        """アカウントを削除する。"""
+        account = self.get_by_id(account_id)
+        if not account:
+            return False
+        self.db.delete(account)
+        self.db.commit()
+        return True
+
+
+class BlogArticleRepository:
+    """ブログ記事リポジトリ。"""
+
+    def __init__(self, db: Session, user_id: str):
+        self.db = db
+        self.user_id = user_id
+
+    def list_by_user(self, platform: str | None = None) -> list[BlogArticle]:
+        """ユーザーの記事一覧を取得する。platformフィルタ任意。"""
+        statement = (
+            select(BlogArticle)
+            .where(BlogArticle.user_id == self.user_id)
+        )
+        if platform:
+            statement = statement.where(BlogArticle.platform == platform)
+        statement = statement.order_by(BlogArticle.published_at.desc())
+        return list(self.db.scalars(statement).all())
+
+    def upsert_many(self, articles: list[dict]) -> int:
+        """記事を一括登録・更新する。戻り値は新規追加件数。"""
+        added = 0
+        for art in articles:
+            existing = self.db.scalar(
+                select(BlogArticle).where(
+                    BlogArticle.user_id == self.user_id,
+                    BlogArticle.platform == art["platform"],
+                    BlogArticle.external_id == art["external_id"],
+                )
+            )
+            if existing:
+                for key, value in art.items():
+                    if key not in ("id", "user_id", "created_at"):
+                        setattr(existing, key, value)
+            else:
+                entity = BlogArticle(user_id=self.user_id, **art)
+                self.db.add(entity)
+                added += 1
+        self.db.commit()
+        return added
+
+    def count_by_user(self) -> int:
+        """ユーザーの記事数を取得する。"""
+        return self.db.scalar(
+            select(func.count()).select_from(BlogArticle).where(BlogArticle.user_id == self.user_id)
+        ) or 0
+
+    def delete_by_account(self, account_id: str) -> int:
+        """アカウントに紐づく記事を全削除する。戻り値は削除件数。"""
+        articles = list(self.db.scalars(
+            select(BlogArticle).where(
+                BlogArticle.user_id == self.user_id,
+                BlogArticle.account_id == account_id,
+            )
+        ).all())
+        count = len(articles)
+        for article in articles:
+            self.db.delete(article)
+        self.db.commit()
+        return count
 
 
 class BaseMasterRepository:

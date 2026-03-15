@@ -162,6 +162,53 @@ class RirekishoResponse(RirekishoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class BlogAccountCreate(BaseModel):
+    """ブログ連携アカウントの作成リクエスト。"""
+    platform: Literal["zenn", "note"]
+    username: str = Field(min_length=1, max_length=120)
+
+
+class BlogAccountResponse(BaseModel):
+    """ブログ連携アカウントのレスポンス。"""
+    id: UUID
+    platform: str
+    username: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BlogArticleResponse(BaseModel):
+    """ブログ記事のレスポンス。"""
+    id: UUID
+    platform: str
+    title: str
+    url: str
+    published_at: str | None = None
+    likes_count: int = 0
+    summary: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BlogSyncResponse(BaseModel):
+    """ブログ同期結果のレスポンス。"""
+    synced_count: int
+    total_count: int
+
+
+class BlogSummaryRequest(BaseModel):
+    """ブログ記事 AI 分析リクエスト。"""
+    articles: list[BlogArticleResponse]
+
+
+class BlogSummaryResponse(BaseModel):
+    """ブログ記事 AI 分析レスポンス。"""
+    summary: str
+    available: bool
+
+
 class MasterItem(BaseModel):
     """マスタデータ共通レスポンス（資格・都道府県）。"""
     id: UUID

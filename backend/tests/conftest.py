@@ -12,7 +12,8 @@ os.environ.setdefault("FIELD_ENCRYPTION_KEY", "pVo6M_raAWEpAv25F4p4RziywsjfPENok
 
 from app.database import Base, get_db
 from app.models import (  # noqa: F401 — ensure models registered
-    BasicInfo, MPrefecture, MQualification, MTechnologyStack, Resume, Rirekisho, User,
+    BasicInfo, BlogAccount, BlogArticle, MPrefecture, MQualification,
+    MTechnologyStack, Resume, Rirekisho, User,
 )
 from app.main import app, limiter
 

@@ -1,8 +1,8 @@
-"""Ollama / Qwen2.5 integration for career analysis summarization."""
+"""Ollama / Qwen2.5 を利用したキャリア分析・ブログ記事の要約生成。"""
 
 import logging
 import os
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import httpx
 
@@ -67,6 +67,63 @@ async def check_ollama_available() -> bool:
             return resp.status_code == 200
     except (httpx.ConnectError, httpx.TimeoutException):
         return False
+
+
+BLOG_SYSTEM_PROMPT = (
+    "あなたはテックブログの分析専門家です。"
+    "エンジニアのブログ記事一覧から、技術的な関心分野やアウトプット傾向を分析してください。"
+    "要約は3〜5文程度で、以下の点に触れてください：\n"
+    "1. 主要な技術的関心分野\n"
+    "2. アウトプットの傾向（頻度、深さ、ジャンル）\n"
+    "3. 技術的な強みや特徴\n"
+    "箇条書きではなく自然な文章で書いてください。"
+)
+
+
+def _build_blog_prompt(articles: List[Dict[str, Any]]) -> str:
+    """ブログ記事データから分析用プロンプトを構築する。"""
+    parts = [f"記事数: {len(articles)}"]
+
+    for i, art in enumerate(articles[:30], 1):
+        line = f"{i}. {art.get('title', '')}"
+        if art.get("tags"):
+            line += f" [タグ: {', '.join(art['tags'])}]"
+        if art.get("summary"):
+            line += f" — {art['summary'][:100]}"
+        if art.get("likes_count", 0) > 0:
+            line += f" (いいね: {art['likes_count']})"
+        parts.append(line)
+
+    return "\n".join(parts)
+
+
+async def summarize_blog_articles(articles: List[Dict[str, Any]]) -> str:
+    """ブログ記事一覧から Ollama で AI サマリを生成する。
+
+    Ollama に接続できない場合は空文字列を返す。
+    """
+    prompt = _build_blog_prompt(articles)
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                f"{OLLAMA_BASE_URL}/api/generate",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "system": BLOG_SYSTEM_PROMPT,
+                    "prompt": prompt,
+                    "stream": False,
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("response", "").strip()
+    except (httpx.ConnectError, httpx.TimeoutException):
+        logger.info("Ollama is not available at %s", OLLAMA_BASE_URL)
+        return ""
+    except Exception:
+        logger.exception("ブログ記事の要約生成に失敗しました")
+        return ""
 
 
 async def summarize_analysis(analysis: Dict[str, Any]) -> str:
