@@ -1,6 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import auth_header
+
 
 # ── Auth: Register ──────────────────────────────────────────────
 
@@ -9,34 +11,34 @@ def test_register_success(client: TestClient) -> None:
     resp = client.post("/auth/register", json={
         "username": "alice",
         "email": "alice@example.com",
-        "password": "securepass123",
+        "password": "SecurePass123",
     })
     assert resp.status_code == 201
     data = resp.json()
-    assert "access_token" in data
-    assert data["token_type"] == "bearer"
+    assert "username" in data
+    assert data["username"] == "alice"
 
 
 def test_register_duplicate_username(client: TestClient) -> None:
-    payload = {"username": "bob", "email": "bob@example.com", "password": "securepass123"}
+    payload = {"username": "bob", "email": "bob@example.com", "password": "SecurePass123"}
     client.post("/auth/register", json=payload)
 
     resp = client.post("/auth/register", json={
         "username": "bob",
         "email": "bob2@example.com",
-        "password": "securepass123",
+        "password": "SecurePass123",
     })
     assert resp.status_code == 409
 
 
 def test_register_duplicate_email(client: TestClient) -> None:
-    payload = {"username": "carol", "email": "carol@example.com", "password": "securepass123"}
+    payload = {"username": "carol", "email": "carol@example.com", "password": "SecurePass123"}
     client.post("/auth/register", json=payload)
 
     resp = client.post("/auth/register", json={
         "username": "carol2",
         "email": "carol@example.com",
-        "password": "securepass123",
+        "password": "SecurePass123",
     })
     assert resp.status_code == 409
 
@@ -54,7 +56,7 @@ def test_register_invalid_email(client: TestClient) -> None:
     resp = client.post("/auth/register", json={
         "username": "eve",
         "email": "not-an-email",
-        "password": "securepass123",
+        "password": "SecurePass123",
     })
     assert resp.status_code == 422
 
@@ -66,22 +68,22 @@ def test_login_success(client: TestClient) -> None:
     client.post("/auth/register", json={
         "username": "frank",
         "email": "frank@example.com",
-        "password": "securepass123",
+        "password": "SecurePass123",
     })
 
     resp = client.post("/auth/login", json={
         "email": "frank@example.com",
-        "password": "securepass123",
+        "password": "SecurePass123",
     })
     assert resp.status_code == 200
-    assert "access_token" in resp.json()
+    assert "username" in resp.json()
 
 
 def test_login_wrong_password(client: TestClient) -> None:
     client.post("/auth/register", json={
         "username": "grace",
         "email": "grace@example.com",
-        "password": "securepass123",
+        "password": "SecurePass123",
     })
 
     resp = client.post("/auth/login", json={
@@ -94,7 +96,7 @@ def test_login_wrong_password(client: TestClient) -> None:
 def test_login_nonexistent_user(client: TestClient) -> None:
     resp = client.post("/auth/login", json={
         "email": "nobody@example.com",
-        "password": "securepass123",
+        "password": "SecurePass123",
     })
     assert resp.status_code == 401
 
@@ -118,22 +120,8 @@ def test_endpoints_require_auth(client: TestClient, method: str, path: str) -> N
 # ── CRUD: Basic Info ────────────────────────────────────────────
 
 
-def _auth_header(client: TestClient, username: str = "testuser") -> dict:
-    client.post("/auth/register", json={
-        "username": username,
-        "email": f"{username}@example.com",
-        "password": "securepass123",
-    })
-    resp = client.post("/auth/login", json={
-        "email": f"{username}@example.com",
-        "password": "securepass123",
-    })
-    token = resp.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
-
-
 def test_basic_info_crud(client: TestClient) -> None:
-    headers = _auth_header(client, "biuser")
+    headers = auth_header(client, "biuser")
 
     # Create
     resp = client.post("/api/basic-info", json={
@@ -163,7 +151,7 @@ def test_basic_info_crud(client: TestClient) -> None:
 
 
 def test_resume_crud(client: TestClient) -> None:
-    headers = _auth_header(client, "resumeuser")
+    headers = auth_header(client, "resumeuser")
 
     resp = client.post("/api/resumes", json={
         "career_summary": "キャリアサマリー",
@@ -190,7 +178,7 @@ def test_resume_crud(client: TestClient) -> None:
 
 
 def test_rirekisho_crud(client: TestClient) -> None:
-    headers = _auth_header(client, "rirekishouser")
+    headers = auth_header(client, "rirekishouser")
 
     resp = client.post("/api/rirekisho", json={
         "postal_code": "150-0001",
@@ -235,13 +223,13 @@ def test_health_check(client: TestClient) -> None:
 
 
 def test_basic_info_not_found(client: TestClient) -> None:
-    headers = _auth_header(client, "bi404user")
+    headers = auth_header(client, "bi404user")
     resp = client.get("/api/basic-info/latest", headers=headers)
     assert resp.status_code == 404
 
 
 def test_resume_get_by_id(client: TestClient) -> None:
-    headers = _auth_header(client, "resumegetuser")
+    headers = auth_header(client, "resumegetuser")
     resp = client.post("/api/resumes", json={
         "career_summary": "サマリー",
         "self_pr": "自己PR",
@@ -256,7 +244,7 @@ def test_resume_get_by_id(client: TestClient) -> None:
 
 
 def test_resume_not_found(client: TestClient) -> None:
-    headers = _auth_header(client, "resume404user")
+    headers = auth_header(client, "resume404user")
     resp = client.get(
         "/api/resumes/00000000-0000-0000-0000-000000000000",
         headers=headers,
@@ -265,7 +253,7 @@ def test_resume_not_found(client: TestClient) -> None:
 
 
 def test_rirekisho_get_by_id(client: TestClient) -> None:
-    headers = _auth_header(client, "ririgetuser")
+    headers = auth_header(client, "ririgetuser")
     resp = client.post("/api/rirekisho", json={
         "postal_code": "150-0001",
         "prefecture": "東京都",
@@ -285,7 +273,7 @@ def test_rirekisho_get_by_id(client: TestClient) -> None:
 
 
 def test_rirekisho_not_found(client: TestClient) -> None:
-    headers = _auth_header(client, "riri404user")
+    headers = auth_header(client, "riri404user")
     resp = client.get(
         "/api/rirekisho/00000000-0000-0000-0000-000000000000",
         headers=headers,

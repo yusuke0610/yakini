@@ -47,3 +47,17 @@ def client(db_session):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+def auth_header(client, username: str = "testuser") -> dict:
+    """テスト用の認証 Cookie をセットするヘルパー。空の dict を返す（Cookie は自動送信される）。"""
+    client.post("/auth/register", json={
+        "username": username,
+        "email": f"{username}@example.com",
+        "password": "SecurePass123",
+    })
+    client.post("/auth/login", json={
+        "email": f"{username}@example.com",
+        "password": "SecurePass123",
+    })
+    return {}

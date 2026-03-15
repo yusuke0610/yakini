@@ -15,10 +15,22 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
 
+    @model_validator(mode="after")
+    def _validate_password_complexity(self) -> "RegisterRequest":
+        """パスワードに英大文字・英小文字・数字をそれぞれ1文字以上含むことを検証する。"""
+        p = self.password
+        if not any(c.isupper() for c in p):
+            raise ValueError("パスワードには英大文字を1文字以上含めてください")
+        if not any(c.islower() for c in p):
+            raise ValueError("パスワードには英小文字を1文字以上含めてください")
+        if not any(c.isdigit() for c in p):
+            raise ValueError("パスワードには数字を1文字以上含めてください")
+        return self
+
 
 class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+    username: str
+    is_github_user: bool = False
 
 
 class UserResponse(BaseModel):
