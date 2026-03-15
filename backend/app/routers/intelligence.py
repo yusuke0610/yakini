@@ -2,8 +2,6 @@
 キャリアインテリジェンス API エンドポイント。
 
 POST /api/intelligence/analyze — 全分析パイプラインを実行。
-POST /api/intelligence/download/pdf — 分析データから PDF を生成。
-POST /api/intelligence/download/markdown — 分析データから Markdown を生成。
 POST /api/intelligence/skill-activity — スキルアクティビティを集計。
 """
 
@@ -18,7 +16,6 @@ from ..models import User
 from ..schemas_intelligence import (
     AnalysisResponse,
     AnalyzeRequest,
-    DownloadRequest,
     SkillActivityResponse,
     SummarizeRequest,
     SummarizeResponse,
@@ -33,12 +30,6 @@ from ..services.intelligence.llm_summarizer import (
 from ..services.intelligence.pipeline import run_pipeline
 from ..services.intelligence.response_mapper import map_pipeline_result
 from ..services.intelligence.skill_activity_analyzer import get_skill_activity
-from ..services.markdown.generators.intelligence_generator import (
-    build_intelligence_markdown,
-)
-from ..services.pdf.generators.intelligence_generator import build_intelligence_pdf
-from .download_utils import stream_markdown, stream_pdf
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/intelligence", tags=["intelligence"])
@@ -117,36 +108,6 @@ async def summarize(request: SummarizeRequest):
     analysis_dict = request.analysis.model_dump()
     summary = await summarize_analysis(analysis_dict)
     return SummarizeResponse(summary=summary, available=True)
-
-
-@router.post("/download/pdf")
-async def download_pdf(
-    request: DownloadRequest,
-    user: User = Depends(get_current_user),
-):
-    """分析データから PDF レポートを生成します。"""
-    payload = request.analysis.model_dump()
-    if request.summary:
-        payload["summary"] = request.summary
-
-    pdf_bytes = build_intelligence_pdf(payload)
-    username = payload.get("username", "analysis")
-    return stream_pdf(pdf_bytes, f"github-analysis-{username}.pdf")
-
-
-@router.post("/download/markdown")
-async def download_markdown(
-    request: DownloadRequest,
-    user: User = Depends(get_current_user),
-):
-    """分析データから Markdown レポートを生成します。"""
-    payload = request.analysis.model_dump()
-    if request.summary:
-        payload["summary"] = request.summary
-
-    md_text = build_intelligence_markdown(payload)
-    username = payload.get("username", "analysis")
-    return stream_markdown(md_text, f"github-analysis-{username}.md")
 
 
 @router.post("/skill-activity", response_model=SkillActivityResponse)

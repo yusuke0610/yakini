@@ -8,9 +8,10 @@ GitHub のデータから以下の分析を順次実行します：
 """
 
 import logging
-from dataclasses import dataclass
+from collections import defaultdict
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from .github_collector import collect_repos, RepoData
 from .skill_extractor import ExtractionResult, extract_skills
@@ -26,6 +27,7 @@ class IntelligenceResult:
     repos_analyzed: int
     unique_skills: int
     analyzed_at: str
+    languages: Dict[str, int] = field(default_factory=dict)
 
 
 async def run_pipeline(
@@ -49,6 +51,12 @@ async def run_pipeline(
         username, token=token, include_forks=include_forks,
     )
 
+    # 全リポジトリの言語バイト数を集計
+    lang_totals: Dict[str, int] = defaultdict(int)
+    for repo in repos:
+        for lang, byte_count in repo.languages.items():
+            lang_totals[lang] += byte_count
+
     # ステージ 2: スキルを抽出
     extraction: ExtractionResult = extract_skills(repos)
 
@@ -68,4 +76,5 @@ async def run_pipeline(
         repos_analyzed=extraction.repos_analyzed,
         unique_skills=len(extraction.unique_skills),
         analyzed_at=datetime.now().isoformat(),
+        languages=dict(lang_totals),
     )

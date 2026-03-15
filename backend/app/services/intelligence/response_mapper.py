@@ -11,4 +11,5 @@ def map_pipeline_result(result: IntelligenceResult) -> AnalysisResponse:
         repos_analyzed=result.repos_analyzed,
         unique_skills=result.unique_skills,
         analyzed_at=result.analyzed_at,
+        languages=result.languages,
     )

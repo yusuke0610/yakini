@@ -2,11 +2,10 @@ import { useState, useEffect } from "react";
 import {
   analyzeGitHub,
   summarizeAnalysis,
-  downloadAnalysisPdf,
-  downloadAnalysisMarkdown,
   type AnalysisResponse,
 } from "../../api";
 import { SkillTimelineChart } from "../SkillTimelineChart";
+import { LanguageBar } from "./LanguageBar";
 import shared from "../../styles/shared.module.css";
 import styles from "./GitHubAnalysisPage.module.css";
 
@@ -39,13 +38,12 @@ export function GitHubAnalysisPage() {
   const [result, setResult] = useState<AnalysisResponse | null>(cachedResult);
 
   // AI 要約
-  const [summary, setSummary] = useState<string | null>(
-    () => sessionStorage.getItem(CACHE_KEY_SUMMARY),
+  const cachedSummary = sessionStorage.getItem(CACHE_KEY_SUMMARY);
+  const [summary, setSummary] = useState<string | null>(cachedSummary);
+  // 結果があり要約キャッシュがない場合、初期状態でローディングを開始
+  const [summaryLoading, setSummaryLoading] = useState(
+    () => !!cachedResult && !cachedSummary,
   );
-  const [summaryLoading, setSummaryLoading] = useState(false);
-
-  // ダウンロード状態
-  const [downloading, setDownloading] = useState(false);
 
   /**
    * GitHub 分析を実行します。
@@ -58,6 +56,7 @@ export function GitHubAnalysisPage() {
         include_forks: includeForks,
       });
       setResult(data);
+      setSummaryLoading(true);
       sessionStorage.setItem(CACHE_KEY_RESULT, JSON.stringify(data));
       setPhase("result");
     } catch (e) {
@@ -73,7 +72,6 @@ export function GitHubAnalysisPage() {
     if (!result) return;
     if (summary) return; // キャッシュされた要約がすでにある場合
     let cancelled = false;
-    setSummaryLoading(true);
     summarizeAnalysis(result)
       .then((res) => {
         if (!cancelled && res.available) {
@@ -99,36 +97,6 @@ export function GitHubAnalysisPage() {
     setSummary(null);
     sessionStorage.removeItem(CACHE_KEY_RESULT);
     sessionStorage.removeItem(CACHE_KEY_SUMMARY);
-  };
-
-  /**
-   * PDF レポートをダウンロードします。
-   */
-  const handleDownloadPdf = async () => {
-    if (!result) return;
-    setDownloading(true);
-    try {
-      await downloadAnalysisPdf(result, summary);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "PDFダウンロードに失敗しました");
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  /**
-   * Markdown レポートをダウンロードします。
-   */
-  const handleDownloadMarkdown = async () => {
-    if (!result) return;
-    setDownloading(true);
-    try {
-      await downloadAnalysisMarkdown(result, summary);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Markdownダウンロードに失敗しました");
-    } finally {
-      setDownloading(false);
-    }
   };
 
   // ── フェーズ: 入力 ──────────────────────────────────────────
@@ -197,22 +165,6 @@ export function GitHubAnalysisPage() {
         <div className={styles.dashboardHeader}>
           <h1>{result.username} の分析結果</h1>
           <div className={styles.headerActions}>
-            <button
-              type="button"
-              className={styles.downloadButton}
-              onClick={handleDownloadPdf}
-              disabled={downloading}
-            >
-              PDF
-            </button>
-            <button
-              type="button"
-              className={styles.downloadButton}
-              onClick={handleDownloadMarkdown}
-              disabled={downloading}
-            >
-              Markdown
-            </button>
             <button type="button" className={styles.backButton} onClick={handleBack}>
               再分析
             </button>
@@ -235,6 +187,14 @@ export function GitHubAnalysisPage() {
             </div>
           </div>
         </div>
+
+        {/* 言語構成 */}
+        {result.languages && Object.keys(result.languages).length > 0 && (
+          <div className={styles.section}>
+            <h2>Languages</h2>
+            <LanguageBar languages={result.languages} />
+          </div>
+        )}
 
         {/* AI 要約 */}
         {(summaryLoading || summary) && (
