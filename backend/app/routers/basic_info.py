@@ -30,7 +30,7 @@ def get_latest_basic_info(
     repository = BasicInfoRepository(db, current_user.id)
     basic_info = repository.get_latest()
     if not basic_info:
-        raise HTTPException(status_code=404, detail="Basic info not found")
+        raise HTTPException(status_code=404, detail="基本情報が見つかりません")
     return basic_info
 
 
@@ -44,6 +44,6 @@ def update_basic_info(
     repository = BasicInfoRepository(db, current_user.id)
     basic_info = repository.get_by_id(str(basic_info_id))
     if not basic_info:
-        raise HTTPException(status_code=404, detail="Basic info not found")
+        raise HTTPException(status_code=404, detail="基本情報が見つかりません")
 
     return repository.update(basic_info, payload.model_dump())

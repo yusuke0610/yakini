@@ -16,12 +16,12 @@ export type BasicInfoResponse = BasicInfoPayload & {
 };
 
 export type CareerTechnologyStackCategory =
-  | "言語"
-  | "フレームワーク"
-  | "OS"
-  | "DB"
-  | "クラウドリソース"
-  | "開発支援ツール";
+  | "language"
+  | "framework"
+  | "os"
+  | "db"
+  | "cloud_resource"
+  | "dev_tool";
 
 export type CareerTechnologyStack = {
   category: CareerTechnologyStackCategory;
@@ -82,4 +82,17 @@ export type ResumeResponse = ResumePayload & {
   id: string;
   created_at: string;
   updated_at: string;
+};
+
+export type MasterItem = {
+  id: string;
+  name: string;
+  sort_order: number;
+};
+
+export type TechStackMasterItem = {
+  id: string;
+  category: string;
+  name: string;
+  sort_order: number;
 };

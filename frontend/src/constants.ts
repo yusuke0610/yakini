@@ -8,16 +8,25 @@ export const blankBasicQualification: BasicQualification = {
 };
 
 export const careerTechnologyStackCategories: CareerTechnologyStackCategory[] = [
-  "言語",
-  "フレームワーク",
-  "OS",
-  "DB",
-  "クラウドリソース",
-  "開発支援ツール",
+  "language",
+  "framework",
+  "os",
+  "db",
+  "cloud_resource",
+  "dev_tool",
 ];
 
+export const careerTechnologyStackCategoryLabels: Record<CareerTechnologyStackCategory, string> = {
+  language: "言語",
+  framework: "フレームワーク",
+  os: "OS",
+  db: "DB",
+  cloud_resource: "クラウドリソース",
+  dev_tool: "開発支援ツール",
+};
+
 export const blankCareerTechnologyStack: CareerTechnologyStack = {
-  category: "言語",
+  category: "language",
   name: "",
 };
 

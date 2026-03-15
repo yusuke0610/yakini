@@ -1,9 +1,7 @@
 import base64
 
-from app.services.pdf.pdf_service import (
-    generate_resume as build_resume_pdf,
-    generate_rirekisho as build_rirekisho_pdf,
-)
+from app.services.pdf.generators.resume_generator import build_resume_pdf
+from app.services.pdf.generators.rirekisho_generator import build_rirekisho_pdf
 from app.services.pdf.utils.pdf_utils import (
     decode_photo as _decode_photo,
     format_period as _format_period,

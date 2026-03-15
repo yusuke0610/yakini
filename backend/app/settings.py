@@ -33,7 +33,10 @@ def get_admin_token() -> str:
 
 
 def get_secret_key() -> str:
-    return os.getenv("SECRET_KEY", "").strip()
+    key = os.getenv("SECRET_KEY", "").strip()
+    if not key:
+        raise RuntimeError("SECRET_KEY is not configured")
+    return key
 
 
 def get_github_client_id() -> str:

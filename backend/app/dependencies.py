@@ -1,3 +1,5 @@
+import secrets
+
 from fastapi import Header, HTTPException, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -24,7 +26,7 @@ def verify_admin_token(
         )
 
     provided_token = authorization.removeprefix("Bearer ").strip()
-    if provided_token != configured_token:
+    if not secrets.compare_digest(provided_token, configured_token):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid admin token",

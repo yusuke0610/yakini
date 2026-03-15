@@ -14,6 +14,7 @@ from ..schemas import (
     RegisterRequest,
     TokenResponse,
 )
+from ..encryption import encrypt_field
 from ..settings import get_github_client_id, get_github_client_secret
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -64,8 +65,9 @@ def login(
 
 
 @router.post("/github/callback", response_model=TokenResponse)
+@limiter.limit("5/minute")
 async def github_callback(
-    payload: GitHubCallbackRequest, db: Session = Depends(get_db)
+    request: Request, payload: GitHubCallbackRequest, db: Session = Depends(get_db)
 ) -> TokenResponse:
     client_id = get_github_client_id()
     client_secret = get_github_client_secret()
@@ -124,6 +126,9 @@ async def github_callback(
             username=f"github:{github_login}", github_id=github_id
         )
         log_event(logging.INFO, "github_user_created", username=user.username)
+
+    user.github_token = encrypt_field(access_token)
+    db.commit()
 
     token = create_access_token(user.username)
     return TokenResponse(access_token=token)
