@@ -6,3 +6,4 @@ export * from "./resumes";
 export * from "./rirekisho";
 export * from "./intelligence";
 export * from "./master-data";
+export * from "./blog";

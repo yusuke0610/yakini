@@ -10,6 +10,7 @@ import { BasicInfoForm } from "./components/forms/BasicInfoForm";
 import { CareerResumeForm } from "./components/forms/CareerResumeForm";
 import { ResumeForm } from "./components/forms/ResumeForm";
 import { GitHubAnalysisPage } from "./components/analysis/GitHubAnalysisPage";
+import { BlogPage } from "./components/blog/BlogPage";
 import shared from "./styles/shared.module.css";
 import styles from "./App.module.css";
 
@@ -40,7 +41,7 @@ export default function App() {
   });
   const [page, setPage] = useState<PageKey>(() => {
     const saved = sessionStorage.getItem("current_page");
-    if (saved === "career" || saved === "Resume") return saved;
+    if (saved === "career" || saved === "Resume" || saved === "blog") return saved;
     if (saved === "github" && user?.isGitHubUser) return saved;
     return "basic";
   });
@@ -149,6 +150,13 @@ export default function App() {
                 GitHub分析
               </button>
             )}
+            <button
+              type="button"
+              className={`${styles.sidebarItem} ${page === "blog" ? styles.active : ""}`}
+              onClick={() => setPage("blog")}
+            >
+              ブログ連携
+            </button>
           </nav>
           <div className={styles.sidebarFooter}>
             <UserMenu
@@ -165,6 +173,7 @@ export default function App() {
           {page === "career" && <CareerResumeForm />}
           {page === "Resume" && <ResumeForm />}
           {page === "github" && <GitHubAnalysisPage />}
+          {page === "blog" && <BlogPage />}
         </main>
       </div>
     </div>

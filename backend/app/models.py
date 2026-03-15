@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -62,6 +62,44 @@ class Rirekisho(Base):
     photo: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     educations: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     work_histories: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class BlogAccount(Base):
+    """ブログ連携アカウント。"""
+
+    __tablename__ = "blog_accounts"
+    __table_args__ = (UniqueConstraint("user_id", "platform", name="uq_blog_accounts_user_platform"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+    platform: Mapped[str] = mapped_column(String(20), nullable=False)
+    username: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class BlogArticle(Base):
+    """ブログ記事。"""
+
+    __tablename__ = "blog_articles"
+    __table_args__ = (
+        UniqueConstraint("user_id", "platform", "external_id", name="uq_blog_articles_user_platform_ext"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+    account_id: Mapped[str] = mapped_column(String(36), ForeignKey("blog_accounts.id"), nullable=False)
+    platform: Mapped[str] = mapped_column(String(20), nullable=False)
+    external_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    published_at: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    likes_count: Mapped[int] = mapped_column(Integer, default=0)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tags: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False

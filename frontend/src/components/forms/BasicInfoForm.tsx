@@ -17,7 +17,6 @@ export function BasicInfoForm() {
     qualifications: [{ ...blankBasicQualification }],
   });
   const [basicInfoId, setBasicInfoId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -46,10 +45,6 @@ export function BasicInfoForm() {
       } catch {
         if (!active) {
           return;
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
         }
       }
     })();
@@ -121,10 +116,6 @@ export function BasicInfoForm() {
       setSaving(false);
     }
   };
-
-  if (loading) {
-    return <p className={shared.hint}>基本情報を読み込み中です...</p>;
-  }
 
   return (
     <form onSubmit={onSubmit}>

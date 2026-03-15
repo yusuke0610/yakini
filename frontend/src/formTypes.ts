@@ -1,4 +1,4 @@
-export type PageKey = "basic" | "career" | "Resume" | "github";
+export type PageKey = "basic" | "career" | "Resume" | "github" | "blog";
 
 export type BasicTextFieldKey = "full_name" | "record_date";
 
