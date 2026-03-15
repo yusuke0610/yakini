@@ -191,7 +191,6 @@ export function BasicInfoForm() {
             </button>
           </section>
 
-          {basicInfoId && <p className={shared.hint}>保存ID: {basicInfoId}</p>}
         </div>
       </div>
     </form>
