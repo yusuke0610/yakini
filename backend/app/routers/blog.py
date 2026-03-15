@@ -25,7 +25,7 @@ from ..schemas import (
     BlogSummaryResponse,
     BlogSyncResponse,
 )
-from ..services.blog_collector import fetch_articles
+from ..services.blog_collector import fetch_articles, verify_user_exists
 from ..services.intelligence.llm_summarizer import (
     check_ollama_available,
     summarize_blog_articles,
@@ -47,12 +47,12 @@ def list_accounts(
 
 
 @router.post("/accounts", response_model=BlogAccountResponse, status_code=201)
-def add_account(
+async def add_account(
     body: BlogAccountCreate,
     user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    """連携アカウントを登録する。同じプラットフォームは1つまで。"""
+    """連携アカウントを登録する。同じプラットフォームは1つまで。ユーザー存在チェックあり。"""
     repo = BlogAccountRepository(db, user.id)
     existing = repo.get_by_platform(body.platform)
     if existing:
@@ -60,6 +60,15 @@ def add_account(
             status_code=409,
             detail=f"{body.platform} のアカウントは既に登録されています",
         )
+
+    # 外部プラットフォーム上にユーザーが存在するか検証
+    user_exists = await verify_user_exists(body.platform, body.username)
+    if not user_exists:
+        raise HTTPException(
+            status_code=404,
+            detail=f"{body.platform} にユーザー「{body.username}」が見つかりません。ユーザー名を確認してください。",
+        )
+
     account = repo.upsert(body.platform, body.username)
     return account
 

@@ -101,8 +101,13 @@ export function BlogPage() {
         setSuccess(
           `${result.synced_count}件の記事を取得しました（合計: ${result.total_count}件）`,
         );
-      } catch {
-        setSuccess("アカウントを連携しました。「同期」ボタンで記事を取得できます。");
+      } catch (syncErr) {
+        setSuccess("アカウントを連携しました");
+        setError(
+          syncErr instanceof Error
+            ? syncErr.message
+            : "記事の同期に失敗しました。「同期」ボタンで再試行してください。",
+        );
       }
     } catch (e) {
       setError(

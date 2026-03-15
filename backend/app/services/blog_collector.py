@@ -100,6 +100,26 @@ def _strip_html(text: str) -> str:
     return re.sub(r"<[^>]+>", "", text).strip()
 
 
+async def verify_user_exists(platform: str, username: str) -> bool:
+    """プラットフォーム上にユーザーが存在するか検証する。"""
+    try:
+        if platform == "zenn":
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # ユーザー API で存在チェック
+                resp = await client.get(
+                    f"https://zenn.dev/api/users/{username}",
+                )
+                return resp.status_code == 200
+        elif platform == "note":
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(f"https://note.com/{username}/rss")
+                return resp.status_code == 200
+        return False
+    except (httpx.ConnectError, httpx.TimeoutException):
+        logger.warning("プラットフォーム %s への接続に失敗しました", platform)
+        return False
+
+
 async def fetch_articles(platform: str, username: str) -> list[dict]:
     """プラットフォームに応じて適切なフェッチャーを呼ぶ。"""
     if platform == "zenn":
