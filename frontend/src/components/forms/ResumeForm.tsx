@@ -14,7 +14,7 @@ import type { ResumeFormState } from "../../payloadBuilders";
 import type { ResumeHistory } from "../../types";
 import { blankHistory } from "../../constants";
 import type { ResumeTextFieldKey } from "../../formTypes";
-import { useMasterData } from "../../hooks/useMasterData";
+import { usePrefectures } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
 import { Combobox } from "./Combobox";
@@ -37,7 +37,7 @@ export function ResumeForm() {
   const [resumeId, setresumeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const { items: prefectureOptions } = useMasterData("prefecture");
+  const { items: prefectureOptions } = usePrefectures();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 

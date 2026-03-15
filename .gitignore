@@ -23,6 +23,9 @@ override.tf.json
 *_override.tf.json
 terraform.tfvars
 
+# SQLite data
+data/
+
 # Env files
 .env
 frontend/.env

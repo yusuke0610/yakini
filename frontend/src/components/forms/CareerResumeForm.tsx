@@ -17,13 +17,14 @@ import {
   blankCareerProject,
   blankCareerTechnologyStack,
   careerTechnologyStackCategories,
+  careerTechnologyStackCategoryLabels,
 } from "../../constants";
 import type {
   CareerTextFieldKey,
   CareerExperienceFieldKey,
   CareerProjectFieldKey,
 } from "../../formTypes";
-import { useMasterData } from "../../hooks/useMasterData";
+import { useTechnologyStacks } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
 import { Combobox } from "./Combobox";
@@ -41,7 +42,7 @@ export function CareerResumeForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const { items: techStackOptions } = useMasterData("technology_stack");
+  const { items: techStackOptions } = useTechnologyStacks();
   const techStackNames = techStackOptions.map((item) => item.name);
 
   const { downloading, previewUrl, closePreview, onDownloadPdf, onDownloadMarkdown, onPreviewPdf } =
@@ -528,9 +529,9 @@ export function CareerResumeForm() {
                                   )
                                 }
                               >
-                                {careerTechnologyStackCategories.map((category) => (
-                                  <option key={category} value={category}>
-                                    {category}
+                                {careerTechnologyStackCategories.map((cat) => (
+                                  <option key={cat} value={cat}>
+                                    {careerTechnologyStackCategoryLabels[cat]}
                                   </option>
                                 ))}
                               </select>
