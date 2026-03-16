@@ -96,3 +96,21 @@ export type TechStackMasterItem = {
   name: string;
   sort_order: number;
 };
+
+export type BlogAccount = {
+  id: string;
+  platform: "zenn" | "note";
+  username: string;
+  created_at: string;
+};
+
+export type BlogArticle = {
+  id: string;
+  platform: string;
+  title: string;
+  url: string;
+  published_at: string | null;
+  likes_count: number;
+  summary: string | null;
+  tags: string[];
+};

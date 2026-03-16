@@ -12,7 +12,8 @@ os.environ.setdefault("FIELD_ENCRYPTION_KEY", "pVo6M_raAWEpAv25F4p4RziywsjfPENok
 
 from app.database import Base, get_db
 from app.models import (  # noqa: F401 — ensure models registered
-    BasicInfo, MPrefecture, MQualification, MTechnologyStack, Resume, Rirekisho, User,
+    BasicInfo, BlogAccount, BlogArticle, MPrefecture, MQualification,
+    MTechnologyStack, Resume, Rirekisho, User,
 )
 from app.main import app, limiter
 
@@ -47,3 +48,17 @@ def client(db_session):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+def auth_header(client, username: str = "testuser") -> dict:
+    """テスト用の認証 Cookie をセットするヘルパー。空の dict を返す（Cookie は自動送信される）。"""
+    client.post("/auth/register", json={
+        "username": username,
+        "email": f"{username}@example.com",
+        "password": "SecurePass123",
+    })
+    client.post("/auth/login", json={
+        "email": f"{username}@example.com",
+        "password": "SecurePass123",
+    })
+    return {}
