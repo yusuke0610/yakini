@@ -1,6 +1,7 @@
 from .admin import router as admin_router
 from .auth import router as auth_router
 from .basic_info import router as basic_info_router
+from .blog import router as blog_router
 from .health import router as health_router
 from .intelligence import router as intelligence_router
 from .master_data import router as master_data_router
@@ -11,6 +12,7 @@ __all__ = [
     "admin_router",
     "auth_router",
     "basic_info_router",
+    "blog_router",
     "health_router",
     "intelligence_router",
     "master_data_router",

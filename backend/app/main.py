@@ -17,6 +17,7 @@ from .routers import (
     admin_router,
     auth_router,
     basic_info_router,
+    blog_router,
     health_router,
     intelligence_router,
     master_data_router,
@@ -54,6 +55,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "font-src 'self'; "
+            "connect-src 'self' https://api.github.com https://github.com; "
+            "frame-ancestors 'none'"
+        )
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=()"
+        )
         return response
 
 
@@ -72,5 +85,6 @@ app.include_router(basic_info_router)
 app.include_router(resumes_router)
 app.include_router(rirekisho_router)
 app.include_router(intelligence_router)
+app.include_router(blog_router)
 app.include_router(master_data_router)
 app.include_router(admin_router)

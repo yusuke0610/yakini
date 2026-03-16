@@ -15,10 +15,22 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
 
+    @model_validator(mode="after")
+    def _validate_password_complexity(self) -> "RegisterRequest":
+        """パスワードに英大文字・英小文字・数字をそれぞれ1文字以上含むことを検証する。"""
+        p = self.password
+        if not any(c.isupper() for c in p):
+            raise ValueError("パスワードには英大文字を1文字以上含めてください")
+        if not any(c.islower() for c in p):
+            raise ValueError("パスワードには英小文字を1文字以上含めてください")
+        if not any(c.isdigit() for c in p):
+            raise ValueError("パスワードには数字を1文字以上含めてください")
+        return self
+
 
 class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+    username: str
+    is_github_user: bool = False
 
 
 class UserResponse(BaseModel):
@@ -148,6 +160,53 @@ class RirekishoResponse(RirekishoBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BlogAccountCreate(BaseModel):
+    """ブログ連携アカウントの作成リクエスト。"""
+    platform: Literal["zenn", "note"]
+    username: str = Field(min_length=1, max_length=120)
+
+
+class BlogAccountResponse(BaseModel):
+    """ブログ連携アカウントのレスポンス。"""
+    id: UUID
+    platform: str
+    username: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BlogArticleResponse(BaseModel):
+    """ブログ記事のレスポンス。"""
+    id: UUID
+    platform: str
+    title: str
+    url: str
+    published_at: str | None = None
+    likes_count: int = 0
+    summary: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BlogSyncResponse(BaseModel):
+    """ブログ同期結果のレスポンス。"""
+    synced_count: int
+    total_count: int
+
+
+class BlogSummaryRequest(BaseModel):
+    """ブログ記事 AI 分析リクエスト。"""
+    articles: list[BlogArticleResponse]
+
+
+class BlogSummaryResponse(BaseModel):
+    """ブログ記事 AI 分析レスポンス。"""
+    summary: str
+    available: bool
 
 
 class MasterItem(BaseModel):
