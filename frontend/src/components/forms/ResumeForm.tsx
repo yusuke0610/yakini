@@ -25,6 +25,8 @@ import styles from "./ResumeForm.module.css";
 export function ResumeForm() {
   const [form, setForm] = useState<ResumeFormState>({
     gender: "",
+    birthday: "",
+    postal_code: "",
     prefecture: "",
     address: "",
     address_furigana: "",
@@ -60,6 +62,8 @@ export function ResumeForm() {
         setresumeId(latest.id);
         setForm({
           gender: ((latest as Record<string, unknown>).gender as ResumeFormState["gender"]) ?? "",
+          birthday: (latest as Record<string, unknown>).birthday as string ?? "",
+          postal_code: (latest as Record<string, unknown>).postal_code as string ?? "",
           prefecture: latest.prefecture,
           address: latest.address,
           address_furigana: (latest as Record<string, unknown>).address_furigana as string ?? "",
@@ -98,7 +102,19 @@ export function ResumeForm() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setForm((prev) => ({ ...prev, photo: reader.result as string }));
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 450;
+        canvas.height = 600;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, 450, 600);
+          const resized = canvas.toDataURL("image/jpeg", 0.9);
+          setForm((prev) => ({ ...prev, photo: resized }));
+        }
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   };
@@ -271,12 +287,31 @@ export function ResumeForm() {
               </select>
             </label>
             <label>
+              <span className={shared.labelText}>生年月日<span className={shared.requiredBadge}>必須</span></span>
+              <input
+                type="date"
+                value={form.birthday}
+                onChange={(e) => onChangeField("birthday", e.target.value)}
+                required
+              />
+            </label>
+            <label>
               <span className={shared.labelText}>都道府県<span className={shared.requiredBadge}>必須</span></span>
               <Combobox
                 value={form.prefecture}
                 onChange={(val) => onChangeField("prefecture", val)}
                 options={prefectureOptions.map((pref) => pref.name)}
                 placeholder="例: 東京都"
+              />
+            </label>
+            <label>
+              <span className={shared.labelText}>郵便番号<span className={shared.requiredBadge}>必須</span></span>
+              <input
+                type="text"
+                value={form.postal_code}
+                onChange={(e) => onChangeField("postal_code", e.target.value)}
+                placeholder="例: 150-0041"
+                required
               />
             </label>
           </div>
