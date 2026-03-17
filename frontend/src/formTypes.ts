@@ -11,12 +11,15 @@ export type CareerExperienceFieldKey =
   | "is_current"
   | "employee_count"
   | "capital";
-export type CareerProjectFieldKey = "name" | "role" | "description" | "achievements" | "scale";
+export type CareerClientFieldKey = "name";
+export type CareerProjectFieldKey = "name" | "start_date" | "end_date" | "is_current" | "role" | "description" | "achievements" | "scale";
 
 export type ResumeTextFieldKey =
-  | "postal_code"
+  | "name_furigana"
+  | "gender"
   | "prefecture"
   | "address"
+  | "address_furigana"
   | "email"
   | "phone"
   | "motivation"

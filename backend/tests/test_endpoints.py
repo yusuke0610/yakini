@@ -181,9 +181,11 @@ def test_rirekisho_crud(client: TestClient) -> None:
     headers = auth_header(client, "rirekishouser")
 
     resp = client.post("/api/rirekisho", json={
-        "postal_code": "150-0001",
+        "name_furigana": "りれきしょ ゆーざー",
+        "gender": "male",
         "prefecture": "東京都",
         "address": "渋谷区神南1-1-1",
+        "address_furigana": "しぶやく じんなん",
         "email": "test@example.com",
         "phone": "09012345678",
         "motivation": "御社の事業に共感しました",
@@ -198,9 +200,11 @@ def test_rirekisho_crud(client: TestClient) -> None:
     assert resp.json()["prefecture"] == "東京都"
 
     resp = client.put(f"/api/rirekisho/{rirekisho_id}", json={
-        "postal_code": "150-0002",
+        "name_furigana": "りれきしょ ゆーざー",
+        "gender": "female",
         "prefecture": "東京都",
         "address": "渋谷区神南2-2-2",
+        "address_furigana": "しぶやく じんなん",
         "email": "test2@example.com",
         "phone": "09087654321",
         "motivation": "更新済み志望動機",
@@ -208,7 +212,7 @@ def test_rirekisho_crud(client: TestClient) -> None:
         "work_histories": [],
     }, headers=headers)
     assert resp.status_code == 200
-    assert resp.json()["postal_code"] == "150-0002"
+    assert resp.json()["gender"] == "female"
 
 
 # ── Health Check ───────────────────────────────────────────────

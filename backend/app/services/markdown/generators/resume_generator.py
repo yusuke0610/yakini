@@ -56,29 +56,44 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                 lines.append(field_line("資本金", f"{cap}千万円"))
             lines.append("")
 
-            projects = exp.get("projects", [])
-            for proj in projects:
-                name = proj.get("name", "")
-                if name:
-                    lines.append(f"#### {name}")
+            # clients → projects（後方互換: clients がなく projects がある場合）
+            clients = exp.get("clients", [])
+            if not clients and exp.get("projects"):
+                clients = [{"name": "", "projects": exp["projects"]}]
+            for client in clients:
+                client_name = client.get("name", "")
+                if client_name:
+                    lines.append(f"#### {client_name}")
                     lines.append("")
-                role = proj.get("role", "")
-                if role:
-                    lines.append(field_line("担当", role))
-                desc = proj.get("description", "")
-                if desc:
-                    lines.append(field_line("業務内容", desc))
-                achievements = proj.get("achievements", "")
-                if achievements:
-                    lines.append(field_line("実績", achievements))
-                scale = proj.get("scale", "")
-                if scale:
-                    lines.append(field_line("規模", f"{scale}名"))
-                stacks = proj.get("technology_stacks", [])
-                if stacks:
-                    tech_str = ", ".join(s.get("name", "") for s in stacks)
-                    lines.append(field_line("技術スタック", tech_str))
-                lines.append("")
+                projects = client.get("projects", [])
+                for proj in projects:
+                    name = proj.get("name", "")
+                    if name:
+                        lines.append(f"##### {name}")
+                        lines.append("")
+                    proj_start = proj.get("start_date", "")
+                    proj_end = proj.get("end_date", "")
+                    proj_is_current = proj.get("is_current", False)
+                    if proj_start:
+                        proj_period = format_period(proj_start, proj_end, proj_is_current)
+                        lines.append(field_line("期間", proj_period))
+                    role = proj.get("role", "")
+                    if role:
+                        lines.append(field_line("担当", role))
+                    desc = proj.get("description", "")
+                    if desc:
+                        lines.append(field_line("業務内容", desc))
+                    achievements = proj.get("achievements", "")
+                    if achievements:
+                        lines.append(field_line("実績", achievements))
+                    scale = proj.get("scale", "")
+                    if scale:
+                        lines.append(field_line("規模", f"{scale}名"))
+                    stacks = proj.get("technology_stacks", [])
+                    if stacks:
+                        tech_str = ", ".join(st.get("name", "") for st in stacks)
+                        lines.append(field_line("技術スタック", tech_str))
+                    lines.append("")
 
     self_pr = payload.get("self_pr", "")
     if self_pr:

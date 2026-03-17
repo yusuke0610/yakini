@@ -73,6 +73,9 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
     draw_bordered_rect(c, _LX, y, _LABEL_W, furigana_h)
     draw_cell_text(c, "ふりがな", _LX, y, _LABEL_W, furigana_h, font_size=7)
     draw_bordered_rect(c, _LX + _LABEL_W, y, _LEFT_W - _LABEL_W, furigana_h)
+    name_furigana = data.get("name_furigana", "")
+    if name_furigana:
+        draw_cell_text(c, name_furigana, _LX + _LABEL_W, y, _LEFT_W - _LABEL_W, furigana_h, font_size=8)
     y -= furigana_h
 
     # --- Name row ---
@@ -92,51 +95,52 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
     gender_w = 25 * mm
     c.setLineWidth(0.5)
     c.line(_LX + _LEFT_W - gender_w, y, _LX + _LEFT_W - gender_w, y - bd_h)
-    draw_cell_text(c, "性別", _LX + _LEFT_W - gender_w, y, gender_w, bd_h, font_size=8, align="center")
+    gender_raw = data.get("gender", "")
+    gender_labels = {"male": "男", "female": "女"}
+    gender_text = gender_labels.get(gender_raw, "")
+    if gender_text:
+        draw_cell_text(c, gender_text, _LX + _LEFT_W - gender_w, y, gender_w, bd_h, font_size=9, align="center")
+    else:
+        draw_cell_text(c, "性別", _LX + _LEFT_W - gender_w, y, gender_w, bd_h, font_size=8, align="center")
     # Photo area extends below — draw bottom border of photo
     if y > photo_y_top - _PHOTO_H:
         pass  # photo still extends below
     y -= bd_h
 
-    # --- Address block ---
-    addr_block_h = 28 * mm
-    postal_row_h = 8 * mm
-    addr_row_h = addr_block_h - postal_row_h
-    # Postal code row
-    draw_bordered_rect(c, _LX, y, _LABEL_W, postal_row_h)
-    draw_cell_text(c, "現住所", _LX, y, _LABEL_W, postal_row_h, font_size=8)
-    draw_bordered_rect(c, _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, postal_row_h)
-    postal_code = data.get("postal_code", "")
-    draw_cell_text(c, f"〒{postal_code}", _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, postal_row_h, font_size=9)
-    y -= postal_row_h
-    # Address row
+    # --- Address furigana row ---
+    addr_furigana_h = 8 * mm
+    draw_bordered_rect(c, _LX, y, _LABEL_W, addr_furigana_h)
+    draw_cell_text(c, "ふりがな", _LX, y, _LABEL_W, addr_furigana_h, font_size=7)
+    draw_bordered_rect(c, _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, addr_furigana_h)
+    address_furigana = data.get("address_furigana", "")
+    if address_furigana:
+        draw_cell_text(c, address_furigana, _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, addr_furigana_h, font_size=8)
+    y -= addr_furigana_h
+
+    # --- Address row ---
+    addr_row_h = 20 * mm
     draw_bordered_rect(c, _LX, y, _LABEL_W, addr_row_h)
+    draw_cell_text(c, "現住所", _LX, y, _LABEL_W, addr_row_h, font_size=8)
     draw_bordered_rect(c, _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, addr_row_h)
     prefecture = data.get("prefecture", "")
     address = data.get("address", "")
     full_address = f"{prefecture}{address}"
     draw_cell_text(c, full_address, _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, addr_row_h, font_size=9, v_center=False)
-    # Phone / Email on right side
+    y -= addr_row_h
+
+    # --- Contact block (連絡先: 電話 / メール) ---
+    contact_label_h = 8 * mm
+    contact_body_h = 14 * mm
+    draw_bordered_rect(c, _LX, y, _LABEL_W, contact_label_h + contact_body_h)
+    draw_cell_text(c, "連絡先", _LX, y, _LABEL_W, contact_label_h + contact_body_h, font_size=8)
+    draw_bordered_rect(c, _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, contact_label_h + contact_body_h)
     phone = data.get("phone", "")
     email = data.get("email", "")
     contact_x = _LX + _LABEL_W + 2 * mm
-    c.setFont(FONT_NAME, 7)
-    c.drawString(contact_x, y - addr_row_h + 3 * mm + 8, f"電話: {phone}")
-    c.drawString(contact_x, y - addr_row_h + 3 * mm, f"E-mail: {email}")
-    y -= addr_row_h
-
-    # --- Secondary contact block ---
-    contact2_h = 22 * mm
-    contact2_postal_h = 8 * mm
-    contact2_addr_h = contact2_h - contact2_postal_h
-    draw_bordered_rect(c, _LX, y, _LABEL_W, contact2_postal_h)
-    draw_cell_text(c, "連絡先", _LX, y, _LABEL_W, contact2_postal_h, font_size=8)
-    draw_bordered_rect(c, _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, contact2_postal_h)
-    draw_cell_text(c, "〒", _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, contact2_postal_h, font_size=9)
-    y -= contact2_postal_h
-    draw_bordered_rect(c, _LX, y, _LABEL_W, contact2_addr_h)
-    draw_bordered_rect(c, _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, contact2_addr_h)
-    y -= contact2_addr_h
+    c.setFont(FONT_NAME, 9)
+    c.drawString(contact_x, y - 5 * mm, f"電話: {phone}")
+    c.drawString(contact_x, y - 12 * mm, f"E-mail: {email}")
+    y -= (contact_label_h + contact_body_h)
 
     # --- Education + Work History table ---
     y -= 4 * mm  # spacing

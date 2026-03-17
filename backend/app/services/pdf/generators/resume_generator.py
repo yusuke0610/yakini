@@ -30,10 +30,16 @@ def _build_project_table(project: dict, s: dict) -> list:
     elements = []
 
     proj_name = escape(project.get("name", ""))
+    proj_start = project.get("start_date", "")
+    proj_end = project.get("end_date", "")
+    proj_is_current = project.get("is_current", False)
+    proj_period = format_period(proj_start, proj_end, proj_is_current) if proj_start else ""
     role = escape(project.get("role", ""))
     header_parts = []
     if proj_name:
         header_parts.append(proj_name)
+    if proj_period:
+        header_parts.append(proj_period)
     if role:
         header_parts.append(f"役割: {role}")
     if header_parts:
@@ -163,24 +169,23 @@ def build_resume_pdf(resume: dict) -> bytes:
             # Build inner content for this company
             inner = []
 
-            # Projects
-            projects = exp.get("projects", [])
-            if projects:
+            # clients → projects（後方互換: clients がなく projects がある場合はそのまま描画）
+            clients = exp.get("clients", [])
+            if not clients and exp.get("projects"):
+                clients = [{"name": "", "projects": exp["projects"]}]
+            for client in clients:
+                client_name = escape(client.get("name", ""))
+                if client_name:
+                    inner.append(Paragraph(
+                        f"<b>▸ {client_name}</b>",
+                        s["company_header"],
+                    ))
+                    inner.append(Spacer(1, 1 * mm))
+                projects = client.get("projects", [])
                 for proj in projects:
                     proj_elements = _build_project_table(proj, s)
                     inner.extend(proj_elements)
                     inner.append(Spacer(1, 2 * mm))
-            else:
-                compat_project = {
-                    "name": "",
-                    "role": "",
-                    "description": exp.get("description", ""),
-                    "achievements": exp.get("achievements", ""),
-                    "scale": exp.get("employee_count", ""),
-                    "technology_stacks": exp.get("technology_stacks", []),
-                }
-                proj_elements = _build_project_table(compat_project, s)
-                inner.extend(proj_elements)
 
             # Wrap company in a bordered table
             content_width = PAGE_W - 2 * MARGIN

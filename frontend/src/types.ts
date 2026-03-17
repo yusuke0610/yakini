@@ -30,11 +30,19 @@ export type CareerTechnologyStack = {
 
 export type CareerProject = {
   name: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
   role: string;
   description: string;
   achievements: string;
   scale: string;
   technology_stacks: CareerTechnologyStack[];
+};
+
+export type CareerClient = {
+  name: string;
+  projects: CareerProject[];
 };
 
 export type CareerExperience = {
@@ -45,7 +53,7 @@ export type CareerExperience = {
   is_current: boolean;
   employee_count: string;
   capital: string;
-  projects: CareerProject[];
+  clients: CareerClient[];
 };
 
 export type CareerResumePayload = {
@@ -66,9 +74,11 @@ export type ResumeHistory = {
 };
 
 export type ResumePayload = {
-  postal_code: string;
+  name_furigana: string;
+  gender: "male" | "female" | "";
   prefecture: string;
   address: string;
+  address_furigana: string;
   email: string;
   phone: string;
   motivation: string;

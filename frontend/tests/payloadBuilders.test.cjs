@@ -61,21 +61,29 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
         is_current: true,
         employee_count: "  300名  ",
         capital: "  1億円  ",
-        projects: [
+        clients: [
           {
-            name: "  プロジェクトA  ",
-            role: "  メンバー  ",
-            description: "  API開発  ",
-            achievements: "  パフォーマンス改善  ",
-            scale: "  5名  ",
-            technology_stacks: [
+            name: "  クライアントA  ",
+            projects: [
               {
-                category: "フレームワーク",
-                name: "  FastAPI  "
-              },
-              {
-                category: "言語",
-                name: "   "
+                name: "  プロジェクトA  ",
+                start_date: "2020-04",
+                end_date: "2021-03",
+                is_current: false,
+                role: "  メンバー  ",
+                description: "  API開発  ",
+                achievements: "  パフォーマンス改善  ",
+                scale: "  5名  ",
+                technology_stacks: [
+                  {
+                    category: "フレームワーク",
+                    name: "  FastAPI  "
+                  },
+                  {
+                    category: "言語",
+                    name: "   "
+                  }
+                ]
               }
             ]
           }
@@ -89,10 +97,12 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
   assert.equal(payload.experiences.length, 1);
   assert.equal(payload.experiences[0].is_current, true);
   assert.equal(payload.experiences[0].business_description, "SES事業");
-  assert.equal(payload.experiences[0].projects.length, 1);
-  assert.equal(payload.experiences[0].projects[0].name, "プロジェクトA");
-  assert.equal(payload.experiences[0].projects[0].role, "メンバー");
-  assert.deepEqual(payload.experiences[0].projects[0].technology_stacks, [
+  assert.equal(payload.experiences[0].clients.length, 1);
+  assert.equal(payload.experiences[0].clients[0].name, "クライアントA");
+  assert.equal(payload.experiences[0].clients[0].projects.length, 1);
+  assert.equal(payload.experiences[0].clients[0].projects[0].name, "プロジェクトA");
+  assert.equal(payload.experiences[0].clients[0].projects[0].role, "メンバー");
+  assert.deepEqual(payload.experiences[0].clients[0].projects[0].technology_stacks, [
     {
       category: "フレームワーク",
       name: "FastAPI"
@@ -115,7 +125,7 @@ test("buildCareerPayload throws when 離職で終了年月がない", () => {
             is_current: false,
             employee_count: "100名",
             capital: "5000万円",
-            projects: []
+            clients: []
           }
         ]
       }),
@@ -127,17 +137,19 @@ test("buildResumePayload throws when required fields are empty", () => {
   assert.throws(
     () =>
       buildResumePayload({
-        postal_code: "",
-        prefecture: "東京都",
+        name_furigana: "",
+        gender: "",
+        prefecture: "",
         address: "渋谷区",
+        address_furigana: "",
         email: "test@example.com",
         phone: "09012345678",
-        motivation: "志望動機",
+        motivation: "",
         personal_preferences: "",
         educations: [],
         work_histories: [],
         photo: null
       }),
-    /郵便番号、都道府県、住所、メールアドレス、電話番号、志望動機は必須です。/
+    /都道府県、住所、メールアドレス、電話番号は必須です。/
   );
 });
