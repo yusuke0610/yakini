@@ -1,8 +1,8 @@
 """
-Builds skill timelines from extracted skill data.
+抽出されたスキルデータからスキルタイムラインを構築します。
 
-Tracks when each skill first appeared and how usage evolved over time.
-Deterministic — no LLM usage.
+各スキルが最初にいつ現れ、時間の経過とともに使用状況がどのように変化したかを追跡します。
+決定論的 — LLMは使用しません。
 """
 
 import logging
@@ -19,31 +19,31 @@ logger = logging.getLogger(__name__)
 class SkillTimeline:
     skill_name: str
     category: str
-    first_seen: str        # Year string, e.g. "2019"
-    last_seen: str         # Year string, e.g. "2024"
-    usage_frequency: int   # Total repo count
+    first_seen: str        # 年の文字列、例: "2019"
+    last_seen: str         # 年の文字列、例: "2024"
+    usage_frequency: int   # 合計リポジトリ数
     repositories: List[str]
-    yearly_usage: Dict[str, int]  # year → repo count
+    yearly_usage: Dict[str, int]  # 年 → リポジトリ数
 
 
 @dataclass
 class YearSnapshot:
-    """Skills active in a given year."""
+    """特定の年にアクティブだったスキル。"""
     year: str
     skills: List[str]
-    new_skills: List[str]  # Skills that appeared for the first time
+    new_skills: List[str]  # 初めて現れたスキル
 
 
 def build_timeline(
     extraction: ExtractionResult,
 ) -> List[SkillTimeline]:
     """
-    Build a skill timeline from extraction results.
+    抽出結果からスキルタイムラインを構築します。
 
-    Groups skill observations by skill name, calculates first/last seen,
-    and yearly usage frequency.
+    スキル名を基準にスキルの観測結果をグループ化し、初出/最終確認日、
+    および年ごとの使用頻度を計算します。
     """
-    # Group observations by skill
+    # スキルごとに観測結果をグループ化
     skill_data: Dict[str, List[ExtractedSkill]] = defaultdict(list)
     for obs in extraction.skills:
         skill_data[obs.skill_name].append(obs)
@@ -61,7 +61,7 @@ def build_timeline(
                 yearly[year].add(obs.repo_name)
             all_repos.add(obs.repo_name)
 
-            # Also count pushed_at year as activity
+            # pushed_at の年もアクティビティとしてカウント
             push_year = _extract_year(obs.repo_pushed_at)
             if push_year and push_year != year:
                 yearly[push_year].add(obs.repo_name)
@@ -91,16 +91,16 @@ def build_year_snapshots(
     timelines: List[SkillTimeline],
 ) -> List[YearSnapshot]:
     """
-    Build year-by-year snapshots showing active skills per year.
+    年ごとのアクティブなスキルを示す年次スナップショットを構築します。
 
-    Useful for visualization.
+    視覚化に役立ちます。
     """
-    # Collect all years
+    # すべての年を収集
     all_years: Set[str] = set()
     for t in timelines:
         all_years.update(t.yearly_usage.keys())
 
-    # Track first-seen per skill
+    # スキルごとの初出を追跡
     first_seen_map: Dict[str, str] = {
         t.skill_name: t.first_seen for t in timelines
     }
@@ -124,7 +124,7 @@ def build_year_snapshots(
 
 
 def _extract_year(iso_date: str) -> str | None:
-    """Extract year from ISO 8601 date string."""
+    """ISO 8601 形式の日付文字列から年を抽出します。"""
     if not iso_date or len(iso_date) < 4:
         return None
     return iso_date[:4]

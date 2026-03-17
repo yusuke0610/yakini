@@ -31,6 +31,13 @@ export interface SkillActivityResponse {
   skills: SkillActivityItem[];
 }
 
+export interface CachedAnalysisResponse {
+  analysis_result: AnalysisResponse | null;
+  ai_summary: string | null;
+  skill_activity_month: SkillActivityItem[] | null;
+  skill_activity_year: SkillActivityItem[] | null;
+}
+
 /**
  * GitHub プロフィールの分析を開始します。
  */
@@ -58,4 +65,11 @@ export function getSkillActivity(interval: "month" | "year" = "month"): Promise<
   return request<SkillActivityResponse>(`/api/intelligence/skill-activity?interval=${interval}`, {
     method: "POST",
   });
+}
+
+/**
+ * DB に保存された分析キャッシュを取得します。
+ */
+export function getAnalysisCache(): Promise<CachedAnalysisResponse> {
+  return request<CachedAnalysisResponse>("/api/intelligence/cache");
 }

@@ -5,6 +5,7 @@ export type BasicQualification = {
 
 export type BasicInfoPayload = {
   full_name: string;
+  name_furigana: string;
   record_date: string;
   qualifications: BasicQualification[];
 };
@@ -28,13 +29,34 @@ export type CareerTechnologyStack = {
   name: string;
 };
 
+export type TeamMember = {
+  role: string;
+  count: number;
+};
+
+export type ProjectTeam = {
+  total: string;
+  members: TeamMember[];
+};
+
 export type CareerProject = {
   name: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
   role: string;
   description: string;
-  achievements: string;
-  scale: string;
+  challenge: string;
+  action: string;
+  result: string;
+  team: ProjectTeam;
   technology_stacks: CareerTechnologyStack[];
+  phases: string[];
+};
+
+export type CareerClient = {
+  name: string;
+  projects: CareerProject[];
 };
 
 export type CareerExperience = {
@@ -45,7 +67,7 @@ export type CareerExperience = {
   is_current: boolean;
   employee_count: string;
   capital: string;
-  projects: CareerProject[];
+  clients: CareerClient[];
 };
 
 export type CareerResumePayload = {
@@ -66,9 +88,10 @@ export type ResumeHistory = {
 };
 
 export type ResumePayload = {
-  postal_code: string;
+  gender: "male" | "female";
   prefecture: string;
   address: string;
+  address_furigana: string;
   email: string;
   phone: string;
   motivation: string;

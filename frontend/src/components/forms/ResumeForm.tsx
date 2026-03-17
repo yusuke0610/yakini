@@ -18,14 +18,16 @@ import { usePrefectures } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
 import { Combobox } from "./Combobox";
+import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
 import styles from "./ResumeForm.module.css";
 
 export function ResumeForm() {
   const [form, setForm] = useState<ResumeFormState>({
-    postal_code: "",
+    gender: "",
     prefecture: "",
     address: "",
+    address_furigana: "",
     email: "",
     phone: "",
     motivation: "",
@@ -57,9 +59,10 @@ export function ResumeForm() {
         if (!active) return;
         setresumeId(latest.id);
         setForm({
-          postal_code: latest.postal_code,
+          gender: ((latest as Record<string, unknown>).gender as ResumeFormState["gender"]) ?? "",
           prefecture: latest.prefecture,
           address: latest.address,
+          address_furigana: (latest as Record<string, unknown>).address_furigana as string ?? "",
           email: latest.email,
           phone: latest.phone,
           motivation: latest.motivation,
@@ -256,14 +259,16 @@ export function ResumeForm() {
         <section className={shared.section}>
           <div className={shared.inline}>
             <label>
-              <span className={shared.labelText}>郵便番号<span className={shared.requiredBadge}>必須</span></span>
-              <input
-                type="text"
-                value={form.postal_code}
-                onChange={(e) => onChangeField("postal_code", e.target.value)}
-                placeholder="例: 150-0001"
+              <span className={shared.labelText}>性別<span className={shared.requiredBadge}>必須</span></span>
+              <select
+                value={form.gender}
+                onChange={(e) => onChangeField("gender", e.target.value)}
                 required
-              />
+              >
+                <option value="">未選択</option>
+                <option value="male">男</option>
+                <option value="female">女</option>
+              </select>
             </label>
             <label>
               <span className={shared.labelText}>都道府県<span className={shared.requiredBadge}>必須</span></span>
@@ -276,6 +281,18 @@ export function ResumeForm() {
             </label>
           </div>
           <label>
+            <span className={shared.labelText}>住所ふりがな<span className={shared.requiredBadge}>必須</span></span>
+            <input
+              type="text"
+              value={form.address_furigana}
+              onChange={(e) => onChangeField("address_furigana", e.target.value)}
+              placeholder="例: しぶやく じんなん"
+              pattern="^[ぁ-ゖー\s　]+$"
+              title="ひらがなで入力してください"
+              required
+            />
+          </label>
+          <label>
             <span className={shared.labelText}>住所<span className={shared.requiredBadge}>必須</span></span>
             <input
               type="text"
@@ -284,16 +301,8 @@ export function ResumeForm() {
               required
             />
           </label>
+          <h3>連絡先</h3>
           <div className={shared.inline}>
-            <label>
-              <span className={shared.labelText}>メールアドレス<span className={shared.requiredBadge}>必須</span></span>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => onChangeField("email", e.target.value)}
-                required
-              />
-            </label>
             <label>
               <span className={shared.labelText}>電話番号<span className={shared.requiredBadge}>必須</span></span>
               <input
@@ -303,24 +312,28 @@ export function ResumeForm() {
                 required
               />
             </label>
+            <label>
+              <span className={shared.labelText}>メールアドレス<span className={shared.requiredBadge}>必須</span></span>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => onChangeField("email", e.target.value)}
+                required
+              />
+            </label>
           </div>
-          <label>
-            <span className={shared.labelText}>志望動機<span className={shared.requiredBadge}>必須</span></span>
-            <textarea
-              rows={4}
-              value={form.motivation}
-              onChange={(e) => onChangeField("motivation", e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            本人希望記入欄
-            <textarea
-              rows={4}
-              value={form.personal_preferences}
-              onChange={(e) => onChangeField("personal_preferences", e.target.value)}
-            />
-          </label>
+          <MarkdownTextarea
+            label="志望動機"
+            value={form.motivation}
+            onChange={(v) => onChangeField("motivation", v)}
+            rows={4}
+          />
+          <MarkdownTextarea
+            label="本人希望記入欄"
+            value={form.personal_preferences}
+            onChange={(v) => onChangeField("personal_preferences", v)}
+            rows={4}
+          />
         </section>
 
         <section className={shared.section}>

@@ -1,9 +1,9 @@
 """
-GitHub data collector.
+GitHub データコレクター。
 
-Fetches public repository data via the GitHub REST API.
-Uses repo metadata (languages, topics, dates) to avoid excessive API calls.
-Repository structure analysis (root files, dependencies) enriches skill detection.
+GitHub REST API を介してパブリックリポジトリのデータを取得します。
+リポジトリのメタデータ（言語、トピック、日付）を使用して、過度な API コールを回避します。
+リポジトリ構造の分析（ルートファイル、依存関係）により、スキル検出を強化します。
 """
 
 import logging
@@ -17,13 +17,13 @@ logger = logging.getLogger(__name__)
 
 GITHUB_API = "https://api.github.com"
 
-# Only fetch repos pushed within this many years
+# この年数以内にプッシュされたリポジトリのみを取得
 _REPO_MAX_AGE_YEARS = 3
 
-# Skip repos smaller than this (bytes)
+# これより小さいリポジトリはスキップ（バイト）
 _REPO_MIN_SIZE_BYTES = 1024
 
-# Root files/dirs that indicate specific skills
+# 特定のスキルを示すルートファイル/ディレクトリ
 _INTERESTING_ROOT_FILES = {
     "Dockerfile", "docker-compose.yml", "docker-compose.yaml",
     "package.json", "requirements.txt", "pyproject.toml",
@@ -32,7 +32,7 @@ _INTERESTING_ROOT_FILES = {
     "Jenkinsfile", ".gitlab-ci.yml", ".circleci",
 }
 
-# Dependency file → parser function name
+# 依存関係ファイル → パーサー関数名
 _DEPENDENCY_FILES = {
     "requirements.txt",
     "pyproject.toml",
@@ -47,10 +47,10 @@ class RepoData:
     name: str
     owner: str
     description: str
-    languages: Dict[str, int]  # language → bytes
+    languages: Dict[str, int]  # 言語 → バイト数
     topics: List[str]
-    created_at: str  # ISO 8601
-    pushed_at: str   # ISO 8601
+    created_at: str  # ISO 8601 形式
+    pushed_at: str   # ISO 8601 形式
     fork: bool
     stargazers_count: int
     default_branch: str
@@ -66,9 +66,9 @@ async def collect_repos(
     max_pages: int = 5,
 ) -> List[RepoData]:
     """
-    Fetch all public repositories for a GitHub user.
+    GitHub ユーザーのすべてのパブリックリポジトリを取得します。
 
-    Returns list of RepoData with language breakdowns.
+    言語の内訳を含む RepoData のリストを返します。
     """
     headers = {
         "Accept": "application/vnd.github+json",
@@ -84,7 +84,7 @@ async def collect_repos(
         headers=headers,
         timeout=30.0,
     ) as client:
-        # 1. Fetch repo list (paginated)
+        # 1. リポジトリリストの取得（ページネーションあり）
         raw_repos = []
         for page in range(1, max_pages + 1):
             resp = await client.get(
@@ -107,7 +107,7 @@ async def collect_repos(
                 break
             raw_repos.extend(batch)
 
-        # 2. For each repo, fetch language breakdown + structure
+        # 2. 各リポジトリについて、言語の内訳と構造を取得
         cutoff = datetime.now(timezone.utc).replace(
             year=datetime.now(timezone.utc).year - _REPO_MAX_AGE_YEARS,
         )
@@ -164,7 +164,7 @@ async def _fetch_languages(
     owner: str,
     repo: str,
 ) -> Dict[str, int]:
-    """Fetch language byte counts for a repository."""
+    """リポジトリの言語バイト数を取得します。"""
     try:
         resp = await client.get(f"/repos/{owner}/{repo}/languages")
         if resp.status_code == 403:
@@ -184,7 +184,7 @@ async def _fetch_root_files(
     owner: str,
     repo: str,
 ) -> List[str]:
-    """Fetch root-level file and directory names for a repository."""
+    """リポジトリのルートレベルのファイル名とディレクトリ名を取得します。"""
     try:
         resp = await client.get(f"/repos/{owner}/{repo}/contents/")
         if resp.status_code in (403, 404):
@@ -209,7 +209,7 @@ async def _fetch_file_content(
     repo: str,
     path: str,
 ) -> Optional[str]:
-    """Download raw file content from a repository."""
+    """リポジトリから生のファイルコンテンツをダウンロードします。"""
     try:
         resp = await client.get(
             f"/repos/{owner}/{repo}/contents/{path}",
@@ -232,7 +232,7 @@ async def _parse_dependencies(
     repo: str,
     root_files: List[str],
 ) -> List[str]:
-    """Parse dependency files and return detected framework/library names."""
+    """依存関係ファイルを解析し、検出されたフレームワーク/ライブラリ名を返します。"""
     deps: List[str] = []
 
     for fname in root_files:
@@ -257,13 +257,13 @@ async def _parse_dependencies(
 
 
 def _parse_requirements_txt(content: str) -> List[str]:
-    """Extract package names from requirements.txt."""
+    """requirements.txt からパッケージ名を抽出します。"""
     packages: List[str] = []
     for line in content.splitlines():
         line = line.strip()
         if not line or line.startswith("#") or line.startswith("-"):
             continue
-        # Strip version specifiers: pkg>=1.0, pkg==1.0, pkg[extra]
+        # バージョン指定子を削除: pkg>=1.0, pkg==1.0, pkg[extra]
         name = line.split(">=")[0].split("<=")[0].split("==")[0]
         name = name.split("!=")[0].split("~=")[0].split(">")[0].split("<")[0]
         name = name.split("[")[0].split(";")[0].strip()
@@ -273,7 +273,7 @@ def _parse_requirements_txt(content: str) -> List[str]:
 
 
 def _parse_pyproject_toml(content: str) -> List[str]:
-    """Extract dependency names from pyproject.toml (simple line-based)."""
+    """pyproject.toml から依存関係名を抽出します（単純な行ベース）。"""
     packages: List[str] = []
     in_deps = False
     for line in content.splitlines():
@@ -293,13 +293,13 @@ def _parse_pyproject_toml(content: str) -> List[str]:
                 and not stripped.startswith("#")
                 and "]" not in stripped
             ):
-                # poetry style: name = "^1.0"
+                # poetry 形式: name = "^1.0"
                 name = stripped.split("=")[0].strip().lower()
                 if name and name != "python":
                     packages.append(name)
                 continue
             if stripped.startswith('"') or stripped.startswith("'"):
-                # PEP 621 style: "fastapi>=0.100"
+                # PEP 621 形式: "fastapi>=0.100"
                 name = stripped.strip("\"', ")
                 name = name.split(">=")[0].split("<=")[0].split("==")[0]
                 name = name.split("!=")[0].split("~=")[0].split(">")[0]
@@ -315,7 +315,7 @@ def _parse_pyproject_toml(content: str) -> List[str]:
 
 
 def _parse_package_json(content: str) -> List[str]:
-    """Extract dependency names from package.json."""
+    """package.json から依存関係名を抽出します。"""
     import json
     try:
         data = json.loads(content)
@@ -330,7 +330,7 @@ def _parse_package_json(content: str) -> List[str]:
 
 
 def _parse_pom_xml(content: str) -> List[str]:
-    """Extract artifactId values from pom.xml (basic regex)."""
+    """pom.xml から artifactId の値を抽出します（基本的な正規表現）。"""
     import re
     return [
         m.lower()
@@ -339,7 +339,7 @@ def _parse_pom_xml(content: str) -> List[str]:
 
 
 def _parse_go_mod(content: str) -> List[str]:
-    """Extract module paths from go.mod require block."""
+    """go.mod の require ブロックからモジュールパスを抽出します。"""
     modules: List[str] = []
     in_require = False
     for line in content.splitlines():
@@ -357,10 +357,10 @@ def _parse_go_mod(content: str) -> List[str]:
     return modules
 
 
-# ── Dependency → Framework mapping ────────────────────────────────────
+# ── 依存関係 → フレームワークのマッピング ────────────────────────────────────
 
 DEPENDENCY_TO_FRAMEWORK: Dict[str, str] = {
-    # Python
+    # Python 系
     "fastapi": "FastAPI",
     "django": "Django",
     "flask": "Flask",
@@ -382,7 +382,7 @@ DEPENDENCY_TO_FRAMEWORK: Dict[str, str] = {
     "boto3": "AWS",
     "google-cloud-storage": "GCP",
     "azure-storage-blob": "Azure",
-    # Node
+    # Node 系
     "react": "React",
     "react-dom": "React",
     "next": "Next.js",
@@ -403,18 +403,18 @@ DEPENDENCY_TO_FRAMEWORK: Dict[str, str] = {
     "ioredis": "Redis",
     "graphql": "GraphQL",
     "@apollo/server": "GraphQL",
-    # Java (artifactId)
+    # Java 系 (artifactId)
     "spring-boot": "Spring Boot",
     "spring-boot-starter": "Spring Boot",
     "spring-boot-starter-web": "Spring Boot",
-    # Go
+    # Go 系
     "github.com/gin-gonic/gin": "Gin",
     "github.com/labstack/echo": "Echo",
     "github.com/gofiber/fiber": "Fiber",
 }
 
 
-# ── Root file → Skill mapping ─────────────────────────────────────────
+# ── ルートファイル → スキルのマッピング ─────────────────────────────────────────
 
 _ROOT_FILE_SKILLS: Dict[str, str] = {
     "Dockerfile": "Docker",
@@ -433,7 +433,7 @@ _ROOT_FILE_SKILLS: Dict[str, str] = {
 
 
 def _detect_from_root_files(root_files: List[str]) -> List[str]:
-    """Detect skills from root-level files and directories."""
+    """ルートレベルのファイルとディレクトリからスキルを検出します。"""
     detected: List[str] = []
     seen: set = set()
     for fname in root_files:

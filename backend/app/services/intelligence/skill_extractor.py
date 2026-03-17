@@ -1,14 +1,14 @@
 """
-Deterministic skill extraction from GitHub repository data.
+GitHub リポジトリデータからの決定論的なスキル抽出。
 
-Extracts skills using:
-  1. Language detection (GitHub's linguist)
-  2. Repository topics
-  3. Description keyword matching
-  4. Dependency analysis (requirements.txt, package.json, etc.)
-  5. Root file / directory detection (Dockerfile, .github, terraform, etc.)
+以下の方法でスキルを抽出します：
+  1. 言語検出 (GitHub の linguist)
+  2. リポジトリのトピック
+  3. 説明文のキーワードマッチング
+  4. 依存関係分析 (requirements.txt, package.json など)
+  5. ルートファイル / ディレクトリ検出 (Dockerfile, .github, terraform など)
 
-No LLM usage.
+LLMは使用しません。
 """
 
 import logging
@@ -31,14 +31,14 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ExtractedSkill:
-    """A skill extracted from a single repository."""
+    """単一のリポジトリから抽出されたスキル。"""
     skill_name: str
     category: str
-    source: str  # "language", "topic", or "description"
+    source: str  # "language", "topic", "description" など
     repo_name: str
     repo_created_at: str
     repo_pushed_at: str
-    language_bytes: int = 0  # bytes of this language in the repo
+    language_bytes: int = 0  # リポジトリ内のこの言語のバイト数
 
 
 @dataclass
@@ -50,10 +50,10 @@ class ExtractionResult:
 
 def extract_skills(repos: List[RepoData]) -> ExtractionResult:
     """
-    Extract skills from a list of GitHub repositories.
+    GitHub リポジトリのリストからスキルを抽出します。
 
-    Returns all skill observations across all repos
-    (one skill may appear multiple times from different repos).
+    すべてのリポジトリにわたるすべてのスキルの観測結果を返します
+    （1つのスキルが異なるリポジトリから複数回現れる場合があります）。
     """
     all_skills: List[ExtractedSkill] = []
     unique: Set[str] = set()
@@ -76,11 +76,11 @@ def extract_skills(repos: List[RepoData]) -> ExtractionResult:
 
 
 def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
-    """Extract skills from a single repository."""
+    """単一のリポジトリからスキルを抽出します。"""
     skills: List[ExtractedSkill] = []
     seen: Set[str] = set()
 
-    # 1. Languages
+    # 1. 言語
     for lang, byte_count in repo.languages.items():
         skill_name = LANGUAGE_TO_SKILL.get(lang)
         if skill_name and skill_name not in seen:
@@ -95,7 +95,7 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
                 language_bytes=byte_count,
             ))
 
-    # 2. Topics
+    # 2. トピック
     for topic in repo.topics:
         topic_lower = topic.lower()
         matched_skills = TOPIC_TO_SKILLS.get(topic_lower, [])
@@ -111,7 +111,7 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
                     repo_pushed_at=repo.pushed_at,
                 ))
 
-    # 3. Description keywords
+    # 3. 説明文のキーワード
     if repo.description:
         desc_lower = repo.description.lower()
         for keyword, matched_skills in DESCRIPTION_KEYWORDS.items():
@@ -128,7 +128,7 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
                             repo_pushed_at=repo.pushed_at,
                         ))
 
-    # 4. Dependencies (parsed from requirements.txt, package.json, etc.)
+    # 4. 依存関係 (requirements.txt, package.json などから解析)
     for dep in repo.dependencies:
         framework = DEPENDENCY_TO_FRAMEWORK.get(dep)
         if framework and framework not in seen:
@@ -142,7 +142,7 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
                 repo_pushed_at=repo.pushed_at,
             ))
 
-    # 5. Root file / directory detection
+    # 5. ルートファイル / ディレクトリ検出
     for framework in repo.detected_frameworks:
         if framework not in seen:
             seen.add(framework)
