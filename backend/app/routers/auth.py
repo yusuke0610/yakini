@@ -93,7 +93,7 @@ async def github_callback(
     if not client_id or not client_secret:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="GitHub OAuth is not configured",
+            detail="GitHub OAuth が設定されていません",
         )
 
     import httpx
