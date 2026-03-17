@@ -126,6 +126,7 @@ def test_basic_info_crud(client: TestClient) -> None:
     # Create
     resp = client.post("/api/basic-info", json={
         "full_name": "田中太郎",
+        "name_furigana": "たなか たろう",
         "record_date": "2026-03-12",
         "qualifications": [],
     }, headers=headers)
@@ -140,6 +141,7 @@ def test_basic_info_crud(client: TestClient) -> None:
     # Update
     resp = client.put(f"/api/basic-info/{info_id}", json={
         "full_name": "田中花子",
+        "name_furigana": "たなか はなこ",
         "record_date": "2026-03-12",
         "qualifications": [],
     }, headers=headers)

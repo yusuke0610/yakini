@@ -48,16 +48,28 @@ def _build_project_table(project: dict, s: dict) -> list:
             s["project_header"],
         ))
 
-    # Left column: description + achievements
+    # Left column: description + challenge/action/result
     left_parts = []
     if project.get("description"):
         left_parts.append(f"<b>【業務内容】</b><br/>{nl2br(project['description'])}")
-    if project.get("achievements"):
-        left_parts.append(f"<b>【実績・取り組み】</b><br/>{nl2br(project['achievements'])}")
+    if project.get("challenge"):
+        left_parts.append(f"<b>【課題】</b><br/>{nl2br(project['challenge'])}")
+    if project.get("action"):
+        left_parts.append(f"<b>【行動】</b><br/>{nl2br(project['action'])}")
+    if project.get("result"):
+        left_parts.append(f"<b>【成果】</b><br/>{nl2br(project['result'])}")
     left_content = "<br/><br/>".join(left_parts) if left_parts else "-"
 
     # Right column: tech stacks
     tech_stacks = project.get("technology_stacks", [])
+    category_labels = {
+        "language": "言語",
+        "framework": "FW",
+        "os": "OS",
+        "db": "DB",
+        "cloud_resource": "NW",
+        "dev_tool": "Tool",
+    }
     grouped: dict[str, list[str]] = {}
     for stack in tech_stacks:
         cat = stack.get("category", "")
@@ -68,7 +80,8 @@ def _build_project_table(project: dict, s: dict) -> list:
 
     right_parts = []
     for cat, names in grouped.items():
-        right_parts.append(f"<b>【{escape(cat)}】</b><br/>{escape(', '.join(names))}")
+        label = category_labels.get(cat, cat)
+        right_parts.append(f"<b>【{escape(label)}】</b><br/>{escape(', '.join(names))}")
     right_content = "<br/>".join(right_parts) if right_parts else "-"
 
     scale_raw = project.get("scale", "")

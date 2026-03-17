@@ -30,6 +30,7 @@ import { useTechnologyStacks } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
 import { Combobox } from "./Combobox";
+import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
 import styles from "./CareerResumeForm.module.css";
 
@@ -456,24 +457,18 @@ export function CareerResumeForm() {
             {success && <p className={shared.success}>{success}</p>}
 
             <section className={shared.section}>
-              <label>
-                <span className={shared.labelText}>職務要約<span className={shared.requiredBadge}>必須</span></span>
-                <textarea
-                  rows={4}
-                  value={form.career_summary}
-                  onChange={(e) => onChangeField("career_summary", e.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                <span className={shared.labelText}>自己PR<span className={shared.requiredBadge}>必須</span></span>
-                <textarea
-                  rows={4}
-                  value={form.self_pr}
-                  onChange={(e) => onChangeField("self_pr", e.target.value)}
-                  required
-                />
-              </label>
+              <MarkdownTextarea
+                label="職務要約"
+                value={form.career_summary}
+                onChange={(v) => onChangeField("career_summary", v)}
+                rows={4}
+              />
+              <MarkdownTextarea
+                label="自己PR"
+                value={form.self_pr}
+                onChange={(v) => onChangeField("self_pr", v)}
+                rows={4}
+              />
             </section>
 
         <section className={shared.section}>
@@ -662,27 +657,41 @@ export function CareerResumeForm() {
                             </label>
                           </div>
 
-                          <label>
-                            業務内容
-                            <textarea
-                              rows={3}
-                              value={proj.description}
-                              onChange={(e) =>
-                                updateProjectField(expIndex, clientIndex, projIndex, "description", e.target.value)
-                              }
-                            />
-                          </label>
+                          <MarkdownTextarea
+                            label="業務内容"
+                            value={proj.description}
+                            onChange={(v) =>
+                              updateProjectField(expIndex, clientIndex, projIndex, "description", v)
+                            }
+                            rows={3}
+                          />
 
-                          <label>
-                            実績・取り組み
-                            <textarea
-                              rows={3}
-                              value={proj.achievements}
-                              onChange={(e) =>
-                                updateProjectField(expIndex, clientIndex, projIndex, "achievements", e.target.value)
-                              }
-                            />
-                          </label>
+                          <MarkdownTextarea
+                            label="課題"
+                            value={proj.challenge}
+                            onChange={(v) =>
+                              updateProjectField(expIndex, clientIndex, projIndex, "challenge", v)
+                            }
+                            rows={2}
+                          />
+
+                          <MarkdownTextarea
+                            label="行動"
+                            value={proj.action}
+                            onChange={(v) =>
+                              updateProjectField(expIndex, clientIndex, projIndex, "action", v)
+                            }
+                            rows={2}
+                          />
+
+                          <MarkdownTextarea
+                            label="成果"
+                            value={proj.result}
+                            onChange={(v) =>
+                              updateProjectField(expIndex, clientIndex, projIndex, "result", v)
+                            }
+                            rows={2}
+                          />
 
                           {/* 技術スタック（チップ型） */}
                           <div className={styles.stackSection}>

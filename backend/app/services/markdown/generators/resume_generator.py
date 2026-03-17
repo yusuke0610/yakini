@@ -83,16 +83,36 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                     desc = proj.get("description", "")
                     if desc:
                         lines.append(field_line("業務内容", desc))
-                    achievements = proj.get("achievements", "")
-                    if achievements:
-                        lines.append(field_line("実績", achievements))
+                    challenge = proj.get("challenge", "")
+                    if challenge:
+                        lines.append(field_line("課題", challenge))
+                    action = proj.get("action", "")
+                    if action:
+                        lines.append(field_line("行動", action))
+                    result = proj.get("result", "")
+                    if result:
+                        lines.append(field_line("成果", result))
                     scale = proj.get("scale", "")
                     if scale:
                         lines.append(field_line("規模", f"{scale}名"))
                     stacks = proj.get("technology_stacks", [])
                     if stacks:
-                        tech_str = ", ".join(st.get("name", "") for st in stacks)
-                        lines.append(field_line("技術スタック", tech_str))
+                        cat_labels = {
+                            "language": "言語", "framework": "FW",
+                            "os": "OS", "db": "DB",
+                            "cloud_resource": "NW", "dev_tool": "Tool",
+                        }
+                        grouped: dict[str, list[str]] = {}
+                        for st in stacks:
+                            cat = st.get("category", "")
+                            if cat not in grouped:
+                                grouped[cat] = []
+                            grouped[cat].append(st.get("name", ""))
+                        parts = [
+                            f"{cat_labels.get(c, c)}: {', '.join(ns)}"
+                            for c, ns in grouped.items()
+                        ]
+                        lines.append(field_line("技術スタック", " / ".join(parts)))
                     lines.append("")
 
     self_pr = payload.get("self_pr", "")

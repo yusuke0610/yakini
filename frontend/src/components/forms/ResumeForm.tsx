@@ -18,6 +18,7 @@ import { usePrefectures } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
 import { Combobox } from "./Combobox";
+import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
 import styles from "./ResumeForm.module.css";
 
@@ -258,18 +259,17 @@ export function ResumeForm() {
         <section className={shared.section}>
           <div className={shared.inline}>
             <label>
-              性別
+              <span className={shared.labelText}>性別<span className={shared.requiredBadge}>必須</span></span>
               <select
                 value={form.gender}
                 onChange={(e) => onChangeField("gender", e.target.value)}
+                required
               >
                 <option value="">未選択</option>
                 <option value="male">男</option>
                 <option value="female">女</option>
               </select>
             </label>
-          </div>
-          <div className={shared.inline}>
             <label>
               <span className={shared.labelText}>都道府県<span className={shared.requiredBadge}>必須</span></span>
               <Combobox
@@ -281,12 +281,15 @@ export function ResumeForm() {
             </label>
           </div>
           <label>
-            住所ふりがな
+            <span className={shared.labelText}>住所ふりがな<span className={shared.requiredBadge}>必須</span></span>
             <input
               type="text"
               value={form.address_furigana}
               onChange={(e) => onChangeField("address_furigana", e.target.value)}
               placeholder="例: しぶやく じんなん"
+              pattern="^[ぁ-ゖー\s　]+$"
+              title="ひらがなで入力してください"
+              required
             />
           </label>
           <label>
@@ -319,22 +322,18 @@ export function ResumeForm() {
               />
             </label>
           </div>
-          <label>
-            志望動機
-            <textarea
-              rows={4}
-              value={form.motivation}
-              onChange={(e) => onChangeField("motivation", e.target.value)}
-            />
-          </label>
-          <label>
-            本人希望記入欄
-            <textarea
-              rows={4}
-              value={form.personal_preferences}
-              onChange={(e) => onChangeField("personal_preferences", e.target.value)}
-            />
-          </label>
+          <MarkdownTextarea
+            label="志望動機"
+            value={form.motivation}
+            onChange={(v) => onChangeField("motivation", v)}
+            rows={4}
+          />
+          <MarkdownTextarea
+            label="本人希望記入欄"
+            value={form.personal_preferences}
+            onChange={(v) => onChangeField("personal_preferences", v)}
+            rows={4}
+          />
         </section>
 
         <section className={shared.section}>

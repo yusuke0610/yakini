@@ -17,7 +17,9 @@ export type CareerProjectForm = {
   is_current: boolean;
   role: string;
   description: string;
-  achievements: string;
+  challenge: string;
+  action: string;
+  result: string;
   scale: string;
   technology_stacks: CareerTechnologyStack[];
 };
@@ -69,6 +71,8 @@ export function hasAnyText(values: Array<string | null | undefined>): boolean {
   return values.some((value) => Boolean(value?.trim()));
 }
 
+const HIRAGANA_RE = /^[ぁ-ゖー\s　]+$/;
+
 export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
   const payload: BasicInfoPayload = {
     full_name: state.full_name.trim(),
@@ -82,8 +86,12 @@ export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
       .filter((qualification) => hasAnyText([qualification.acquired_date, qualification.name])),
   };
 
-  if (!payload.full_name || !payload.record_date) {
-    throw new Error("氏名と記載日は必須です。");
+  if (!payload.full_name || !payload.name_furigana || !payload.record_date) {
+    throw new Error("ふりがな、氏名、記載日は必須です。");
+  }
+
+  if (!HIRAGANA_RE.test(payload.name_furigana)) {
+    throw new Error("ふりがなはひらがなで入力してください。");
   }
 
   for (const qualification of payload.qualifications) {
@@ -103,7 +111,9 @@ function buildProject(proj: CareerProjectForm): CareerProject {
     is_current: proj.is_current,
     role: proj.role.trim(),
     description: proj.description.trim(),
-    achievements: proj.achievements.trim(),
+    challenge: proj.challenge.trim(),
+    action: proj.action.trim(),
+    result: proj.result.trim(),
     scale: proj.scale.trim(),
     technology_stacks: proj.technology_stacks
       .map((stack) => ({
@@ -119,7 +129,7 @@ function buildClient(client: CareerClientForm): CareerClient {
     name: client.name.trim(),
     projects: client.projects
       .map(buildProject)
-      .filter((p) => hasAnyText([p.name, p.description, p.achievements])),
+      .filter((p) => hasAnyText([p.name, p.description, p.challenge, p.action, p.result])),
   };
 }
 
@@ -169,7 +179,7 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
 
 export function buildResumePayload(state: ResumeFormState): ResumePayload {
   const payload: ResumePayload = {
-    gender: state.gender,
+    gender: state.gender as "male" | "female",
     prefecture: state.prefecture.trim(),
     address: state.address.trim(),
     address_furigana: state.address_furigana.trim(),
@@ -193,12 +203,18 @@ export function buildResumePayload(state: ResumeFormState): ResumePayload {
   };
 
   if (
+    !payload.gender ||
     !payload.prefecture ||
     !payload.address ||
+    !payload.address_furigana ||
     !payload.email ||
     !payload.phone
   ) {
-    throw new Error("都道府県、住所、メールアドレス、電話番号は必須です。");
+    throw new Error("性別、都道府県、住所、住所ふりがな、メールアドレス、電話番号は必須です。");
+  }
+
+  if (!HIRAGANA_RE.test(payload.address_furigana)) {
+    throw new Error("住所ふりがなはひらがなで入力してください。");
   }
 
   for (const education of payload.educations) {
