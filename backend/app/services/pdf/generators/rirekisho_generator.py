@@ -199,9 +199,11 @@ def _build_html(data: dict) -> str:
 
     photo_html = _build_photo_html(data)
     address_furigana = data.get("address_furigana", "")
+    postal_code = data.get("postal_code", "")
     prefecture = data.get("prefecture", "")
     address = data.get("address", "")
-    full_address = f"{prefecture}{address}"
+    postal_prefix = f"〒{postal_code} " if postal_code else ""
+    full_address = f"{postal_prefix}{prefecture}{address}"
     phone = data.get("phone", "")
     email = data.get("email", "")
 
@@ -226,7 +228,7 @@ def _build_html(data: dict) -> str:
         "<tr>"
         f'<td class="label">生年月日</td>'
         f'<td class="bd">{_esc(bd_display)}</td>'
-        f'<td class="gender">{_esc(gender_text) if gender_text else "性別"}</td>'
+        f'<td class="gender">{_esc(gender_text) + "<br/><span class=\"gender-note\">※性別</span>" if gender_text else "※性別"}</td>'
         "</tr>"
     )
     # 住所ふりがな行

@@ -180,6 +180,8 @@ class RirekishoHistory(BaseModel):
 
 class RirekishoBase(BaseModel):
     gender: Literal["male", "female"] = Field(min_length=1)
+    birthday: str = Field(min_length=1, max_length=20)
+    postal_code: str = Field(min_length=1, max_length=20)
     prefecture: str = Field(min_length=1, max_length=60)
     address: str = Field(min_length=1, max_length=400)
     address_furigana: str = Field(min_length=1, max_length=400, pattern=_HIRAGANA_PATTERN)
@@ -202,6 +204,9 @@ class RirekishoUpdate(RirekishoBase):
 
 class RirekishoResponse(RirekishoBase):
     id: UUID
+    gender: str = ""
+    birthday: str = ""
+    address_furigana: str = ""
     created_at: datetime
     updated_at: datetime
 

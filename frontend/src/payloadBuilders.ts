@@ -66,6 +66,8 @@ export type CareerFormState = {
 
 export type ResumeFormState = {
   gender: "male" | "female" | "";
+  birthday: string;
+  postal_code: string;
   prefecture: string;
   address: string;
   address_furigana: string;
@@ -202,6 +204,8 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
 export function buildResumePayload(state: ResumeFormState): ResumePayload {
   const payload: ResumePayload = {
     gender: state.gender as "male" | "female",
+    birthday: state.birthday.trim(),
+    postal_code: state.postal_code.trim(),
     prefecture: state.prefecture.trim(),
     address: state.address.trim(),
     address_furigana: state.address_furigana.trim(),
