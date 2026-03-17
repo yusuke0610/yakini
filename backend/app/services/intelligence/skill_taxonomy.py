@@ -1,14 +1,14 @@
 """
-Deterministic skill taxonomy for mapping GitHub data to normalized skills.
+GitHubデータを正規化されたスキルにマッピングするための決定論的なスキルタクソノミ。
 
-This module contains static mappings — no LLM usage.
+このモジュールには静的なマッピングが含まれています。LLMは使用しません。
 """
 
 from typing import Dict, List, Set
 
 
-# ── Skill Categories ────────────────────────────────────────────────────
-# Each skill belongs to exactly one category.
+# ── スキルカテゴリ ────────────────────────────────────────────────────
+# 各スキルは正確に1つのカテゴリに属します。
 
 SKILL_CATEGORIES: Dict[str, List[str]] = {
     "language": [
@@ -62,7 +62,7 @@ SKILL_CATEGORIES: Dict[str, List[str]] = {
     ],
 }
 
-# Reverse lookup: skill → category
+# 逆引き参照: スキル → カテゴリ
 _SKILL_TO_CATEGORY: Dict[str, str] = {}
 for _cat, _skills in SKILL_CATEGORIES.items():
     for _s in _skills:
@@ -77,8 +77,8 @@ def get_all_skills() -> Set[str]:
     return set(_SKILL_TO_CATEGORY.keys())
 
 
-# ── GitHub Language → Skill ─────────────────────────────────────────────
-# Maps GitHub's language detection names to our normalized skill names.
+# ── GitHub Language → スキル ─────────────────────────────────────────────
+# GitHubの言語検出名を正規化されたスキル名にマッピングします。
 
 LANGUAGE_TO_SKILL: Dict[str, str] = {
     "Python": "Python",
@@ -108,11 +108,11 @@ LANGUAGE_TO_SKILL: Dict[str, str] = {
 }
 
 
-# ── Repo Topic → Skill(s) ──────────────────────────────────────────────
-# Maps GitHub repository topics to skills.
+# ── リポジトリトピック → スキル ──────────────────────────────────────────────
+# GitHubリポジトリのトピックをスキルにマッピングします。
 
 TOPIC_TO_SKILLS: Dict[str, List[str]] = {
-    # Frameworks
+    # フレームワーク
     "react": ["React"],
     "reactjs": ["React"],
     "vue": ["Vue"],
@@ -141,13 +141,13 @@ TOPIC_TO_SKILLS: Dict[str, List[str]] = {
     "actix": ["Actix"],
     "phoenix": ["Phoenix"],
     "aspnet": ["ASP.NET"],
-    # Mobile
+    # モバイル
     "react-native": ["React Native"],
     "flutter": ["Flutter"],
     "swiftui": ["SwiftUI"],
     "jetpack-compose": ["Jetpack Compose"],
     "ionic": ["Ionic"],
-    # Databases
+    # データベース
     "postgresql": ["PostgreSQL"],
     "postgres": ["PostgreSQL"],
     "mysql": ["MySQL"],
@@ -158,7 +158,7 @@ TOPIC_TO_SKILLS: Dict[str, List[str]] = {
     "elasticsearch": ["Elasticsearch"],
     "neo4j": ["Neo4j"],
     "firebase": ["Firebase"],
-    # Infrastructure
+    # インフラ
     "docker": ["Docker"],
     "kubernetes": ["Kubernetes"],
     "k8s": ["Kubernetes"],
@@ -167,7 +167,7 @@ TOPIC_TO_SKILLS: Dict[str, List[str]] = {
     "ansible": ["Ansible"],
     "helm": ["Helm"],
     "cloudformation": ["CloudFormation"],
-    # Cloud
+    # クラウド
     "aws": ["AWS"],
     "gcp": ["GCP"],
     "google-cloud": ["GCP"],
@@ -178,13 +178,13 @@ TOPIC_TO_SKILLS: Dict[str, List[str]] = {
     "jenkins": ["Jenkins"],
     "circleci": ["CircleCI"],
     "argocd": ["ArgoCD"],
-    # Monitoring
+    # モニタリング
     "prometheus": ["Prometheus"],
     "grafana": ["Grafana"],
     "datadog": ["Datadog"],
     "sentry": ["Sentry"],
     "opentelemetry": ["OpenTelemetry"],
-    # ML / Data
+    # 機械学習 / データ
     "tensorflow": ["TensorFlow"],
     "pytorch": ["PyTorch"],
     "scikit-learn": ["scikit-learn"],
@@ -204,7 +204,7 @@ TOPIC_TO_SKILLS: Dict[str, List[str]] = {
     "dbt": ["dbt"],
     "bigquery": ["BigQuery"],
     "snowflake": ["Snowflake"],
-    # Other
+    # その他
     "graphql": ["GraphQL"],
     "grpc": ["gRPC"],
     "rest-api": ["REST API"],
@@ -214,9 +214,9 @@ TOPIC_TO_SKILLS: Dict[str, List[str]] = {
 }
 
 
-# ── Description Keyword → Skill(s) ─────────────────────────────────────
-# Keywords found in repo descriptions that indicate specific skill usage.
-# Checked via case-insensitive substring match.
+# ── 説明文キーワード → スキル ─────────────────────────────────────
+# リポジトリの説明文に含まれる特定のスキルの使用を示すキーワード。
+# 大文字小文字を区別しない部分一致でチェックされます。
 
 DESCRIPTION_KEYWORDS: Dict[str, List[str]] = {
     "fastapi": ["FastAPI"],

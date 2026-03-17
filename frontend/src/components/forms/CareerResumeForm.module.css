@@ -50,6 +50,32 @@
   padding: 0.2rem 0.4rem;
   background: var(--bg-card);
   font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.phaseList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.teamLayout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.teamTotal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.teamTotal input {
+  width: 4.5rem;
 }
 
 .stackChip select,

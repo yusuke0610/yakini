@@ -19,6 +19,7 @@ FONT_NAME = "NotoSansJP"
 
 
 def register_font() -> None:
+    """フォントをReportLabに登録します。"""
     global _FONT_REGISTERED
     if _FONT_REGISTERED:
         return
@@ -39,6 +40,7 @@ HEADER_BG = colors.HexColor("#d6dce8")
 
 
 def styles() -> dict:
+    """PDF生成に使用するスタイルシートを生成します。"""
     register_font()
     base = getSampleStyleSheet()
 
@@ -89,23 +91,26 @@ def styles() -> dict:
 
 
 def escape(text: str) -> str:
+    """HTML特殊文字をエスケープします。"""
     return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def nl2br(text: str) -> str:
+    """改行コードを <br/> タグに変換します。"""
     return escape(text).replace("\n", "<br/>")
 
 
 def format_period(start_date: str, end_date: str | None, is_current: bool) -> str:
+    """期間（開始〜終了）をフォーマットします。"""
     start = start_date.replace("-", " 年 ") + " 月" if "-" in start_date else start_date
     if is_current:
-        return f"{start}～現在"
+        return f"{start}〜現在"
     end = end_date.replace("-", " 年 ") + " 月" if end_date and "-" in end_date else (end_date or "")
-    return f"{start}～{end}"
+    return f"{start}〜{end}"
 
 
 def parse_date_ym(date_str: str) -> tuple[str, str]:
-    """Parse 'YYYY-MM' or 'YYYY-MM-DD' into (year, month)."""
+    """'YYYY-MM' または 'YYYY-MM-DD' を (年, 月) にパースします。"""
     if not date_str or "-" not in date_str:
         return ("", "")
     parts = date_str.split("-")
@@ -115,7 +120,7 @@ def parse_date_ym(date_str: str) -> tuple[str, str]:
 
 
 def decode_photo(data_url: str | None) -> BytesIO | None:
-    """Decode base64 data URL to BytesIO. Returns None on error."""
+    """base64形式のデータURLを BytesIO にデコードします。失敗した場合は None を返します。"""
     if not data_url:
         return None
     try:
@@ -130,7 +135,7 @@ def decode_photo(data_url: str | None) -> BytesIO | None:
 
 
 def format_record_date(record_date: str) -> str:
-    """Format record_date string for display."""
+    """表示用に記載日文字列をフォーマットします。"""
     if record_date and "-" in record_date:
         parts = record_date.split("-")
         if len(parts) >= 2:
@@ -143,7 +148,7 @@ def format_record_date(record_date: str) -> str:
 
 def draw_bordered_rect(c, x: float, y: float, w: float, h: float,
                        line_width: float = 0.5) -> None:
-    """Draw a bordered rectangle (y is top-edge, draws downward)."""
+    """枠線付きの長方形を描画します（yは上端、下向きに描画）。"""
     c.setLineWidth(line_width)
     c.setStrokeColor(colors.black)
     c.rect(x, y - h, w, h)
@@ -151,7 +156,7 @@ def draw_bordered_rect(c, x: float, y: float, w: float, h: float,
 
 def draw_cell_text(c, text: str, x: float, y: float, w: float, h: float,
                    font_size: float = 9, align: str = "left", v_center: bool = True) -> None:
-    """Draw text inside a cell area. y is top-edge of cell."""
+    """セル領域内にテキストを描画します。yはセルの上端です。"""
     c.setFont(FONT_NAME, font_size)
     c.setFillColor(colors.black)
     text_y = y - h / 2 - font_size * 0.3 if v_center else y - font_size - 1 * mm
@@ -166,7 +171,7 @@ def draw_cell_text(c, text: str, x: float, y: float, w: float, h: float,
 
 def draw_text_area(c, text: str, x: float, y: float, w: float, h: float,
                    font_size: float = 9, leading: float = 14) -> None:
-    """Draw multi-line text in a bounded area using Frame+Paragraph."""
+    """Frame と Paragraph を使用して、指定された範囲内に複数行のテキストを描画します。"""
     register_font()
     style = ParagraphStyle(
         "text_area", fontName=FONT_NAME, fontSize=font_size,
