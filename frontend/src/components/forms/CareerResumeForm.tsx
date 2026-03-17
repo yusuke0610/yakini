@@ -11,31 +11,32 @@ import {
 } from "../../api";
 import { buildCareerPayload } from "../../payloadBuilders";
 import type { CareerFormState, CareerProjectForm } from "../../payloadBuilders";
-import type { CareerTechnologyStack, CareerTechnologyStackCategory } from "../../types";
 import {
   blankCareerClient,
   blankCareerExperience,
   blankCareerProject,
   blankCareerTechnologyStack,
-  blankTeamMember,
-  careerTechnologyStackCategories,
-  careerTechnologyStackCategoryLabels,
-  phaseOptions,
-  teamRoleOptions,
 } from "../../constants";
 import type {
   CareerTextFieldKey,
   CareerExperienceFieldKey,
   CareerClientFieldKey,
-  CareerProjectFieldKey,
 } from "../../formTypes";
 import { useTechnologyStacks } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
-import { Combobox } from "./Combobox";
 import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
+import { ProjectModal } from "./ProjectModal";
 import styles from "./CareerResumeForm.module.css";
+
+/** プロジェクトモーダルの対象を表す型 */
+type ProjectModalTarget = {
+  expIndex: number;
+  clientIndex: number;
+  /** nullの場合は新規追加 */
+  projIndex: number | null;
+};
 
 export function CareerResumeForm() {
   const [form, setForm] = useState<CareerFormState>({
@@ -47,6 +48,7 @@ export function CareerResumeForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [modalTarget, setModalTarget] = useState<ProjectModalTarget | null>(null);
 
   const { items: techStackOptions } = useTechnologyStacks();
   /** カテゴリごとの名称リストを生成する */
@@ -206,277 +208,6 @@ export function CareerResumeForm() {
     }));
   };
 
-  const updateProjectField = (
-    expIndex: number,
-    clientIndex: number,
-    projIndex: number,
-    key: CareerProjectFieldKey,
-    value: string | boolean,
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) => {
-            if (ci !== clientIndex) return c;
-            return {
-              ...c,
-              projects: c.projects.map((proj, pi) => {
-                if (pi !== projIndex) return proj;
-                if (key === "is_current") {
-                  const isCurrent = Boolean(value);
-                  return { ...proj, is_current: isCurrent, end_date: isCurrent ? "" : proj.end_date };
-                }
-                return { ...proj, [key]: value };
-              }),
-            };
-          }),
-        };
-      }),
-    }));
-  };
-
-  const updateTechnologyStackField = (
-    expIndex: number,
-    clientIndex: number,
-    projIndex: number,
-    stackIndex: number,
-    key: keyof CareerTechnologyStack,
-    value: string,
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) => {
-            if (ci !== clientIndex) return c;
-            return {
-              ...c,
-              projects: c.projects.map((proj, pi) => {
-                if (pi !== projIndex) return proj;
-                return {
-                  ...proj,
-                  technology_stacks: proj.technology_stacks.map((stack, si) => {
-                    if (si !== stackIndex) return stack;
-                    if (key === "category") {
-                      return { ...stack, category: value as CareerTechnologyStackCategory, name: "" };
-                    }
-                    return { ...stack, name: value };
-                  }),
-                };
-              }),
-            };
-          }),
-        };
-      }),
-    }));
-  };
-
-  const addTechnologyStack = (expIndex: number, clientIndex: number, projIndex: number) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) => {
-            if (ci !== clientIndex) return c;
-            return {
-              ...c,
-              projects: c.projects.map((proj, pi) =>
-                pi === projIndex
-                  ? {
-                      ...proj,
-                      technology_stacks: [...proj.technology_stacks, { ...blankCareerTechnologyStack }],
-                    }
-                  : proj,
-              ),
-            };
-          }),
-        };
-      }),
-    }));
-  };
-
-  const removeTechnologyStack = (
-    expIndex: number,
-    clientIndex: number,
-    projIndex: number,
-    stackIndex: number,
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) => {
-            if (ci !== clientIndex) return c;
-            return {
-              ...c,
-              projects: c.projects.map((proj, pi) => {
-                if (pi !== projIndex) return proj;
-                return {
-                  ...proj,
-                  technology_stacks:
-                    proj.technology_stacks.length === 1
-                      ? [{ ...blankCareerTechnologyStack }]
-                      : proj.technology_stacks.filter((_, si) => si !== stackIndex),
-                };
-              }),
-            };
-          }),
-        };
-      }),
-    }));
-  };
-
-  const updateTeamTotal = (
-    expIndex: number,
-    clientIndex: number,
-    projIndex: number,
-    value: string,
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) => {
-            if (ci !== clientIndex) return c;
-            return {
-              ...c,
-              projects: c.projects.map((proj, pi) =>
-                pi === projIndex ? { ...proj, team: { ...proj.team, total: value } } : proj,
-              ),
-            };
-          }),
-        };
-      }),
-    }));
-  };
-
-  const addTeamMember = (expIndex: number, clientIndex: number, projIndex: number) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) => {
-            if (ci !== clientIndex) return c;
-            return {
-              ...c,
-              projects: c.projects.map((proj, pi) =>
-                pi === projIndex
-                  ? { ...proj, team: { ...proj.team, members: [...proj.team.members, { ...blankTeamMember }] } }
-                  : proj,
-              ),
-            };
-          }),
-        };
-      }),
-    }));
-  };
-
-  const removeTeamMember = (
-    expIndex: number,
-    clientIndex: number,
-    projIndex: number,
-    memberIndex: number,
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) => {
-            if (ci !== clientIndex) return c;
-            return {
-              ...c,
-              projects: c.projects.map((proj, pi) => {
-                if (pi !== projIndex) return proj;
-                return {
-                  ...proj,
-                  team: {
-                    ...proj.team,
-                    members: proj.team.members.filter((_, mi) => mi !== memberIndex),
-                  },
-                };
-              }),
-            };
-          }),
-        };
-      }),
-    }));
-  };
-
-  const updateTeamMember = (
-    expIndex: number,
-    clientIndex: number,
-    projIndex: number,
-    memberIndex: number,
-    key: "role" | "count",
-    value: string,
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) => {
-            if (ci !== clientIndex) return c;
-            return {
-              ...c,
-              projects: c.projects.map((proj, pi) => {
-                if (pi !== projIndex) return proj;
-                return {
-                  ...proj,
-                  team: {
-                    ...proj.team,
-                    members: proj.team.members.map((m, mi) =>
-                      mi === memberIndex ? { ...m, [key]: value } : m,
-                    ),
-                  },
-                };
-              }),
-            };
-          }),
-        };
-      }),
-    }));
-  };
-
-  const addProject = (expIndex: number, clientIndex: number) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) =>
-            ci === clientIndex
-              ? {
-                  ...c,
-                  projects: [
-                    ...c.projects,
-                    { ...blankCareerProject, technology_stacks: [{ ...blankCareerTechnologyStack }] },
-                  ],
-                }
-              : c,
-          ),
-        };
-      }),
-    }));
-  };
-
   const removeProject = (expIndex: number, clientIndex: number, projIndex: number) => {
     setForm((prev) => ({
       ...prev,
@@ -499,12 +230,10 @@ export function CareerResumeForm() {
     }));
   };
 
-  const togglePhase = (
-    expIndex: number,
-    clientIndex: number,
-    projIndex: number,
-    phase: string,
-  ) => {
+  /** モーダルからプロジェクトを保存するコールバック */
+  const handleProjectSave = (project: CareerProjectForm) => {
+    if (!modalTarget) return;
+    const { expIndex, clientIndex, projIndex } = modalTarget;
     setForm((prev) => ({
       ...prev,
       experiences: prev.experiences.map((exp, ei) => {
@@ -513,20 +242,18 @@ export function CareerResumeForm() {
           ...exp,
           clients: exp.clients.map((c, ci) => {
             if (ci !== clientIndex) return c;
+            if (projIndex === null) {
+              return { ...c, projects: [...c.projects, project] };
+            }
             return {
               ...c,
-              projects: c.projects.map((proj, pi) => {
-                if (pi !== projIndex) return proj;
-                const phases = proj.phases.includes(phase)
-                  ? proj.phases.filter((p) => p !== phase)
-                  : [...proj.phases, phase];
-                return { ...proj, phases };
-              }),
+              projects: c.projects.map((p, pi) => (pi === projIndex ? project : p)),
             };
           }),
         };
       }),
     }));
+    setModalTarget(null);
   };
 
   const addExperience = () => {
@@ -582,9 +309,34 @@ export function CareerResumeForm() {
     }
   };
 
+  /** モーダルに渡すプロジェクトデータを取得する */
+  const modalProject = modalTarget
+    ? modalTarget.projIndex !== null
+      ? form.experiences[modalTarget.expIndex]?.clients[modalTarget.clientIndex]?.projects[
+          modalTarget.projIndex
+        ] ?? null
+      : null
+    : null;
+
+  /** プロジェクトのサマリーテキストを生成する */
+  const projectSummary = (proj: CareerProjectForm) => {
+    const period = [proj.start_date, proj.is_current ? "現在" : proj.end_date]
+      .filter(Boolean)
+      .join(" 〜 ");
+    return period || "";
+  };
+
   return (
     <>
       {previewUrl && <PdfPreviewModal previewUrl={previewUrl} onClose={closePreview} />}
+      {modalTarget && (
+        <ProjectModal
+          project={modalProject}
+          onSave={handleProjectSave}
+          onClose={() => setModalTarget(null)}
+          techStackNamesByCategory={techStackNamesByCategory}
+        />
+      )}
       <form onSubmit={onSubmit}>
         <div className={shared.pageHeader}>
           <h1>職務経歴書</h1>
@@ -746,280 +498,45 @@ export function CareerResumeForm() {
                       />
                     </label>
 
-                    {/* プロジェクト */}
+                    {/* プロジェクト一覧（サマリー表示） */}
                     <div className={styles.stackSection}>
                       <h3>プロジェクト</h3>
                       {client.projects.map((proj, projIndex) => (
-                        <div key={`proj-${expIndex}-${clientIndex}-${projIndex}`} className={shared.entry}>
-                          <label>
-                            プロジェクト名
-                            <input
-                              type="text"
-                              value={proj.name}
-                              onChange={(e) =>
-                                updateProjectField(expIndex, clientIndex, projIndex, "name", e.target.value)
+                        <div
+                          key={`proj-${expIndex}-${clientIndex}-${projIndex}`}
+                          className={styles.projectSummaryRow}
+                        >
+                          <span className={styles.projectName}>
+                            {proj.name || "(未入力)"}
+                          </span>
+                          <span className={styles.projectPeriod}>
+                            {projectSummary(proj)}
+                          </span>
+                          <div className={styles.projectActions}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setModalTarget({ expIndex, clientIndex, projIndex })
                               }
-                              placeholder="例: エネルギー業界 IoT Web API アプリ新規開発"
-                            />
-                          </label>
-
-                          <div className={shared.inline}>
-                            <label>
-                              開始
-                              <input
-                                type="month"
-                                value={proj.start_date}
-                                onChange={(e) =>
-                                  updateProjectField(expIndex, clientIndex, projIndex, "start_date", e.target.value)
-                                }
-                              />
-                            </label>
-                            <label>
-                              参画状況
-                              <select
-                                value={proj.is_current ? "current" : "ended"}
-                                onChange={(e) =>
-                                  updateProjectField(expIndex, clientIndex, projIndex, "is_current", e.target.value === "current")
-                                }
-                              >
-                                <option value="ended">終了</option>
-                                <option value="current">参画中</option>
-                              </select>
-                            </label>
-                            {!proj.is_current && (
-                              <label>
-                                終了
-                                <input
-                                  type="month"
-                                  value={proj.end_date}
-                                  onChange={(e) =>
-                                    updateProjectField(expIndex, clientIndex, projIndex, "end_date", e.target.value)
-                                  }
-                                />
-                              </label>
-                            )}
+                            >
+                              編集
+                            </button>
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => removeProject(expIndex, clientIndex, projIndex)}
+                            >
+                              削除
+                            </button>
                           </div>
-
-                          <label>
-                            役割
-                            <input
-                              type="text"
-                              value={proj.role}
-                              onChange={(e) =>
-                                updateProjectField(expIndex, clientIndex, projIndex, "role", e.target.value)
-                              }
-                              placeholder="例: アジャイル開発メンバー"
-                            />
-                          </label>
-
-                          {/* 体制 */}
-                          <div className={styles.stackSection}>
-                            <h3>体制</h3>
-                            <div className={styles.teamLayout}>
-                              <label className={styles.teamTotal}>
-                                <span>全体人数</span>
-                                <div className={styles.inputWithUnit}>
-                                  <input
-                                    type="number"
-                                    value={proj.team.total}
-                                    onChange={(e) =>
-                                      updateTeamTotal(expIndex, clientIndex, projIndex, e.target.value)
-                                    }
-                                    placeholder="例: 10"
-                                  />
-                                  <span className={styles.unit}>名</span>
-                                </div>
-                              </label>
-
-                              <button
-                                type="button"
-                                className={`ghost ${styles.chipAdd}`}
-                                onClick={() => addTeamMember(expIndex, clientIndex, projIndex)}
-                              >
-                                + 役割を追加
-                              </button>
-
-                              {proj.team.members.map((member, memberIndex) => (
-                                <div
-                                  key={`member-${expIndex}-${clientIndex}-${projIndex}-${memberIndex}`}
-                                  className={styles.stackChip}
-                                >
-                                  <select
-                                    className={styles.chipSelect}
-                                    value={member.role}
-                                    onChange={(e) =>
-                                      updateTeamMember(expIndex, clientIndex, projIndex, memberIndex, "role", e.target.value)
-                                    }
-                                  >
-                                    <option value="">選択</option>
-                                    {teamRoleOptions.map((r) => (
-                                      <option key={r} value={r}>{r}</option>
-                                    ))}
-                                  </select>
-                                  <div className={styles.inputWithUnit}>
-                                    <input
-                                      type="number"
-                                      value={member.count}
-                                      onChange={(e) =>
-                                        updateTeamMember(expIndex, clientIndex, projIndex, memberIndex, "count", e.target.value)
-                                      }
-                                      placeholder="人数"
-                                      style={{ width: "5em" }}
-                                    />
-                                    <span className={styles.unit}>名</span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className={styles.chipRemove}
-                                    onClick={() => removeTeamMember(expIndex, clientIndex, projIndex, memberIndex)}
-                                    aria-label="役割を削除"
-                                  >
-                                    &times;
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          <label>
-                            プロジェクト概要
-                            <input
-                              type="text"
-                              value={proj.description}
-                              onChange={(e) =>
-                                updateProjectField(expIndex, clientIndex, projIndex, "description", e.target.value)
-                              }
-                            />
-                          </label>
-
-                          <MarkdownTextarea
-                            label="課題"
-                            value={proj.challenge}
-                            onChange={(v) =>
-                              updateProjectField(expIndex, clientIndex, projIndex, "challenge", v)
-                            }
-                            rows={2}
-                          />
-
-                          <MarkdownTextarea
-                            label="行動"
-                            value={proj.action}
-                            onChange={(v) =>
-                              updateProjectField(expIndex, clientIndex, projIndex, "action", v)
-                            }
-                            rows={2}
-                          />
-
-                          <MarkdownTextarea
-                            label="成果"
-                            value={proj.result}
-                            onChange={(v) =>
-                              updateProjectField(expIndex, clientIndex, projIndex, "result", v)
-                            }
-                            rows={2}
-                          />
-
-                          {/* 技術スタック（チップ型） */}
-                          <div className={styles.stackSection}>
-                            <h3>技術スタック</h3>
-                            <div className={styles.stackGrid}>
-                              {proj.technology_stacks.map((stack, stackIndex) => (
-                                <div
-                                  key={`stack-${expIndex}-${clientIndex}-${projIndex}-${stackIndex}`}
-                                  className={styles.stackChip}
-                                >
-                                  <select
-                                    className={styles.chipSelect}
-                                    value={stack.category}
-                                    onChange={(e) =>
-                                      updateTechnologyStackField(
-                                        expIndex,
-                                        clientIndex,
-                                        projIndex,
-                                        stackIndex,
-                                        "category",
-                                        e.target.value,
-                                      )
-                                    }
-                                  >
-                                    {careerTechnologyStackCategories.map((cat) => (
-                                      <option key={cat} value={cat}>
-                                        {careerTechnologyStackCategoryLabels[cat]}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <Combobox
-                                    value={stack.name}
-                                    onChange={(val) =>
-                                      updateTechnologyStackField(
-                                        expIndex,
-                                        clientIndex,
-                                        projIndex,
-                                        stackIndex,
-                                        "name",
-                                        val,
-                                      )
-                                    }
-                                    options={techStackNamesByCategory.get(stack.category) ?? []}
-                                    placeholder="例: TypeScript"
-                                    allowCustom
-                                  />
-                                  <button
-                                    type="button"
-                                    className={styles.chipRemove}
-                                    onClick={() =>
-                                      removeTechnologyStack(expIndex, clientIndex, projIndex, stackIndex)
-                                    }
-                                    aria-label="技術スタックを削除"
-                                  >
-                                    &times;
-                                  </button>
-                                </div>
-                              ))}
-                              <button
-                                type="button"
-                                className={`ghost ${styles.chipAdd}`}
-                                onClick={() => addTechnologyStack(expIndex, clientIndex, projIndex)}
-                              >
-                                + 追加
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* 工程 */}
-                          <div className={styles.stackSection}>
-                            <h3>工程</h3>
-                            <div className={styles.phaseList}>
-                              {phaseOptions.map((phase) => (
-                                <label
-                                  key={`phase-${expIndex}-${clientIndex}-${projIndex}-${phase}`}
-                                  className={styles.stackChip}
-                                  style={{ cursor: "pointer" }}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={proj.phases.includes(phase)}
-                                    onChange={() => togglePhase(expIndex, clientIndex, projIndex, phase)}
-                                  />
-                                  {phase}
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            className="danger"
-                            onClick={() => removeProject(expIndex, clientIndex, projIndex)}
-                          >
-                            プロジェクトを削除
-                          </button>
                         </div>
                       ))}
                       <button
                         type="button"
                         className="ghost"
-                        onClick={() => addProject(expIndex, clientIndex)}
+                        onClick={() =>
+                          setModalTarget({ expIndex, clientIndex, projIndex: null })
+                        }
                       >
                         プロジェクトを追加
                       </button>
