@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+OLLAMA_TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "180"))
 
 SYSTEM_PROMPT = (
     "あなたはキャリア分析の専門家です。"
@@ -60,7 +61,7 @@ def _build_user_prompt(analysis: Dict[str, Any]) -> str:
 
 
 async def check_ollama_available() -> bool:
-    """Check if Ollama server is reachable."""
+    """Ollama サーバーに接続可能か確認します。"""
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             resp = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
@@ -105,7 +106,7 @@ async def summarize_blog_articles(articles: List[Dict[str, Any]]) -> str:
     prompt = _build_blog_prompt(articles)
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
             resp = await client.post(
                 f"{OLLAMA_BASE_URL}/api/generate",
                 json={
@@ -119,7 +120,7 @@ async def summarize_blog_articles(articles: List[Dict[str, Any]]) -> str:
             data = resp.json()
             return data.get("response", "").strip()
     except (httpx.ConnectError, httpx.TimeoutException):
-        logger.info("Ollama is not available at %s", OLLAMA_BASE_URL)
+        logger.info("Ollama が %s で利用できません", OLLAMA_BASE_URL)
         return ""
     except Exception:
         logger.exception("ブログ記事の要約生成に失敗しました")
@@ -127,14 +128,14 @@ async def summarize_blog_articles(articles: List[Dict[str, Any]]) -> str:
 
 
 async def summarize_analysis(analysis: Dict[str, Any]) -> str:
-    """Generate a natural language summary of the analysis using Ollama.
+    """Ollama を使用して分析結果の自然言語要約を生成する。
 
-    Returns an empty string if Ollama is not available.
+    Ollama に接続できない場合は空文字列を返す。
     """
     user_prompt = _build_user_prompt(analysis)
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
             resp = await client.post(
                 f"{OLLAMA_BASE_URL}/api/generate",
                 json={
@@ -148,8 +149,8 @@ async def summarize_analysis(analysis: Dict[str, Any]) -> str:
             data = resp.json()
             return data.get("response", "").strip()
     except (httpx.ConnectError, httpx.TimeoutException):
-        logger.info("Ollama is not available at %s", OLLAMA_BASE_URL)
+        logger.info("Ollama が %s で利用できません", OLLAMA_BASE_URL)
         return ""
     except Exception:
-        logger.exception("Failed to generate summary via Ollama")
+        logger.exception("Ollama による要約生成に失敗しました")
         return ""

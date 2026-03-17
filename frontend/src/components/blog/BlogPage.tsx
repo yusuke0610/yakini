@@ -6,6 +6,7 @@ import {
   getBlogArticles,
   syncBlogAccount,
   summarizeBlogArticles,
+  getBlogSummaryCache,
 } from "../../api";
 import type { BlogAccount, BlogArticle } from "../../types";
 import { ZennIcon } from "../icons/ZennIcon";
@@ -80,6 +81,17 @@ export function BlogPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // 初回マウント時に保存済みのAI分析結果を読み込む
+  useEffect(() => {
+    getBlogSummaryCache()
+      .then((cached) => {
+        if (cached.available && cached.summary) {
+          setSummary(cached.summary);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   /**
    * ユーザー名を保存（連携）し、自動で記事を同期する。

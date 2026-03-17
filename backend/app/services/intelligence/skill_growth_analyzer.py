@@ -1,10 +1,9 @@
 """
-Skill growth velocity analysis.
+スキルの成長速度分析。
 
-Detects whether each skill is emerging, stable, or declining
-based on yearly usage trends.
+年次の使用傾向に基づいて、各スキルが台頭中（emerging）、安定（stable）、または衰退中（declining）であるかを検出します。
 
-Deterministic — no LLM usage.
+決定論的 — LLMは使用しません。
 """
 
 import logging
@@ -21,7 +20,7 @@ class GrowthTrend(str, Enum):
     EMERGING = "emerging"
     STABLE = "stable"
     DECLINING = "declining"
-    NEW = "new"  # Only one year of data
+    NEW = "new"  # 1年分のデータのみ
 
 
 @dataclass
@@ -29,7 +28,7 @@ class SkillGrowth:
     skill_name: str
     category: str
     trend: GrowthTrend
-    velocity: float           # Growth rate (positive = growing)
+    velocity: float           # 成長率（正 = 成長中）
     yearly_usage: Dict[str, int]
     first_seen: str
     last_seen: str
@@ -41,12 +40,12 @@ def analyze_growth(
     current_year: str | None = None,
 ) -> List[SkillGrowth]:
     """
-    Analyze growth velocity for each skill.
+    各スキルの成長速度を分析します。
 
-    Velocity is calculated as the slope of yearly usage:
-      - Positive velocity → emerging
-      - Near-zero velocity → stable
-      - Negative velocity → declining
+    速度は年次使用量の傾きとして計算されます：
+      - 正の速度 → 台頭中 (emerging)
+      - ゼロに近い速度 → 安定 (stable)
+      - 負の速度 → 衰退中 (declining)
     """
     results: List[SkillGrowth] = []
 
@@ -94,10 +93,10 @@ def analyze_growth(
 
 def _calculate_velocity(yearly_usage: Dict[str, int]) -> float:
     """
-    Calculate growth velocity using linear regression slope.
+    線形回回帰の傾きを使用して成長速度を計算します。
 
-    Maps years to sequential indices (0, 1, 2, ...)
-    and computes the least-squares slope.
+    年を連続したインデックス (0, 1, 2, ...) にマッピングし、
+    最小二乗法による傾きを算出します。
     """
     years = sorted(yearly_usage.keys())
     n = len(years)
@@ -128,25 +127,25 @@ def _classify_trend(
     current_year: str | None = None,
 ) -> GrowthTrend:
     """
-    Classify the growth trend based on velocity and recency.
+    速度と新近性に基づいて成長傾向を分類します。
 
-    A skill with positive velocity is emerging.
-    A skill with negative velocity is declining.
-    Near-zero velocity is stable.
+    正の速度を持つスキルは台頭中 (emerging) です。
+    負の速度を持つスキルは衰退中 (declining) です。
+    ゼロに近い速度は安定 (stable) です。
 
-    Exception: if the skill hasn't been used recently
-    (last 2 years), it's declining regardless of velocity.
+    例外：最近（過去2年間）使用されていないスキルは、
+    速度に関わらず衰退中 (declining) と見なされます。
     """
     years = sorted(yearly_usage.keys())
     last_year = years[-1] if years else "0"
 
-    # If not used recently, consider declining
+    # 最近使用されていない場合は衰退中と見なす
     if current_year:
         gap = int(current_year) - int(last_year)
         if gap >= 2:
             return GrowthTrend.DECLINING
 
-    # Threshold for "near zero"
+    # 「ゼロに近い」と見なす閾値
     threshold = 0.3
 
     if velocity > threshold:

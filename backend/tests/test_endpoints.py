@@ -126,6 +126,7 @@ def test_basic_info_crud(client: TestClient) -> None:
     # Create
     resp = client.post("/api/basic-info", json={
         "full_name": "田中太郎",
+        "name_furigana": "たなか たろう",
         "record_date": "2026-03-12",
         "qualifications": [],
     }, headers=headers)
@@ -140,6 +141,7 @@ def test_basic_info_crud(client: TestClient) -> None:
     # Update
     resp = client.put(f"/api/basic-info/{info_id}", json={
         "full_name": "田中花子",
+        "name_furigana": "たなか はなこ",
         "record_date": "2026-03-12",
         "qualifications": [],
     }, headers=headers)
@@ -181,9 +183,11 @@ def test_rirekisho_crud(client: TestClient) -> None:
     headers = auth_header(client, "rirekishouser")
 
     resp = client.post("/api/rirekisho", json={
-        "postal_code": "150-0001",
+
+        "gender": "male",
         "prefecture": "東京都",
         "address": "渋谷区神南1-1-1",
+        "address_furigana": "しぶやく じんなん",
         "email": "test@example.com",
         "phone": "09012345678",
         "motivation": "御社の事業に共感しました",
@@ -198,9 +202,11 @@ def test_rirekisho_crud(client: TestClient) -> None:
     assert resp.json()["prefecture"] == "東京都"
 
     resp = client.put(f"/api/rirekisho/{rirekisho_id}", json={
-        "postal_code": "150-0002",
+
+        "gender": "female",
         "prefecture": "東京都",
         "address": "渋谷区神南2-2-2",
+        "address_furigana": "しぶやく じんなん",
         "email": "test2@example.com",
         "phone": "09087654321",
         "motivation": "更新済み志望動機",
@@ -208,7 +214,7 @@ def test_rirekisho_crud(client: TestClient) -> None:
         "work_histories": [],
     }, headers=headers)
     assert resp.status_code == 200
-    assert resp.json()["postal_code"] == "150-0002"
+    assert resp.json()["gender"] == "female"
 
 
 # ── Health Check ───────────────────────────────────────────────
@@ -255,9 +261,11 @@ def test_resume_not_found(client: TestClient) -> None:
 def test_rirekisho_get_by_id(client: TestClient) -> None:
     headers = auth_header(client, "ririgetuser")
     resp = client.post("/api/rirekisho", json={
-        "postal_code": "150-0001",
+
+        "gender": "male",
         "prefecture": "東京都",
         "address": "渋谷区神南1-1-1",
+        "address_furigana": "しぶやく じんなん",
         "email": "test@example.com",
         "phone": "09012345678",
         "motivation": "志望動機",

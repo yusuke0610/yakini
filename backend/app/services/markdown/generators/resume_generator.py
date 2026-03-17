@@ -56,29 +56,82 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                 lines.append(field_line("資本金", f"{cap}千万円"))
             lines.append("")
 
-            projects = exp.get("projects", [])
-            for proj in projects:
-                name = proj.get("name", "")
-                if name:
-                    lines.append(f"#### {name}")
+            # clients → projects（後方互換: clients がなく projects がある場合）
+            clients = exp.get("clients", [])
+            if not clients and exp.get("projects"):
+                clients = [{"name": "", "projects": exp["projects"]}]
+            for client in clients:
+                client_name = client.get("name", "")
+                if client_name:
+                    lines.append(f"#### {client_name}")
                     lines.append("")
-                role = proj.get("role", "")
-                if role:
-                    lines.append(field_line("担当", role))
-                desc = proj.get("description", "")
-                if desc:
-                    lines.append(field_line("業務内容", desc))
-                achievements = proj.get("achievements", "")
-                if achievements:
-                    lines.append(field_line("実績", achievements))
-                scale = proj.get("scale", "")
-                if scale:
-                    lines.append(field_line("規模", f"{scale}名"))
-                stacks = proj.get("technology_stacks", [])
-                if stacks:
-                    tech_str = ", ".join(s.get("name", "") for s in stacks)
-                    lines.append(field_line("技術スタック", tech_str))
-                lines.append("")
+                projects = client.get("projects", [])
+                for proj in projects:
+                    name = proj.get("name", "")
+                    if name:
+                        lines.append(f"##### {name}")
+                        lines.append("")
+                    proj_start = proj.get("start_date", "")
+                    proj_end = proj.get("end_date", "")
+                    proj_is_current = proj.get("is_current", False)
+                    if proj_start:
+                        proj_period = format_period(proj_start, proj_end, proj_is_current)
+                        lines.append(field_line("期間", proj_period))
+                    role = proj.get("role", "")
+                    if role:
+                        lines.append(field_line("担当", role))
+                    desc = proj.get("description", "")
+                    if desc:
+                        lines.append(field_line("業務内容", desc))
+                    challenge = proj.get("challenge", "")
+                    if challenge:
+                        lines.append(field_line("課題", challenge))
+                    action = proj.get("action", "")
+                    if action:
+                        lines.append(field_line("行動", action))
+                    result = proj.get("result", "")
+                    if result:
+                        lines.append(field_line("成果", result))
+                    # 体制（後方互換: 旧 scale → team に変換）
+                    team = proj.get("team")
+                    if not team and proj.get("scale"):
+                        team = {"total": proj["scale"], "members": []}
+                    if team:
+                        total = team.get("total", "")
+                        members = team.get("members", [])
+                        member_strs = [
+                            f"{m.get('role', '')}:{m.get('count', 0)}"
+                            for m in members if m.get("role")
+                        ]
+                        team_text = f"{total}名" if total else ""
+                        if member_strs:
+                            sep = "（" if team_text else ""
+                            end = "）" if team_text else ""
+                            team_text += f"{sep}{' / '.join(member_strs)}{end}"
+                        if team_text:
+                            lines.append(field_line("体制", team_text))
+                    phases = proj.get("phases", [])
+                    if phases:
+                        lines.append(field_line("工程", ", ".join(phases)))
+                    stacks = proj.get("technology_stacks", [])
+                    if stacks:
+                        cat_labels = {
+                            "language": "言語", "framework": "FW",
+                            "os": "OS", "db": "DB",
+                            "cloud_resource": "NW", "dev_tool": "Tool",
+                        }
+                        grouped: dict[str, list[str]] = {}
+                        for st in stacks:
+                            cat = st.get("category", "")
+                            if cat not in grouped:
+                                grouped[cat] = []
+                            grouped[cat].append(st.get("name", ""))
+                        parts = [
+                            f"{cat_labels.get(c, c)}: {', '.join(ns)}"
+                            for c, ns in grouped.items()
+                        ]
+                        lines.append(field_line("技術スタック", " / ".join(parts)))
+                    lines.append("")
 
     self_pr = payload.get("self_pr", "")
     if self_pr:

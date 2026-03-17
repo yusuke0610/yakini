@@ -1,10 +1,10 @@
 """
-Career simulation engine.
+キャリアシミュレーションエンジン。
 
-Simulates multiple possible career paths by traversing the career graph.
-Returns branching paths with confidence scores.
+キャリアグラフを走査することで、複数の可能なキャリアパスをシミュレーションします。
+信頼スコアとともに分岐するパスを返します。
 
-Deterministic graph traversal — no LLM usage.
+決定論的なグラフ走査 — LLMは使用しません。
 """
 
 import logging
@@ -26,9 +26,9 @@ MAX_BRANCH_FACTOR = 3
 
 @dataclass
 class SimulatedPath:
-    path: List[str]        # Sequence of role names
-    confidence: float      # Overall path confidence (0.0 to 1.0)
-    description: str       # Human-readable summary
+    path: List[str]        # ロール名のシーケンス
+    confidence: float      # パス全体の信頼度 (0.0 から 1.0)
+    description: str       # 人間が読める形式のサマリー
 
 
 @dataclass
@@ -45,9 +45,9 @@ def simulate_careers(
     max_paths: int = 5,
 ) -> CareerSimulation:
     """
-    Simulate multiple career paths from the current predicted role.
+    現在の予測ロールから複数のキャリアパスをシミュレーションします。
 
-    Uses depth-limited DFS on the career graph, scoring each path.
+    キャリアグラフ上で深さ制限付きの深さ優先探索（DFS）を使用し、各パスをスコアリングします。
     """
     current = prediction.current_role.role_name
     user_skills: Set[str] = {t.skill_name for t in timelines}
@@ -58,11 +58,11 @@ def simulate_careers(
         g.skill_name: g for g in growth
     }
 
-    # DFS to find all paths
+    # すべてのパスを見つけるための DFS
     all_paths: List[List[str]] = []
     _dfs(current, [current], set(), all_paths)
 
-    # Score each path
+    # 各パスをスコアリング
     scored: List[SimulatedPath] = []
     for path in all_paths:
         if len(path) < 2:
@@ -98,7 +98,7 @@ def _dfs(
     visited: Set[str],
     all_paths: List[List[str]],
 ) -> None:
-    """Depth-limited DFS on the career graph."""
+    """キャリアグラフ上の深さ制限付き DFS。"""
     if len(current_path) >= MAX_PATH_DEPTH:
         all_paths.append(list(current_path))
         return
@@ -122,7 +122,7 @@ def _dfs(
         current_path.pop()
         branches_taken += 1
 
-    # If no branches taken, save current path as terminal
+    # 分岐が発生しなかった場合、現在のパスを終端として保存
     if branches_taken == 0:
         all_paths.append(list(current_path))
 
@@ -130,17 +130,17 @@ def _dfs(
 
 
 def _generate_description(path: List[str]) -> str:
-    """Generate a human-readable path description."""
+    """人間が読める形式のパス説明を生成します。"""
     if len(path) <= 1:
         return path[0] if path else ""
 
     parts: List[str] = []
     for i, role in enumerate(path):
         if i == 0:
-            parts.append(f"Start as {role}")
+            parts.append(f"{role}として開始")
         elif i == len(path) - 1:
-            parts.append(f"target {role}")
+            parts.append(f"目標: {role}")
         else:
-            parts.append(f"grow into {role}")
+            parts.append(f"{role}へ成長")
 
-    return ", ".join(parts)
+    return " -> ".join(parts)

@@ -1,6 +1,6 @@
 """キャリアインテリジェンス API 用の Pydantic スキーマ。"""
 
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -55,3 +55,13 @@ class SkillActivityItem(BaseModel):
 
 class SkillActivityResponse(BaseModel):
     skills: List[SkillActivityItem]
+
+
+# ── キャッシュ取得レスポンス ──────────────────────────────────────
+
+class CachedAnalysisResponse(BaseModel):
+    """DB に保存された分析結果・AI要約・スキルアクティビティを返す。"""
+    analysis_result: Optional[Dict[str, Any]] = None
+    ai_summary: Optional[str] = None
+    skill_activity_month: Optional[List[Dict[str, Any]]] = None
+    skill_activity_year: Optional[List[Dict[str, Any]]] = None

@@ -30,28 +30,49 @@ def _build_project_table(project: dict, s: dict) -> list:
     elements = []
 
     proj_name = escape(project.get("name", ""))
+    proj_start = project.get("start_date", "")
+    proj_end = project.get("end_date", "")
+    proj_is_current = project.get("is_current", False)
+    proj_period = format_period(proj_start, proj_end, proj_is_current) if proj_start else ""
     role = escape(project.get("role", ""))
     header_parts = []
     if proj_name:
         header_parts.append(proj_name)
+    if proj_period:
+        header_parts.append(proj_period)
     if role:
         header_parts.append(f"役割: {role}")
+    phases = project.get("phases", [])
+    if phases:
+        header_parts.append(f"工程: {', '.join(escape(p) for p in phases)}")
     if header_parts:
         elements.append(Paragraph(
             f"<b>{' ／ '.join(header_parts)}</b>",
             s["project_header"],
         ))
 
-    # Left column: description + achievements
+    # Left column: description + challenge/action/result
     left_parts = []
     if project.get("description"):
         left_parts.append(f"<b>【業務内容】</b><br/>{nl2br(project['description'])}")
-    if project.get("achievements"):
-        left_parts.append(f"<b>【実績・取り組み】</b><br/>{nl2br(project['achievements'])}")
+    if project.get("challenge"):
+        left_parts.append(f"<b>【課題】</b><br/>{nl2br(project['challenge'])}")
+    if project.get("action"):
+        left_parts.append(f"<b>【行動】</b><br/>{nl2br(project['action'])}")
+    if project.get("result"):
+        left_parts.append(f"<b>【成果】</b><br/>{nl2br(project['result'])}")
     left_content = "<br/><br/>".join(left_parts) if left_parts else "-"
 
     # Right column: tech stacks
     tech_stacks = project.get("technology_stacks", [])
+    category_labels = {
+        "language": "言語",
+        "framework": "FW",
+        "os": "OS",
+        "db": "DB",
+        "cloud_resource": "NW",
+        "dev_tool": "Tool",
+    }
     grouped: dict[str, list[str]] = {}
     for stack in tech_stacks:
         cat = stack.get("category", "")
@@ -62,22 +83,38 @@ def _build_project_table(project: dict, s: dict) -> list:
 
     right_parts = []
     for cat, names in grouped.items():
-        right_parts.append(f"<b>【{escape(cat)}】</b><br/>{escape(', '.join(names))}")
+        label = category_labels.get(cat, cat)
+        right_parts.append(f"<b>【{escape(label)}】</b><br/>{escape(', '.join(names))}")
     right_content = "<br/>".join(right_parts) if right_parts else "-"
 
-    scale_raw = project.get("scale", "")
-    scale = f"{escape(scale_raw)}名" if scale_raw else "-"
+    # 体制（後方互換: 旧 scale → team に変換）
+    team = project.get("team")
+    if not team and project.get("scale"):
+        team = {"total": project["scale"], "members": []}
+    team_parts = []
+    if team:
+        total = team.get("total", "")
+        if total:
+            team_parts.append(f"{escape(total)}名")
+        members = team.get("members", [])
+        member_strs = [
+            f"{escape(m.get('role', ''))}:{m.get('count', 0)}"
+            for m in members if m.get("role")
+        ]
+        if member_strs:
+            team_parts.append(" / ".join(member_strs))
+    team_text = "<br/>".join(team_parts) if team_parts else "-"
 
     col_widths = [105 * mm, 45 * mm, 25 * mm]
     header_data = [[
         Paragraph("<b>業務内容</b>", s["body_small"]),
         Paragraph("<b>開発環境</b>", s["body_small"]),
-        Paragraph("<b>規模</b>", s["body_small"]),
+        Paragraph("<b>体制</b>", s["body_small"]),
     ]]
     body_data = [[
         Paragraph(left_content, s["body_small"]),
         Paragraph(right_content, s["body_small"]),
-        Paragraph(scale, s["body_small"]),
+        Paragraph(team_text, s["body_small"]),
     ]]
 
     t = Table(header_data + body_data, colWidths=col_widths)
@@ -163,24 +200,23 @@ def build_resume_pdf(resume: dict) -> bytes:
             # Build inner content for this company
             inner = []
 
-            # Projects
-            projects = exp.get("projects", [])
-            if projects:
+            # clients → projects（後方互換: clients がなく projects がある場合はそのまま描画）
+            clients = exp.get("clients", [])
+            if not clients and exp.get("projects"):
+                clients = [{"name": "", "projects": exp["projects"]}]
+            for client in clients:
+                client_name = escape(client.get("name", ""))
+                if client_name:
+                    inner.append(Paragraph(
+                        f"<b>▸ {client_name}</b>",
+                        s["company_header"],
+                    ))
+                    inner.append(Spacer(1, 1 * mm))
+                projects = client.get("projects", [])
                 for proj in projects:
                     proj_elements = _build_project_table(proj, s)
                     inner.extend(proj_elements)
                     inner.append(Spacer(1, 2 * mm))
-            else:
-                compat_project = {
-                    "name": "",
-                    "role": "",
-                    "description": exp.get("description", ""),
-                    "achievements": exp.get("achievements", ""),
-                    "scale": exp.get("employee_count", ""),
-                    "technology_stacks": exp.get("technology_stacks", []),
-                }
-                proj_elements = _build_project_table(compat_project, s)
-                inner.extend(proj_elements)
 
             # Wrap company in a bordered table
             content_width = PAGE_W - 2 * MARGIN

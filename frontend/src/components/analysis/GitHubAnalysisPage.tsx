@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   analyzeGitHub,
+  getAnalysisCache,
   summarizeAnalysis,
   type AnalysisResponse,
 } from "../../api";
@@ -9,55 +10,59 @@ import { LanguageBar } from "./LanguageBar";
 import shared from "../../styles/shared.module.css";
 import styles from "./GitHubAnalysisPage.module.css";
 
-const CACHE_KEY_RESULT = "github_analysis_result";
-const CACHE_KEY_SUMMARY = "github_analysis_summary";
-
-type Phase = "input" | "loading" | "result";
-
-/**
- * キャッシュされた分析結果を読み込みます。
- */
-function loadCachedResult(): AnalysisResponse | null {
-  try {
-    const raw = sessionStorage.getItem(CACHE_KEY_RESULT);
-    return raw ? (JSON.parse(raw) as AnalysisResponse) : null;
-  } catch {
-    return null;
-  }
-}
+type Phase = "loading-cache" | "input" | "loading" | "result";
 
 /**
  * GitHub 分析結果を表示するダッシュボードコンポーネント。
+ * 初回表示時にDBキャッシュを読み込み、保存済みの結果があればそのまま表示する。
+ * 「再分析」ボタン押下時のみ LLM を再起動する。
  */
 export function GitHubAnalysisPage() {
-  const cachedResult = loadCachedResult();
-  const [phase, setPhase] = useState<Phase>(cachedResult ? "result" : "input");
+  const [phase, setPhase] = useState<Phase>("loading-cache");
   const [includeForks, setIncludeForks] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AnalysisResponse | null>(cachedResult);
+  const [result, setResult] = useState<AnalysisResponse | null>(null);
 
   // AI 要約
-  const cachedSummary = sessionStorage.getItem(CACHE_KEY_SUMMARY);
-  const [summary, setSummary] = useState<string | null>(cachedSummary);
-  // 結果があり要約キャッシュがない場合、初期状態でローディングを開始
-  const [summaryLoading, setSummaryLoading] = useState(
-    () => !!cachedResult && !cachedSummary,
-  );
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   /**
-   * GitHub 分析を実行します。
+   * 初回マウント時にDBキャッシュを読み込む。
+   */
+  useEffect(() => {
+    let cancelled = false;
+    getAnalysisCache()
+      .then((cache) => {
+        if (cancelled) return;
+        if (cache.analysis_result) {
+          setResult(cache.analysis_result);
+          setSummary(cache.ai_summary ?? null);
+          setPhase("result");
+        } else {
+          setPhase("input");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPhase("input");
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  /**
+   * GitHub 分析を実行します（再分析）。
    */
   const handleAnalyze = async () => {
     setError(null);
     setPhase("loading");
+    setSummary(null);
     try {
       const data = await analyzeGitHub({
         include_forks: includeForks,
       });
       setResult(data);
       setSummaryLoading(true);
-      sessionStorage.setItem(CACHE_KEY_RESULT, JSON.stringify(data));
       setPhase("result");
     } catch (e) {
       setError(e instanceof Error ? e.message : "分析に失敗しました");
@@ -66,17 +71,16 @@ export function GitHubAnalysisPage() {
   };
 
   /**
-   * 結果が利用可能になった後、AI 要約を取得します（キャッシュがない場合）。
+   * 再分析後、AI 要約がまだない場合に取得する。
    */
   useEffect(() => {
-    if (!result) return;
-    if (summary) return; // キャッシュされた要約がすでにある場合
+    if (!result || summary) return;
+    if (!summaryLoading) return;
     let cancelled = false;
     summarizeAnalysis(result)
       .then((res) => {
         if (!cancelled && res.available) {
           setSummary(res.summary);
-          sessionStorage.setItem(CACHE_KEY_SUMMARY, res.summary);
         }
       })
       .catch(() => {})
@@ -86,18 +90,28 @@ export function GitHubAnalysisPage() {
     return () => {
       cancelled = true;
     };
-  }, [result, summary]);
+  }, [result, summary, summaryLoading]);
 
   /**
-   * 入力画面に戻ります。
+   * 入力画面に戻ります（再分析用）。
    */
   const handleBack = () => {
     setPhase("input");
     setResult(null);
     setSummary(null);
-    sessionStorage.removeItem(CACHE_KEY_RESULT);
-    sessionStorage.removeItem(CACHE_KEY_SUMMARY);
   };
+
+  // ── フェーズ: キャッシュ読み込み中 ──────────────────────────────
+  if (phase === "loading-cache") {
+    return (
+      <div className={shared.pageBody}>
+        <div className={styles.loading}>
+          <div className={styles.spinner} />
+          <p>読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
 
   // ── フェーズ: 入力 ──────────────────────────────────────────
   if (phase === "input") {

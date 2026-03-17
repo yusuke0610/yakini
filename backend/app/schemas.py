@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+_HIRAGANA_PATTERN = r'^[ぁ-ゖー\s　]+$'
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -52,6 +54,7 @@ class BasicQualification(BaseModel):
 
 class BasicInfoBase(BaseModel):
     full_name: str = Field(min_length=1, max_length=120)
+    name_furigana: str = Field(min_length=1, max_length=200, pattern=_HIRAGANA_PATTERN)
     record_date: str = Field(min_length=1, max_length=30)
     qualifications: list[BasicQualification] = Field(default_factory=list)
 
@@ -77,13 +80,46 @@ class TechnologyStackItem(BaseModel):
     name: str = Field(min_length=1, max_length=120)
 
 
+class TeamMember(BaseModel):
+    """体制の役割ごとの人数。"""
+    role: str = Field(max_length=60)
+    count: int = Field(ge=0)
+
+
+class ProjectTeam(BaseModel):
+    """プロジェクト体制（全体人数 + 役割別内訳）。"""
+    total: str = Field(max_length=60, default="")
+    members: list[TeamMember] = Field(default_factory=list)
+
+
 class Project(BaseModel):
     name: str = Field(max_length=200, default="")
+    start_date: str = Field(max_length=30, default="")
+    end_date: str = Field(max_length=30, default="")
+    is_current: bool = False
     role: str = Field(max_length=200, default="")
     description: str = Field(max_length=1500, default="")
-    achievements: str = Field(max_length=1500, default="")
-    scale: str = Field(max_length=60, default="")
+    challenge: str = Field(max_length=1500, default="")
+    action: str = Field(max_length=1500, default="")
+    result: str = Field(max_length=1500, default="")
+    team: ProjectTeam = Field(default_factory=ProjectTeam)
     technology_stacks: list[TechnologyStackItem] = Field(default_factory=list)
+    phases: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_scale_to_team(cls, data: dict) -> dict:
+        """旧形式 scale → team に自動変換する後方互換処理。"""
+        if isinstance(data, dict) and "scale" in data and "team" not in data:
+            scale = data.pop("scale")
+            data["team"] = {"total": str(scale) if scale else "", "members": []}
+        return data
+
+
+class Client(BaseModel):
+    """ユーザ（常駐先/クライアント企業）。"""
+    name: str = Field(max_length=200, default="")
+    projects: list[Project] = Field(default_factory=list)
 
 
 class Experience(BaseModel):
@@ -94,7 +130,16 @@ class Experience(BaseModel):
     is_current: bool = False
     employee_count: str = Field(max_length=60, default="")
     capital: str = Field(max_length=120, default="")
-    projects: list[Project] = Field(default_factory=list)
+    clients: list[Client] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_projects_to_clients(cls, data: dict) -> dict:
+        """旧形式（projects直下）を clients にラップする後方互換処理。"""
+        if isinstance(data, dict) and "projects" in data and "clients" not in data:
+            projects = data.pop("projects")
+            data["clients"] = [{"name": "", "projects": projects}]
+        return data
 
     @model_validator(mode="after")
     def validate_end_date(self) -> "Experience":
@@ -134,12 +179,13 @@ class RirekishoHistory(BaseModel):
 
 
 class RirekishoBase(BaseModel):
-    postal_code: str = Field(min_length=1, max_length=20)
+    gender: Literal["male", "female"] = Field(min_length=1)
     prefecture: str = Field(min_length=1, max_length=60)
     address: str = Field(min_length=1, max_length=400)
+    address_furigana: str = Field(min_length=1, max_length=400, pattern=_HIRAGANA_PATTERN)
     email: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=1, max_length=50)
-    motivation: str = Field(min_length=1, max_length=2000)
+    motivation: str = Field(max_length=2000, default="")
     personal_preferences: str = Field(max_length=2000, default="")
     photo: str | None = Field(default=None)
     educations: list[RirekishoHistory] = Field(default_factory=list)

@@ -1,13 +1,13 @@
 """
-Static career path graph for deterministic career prediction.
+決定論的なキャリア予測のための静的なキャリアパスグラフ。
 
-Each role defines:
-  - required_skills: skills that indicate this role
-  - required_categories: skill categories that should be covered
-  - next_roles: possible career transitions
-  - seniority: numeric level for ordering (1=junior, 5=executive)
+各ロールの定義：
+  - required_skills: このロールを示すスキル
+  - required_categories: カバーすべきスキルのカテゴリ
+  - next_roles: 可能なキャリア遷移
+  - seniority: 順序付けのための数値レベル (1=ジュニア, 5=エグゼクティブ)
 
-No LLM usage — pure rule-based.
+LLMは使用しません — 純粋なルールベースです。
 """
 
 from typing import Dict, List, Set
@@ -121,7 +121,7 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
     ),
     "Tech Lead": RoleDefinition(
         role_name="Tech Lead",
-        required_skills=[],  # Role determined by breadth, not specific skills
+        required_skills=[],  # 特定のスキルではなく、幅広さによって決定されるロール
         required_categories=["language", "backend_framework"],
         next_roles=["Engineering Manager", "Staff Engineer"],
         seniority=3,
@@ -234,7 +234,7 @@ def get_all_role_names() -> List[str]:
 
 
 def get_entry_roles() -> List[str]:
-    """Roles at seniority level 2 (typical starting points)."""
+    """シニアリティレベル 2 のロール（典型的な開始点）。"""
     return [
         name for name, role in CAREER_ROLES.items()
         if role.seniority == 2
@@ -253,24 +253,24 @@ def match_skills_to_roles(
     user_skills: Set[str],
     user_categories: Set[str],
 ) -> List[RoleMatch]:
-    """Score how well a user's skills match each role definition."""
+    """ユーザーのスキルが各ロールの定義とどの程度一致するかをスコアリングします。"""
     matches: List[RoleMatch] = []
 
     for name, role in CAREER_ROLES.items():
         if not role.required_skills and not role.required_categories:
             continue
 
-        # Skill overlap
+        # スキルの重複
         role_skills = set(role.required_skills)
         overlap = user_skills & role_skills
         skill_score = len(overlap) / max(len(role_skills), 1)
 
-        # Category coverage
+        # カテゴリのカバー率
         role_cats = set(role.required_categories)
         cat_overlap = user_categories & role_cats
         cat_score = len(cat_overlap) / max(len(role_cats), 1)
 
-        # Weighted score: 60% skill match + 40% category coverage
+        # 重み付けスコア：スキルの一致 60% + カテゴリのカバー率 40%
         score = 0.6 * skill_score + 0.4 * cat_score
 
         if score > 0:
