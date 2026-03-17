@@ -36,7 +36,9 @@ export type CareerProject = {
   is_current: boolean;
   role: string;
   description: string;
-  achievements: string;
+  challenge: string;
+  action: string;
+  result: string;
   scale: string;
   technology_stacks: CareerTechnologyStack[];
 };
@@ -75,7 +77,7 @@ export type ResumeHistory = {
 };
 
 export type ResumePayload = {
-  gender: "male" | "female" | "";
+  gender: "male" | "female";
   prefecture: string;
   address: string;
   address_furigana: string;

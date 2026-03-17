@@ -137,12 +137,15 @@ export function BasicInfoForm() {
 
           <section className={shared.section}>
             <label>
-              ふりがな
+              <span className={shared.labelText}>ふりがな<span className={shared.requiredBadge}>必須</span></span>
               <input
                 type="text"
                 value={form.name_furigana}
                 onChange={(e) => onChangeField("name_furigana", e.target.value)}
                 placeholder="例: やまだ たろう"
+                pattern="^[ぁ-ゖー\s　]+$"
+                title="ひらがなで入力してください"
+                required
               />
             </label>
             <label>

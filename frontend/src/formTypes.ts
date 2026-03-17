@@ -12,7 +12,7 @@ export type CareerExperienceFieldKey =
   | "employee_count"
   | "capital";
 export type CareerClientFieldKey = "name";
-export type CareerProjectFieldKey = "name" | "start_date" | "end_date" | "is_current" | "role" | "description" | "achievements" | "scale";
+export type CareerProjectFieldKey = "name" | "start_date" | "end_date" | "is_current" | "role" | "description" | "challenge" | "action" | "result" | "scale";
 
 export type ResumeTextFieldKey =
   | "gender"

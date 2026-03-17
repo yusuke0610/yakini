@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+_HIRAGANA_PATTERN = r'^[ぁ-ゖー\s　]+$'
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -52,7 +54,7 @@ class BasicQualification(BaseModel):
 
 class BasicInfoBase(BaseModel):
     full_name: str = Field(min_length=1, max_length=120)
-    name_furigana: str = Field(max_length=200, default="")
+    name_furigana: str = Field(min_length=1, max_length=200, pattern=_HIRAGANA_PATTERN)
     record_date: str = Field(min_length=1, max_length=30)
     qualifications: list[BasicQualification] = Field(default_factory=list)
 
@@ -85,7 +87,9 @@ class Project(BaseModel):
     is_current: bool = False
     role: str = Field(max_length=200, default="")
     description: str = Field(max_length=1500, default="")
-    achievements: str = Field(max_length=1500, default="")
+    challenge: str = Field(max_length=1500, default="")
+    action: str = Field(max_length=1500, default="")
+    result: str = Field(max_length=1500, default="")
     scale: str = Field(max_length=60, default="")
     technology_stacks: list[TechnologyStackItem] = Field(default_factory=list)
 
@@ -153,10 +157,10 @@ class RirekishoHistory(BaseModel):
 
 
 class RirekishoBase(BaseModel):
-    gender: Literal["male", "female", ""] = Field(default="")
+    gender: Literal["male", "female"] = Field(min_length=1)
     prefecture: str = Field(min_length=1, max_length=60)
     address: str = Field(min_length=1, max_length=400)
-    address_furigana: str = Field(max_length=400, default="")
+    address_furigana: str = Field(min_length=1, max_length=400, pattern=_HIRAGANA_PATTERN)
     email: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=1, max_length=50)
     motivation: str = Field(max_length=2000, default="")

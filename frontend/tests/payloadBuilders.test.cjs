@@ -37,7 +37,7 @@ test("buildBasicPayload throws when a 資格 is partially filled", () => {
     () =>
       buildBasicPayload({
         full_name: "山田 太郎",
-        name_furigana: "",
+        name_furigana: "やまだ たろう",
         record_date: "2026-02-21",
         qualifications: [
           {
@@ -74,7 +74,9 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
                 is_current: false,
                 role: "  メンバー  ",
                 description: "  API開発  ",
-                achievements: "  パフォーマンス改善  ",
+                challenge: "  課題テスト  ",
+                action: "  行動テスト  ",
+                result: "  パフォーマンス改善  ",
                 scale: "  5名  ",
                 technology_stacks: [
                   {
@@ -139,7 +141,7 @@ test("buildResumePayload throws when required fields are empty", () => {
   assert.throws(
     () =>
       buildResumePayload({
-        gender: "",
+        gender: "male",
         prefecture: "",
         address: "渋谷区",
         address_furigana: "",
@@ -151,6 +153,6 @@ test("buildResumePayload throws when required fields are empty", () => {
         work_histories: [],
         photo: null
       }),
-    /都道府県、住所、メールアドレス、電話番号は必須です。/
+    /性別、都道府県、住所、住所ふりがな、メールアドレス、電話番号は必須です。/
   );
 });

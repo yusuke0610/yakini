@@ -37,7 +37,9 @@ export const blankCareerProject: CareerProjectForm = {
   is_current: false,
   role: "",
   description: "",
-  achievements: "",
+  challenge: "",
+  action: "",
+  result: "",
   scale: "",
   technology_stacks: [{ ...blankCareerTechnologyStack }],
 };

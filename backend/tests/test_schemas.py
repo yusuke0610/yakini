@@ -21,7 +21,9 @@ def experience_payload() -> dict:
                         "name": "API開発",
                         "role": "メンバー",
                         "description": "API開発",
-                        "achievements": "処理速度を改善",
+                        "challenge": "課題",
+                        "action": "行動",
+                        "result": "処理速度を改善",
                         "scale": "5名",
                         "technology_stacks": [{"category": "language", "name": "Python"}],
                     }
