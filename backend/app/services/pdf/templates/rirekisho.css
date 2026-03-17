@@ -1,0 +1,226 @@
+@font-face {
+  font-family: "NotoSansJP";
+  src: url("{{ font_path }}");
+}
+
+@page {
+  size: A4;
+  margin: 15mm;
+  @bottom-center {
+    font-family: "NotoSansJP";
+    font-size: 8pt;
+    content: counter(page) " / " counter(pages);
+  }
+}
+
+body {
+  font-family: "NotoSansJP", sans-serif;
+  font-size: 9pt;
+  line-height: 1.4;
+  color: #222;
+  margin: 0;
+}
+
+/* タイトル行 */
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3mm;
+}
+
+.title-row h1 {
+  font-size: 18pt;
+  margin: 0;
+  letter-spacing: 0.5em;
+}
+
+.title-row .date {
+  font-size: 9pt;
+}
+
+/* 共通テーブル */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+td, th {
+  border: 0.5px solid #666;
+  padding: 2px 4px;
+  vertical-align: middle;
+  font-size: 9pt;
+}
+
+th {
+  background: #f5f5f5;
+  font-weight: normal;
+  text-align: center;
+}
+
+/* 個人情報テーブル */
+.personal-info {
+  margin-bottom: 3mm;
+}
+
+.personal-info td.label {
+  width: 14%;
+  font-size: 8pt;
+  text-align: center;
+  background: #f9f9f9;
+}
+
+.personal-info td.furigana {
+  font-size: 8pt;
+  height: 8mm;
+}
+
+.personal-info td.name {
+  font-size: 14pt;
+  height: 16mm;
+}
+
+.personal-info td.gender {
+  width: 14%;
+  text-align: center;
+}
+
+.personal-info td.bd {
+  font-size: 8pt;
+}
+
+.personal-info td.photo {
+  width: 30mm;
+  height: 40mm;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 7pt;
+  color: #999;
+}
+
+.personal-info td.photo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.personal-info td.address-furigana {
+  font-size: 8pt;
+  height: 8mm;
+}
+
+.personal-info td.address {
+  height: 20mm;
+  vertical-align: top;
+  padding-top: 3px;
+}
+
+.personal-info td.contact {
+  height: 22mm;
+  vertical-align: top;
+  padding-top: 3px;
+  line-height: 1.8;
+}
+
+/* 学歴・職歴テーブル */
+.history-table {
+  margin-bottom: 3mm;
+}
+
+.history-table th {
+  font-size: 8pt;
+  height: 7mm;
+}
+
+.history-table td {
+  font-size: 8pt;
+  height: 7mm;
+}
+
+.history-table td.year {
+  width: 11%;
+  text-align: center;
+}
+
+.history-table td.month {
+  width: 7%;
+  text-align: center;
+}
+
+.history-table td.content {
+  width: 82%;
+}
+
+.history-table td.section-label {
+  text-align: center;
+  font-weight: bold;
+}
+
+/* 資格テーブル */
+.qual-table {
+  margin-bottom: 3mm;
+}
+
+.qual-table th {
+  font-size: 8pt;
+  height: 7mm;
+}
+
+.qual-table td {
+  font-size: 8pt;
+  height: 7mm;
+}
+
+.qual-table td.year {
+  width: 11%;
+  text-align: center;
+}
+
+.qual-table td.month {
+  width: 7%;
+  text-align: center;
+}
+
+.qual-table td.content {
+  width: 82%;
+}
+
+/* 志望動機・本人希望 */
+.text-block {
+  margin-bottom: 3mm;
+}
+
+.text-block-header {
+  border: 0.5px solid #666;
+  padding: 2px 4px;
+  font-size: 8pt;
+  background: #f9f9f9;
+}
+
+.text-block-body {
+  border: 0.5px solid #666;
+  border-top: none;
+  padding: 4px 6px;
+  font-size: 9pt;
+  line-height: 1.6;
+  min-height: 40mm;
+}
+
+.text-block-body.motivation {
+  min-height: 50mm;
+}
+
+.text-block-body p {
+  margin: 0 0 0.3em 0;
+}
+
+.text-block-body ul,
+.text-block-body ol {
+  margin: 0.3em 0;
+  padding-left: 1.5em;
+}
+
+/* 2ページ目の改ページ */
+.page-break {
+  page-break-before: always;
+}

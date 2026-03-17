@@ -53,6 +53,10 @@ CI 定義: `.github/workflows/ci.yml`
 - 履歴書（Rirekisho）の個人情報フィールド（email / phone / postal_code / address）は `encryption.py` で暗号化保存
 - `FIELD_ENCRYPTION_KEY` 環境変数（Fernet）
 
+### システムパッケージと Dockerfile
+- Pythonライブラリがシステムパッケージ（C ライブラリ等）に依存する場合、`backend/Dockerfile` の `apt-get install` にも該当パッケージを追加すること
+- ローカルで `brew install` 等を行った場合は、必ず Dockerfile 側にも対応する Debian パッケージを追加し、Cloud Run デプロイに影響がないことを確認すること
+
 ## 命名規約
 
 | 種別 | 名前 |

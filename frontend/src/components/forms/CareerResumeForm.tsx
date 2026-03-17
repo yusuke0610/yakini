@@ -481,9 +481,9 @@ export function CareerResumeForm() {
                 </label>
               </div>
 
-              {/* 取引先（常駐先） */}
+              {/* 取引先 */}
               <div className={styles.stackSection}>
-                <h3>取引先（常駐先）</h3>
+                <h3>取引先</h3>
                 {exp.clients.map((client, clientIndex) => (
                   <div key={`client-${expIndex}-${clientIndex}`} className={shared.entry}>
                     <label>
@@ -547,12 +547,12 @@ export function CareerResumeForm() {
                       className="danger"
                       onClick={() => removeClient(expIndex, clientIndex)}
                     >
-                      取引先（常駐先）を削除
+                      取引先を削除
                     </button>
                   </div>
                 ))}
                 <button type="button" className="ghost" onClick={() => addClient(expIndex)}>
-                  取引先（常駐先）を追加
+                  取引先を追加
                 </button>
               </div>
 
