@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { marked } from "marked";
+import shared from "../../styles/shared.module.css";
 import styles from "./MarkdownTextarea.module.css";
 
 type Mode = "text" | "markdown";
@@ -15,13 +16,15 @@ type Props = {
   rows?: number;
   /** placeholder */
   placeholder?: string;
+  /** 必須フィールドかどうか */
+  required?: boolean;
 };
 
 /**
  * ノーマルテキスト / Markdown を切り替えられるテキストエリア。
  * Markdown モードでは「編集」と「プレビュー」タブを表示する。
  */
-export function MarkdownTextarea({ label, value, onChange, rows = 3, placeholder }: Props) {
+export function MarkdownTextarea({ label, value, onChange, rows = 3, placeholder, required }: Props) {
   const [mode, setMode] = useState<Mode>("text");
   const [tab, setTab] = useState<"edit" | "preview">("edit");
 
@@ -34,7 +37,10 @@ export function MarkdownTextarea({ label, value, onChange, rows = 3, placeholder
   return (
     <div className={styles.wrapper}>
       <div className={styles.toolbar}>
-        <span>{label}</span>
+        <span className={shared.labelText}>
+          {label}
+          {required && <span className={shared.requiredBadge}>必須</span>}
+        </span>
         <div className={styles.modeToggle}>
           <button
             type="button"
@@ -77,6 +83,7 @@ export function MarkdownTextarea({ label, value, onChange, rows = 3, placeholder
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          required={required}
         />
       ) : (
         <div

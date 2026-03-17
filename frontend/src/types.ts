@@ -29,6 +29,16 @@ export type CareerTechnologyStack = {
   name: string;
 };
 
+export type TeamMember = {
+  role: string;
+  count: number;
+};
+
+export type ProjectTeam = {
+  total: string;
+  members: TeamMember[];
+};
+
 export type CareerProject = {
   name: string;
   start_date: string;
@@ -39,8 +49,9 @@ export type CareerProject = {
   challenge: string;
   action: string;
   result: string;
-  scale: string;
+  team: ProjectTeam;
   technology_stacks: CareerTechnologyStack[];
+  phases: string[];
 };
 
 export type CareerClient = {

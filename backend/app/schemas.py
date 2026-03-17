@@ -80,6 +80,18 @@ class TechnologyStackItem(BaseModel):
     name: str = Field(min_length=1, max_length=120)
 
 
+class TeamMember(BaseModel):
+    """体制の役割ごとの人数。"""
+    role: str = Field(max_length=60)
+    count: int = Field(ge=0)
+
+
+class ProjectTeam(BaseModel):
+    """プロジェクト体制（全体人数 + 役割別内訳）。"""
+    total: str = Field(max_length=60, default="")
+    members: list[TeamMember] = Field(default_factory=list)
+
+
 class Project(BaseModel):
     name: str = Field(max_length=200, default="")
     start_date: str = Field(max_length=30, default="")
@@ -90,8 +102,18 @@ class Project(BaseModel):
     challenge: str = Field(max_length=1500, default="")
     action: str = Field(max_length=1500, default="")
     result: str = Field(max_length=1500, default="")
-    scale: str = Field(max_length=60, default="")
+    team: ProjectTeam = Field(default_factory=ProjectTeam)
     technology_stacks: list[TechnologyStackItem] = Field(default_factory=list)
+    phases: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_scale_to_team(cls, data: dict) -> dict:
+        """旧形式 scale → team に自動変換する後方互換処理。"""
+        if isinstance(data, dict) and "scale" in data and "team" not in data:
+            scale = data.pop("scale")
+            data["team"] = {"total": str(scale) if scale else "", "members": []}
+        return data
 
 
 class Client(BaseModel):

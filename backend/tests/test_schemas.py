@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import Experience, ResumeCreate, RirekishoCreate
+from app.schemas import Experience, Project, ResumeCreate, RirekishoCreate
 
 
 def experience_payload() -> dict:
@@ -24,7 +24,13 @@ def experience_payload() -> dict:
                         "challenge": "課題",
                         "action": "行動",
                         "result": "処理速度を改善",
-                        "scale": "5名",
+                        "team": {
+                            "total": "5",
+                            "members": [
+                                {"role": "SE", "count": 3},
+                                {"role": "PG", "count": 2},
+                            ],
+                        },
                         "technology_stacks": [{"category": "language", "name": "Python"}],
                     }
                 ],
@@ -111,6 +117,17 @@ def test_rirekisho_requires_prefecture() -> None:
 
     with pytest.raises(ValidationError):
         RirekishoCreate(**payload)
+
+
+def test_project_migrates_scale_to_team() -> None:
+    """旧形式 scale → team に自動変換されることを検証する。"""
+    proj = Project(**{
+        "name": "テスト",
+        "scale": "10",
+        "technology_stacks": [],
+    })
+    assert proj.team.total == "10"
+    assert proj.team.members == []
 
 
 def test_rirekisho_allows_empty_motivation() -> None:

@@ -1,21 +1,26 @@
 """
 キャリアインテリジェンス API エンドポイント。
 
-POST /api/intelligence/analyze — 全分析パイプラインを実行。
-POST /api/intelligence/skill-activity — スキルアクティビティを集計。
+POST /api/intelligence/analyze — 全分析パイプラインを実行（結果をDBに保存）。
+POST /api/intelligence/summarize — AI要約を生成（結果をDBに保存）。
+POST /api/intelligence/skill-activity — スキルアクティビティを集計（結果をDBに保存）。
+GET  /api/intelligence/cache — 保存済みの分析結果を取得。
 """
 
 import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
+from ..database import get_db
 from ..encryption import decrypt_field
-from ..models import User
+from ..models import GitHubAnalysisCache, User
 from ..schemas_intelligence import (
     AnalysisResponse,
     AnalyzeRequest,
+    CachedAnalysisResponse,
     SkillActivityResponse,
     SummarizeRequest,
     SummarizeResponse,
@@ -35,18 +40,43 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/intelligence", tags=["intelligence"])
 
 
+def _get_or_create_cache(db: Session, user_id: str) -> GitHubAnalysisCache:
+    """ユーザーのキャッシュレコードを取得、なければ作成する。"""
+    cache = db.query(GitHubAnalysisCache).filter_by(user_id=user_id).first()
+    if not cache:
+        cache = GitHubAnalysisCache(user_id=user_id)
+        db.add(cache)
+        db.flush()
+    return cache
+
+
+@router.get("/cache", response_model=CachedAnalysisResponse)
+def get_cache(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """保存済みの分析結果・AI要約を取得する。"""
+    cache = db.query(GitHubAnalysisCache).filter_by(user_id=user.id).first()
+    if not cache:
+        return CachedAnalysisResponse()
+    return CachedAnalysisResponse(
+        analysis_result=cache.analysis_result,
+        ai_summary=cache.ai_summary,
+        skill_activity_month=cache.skill_activity_month,
+        skill_activity_year=cache.skill_activity_year,
+    )
+
+
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze(
     request: AnalyzeRequest,
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     ログイン中の GitHub ユーザーに対して全キャリアインテリジェンスパイプラインを実行します。
 
-    ステージ: GitHub データ収集 → スキル抽出 → タイムライン生成 →
-    成長分析 → キャリア予測 → キャリアシミュレーション。
-
-    すべてのステージは決定的です（LLM 不使用）。
+    結果はDBに保存され、次回以降はキャッシュから取得可能です。
     GitHub OAuth ログインが必要です（ユーザー名形式: "github:{login}"）。
     """
     if not user.username.startswith("github:"):
@@ -90,19 +120,30 @@ async def analyze(
             detail="GitHubプロフィールの分析に失敗しました。しばらくしてから再度お試しください。",
         )
 
-    return map_pipeline_result(result)
+    response = map_pipeline_result(result)
+
+    # 分析結果をDBに保存（AI要約はクリアして再生成を促す）
+    cache = _get_or_create_cache(db, user.id)
+    cache.analysis_result = response.model_dump()
+    cache.ai_summary = None
+    cache.skill_activity_month = None
+    cache.skill_activity_year = None
+    db.commit()
+
+    return response
 
 
 @router.post("/summarize", response_model=SummarizeResponse)
 async def summarize(
     request: SummarizeRequest,
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Ollama を使用して分析結果の自然言語要約を生成します。
+    結果はDBに保存され、次回以降はキャッシュから取得可能です。
 
     Ollama サーバーに接続できない場合は available: false を返します。
-    これによりフロントエンドで要約セクションを適切に非表示にできます。
     """
     available = await check_ollama_available()
     if not available:
@@ -110,6 +151,12 @@ async def summarize(
 
     analysis_dict = request.analysis.model_dump()
     summary = await summarize_analysis(analysis_dict)
+
+    # AI要約をDBに保存
+    cache = _get_or_create_cache(db, user.id)
+    cache.ai_summary = summary
+    db.commit()
+
     return SummarizeResponse(summary=summary, available=True)
 
 
@@ -117,9 +164,11 @@ async def summarize(
 async def skill_activity(
     interval: str = "month",
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     スキルアクティビティ（コミット数）を取得し、時系列で集計します。
+    結果はDBに保存され、次回以降はキャッシュから取得可能です。
     GitHub OAuth ログインが必要です。
     """
     if not user.username.startswith("github:"):
@@ -137,10 +186,23 @@ async def skill_activity(
             token=token,
             interval=interval,  # type: ignore
         )
-        return SkillActivityResponse(skills=results)
     except Exception:
         logger.exception("%s のスキルアクティビティ分析に失敗しました", github_username)
         raise HTTPException(
             status_code=502,
             detail="GitHubアクティビティの分析に失敗しました。",
         )
+
+    # スキルアクティビティをDBに保存
+    cache = _get_or_create_cache(db, user.id)
+    activity_data = [
+        item.model_dump() if hasattr(item, "model_dump") else item
+        for item in results
+    ]
+    if interval == "year":
+        cache.skill_activity_year = activity_data
+    else:
+        cache.skill_activity_month = activity_data
+    db.commit()
+
+    return SkillActivityResponse(skills=results)

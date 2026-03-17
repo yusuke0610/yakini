@@ -42,6 +42,9 @@ def _build_project_table(project: dict, s: dict) -> list:
         header_parts.append(proj_period)
     if role:
         header_parts.append(f"役割: {role}")
+    phases = project.get("phases", [])
+    if phases:
+        header_parts.append(f"工程: {', '.join(escape(p) for p in phases)}")
     if header_parts:
         elements.append(Paragraph(
             f"<b>{' ／ '.join(header_parts)}</b>",
@@ -84,19 +87,34 @@ def _build_project_table(project: dict, s: dict) -> list:
         right_parts.append(f"<b>【{escape(label)}】</b><br/>{escape(', '.join(names))}")
     right_content = "<br/>".join(right_parts) if right_parts else "-"
 
-    scale_raw = project.get("scale", "")
-    scale = f"{escape(scale_raw)}名" if scale_raw else "-"
+    # 体制（後方互換: 旧 scale → team に変換）
+    team = project.get("team")
+    if not team and project.get("scale"):
+        team = {"total": project["scale"], "members": []}
+    team_parts = []
+    if team:
+        total = team.get("total", "")
+        if total:
+            team_parts.append(f"{escape(total)}名")
+        members = team.get("members", [])
+        member_strs = [
+            f"{escape(m.get('role', ''))}:{m.get('count', 0)}"
+            for m in members if m.get("role")
+        ]
+        if member_strs:
+            team_parts.append(" / ".join(member_strs))
+    team_text = "<br/>".join(team_parts) if team_parts else "-"
 
     col_widths = [105 * mm, 45 * mm, 25 * mm]
     header_data = [[
         Paragraph("<b>業務内容</b>", s["body_small"]),
         Paragraph("<b>開発環境</b>", s["body_small"]),
-        Paragraph("<b>規模</b>", s["body_small"]),
+        Paragraph("<b>体制</b>", s["body_small"]),
     ]]
     body_data = [[
         Paragraph(left_content, s["body_small"]),
         Paragraph(right_content, s["body_small"]),
-        Paragraph(scale, s["body_small"]),
+        Paragraph(team_text, s["body_small"]),
     ]]
 
     t = Table(header_data + body_data, colWidths=col_widths)

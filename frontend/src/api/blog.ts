@@ -64,3 +64,10 @@ export function summarizeBlogArticles(
     },
   );
 }
+
+/**
+ * DB に保存されたブログ AI 分析結果を取得する。
+ */
+export function getBlogSummaryCache(): Promise<{ summary: string; available: boolean }> {
+  return request<{ summary: string; available: boolean }>("/api/blog/summary-cache");
+}

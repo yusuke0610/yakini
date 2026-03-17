@@ -77,7 +77,15 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
                 challenge: "  課題テスト  ",
                 action: "  行動テスト  ",
                 result: "  パフォーマンス改善  ",
-                scale: "  5名  ",
+                team: {
+                  total: "  5  ",
+                  members: [
+                    { role: "SE", count: "3" },
+                    { role: "PG", count: "2" },
+                    { role: "  ", count: "  " }
+                  ]
+                },
+                phases: ["要件定義", "開発", ""],
                 technology_stacks: [
                   {
                     category: "フレームワーク",
