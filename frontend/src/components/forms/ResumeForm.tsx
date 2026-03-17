@@ -23,7 +23,6 @@ import styles from "./ResumeForm.module.css";
 
 export function ResumeForm() {
   const [form, setForm] = useState<ResumeFormState>({
-    name_furigana: "",
     gender: "",
     prefecture: "",
     address: "",
@@ -59,7 +58,6 @@ export function ResumeForm() {
         if (!active) return;
         setresumeId(latest.id);
         setForm({
-          name_furigana: (latest as Record<string, unknown>).name_furigana as string ?? "",
           gender: ((latest as Record<string, unknown>).gender as ResumeFormState["gender"]) ?? "",
           prefecture: latest.prefecture,
           address: latest.address,
@@ -259,15 +257,6 @@ export function ResumeForm() {
 
         <section className={shared.section}>
           <div className={shared.inline}>
-            <label>
-              ふりがな
-              <input
-                type="text"
-                value={form.name_furigana}
-                onChange={(e) => onChangeField("name_furigana", e.target.value)}
-                placeholder="例: やまだ たろう"
-              />
-            </label>
             <label>
               性別
               <select

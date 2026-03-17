@@ -10,7 +10,7 @@ from .models import (
     MTechnologyStack, Resume, Rirekisho, User,
 )
 
-_ENCRYPTED_RIREKISHO_FIELDS = {"email", "phone", "postal_code", "address"}
+_ENCRYPTED_RIREKISHO_FIELDS = {"email", "phone", "address"}
 
 T = TypeVar("T")
 

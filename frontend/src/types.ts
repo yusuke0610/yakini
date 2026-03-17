@@ -5,6 +5,7 @@ export type BasicQualification = {
 
 export type BasicInfoPayload = {
   full_name: string;
+  name_furigana: string;
   record_date: string;
   qualifications: BasicQualification[];
 };
@@ -74,7 +75,6 @@ export type ResumeHistory = {
 };
 
 export type ResumePayload = {
-  name_furigana: string;
   gender: "male" | "female" | "";
   prefecture: string;
   address: string;
