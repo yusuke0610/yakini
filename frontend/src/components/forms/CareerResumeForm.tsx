@@ -729,7 +729,7 @@ export function CareerResumeForm() {
                 </label>
               </div>
 
-              {/* Clients (ユーザ) */}
+              {/* 取引先（常駐先） */}
               <div className={styles.stackSection}>
                 <h3>取引先（常駐先）</h3>
                 {exp.clients.map((client, clientIndex) => (
@@ -746,7 +746,7 @@ export function CareerResumeForm() {
                       />
                     </label>
 
-                    {/* Projects */}
+                    {/* プロジェクト */}
                     <div className={styles.stackSection}>
                       <h3>プロジェクト</h3>
                       {client.projects.map((proj, projIndex) => (
@@ -815,21 +815,30 @@ export function CareerResumeForm() {
                           {/* 体制 */}
                           <div className={styles.stackSection}>
                             <h3>体制</h3>
-                            <label>
-                              全体人数
-                              <div className={styles.inputWithUnit}>
-                                <input
-                                  type="number"
-                                  value={proj.team.total}
-                                  onChange={(e) =>
-                                    updateTeamTotal(expIndex, clientIndex, projIndex, e.target.value)
-                                  }
-                                  placeholder="例: 10"
-                                />
-                                <span className={styles.unit}>名</span>
-                              </div>
-                            </label>
-                            <div className={styles.stackGrid}>
+                            <div className={styles.teamLayout}>
+                              <label className={styles.teamTotal}>
+                                <span>全体人数</span>
+                                <div className={styles.inputWithUnit}>
+                                  <input
+                                    type="number"
+                                    value={proj.team.total}
+                                    onChange={(e) =>
+                                      updateTeamTotal(expIndex, clientIndex, projIndex, e.target.value)
+                                    }
+                                    placeholder="例: 10"
+                                  />
+                                  <span className={styles.unit}>名</span>
+                                </div>
+                              </label>
+
+                              <button
+                                type="button"
+                                className={`ghost ${styles.chipAdd}`}
+                                onClick={() => addTeamMember(expIndex, clientIndex, projIndex)}
+                              >
+                                + 役割を追加
+                              </button>
+
                               {proj.team.members.map((member, memberIndex) => (
                                 <div
                                   key={`member-${expIndex}-${clientIndex}-${projIndex}-${memberIndex}`}
@@ -869,13 +878,6 @@ export function CareerResumeForm() {
                                   </button>
                                 </div>
                               ))}
-                              <button
-                                type="button"
-                                className={`ghost ${styles.chipAdd}`}
-                                onClick={() => addTeamMember(expIndex, clientIndex, projIndex)}
-                              >
-                                + 役割を追加
-                              </button>
                             </div>
                           </div>
 
@@ -987,7 +989,7 @@ export function CareerResumeForm() {
                           {/* 工程 */}
                           <div className={styles.stackSection}>
                             <h3>工程</h3>
-                            <div className={styles.stackGrid}>
+                            <div className={styles.phaseList}>
                               {phaseOptions.map((phase) => (
                                 <label
                                   key={`phase-${expIndex}-${clientIndex}-${projIndex}-${phase}`}

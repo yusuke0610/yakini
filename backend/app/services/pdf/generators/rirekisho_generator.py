@@ -20,17 +20,17 @@ from ..utils.pdf_utils import (
     register_font,
 )
 
-# --- Rirekisho layout constants (mm) ---
-_LX = 15 * mm           # left margin
-_TABLE_W = 180 * mm     # full table width
-_RX = _LX + _TABLE_W    # right edge
+# --- 履歴書レイアウト定数 (mm) ---
+_LX = 15 * mm           # 左余白
+_TABLE_W = 180 * mm     # テーブル全体の幅
+_RX = _LX + _TABLE_W    # 右端
 _PHOTO_W = 30 * mm
 _PHOTO_H = 40 * mm
-_LEFT_W = _TABLE_W - _PHOTO_W  # width left of photo area
-_ROW_H = 7 * mm         # standard table row height
-_LABEL_W = 25 * mm      # label column in header area
+_LEFT_W = _TABLE_W - _PHOTO_W  # 写真エリアの左側の幅
+_ROW_H = 7 * mm         # 標準的なテーブル行の高さ
+_LABEL_W = 25 * mm      # ヘッダーエリアのラベル列の幅
 
-# Column widths for year|month|content table
+# 年|月|内容テーブルの列幅
 _COL_YEAR = 20 * mm
 _COL_MONTH = 12 * mm
 _COL_CONTENT = _TABLE_W - _COL_YEAR - _COL_MONTH
@@ -39,11 +39,11 @@ _MAX_HISTORY_ROWS_PAGE1 = 23
 
 
 def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, str]]:
-    """Draw page 1 of rirekisho. Returns overflow rows that didn't fit."""
+    """履歴書の1ページ目を作成。入り切らなかった行（オーバーフロー）を返す。"""
     register_font()
-    y = PAGE_H - 15 * mm  # current y position (top of drawing area)
+    y = PAGE_H - 15 * mm  # 現在のY座標 (描画エリアの上端)
 
-    # --- Title + Date row ---
+    # --- タイトル + 日付行 ---
     c.setFont(FONT_NAME, 18)
     c.drawString(_LX, y - 5 * mm, "履 歴 書")
     record_date = format_record_date(data.get("record_date", ""))
@@ -51,7 +51,7 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
     c.drawRightString(_RX - _PHOTO_W, y - 5 * mm, record_date)
     y -= 13 * mm
 
-    # --- Photo box ---
+    # --- 写真枠 ---
     photo_x = _RX - _PHOTO_W
     photo_y_top = y
     draw_bordered_rect(c, photo_x, photo_y_top, _PHOTO_W, _PHOTO_H)
@@ -68,7 +68,7 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
         c.drawCentredString(photo_x + _PHOTO_W / 2, photo_y_top - _PHOTO_H / 2 - 2 * mm, "写真")
         c.setFillColor(colors.black)
 
-    # --- Furigana row ---
+    # --- ふりがな行 ---
     furigana_h = 8 * mm
     draw_bordered_rect(c, _LX, y, _LABEL_W, furigana_h)
     draw_cell_text(c, "ふりがな", _LX, y, _LABEL_W, furigana_h, font_size=7)
@@ -78,7 +78,7 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
         draw_cell_text(c, name_furigana, _LX + _LABEL_W, y, _LEFT_W - _LABEL_W, furigana_h, font_size=8)
     y -= furigana_h
 
-    # --- Name row ---
+    # --- 氏名行 ---
     name_h = 16 * mm
     draw_bordered_rect(c, _LX, y, _LABEL_W, name_h)
     draw_cell_text(c, "氏　名", _LX, y, _LABEL_W, name_h, font_size=9)
@@ -87,11 +87,11 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
     draw_cell_text(c, full_name, _LX + _LABEL_W, y, _LEFT_W - _LABEL_W, name_h, font_size=14)
     y -= name_h
 
-    # --- Birthday / Gender row ---
+    # --- 生年月日 / 性別行 ---
     bd_h = 10 * mm
     draw_bordered_rect(c, _LX, y, _LEFT_W, bd_h)
     draw_cell_text(c, "生年月日", _LX, y, _LABEL_W, bd_h, font_size=8)
-    # Draw gender separator
+    # 性別の区切り線を描画
     gender_w = 25 * mm
     c.setLineWidth(0.5)
     c.line(_LX + _LEFT_W - gender_w, y, _LX + _LEFT_W - gender_w, y - bd_h)
@@ -102,12 +102,12 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
         draw_cell_text(c, gender_text, _LX + _LEFT_W - gender_w, y, gender_w, bd_h, font_size=9, align="center")
     else:
         draw_cell_text(c, "性別", _LX + _LEFT_W - gender_w, y, gender_w, bd_h, font_size=8, align="center")
-    # Photo area extends below — draw bottom border of photo
+    # 写真エリアが下に伸びる場合 — 写真の底辺の境界線を描画
     if y > photo_y_top - _PHOTO_H:
-        pass  # photo still extends below
+        pass  # 写真がまだ下に続いている
     y -= bd_h
 
-    # --- Address furigana row ---
+    # --- 住所ふりがな行 ---
     addr_furigana_h = 8 * mm
     draw_bordered_rect(c, _LX, y, _LABEL_W, addr_furigana_h)
     draw_cell_text(c, "ふりがな", _LX, y, _LABEL_W, addr_furigana_h, font_size=7)
@@ -117,7 +117,7 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
         draw_cell_text(c, address_furigana, _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, addr_furigana_h, font_size=8)
     y -= addr_furigana_h
 
-    # --- Address row ---
+    # --- 住所行 ---
     addr_row_h = 20 * mm
     draw_bordered_rect(c, _LX, y, _LABEL_W, addr_row_h)
     draw_cell_text(c, "現住所", _LX, y, _LABEL_W, addr_row_h, font_size=8)
@@ -128,7 +128,7 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
     draw_cell_text(c, full_address, _LX + _LABEL_W, y, _TABLE_W - _LABEL_W, addr_row_h, font_size=9, v_center=False)
     y -= addr_row_h
 
-    # --- Contact block (連絡先: 電話 / メール) ---
+    # --- 連絡先ブロック (電話 / メール) ---
     contact_label_h = 8 * mm
     contact_body_h = 14 * mm
     draw_bordered_rect(c, _LX, y, _LABEL_W, contact_label_h + contact_body_h)
@@ -142,13 +142,13 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
     c.drawString(contact_x, y - 12 * mm, f"E-mail: {email}")
     y -= (contact_label_h + contact_body_h)
 
-    # --- Education + Work History table ---
-    y -= 4 * mm  # spacing
+    # --- 学歴・職歴テーブル ---
+    y -= 4 * mm  # スペース
 
-    # Build combined rows: [(year, month, content), ...]
+    # 結合された行を作成: [(年, 月, 内容), ...]
     all_rows: list[tuple[str, str, str]] = []
 
-    # Education section
+    # 学歴セクション
     educations = data.get("educations", [])
     all_rows.append(("", "", "学　歴"))
     for edu in educations:
@@ -156,7 +156,7 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
         yr, mo = parse_date_ym(date_str)
         all_rows.append((yr, mo, edu.get("name", "")))
 
-    # Work history section
+    # 職歴セクション
     work_histories = data.get("work_histories", [])
     all_rows.append(("", "", "職　歴"))
     for wh in work_histories:
@@ -164,7 +164,7 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
         yr, mo = parse_date_ym(date_str)
         all_rows.append((yr, mo, wh.get("name", "")))
 
-    # Draw table header
+    # テーブルヘッダーを描画
     header_h = _ROW_H
     draw_bordered_rect(c, _LX, y, _COL_YEAR, header_h)
     draw_cell_text(c, "年", _LX, y, _COL_YEAR, header_h, font_size=8, align="center")
@@ -174,7 +174,7 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
     draw_cell_text(c, "学歴・職歴", _LX + _COL_YEAR + _COL_MONTH, y, _COL_CONTENT, header_h, font_size=8, align="center")
     y -= header_h
 
-    # Draw rows
+    # 行を描画
     rows_drawn = 0
     overflow: list[tuple[str, str, str]] = []
     for i, (yr, mo, content) in enumerate(all_rows):
@@ -186,14 +186,14 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
         draw_bordered_rect(c, _LX + _COL_YEAR, y, _COL_MONTH, _ROW_H)
         draw_cell_text(c, mo, _LX + _COL_YEAR, y, _COL_MONTH, _ROW_H, font_size=8, align="center")
         draw_bordered_rect(c, _LX + _COL_YEAR + _COL_MONTH, y, _COL_CONTENT, _ROW_H)
-        # Center the label rows
+        # ラベル行を中央揃えにする
         is_label = content in ("学　歴", "職　歴")
         draw_cell_text(c, content, _LX + _COL_YEAR + _COL_MONTH, y, _COL_CONTENT, _ROW_H,
                        font_size=8, align="center" if is_label else "left")
         y -= _ROW_H
         rows_drawn += 1
 
-    # Fill remaining empty rows
+    # 残りの空行を埋める
     while rows_drawn < _MAX_HISTORY_ROWS_PAGE1:
         draw_bordered_rect(c, _LX, y, _COL_YEAR, _ROW_H)
         draw_bordered_rect(c, _LX + _COL_YEAR, y, _COL_MONTH, _ROW_H)
@@ -206,11 +206,11 @@ def _draw_rirekisho_page1(c: canvas.Canvas, data: dict) -> list[tuple[str, str, 
 
 def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
                           overflow_rows: list[tuple[str, str, str]]) -> None:
-    """Draw page 2 of rirekisho."""
+    """履歴書の2ページ目を作成。"""
     register_font()
     y = PAGE_H - 15 * mm
 
-    # --- Overflow history rows ---
+    # --- はみ出した学歴・職歴の行 ---
     if overflow_rows:
         header_h = _ROW_H
         draw_bordered_rect(c, _LX, y, _COL_YEAR, header_h)
@@ -236,7 +236,7 @@ def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
             y -= _ROW_H
         y -= 4 * mm
 
-    # --- Qualifications table ---
+    # --- 免許・資格テーブル ---
     qualifications = data.get("qualifications", [])
     qual_header_h = _ROW_H
     draw_bordered_rect(c, _LX, y, _COL_YEAR, qual_header_h)
@@ -267,7 +267,7 @@ def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
         y -= _ROW_H
         qual_rows_drawn += 1
 
-    # Fill remaining empty rows
+    # 残りの空行を埋める
     while qual_rows_drawn < qual_max_rows:
         draw_bordered_rect(c, _LX, y, _COL_YEAR, _ROW_H)
         draw_bordered_rect(c, _LX + _COL_YEAR, y, _COL_MONTH, _ROW_H)
@@ -277,7 +277,7 @@ def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
 
     y -= 4 * mm
 
-    # --- Motivation / Self-PR area ---
+    # --- 志望動機 / 自己PRエリア ---
     motivation_label_h = _ROW_H
     motivation_area_h = 55 * mm
     draw_bordered_rect(c, _LX, y, _TABLE_W, motivation_label_h)
@@ -291,7 +291,7 @@ def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
 
     y -= 4 * mm
 
-    # --- Personal preferences area ---
+    # --- 本人希望記入欄 ---
     pref_label_h = _ROW_H
     pref_area_h = 45 * mm
     draw_bordered_rect(c, _LX, y, _TABLE_W, pref_label_h)
@@ -306,7 +306,7 @@ def _draw_rirekisho_page2(c: canvas.Canvas, data: dict,
 
 
 def _draw_page_num(c: canvas.Canvas, page: int, total: int) -> None:
-    """Draw page number at bottom center."""
+    """ページ番号を中央下部に描画。"""
     c.setFont(FONT_NAME, 8)
     c.drawCentredString(PAGE_W / 2, 10 * mm, f"{page} / {total}")
 

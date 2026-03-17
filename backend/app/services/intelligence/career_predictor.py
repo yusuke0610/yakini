@@ -1,12 +1,12 @@
 """
-Career prediction engine.
+キャリア予測エンジン。
 
-Predicts current role and likely next roles based on:
-  - Skill graph alignment with role definitions
-  - Skill growth velocity
-  - Category coverage
+以下の要素に基づいて現在のロールと将来の可能性が高いロールを予測します：
+  - ロール定義に対するスキルグラフの適合性
+  - スキルの成長速度
+  - カテゴリのカバレッジ
 
-Deterministic inference rules — LLM only for summarization (optional).
+決定論的な推論ルールを使用 — LLMは要約のみに使用（オプション）。
 """
 
 import logging
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PredictedRole:
     role_name: str
-    confidence: float       # 0.0 to 1.0
+    confidence: float       # 0.0 から 1.0
     matching_skills: List[str]
     missing_skills: List[str]
     seniority: int
@@ -39,7 +39,7 @@ class CareerPrediction:
     current_role: PredictedRole
     next_roles: List[PredictedRole]
     long_term_roles: List[PredictedRole]
-    skill_summary: Dict[str, List[str]]  # category → skills
+    skill_summary: Dict[str, List[str]]  # カテゴリ → スキル
 
 
 def predict_career(
@@ -47,19 +47,19 @@ def predict_career(
     growth: List[SkillGrowth],
 ) -> CareerPrediction:
     """
-    Predict career trajectory from skill data.
+    スキルデータからキャリアの軌跡を予測します。
 
-    1. Match current skills to role definitions
-    2. Identify best-fit current role
-    3. Predict next and long-term roles via the career graph
+    1. 現在のスキルをロール定義と照合する
+    2. 最も適合する現在のロールを特定する
+    3. キャリアグラフを介して次および長期的なロールを予測する
     """
-    # Build skill sets
+    # スキルセットの構築
     user_skills: Set[str] = {t.skill_name for t in timelines}
     user_categories: Set[str] = {
         get_skill_category(s) for s in user_skills
     }
 
-    # Build growth lookup
+    # 成長データのルックアップを構築
     growth_map: Dict[str, SkillGrowth] = {
         g.skill_name: g for g in growth
     }
@@ -68,16 +68,16 @@ def predict_career(
         if g.trend == GrowthTrend.EMERGING
     }
 
-    # 1. Match skills to all roles
+    # 1. スキルをすべてのロールと照合する
     matches = match_skills_to_roles(user_skills, user_categories)
     if not matches:
         return _empty_prediction(user_skills)
 
-    # 2. Current role: best match
+    # 2. 現在のロール：最も一致するもの
     best_match = matches[0]
     current = _match_to_predicted_role(best_match, user_skills)
 
-    # 3. Next roles: from current role's next_roles, scored
+    # 3. 次のロール：現在のロールの next_roles からスコアリング
     current_role_def = CAREER_ROLES.get(best_match.role_name)
     next_role_names = (
         current_role_def.next_roles if current_role_def else []
@@ -88,7 +88,7 @@ def predict_career(
         emerging_skills, growth_map,
     )
 
-    # 4. Long-term roles: follow the graph 2 hops
+    # 4. 長期的なロール：グラフを2ホップ辿る
     long_term_names: Set[str] = set()
     for nr in next_roles:
         role_def = CAREER_ROLES.get(nr.role_name)
@@ -102,7 +102,7 @@ def predict_career(
         emerging_skills, growth_map, depth_penalty=0.5,
     )
 
-    # Skill summary by category
+    # カテゴリ別のスキルサマリー
     skill_summary: Dict[str, List[str]] = {}
     for skill in sorted(user_skills):
         cat = get_skill_category(skill)
@@ -120,7 +120,7 @@ def _match_to_predicted_role(
     match: RoleMatch,
     user_skills: Set[str],
 ) -> PredictedRole:
-    """Convert a RoleMatch to PredictedRole."""
+    """RoleMatch を PredictedRole に変換します。"""
     role_def = CAREER_ROLES.get(match.role_name)
     required = set(role_def.required_skills) if role_def else set()
     missing = sorted(required - user_skills)
@@ -144,12 +144,12 @@ def _score_next_roles(
     depth_penalty: float = 1.0,
 ) -> List[PredictedRole]:
     """
-    Score and rank a list of potential next roles.
+    潜在的な次のロールのリストをスコアリングし、ランク付けします。
 
-    Scoring considers:
-      - Skill alignment (how many required skills already met)
-      - Emerging skill bonus (growing toward the role)
-      - Depth penalty for roles further in the future
+    スコアリングでは以下の要素を考慮します：
+      - スキルの適合性（必要なスキルのうちいくつを満たしているか）
+      - 台頭中のスキルのボーナス（ロールに向かって成長しているか）
+      - 将来の遠いロールに対する深さのペナルティ
     """
     scored: List[PredictedRole] = []
 
@@ -162,19 +162,19 @@ def _score_next_roles(
         overlap = user_skills & required
         missing = required - user_skills
 
-        # Base score from skill match
+        # スキルの一致に基づく基本スコア
         if required:
             base_score = len(overlap) / len(required)
         else:
-            # Roles without specific required skills (e.g. Manager)
-            # Score based on category breadth
+            # 特定の必須スキルがないロール（例：マネージャー）
+            # カテゴリの広さに基づくスコア
             base_score = min(len(user_categories) / 4, 1.0) * 0.5
 
-        # Bonus for emerging skills that match required skills
+        # 必須スキルに一致する台頭中のスキルのボーナス
         emerging_match = emerging_skills & required
         emerging_bonus = len(emerging_match) * 0.1
 
-        # Category coverage
+        # カテゴリのカバレッジ
         role_cats = set(role_def.required_categories)
         cat_score = (
             len(user_categories & role_cats) / len(role_cats)
@@ -200,7 +200,7 @@ def _score_next_roles(
 
 
 def _empty_prediction(user_skills: Set[str]) -> CareerPrediction:
-    """Return empty prediction when no roles match."""
+    """一致するロールがない場合に空の予測を返します。"""
     skill_summary: Dict[str, List[str]] = {}
     for skill in sorted(user_skills):
         cat = get_skill_category(skill)

@@ -1,12 +1,12 @@
 """
-Career path confidence scoring.
+キャリアパスの信頼度スコアリング。
 
-Scores career paths based on:
-  - Skill alignment with each role in the path
-  - Skill growth velocity (emerging skills boost confidence)
-  - Category coverage breadth
+以下の要素に基づいてキャリアパスをスコアリングします：
+  - パス内の各ロールとのスキルの適合性
+  - スキルの成長速度（台頭中のスキルは信頼度を向上させる）
+  - カテゴリのカバレッジの広さ
 
-Deterministic — no LLM usage.
+決定論的 — LLMは使用しません。
 """
 
 from typing import Dict, List, Set
@@ -22,14 +22,14 @@ def score_path(
     growth_map: Dict[str, SkillGrowth],
 ) -> float:
     """
-    Score a career path based on current skill alignment and growth.
+    現在のスキル適合性と成長に基づいてキャリアパスをスコアリングします。
 
-    Returns a confidence score between 0.0 and 1.0.
+    0.0 から 1.0 の間の信頼度スコアを返します。
     """
     if len(path) < 2:
         return 0.0
 
-    # Score each transition in the path
+    # パス内の各遷移をスコアリング
     transition_scores: List[float] = []
     for i in range(len(path)):
         role_name = path[i]
@@ -46,14 +46,14 @@ def score_path(
             growth_map,
         )
 
-        # Apply distance decay: further roles are less certain
+        # 距離減衰を適用：遠いロールほど不確実性が高まる
         decay = 1.0 / (1.0 + i * 0.4)
         transition_scores.append(score * decay)
 
     if not transition_scores:
         return 0.0
 
-    # Weighted average: more weight on early roles
+    # 加重平均：初期のロールに高い重みを置く
     total_weight = 0.0
     weighted_sum = 0.0
     for i, score in enumerate(transition_scores):
@@ -72,26 +72,26 @@ def _score_role_fit(
     user_categories: Set[str],
     growth_map: Dict[str, SkillGrowth],
 ) -> float:
-    """Score how well user skills fit a role definition."""
+    """ユーザーのスキルがロールの定義にどの程度適合するかをスコアリングします。"""
     if not required_skills and not required_categories:
-        # Roles like Engineering Manager — base on breadth
+        # Engineering Manager のようなロール — 広さをベースにする
         return min(len(user_categories) / 5, 1.0) * 0.4
 
     req_set = set(required_skills)
     overlap = user_skills & req_set
 
-    # Base skill match
+    # 基本的なスキルの適合
     skill_score = len(overlap) / max(len(req_set), 1)
 
-    # Category coverage
+    # カテゴリのカバレッジ
     cat_set = set(required_categories)
     cat_overlap = user_categories & cat_set
     cat_score = len(cat_overlap) / max(len(cat_set), 1)
 
-    # Emerging skill bonus
+    # 台頭中のスキルのボーナス
     emerging_bonus = 0.0
     for skill in req_set - user_skills:
-        # Check if user is growing toward this skill's category
+        # ユーザーがこのスキルのカテゴリに向かって成長しているかを確認
         for g in growth_map.values():
             if g.trend == GrowthTrend.EMERGING and skill in req_set:
                 emerging_bonus += 0.05
