@@ -1,6 +1,7 @@
 import type {
   BasicInfoPayload,
   BasicQualification,
+  CareerClient,
   CareerExperience,
   CareerProject,
   CareerResumePayload,
@@ -11,11 +12,19 @@ import type {
 
 export type CareerProjectForm = {
   name: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
   role: string;
   description: string;
   achievements: string;
   scale: string;
   technology_stacks: CareerTechnologyStack[];
+};
+
+export type CareerClientForm = {
+  name: string;
+  projects: CareerProjectForm[];
 };
 
 export type CareerExperienceForm = {
@@ -26,7 +35,7 @@ export type CareerExperienceForm = {
   is_current: boolean;
   employee_count: string;
   capital: string;
-  projects: CareerProjectForm[];
+  clients: CareerClientForm[];
 };
 
 export type BasicFormState = {
@@ -42,9 +51,11 @@ export type CareerFormState = {
 };
 
 export type ResumeFormState = {
-  postal_code: string;
+  name_furigana: string;
+  gender: "male" | "female" | "";
   prefecture: string;
   address: string;
+  address_furigana: string;
   email: string;
   phone: string;
   motivation: string;
@@ -86,6 +97,9 @@ export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
 function buildProject(proj: CareerProjectForm): CareerProject {
   return {
     name: proj.name.trim(),
+    start_date: proj.start_date.trim(),
+    end_date: proj.is_current ? "" : proj.end_date.trim(),
+    is_current: proj.is_current,
     role: proj.role.trim(),
     description: proj.description.trim(),
     achievements: proj.achievements.trim(),
@@ -96,6 +110,15 @@ function buildProject(proj: CareerProjectForm): CareerProject {
         name: stack.name.trim(),
       }))
       .filter((stack) => Boolean(stack.name)),
+  };
+}
+
+function buildClient(client: CareerClientForm): CareerClient {
+  return {
+    name: client.name.trim(),
+    projects: client.projects
+      .map(buildProject)
+      .filter((p) => hasAnyText([p.name, p.description, p.achievements])),
   };
 }
 
@@ -119,9 +142,9 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
       is_current: exp.is_current,
       employee_count: exp.employee_count.trim(),
       capital: exp.capital.trim(),
-      projects: exp.projects
-        .map(buildProject)
-        .filter((p) => hasAnyText([p.name, p.description, p.achievements])),
+      clients: exp.clients
+        .map(buildClient)
+        .filter((c) => c.name.trim() || c.projects.length > 0),
     }))
     .filter((exp) =>
       hasAnyText([exp.company, exp.business_description, exp.start_date, exp.end_date ?? ""]),
@@ -145,9 +168,11 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
 
 export function buildResumePayload(state: ResumeFormState): ResumePayload {
   const payload: ResumePayload = {
-    postal_code: state.postal_code.trim(),
+    name_furigana: state.name_furigana.trim(),
+    gender: state.gender,
     prefecture: state.prefecture.trim(),
     address: state.address.trim(),
+    address_furigana: state.address_furigana.trim(),
     email: state.email.trim(),
     phone: state.phone.trim(),
     motivation: state.motivation.trim(),
@@ -168,14 +193,12 @@ export function buildResumePayload(state: ResumeFormState): ResumePayload {
   };
 
   if (
-    !payload.postal_code ||
     !payload.prefecture ||
     !payload.address ||
     !payload.email ||
-    !payload.phone ||
-    !payload.motivation
+    !payload.phone
   ) {
-    throw new Error("郵便番号、都道府県、住所、メールアドレス、電話番号、志望動機は必須です。");
+    throw new Error("都道府県、住所、メールアドレス、電話番号は必須です。");
   }
 
   for (const education of payload.educations) {

@@ -13,6 +13,7 @@ import { buildCareerPayload } from "../../payloadBuilders";
 import type { CareerFormState } from "../../payloadBuilders";
 import type { CareerTechnologyStack, CareerTechnologyStackCategory } from "../../types";
 import {
+  blankCareerClient,
   blankCareerExperience,
   blankCareerProject,
   blankCareerTechnologyStack,
@@ -22,6 +23,7 @@ import {
 import type {
   CareerTextFieldKey,
   CareerExperienceFieldKey,
+  CareerClientFieldKey,
   CareerProjectFieldKey,
 } from "../../formTypes";
 import { useTechnologyStacks } from "../../hooks/useMasterData";
@@ -74,11 +76,28 @@ export function CareerResumeForm() {
           self_pr: latest.self_pr,
           experiences:
             latest.experiences.length > 0
-              ? latest.experiences.map((exp) => ({
-                  ...exp,
-                  end_date: exp.end_date ?? "",
-                  projects: exp.projects.length > 0 ? exp.projects : [{ ...blankCareerProject }],
-                }))
+              ? latest.experiences.map((exp) => {
+                  const raw = exp as Record<string, unknown>;
+                  /* 後方互換: 旧形式（projects直下）を clients にラップ */
+                  const clients = (raw.clients as typeof exp.clients) ??
+                    (raw.projects
+                      ? [{ name: "", projects: raw.projects as typeof exp.clients[0]["projects"] }]
+                      : []);
+                  return {
+                    ...exp,
+                    end_date: exp.end_date ?? "",
+                    clients:
+                      clients.length > 0
+                        ? clients.map((c) => ({
+                            ...c,
+                            projects:
+                              c.projects.length > 0
+                                ? c.projects
+                                : [{ ...blankCareerProject }],
+                          }))
+                        : [{ ...blankCareerClient }],
+                  };
+                })
               : [{ ...blankCareerExperience }],
         });
       } catch {
@@ -120,10 +139,10 @@ export function CareerResumeForm() {
     }));
   };
 
-  const updateProjectField = (
+  const updateClientField = (
     expIndex: number,
-    projIndex: number,
-    key: CareerProjectFieldKey,
+    clientIndex: number,
+    key: CareerClientFieldKey,
     value: string,
   ) => {
     setForm((prev) => ({
@@ -132,9 +151,68 @@ export function CareerResumeForm() {
         if (ei !== expIndex) return exp;
         return {
           ...exp,
-          projects: exp.projects.map((proj, pi) =>
-            pi === projIndex ? { ...proj, [key]: value } : proj,
+          clients: exp.clients.map((c, ci) =>
+            ci === clientIndex ? { ...c, [key]: value } : c,
           ),
+        };
+      }),
+    }));
+  };
+
+  const addClient = (expIndex: number) => {
+    setForm((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp, ei) =>
+        ei === expIndex
+          ? { ...exp, clients: [...exp.clients, { ...blankCareerClient }] }
+          : exp,
+      ),
+    }));
+  };
+
+  const removeClient = (expIndex: number, clientIndex: number) => {
+    setForm((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp, ei) => {
+        if (ei !== expIndex) return exp;
+        return {
+          ...exp,
+          clients:
+            exp.clients.length === 1
+              ? [{ ...blankCareerClient }]
+              : exp.clients.filter((_, ci) => ci !== clientIndex),
+        };
+      }),
+    }));
+  };
+
+  const updateProjectField = (
+    expIndex: number,
+    clientIndex: number,
+    projIndex: number,
+    key: CareerProjectFieldKey,
+    value: string | boolean,
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp, ei) => {
+        if (ei !== expIndex) return exp;
+        return {
+          ...exp,
+          clients: exp.clients.map((c, ci) => {
+            if (ci !== clientIndex) return c;
+            return {
+              ...c,
+              projects: c.projects.map((proj, pi) => {
+                if (pi !== projIndex) return proj;
+                if (key === "is_current") {
+                  const isCurrent = Boolean(value);
+                  return { ...proj, is_current: isCurrent, end_date: isCurrent ? "" : proj.end_date };
+                }
+                return { ...proj, [key]: value };
+              }),
+            };
+          }),
         };
       }),
     }));
@@ -142,6 +220,7 @@ export function CareerResumeForm() {
 
   const updateTechnologyStackField = (
     expIndex: number,
+    clientIndex: number,
     projIndex: number,
     stackIndex: number,
     key: keyof CareerTechnologyStack,
@@ -153,16 +232,22 @@ export function CareerResumeForm() {
         if (ei !== expIndex) return exp;
         return {
           ...exp,
-          projects: exp.projects.map((proj, pi) => {
-            if (pi !== projIndex) return proj;
+          clients: exp.clients.map((c, ci) => {
+            if (ci !== clientIndex) return c;
             return {
-              ...proj,
-              technology_stacks: proj.technology_stacks.map((stack, si) => {
-                if (si !== stackIndex) return stack;
-                if (key === "category") {
-                  return { ...stack, category: value as CareerTechnologyStackCategory, name: "" };
-                }
-                return { ...stack, name: value };
+              ...c,
+              projects: c.projects.map((proj, pi) => {
+                if (pi !== projIndex) return proj;
+                return {
+                  ...proj,
+                  technology_stacks: proj.technology_stacks.map((stack, si) => {
+                    if (si !== stackIndex) return stack;
+                    if (key === "category") {
+                      return { ...stack, category: value as CareerTechnologyStackCategory, name: "" };
+                    }
+                    return { ...stack, name: value };
+                  }),
+                };
               }),
             };
           }),
@@ -171,41 +256,25 @@ export function CareerResumeForm() {
     }));
   };
 
-  const addTechnologyStack = (expIndex: number, projIndex: number) => {
+  const addTechnologyStack = (expIndex: number, clientIndex: number, projIndex: number) => {
     setForm((prev) => ({
       ...prev,
       experiences: prev.experiences.map((exp, ei) => {
         if (ei !== expIndex) return exp;
         return {
           ...exp,
-          projects: exp.projects.map((proj, pi) =>
-            pi === projIndex
-              ? {
-                  ...proj,
-                  technology_stacks: [...proj.technology_stacks, { ...blankCareerTechnologyStack }],
-                }
-              : proj,
-          ),
-        };
-      }),
-    }));
-  };
-
-  const removeTechnologyStack = (expIndex: number, projIndex: number, stackIndex: number) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          projects: exp.projects.map((proj, pi) => {
-            if (pi !== projIndex) return proj;
+          clients: exp.clients.map((c, ci) => {
+            if (ci !== clientIndex) return c;
             return {
-              ...proj,
-              technology_stacks:
-                proj.technology_stacks.length === 1
-                  ? [{ ...blankCareerTechnologyStack }]
-                  : proj.technology_stacks.filter((_, si) => si !== stackIndex),
+              ...c,
+              projects: c.projects.map((proj, pi) =>
+                pi === projIndex
+                  ? {
+                      ...proj,
+                      technology_stacks: [...proj.technology_stacks, { ...blankCareerTechnologyStack }],
+                    }
+                  : proj,
+              ),
             };
           }),
         };
@@ -213,34 +282,79 @@ export function CareerResumeForm() {
     }));
   };
 
-  const addProject = (expIndex: number) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) =>
-        ei === expIndex
-          ? {
-              ...exp,
-              projects: [
-                ...exp.projects,
-                { ...blankCareerProject, technology_stacks: [{ ...blankCareerTechnologyStack }] },
-              ],
-            }
-          : exp,
-      ),
-    }));
-  };
-
-  const removeProject = (expIndex: number, projIndex: number) => {
+  const removeTechnologyStack = (
+    expIndex: number,
+    clientIndex: number,
+    projIndex: number,
+    stackIndex: number,
+  ) => {
     setForm((prev) => ({
       ...prev,
       experiences: prev.experiences.map((exp, ei) => {
         if (ei !== expIndex) return exp;
         return {
           ...exp,
-          projects:
-            exp.projects.length === 1
-              ? [{ ...blankCareerProject, technology_stacks: [{ ...blankCareerTechnologyStack }] }]
-              : exp.projects.filter((_, pi) => pi !== projIndex),
+          clients: exp.clients.map((c, ci) => {
+            if (ci !== clientIndex) return c;
+            return {
+              ...c,
+              projects: c.projects.map((proj, pi) => {
+                if (pi !== projIndex) return proj;
+                return {
+                  ...proj,
+                  technology_stacks:
+                    proj.technology_stacks.length === 1
+                      ? [{ ...blankCareerTechnologyStack }]
+                      : proj.technology_stacks.filter((_, si) => si !== stackIndex),
+                };
+              }),
+            };
+          }),
+        };
+      }),
+    }));
+  };
+
+  const addProject = (expIndex: number, clientIndex: number) => {
+    setForm((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp, ei) => {
+        if (ei !== expIndex) return exp;
+        return {
+          ...exp,
+          clients: exp.clients.map((c, ci) =>
+            ci === clientIndex
+              ? {
+                  ...c,
+                  projects: [
+                    ...c.projects,
+                    { ...blankCareerProject, technology_stacks: [{ ...blankCareerTechnologyStack }] },
+                  ],
+                }
+              : c,
+          ),
+        };
+      }),
+    }));
+  };
+
+  const removeProject = (expIndex: number, clientIndex: number, projIndex: number) => {
+    setForm((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp, ei) => {
+        if (ei !== expIndex) return exp;
+        return {
+          ...exp,
+          clients: exp.clients.map((c, ci) => {
+            if (ci !== clientIndex) return c;
+            return {
+              ...c,
+              projects:
+                c.projects.length === 1
+                  ? [{ ...blankCareerProject, technology_stacks: [{ ...blankCareerTechnologyStack }] }]
+                  : c.projects.filter((_, pi) => pi !== projIndex),
+            };
+          }),
         };
       }),
     }));
@@ -449,150 +563,223 @@ export function CareerResumeForm() {
                 </label>
               </div>
 
-              {/* Projects */}
+              {/* Clients (ユーザ) */}
               <div className={styles.stackSection}>
-                <h3>プロジェクト</h3>
-                {exp.projects.map((proj, projIndex) => (
-                  <div key={`proj-${expIndex}-${projIndex}`} className={shared.entry}>
+                <h3>取引先（常駐先）</h3>
+                {exp.clients.map((client, clientIndex) => (
+                  <div key={`client-${expIndex}-${clientIndex}`} className={shared.entry}>
                     <label>
-                      プロジェクト名
+                      取引先名（呼称）
                       <input
                         type="text"
-                        value={proj.name}
+                        value={client.name}
                         onChange={(e) =>
-                          updateProjectField(expIndex, projIndex, "name", e.target.value)
+                          updateClientField(expIndex, clientIndex, "name", e.target.value)
                         }
-                        placeholder="例: エネルギー業界 IoT Web API アプリ新規開発"
+                        placeholder="例: 〇〇社（略称）"
                       />
                     </label>
 
-                    <div className={shared.inline}>
-                      <label>
-                        役割
-                        <input
-                          type="text"
-                          value={proj.role}
-                          onChange={(e) =>
-                            updateProjectField(expIndex, projIndex, "role", e.target.value)
-                          }
-                          placeholder="例: アジャイル開発メンバー"
-                        />
-                      </label>
-                      <label>
-                        規模
-                        <div className={styles.inputWithUnit}>
-                          <input
-                            type="number"
-                            value={proj.scale}
-                            onChange={(e) =>
-                              updateProjectField(expIndex, projIndex, "scale", e.target.value)
-                            }
-                            placeholder="例: 10"
-                          />
-                          <span className={styles.unit}>名</span>
-                        </div>
-                      </label>
-                    </div>
-
-                    <label>
-                      業務内容
-                      <textarea
-                        rows={3}
-                        value={proj.description}
-                        onChange={(e) =>
-                          updateProjectField(expIndex, projIndex, "description", e.target.value)
-                        }
-                      />
-                    </label>
-
-                    <label>
-                      実績・取り組み
-                      <textarea
-                        rows={3}
-                        value={proj.achievements}
-                        onChange={(e) =>
-                          updateProjectField(expIndex, projIndex, "achievements", e.target.value)
-                        }
-                      />
-                    </label>
-
+                    {/* Projects */}
                     <div className={styles.stackSection}>
-                      <h3>技術スタック</h3>
-                      {proj.technology_stacks.map((stack, stackIndex) => (
-                        <div
-                          key={`stack-${expIndex}-${projIndex}-${stackIndex}`}
-                          className={styles.stackEntry}
-                        >
+                      <h3>プロジェクト</h3>
+                      {client.projects.map((proj, projIndex) => (
+                        <div key={`proj-${expIndex}-${clientIndex}-${projIndex}`} className={shared.entry}>
+                          <label>
+                            プロジェクト名
+                            <input
+                              type="text"
+                              value={proj.name}
+                              onChange={(e) =>
+                                updateProjectField(expIndex, clientIndex, projIndex, "name", e.target.value)
+                              }
+                              placeholder="例: エネルギー業界 IoT Web API アプリ新規開発"
+                            />
+                          </label>
+
                           <div className={shared.inline}>
                             <label>
-                              区分
-                              <select
-                                value={stack.category}
+                              開始
+                              <input
+                                type="month"
+                                value={proj.start_date}
                                 onChange={(e) =>
-                                  updateTechnologyStackField(
-                                    expIndex,
-                                    projIndex,
-                                    stackIndex,
-                                    "category",
-                                    e.target.value,
-                                  )
+                                  updateProjectField(expIndex, clientIndex, projIndex, "start_date", e.target.value)
                                 }
-                              >
-                                {careerTechnologyStackCategories.map((cat) => (
-                                  <option key={cat} value={cat}>
-                                    {careerTechnologyStackCategoryLabels[cat]}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            <label>
-                              名称
-                              <Combobox
-                                value={stack.name}
-                                onChange={(val) =>
-                                  updateTechnologyStackField(
-                                    expIndex,
-                                    projIndex,
-                                    stackIndex,
-                                    "name",
-                                    val,
-                                  )
-                                }
-                                options={techStackNamesByCategory.get(stack.category) ?? []}
-                                placeholder="例: TypeScript"
-                                allowCustom
                               />
                             </label>
+                            <label>
+                              参画状況
+                              <select
+                                value={proj.is_current ? "current" : "ended"}
+                                onChange={(e) =>
+                                  updateProjectField(expIndex, clientIndex, projIndex, "is_current", e.target.value === "current")
+                                }
+                              >
+                                <option value="ended">終了</option>
+                                <option value="current">参画中</option>
+                              </select>
+                            </label>
+                            {!proj.is_current && (
+                              <label>
+                                終了
+                                <input
+                                  type="month"
+                                  value={proj.end_date}
+                                  onChange={(e) =>
+                                    updateProjectField(expIndex, clientIndex, projIndex, "end_date", e.target.value)
+                                  }
+                                />
+                              </label>
+                            )}
                           </div>
+
+                          <div className={shared.inline}>
+                            <label>
+                              役割
+                              <input
+                                type="text"
+                                value={proj.role}
+                                onChange={(e) =>
+                                  updateProjectField(expIndex, clientIndex, projIndex, "role", e.target.value)
+                                }
+                                placeholder="例: アジャイル開発メンバー"
+                              />
+                            </label>
+                            <label>
+                              規模
+                              <div className={styles.inputWithUnit}>
+                                <input
+                                  type="number"
+                                  value={proj.scale}
+                                  onChange={(e) =>
+                                    updateProjectField(expIndex, clientIndex, projIndex, "scale", e.target.value)
+                                  }
+                                  placeholder="例: 10"
+                                />
+                                <span className={styles.unit}>名</span>
+                              </div>
+                            </label>
+                          </div>
+
+                          <label>
+                            業務内容
+                            <textarea
+                              rows={3}
+                              value={proj.description}
+                              onChange={(e) =>
+                                updateProjectField(expIndex, clientIndex, projIndex, "description", e.target.value)
+                              }
+                            />
+                          </label>
+
+                          <label>
+                            実績・取り組み
+                            <textarea
+                              rows={3}
+                              value={proj.achievements}
+                              onChange={(e) =>
+                                updateProjectField(expIndex, clientIndex, projIndex, "achievements", e.target.value)
+                              }
+                            />
+                          </label>
+
+                          {/* 技術スタック（チップ型） */}
+                          <div className={styles.stackSection}>
+                            <h3>技術スタック</h3>
+                            <div className={styles.stackGrid}>
+                              {proj.technology_stacks.map((stack, stackIndex) => (
+                                <div
+                                  key={`stack-${expIndex}-${clientIndex}-${projIndex}-${stackIndex}`}
+                                  className={styles.stackChip}
+                                >
+                                  <select
+                                    className={styles.chipSelect}
+                                    value={stack.category}
+                                    onChange={(e) =>
+                                      updateTechnologyStackField(
+                                        expIndex,
+                                        clientIndex,
+                                        projIndex,
+                                        stackIndex,
+                                        "category",
+                                        e.target.value,
+                                      )
+                                    }
+                                  >
+                                    {careerTechnologyStackCategories.map((cat) => (
+                                      <option key={cat} value={cat}>
+                                        {careerTechnologyStackCategoryLabels[cat]}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <Combobox
+                                    value={stack.name}
+                                    onChange={(val) =>
+                                      updateTechnologyStackField(
+                                        expIndex,
+                                        clientIndex,
+                                        projIndex,
+                                        stackIndex,
+                                        "name",
+                                        val,
+                                      )
+                                    }
+                                    options={techStackNamesByCategory.get(stack.category) ?? []}
+                                    placeholder="例: TypeScript"
+                                    allowCustom
+                                  />
+                                  <button
+                                    type="button"
+                                    className={styles.chipRemove}
+                                    onClick={() =>
+                                      removeTechnologyStack(expIndex, clientIndex, projIndex, stackIndex)
+                                    }
+                                    aria-label="技術スタックを削除"
+                                  >
+                                    &times;
+                                  </button>
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                className={`ghost ${styles.chipAdd}`}
+                                onClick={() => addTechnologyStack(expIndex, clientIndex, projIndex)}
+                              >
+                                + 追加
+                              </button>
+                            </div>
+                          </div>
+
                           <button
                             type="button"
                             className="danger"
-                            onClick={() => removeTechnologyStack(expIndex, projIndex, stackIndex)}
+                            onClick={() => removeProject(expIndex, clientIndex, projIndex)}
                           >
-                            技術スタックを削除
+                            プロジェクトを削除
                           </button>
                         </div>
                       ))}
                       <button
                         type="button"
                         className="ghost"
-                        onClick={() => addTechnologyStack(expIndex, projIndex)}
+                        onClick={() => addProject(expIndex, clientIndex)}
                       >
-                        技術スタックを追加
+                        プロジェクトを追加
                       </button>
                     </div>
 
                     <button
                       type="button"
                       className="danger"
-                      onClick={() => removeProject(expIndex, projIndex)}
+                      onClick={() => removeClient(expIndex, clientIndex)}
                     >
-                      プロジェクトを削除
+                      ユーザを削除
                     </button>
                   </div>
                 ))}
-                <button type="button" className="ghost" onClick={() => addProject(expIndex)}>
-                  プロジェクトを追加
+                <button type="button" className="ghost" onClick={() => addClient(expIndex)}>
+                  ユーザを追加
                 </button>
               </div>
 

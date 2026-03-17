@@ -13,14 +13,19 @@ def experience_payload() -> dict:
         "is_current": False,
         "employee_count": "300名",
         "capital": "1億円",
-        "projects": [
+        "clients": [
             {
-                "name": "API開発",
-                "role": "メンバー",
-                "description": "API開発",
-                "achievements": "処理速度を改善",
-                "scale": "5名",
-                "technology_stacks": [{"category": "language", "name": "Python"}],
+                "name": "クライアントA",
+                "projects": [
+                    {
+                        "name": "API開発",
+                        "role": "メンバー",
+                        "description": "API開発",
+                        "achievements": "処理速度を改善",
+                        "scale": "5名",
+                        "technology_stacks": [{"category": "language", "name": "Python"}],
+                    }
+                ],
             }
         ],
     }
@@ -47,16 +52,20 @@ def test_end_date_is_required_when_not_current() -> None:
 
 def test_framework_category_is_accepted() -> None:
     payload = experience_payload()
-    payload["projects"][0]["technology_stacks"] = [{"category": "framework", "name": "FastAPI"}]
+    payload["clients"][0]["projects"][0]["technology_stacks"] = [
+        {"category": "framework", "name": "FastAPI"}
+    ]
 
     experience = Experience(**payload)
 
-    assert experience.projects[0].technology_stacks[0].category == "framework"
+    assert experience.clients[0].projects[0].technology_stacks[0].category == "framework"
 
 
 def test_unknown_category_is_rejected() -> None:
     payload = experience_payload()
-    payload["projects"][0]["technology_stacks"] = [{"category": "ミドルウェア", "name": "Nginx"}]
+    payload["clients"][0]["projects"][0]["technology_stacks"] = [
+        {"category": "ミドルウェア", "name": "Nginx"}
+    ]
 
     with pytest.raises(ValidationError):
         Experience(**payload)
@@ -74,9 +83,11 @@ def test_resume_requires_career_summary() -> None:
 
 def rirekisho_payload() -> dict:
     return {
-        "postal_code": "150-0001",
+        "name_furigana": "やまだ たろう",
+        "gender": "male",
         "prefecture": "東京都",
         "address": "渋谷区神南1-1-1",
+        "address_furigana": "しぶやく じんなん",
         "email": "test@example.com",
         "phone": "09012345678",
         "motivation": "御社の事業に共感しました",
@@ -88,22 +99,23 @@ def rirekisho_payload() -> dict:
 def test_rirekisho_create_valid() -> None:
     rirekisho = RirekishoCreate(**rirekisho_payload())
 
-    assert rirekisho.postal_code == "150-0001"
+    assert rirekisho.name_furigana == "やまだ たろう"
+    assert rirekisho.gender == "male"
     assert len(rirekisho.educations) == 1
     assert len(rirekisho.work_histories) == 1
 
 
-def test_rirekisho_requires_postal_code() -> None:
+def test_rirekisho_requires_prefecture() -> None:
     payload = rirekisho_payload()
-    del payload["postal_code"]
+    del payload["prefecture"]
 
     with pytest.raises(ValidationError):
         RirekishoCreate(**payload)
 
 
-def test_rirekisho_requires_motivation() -> None:
+def test_rirekisho_allows_empty_motivation() -> None:
     payload = rirekisho_payload()
     payload["motivation"] = ""
 
-    with pytest.raises(ValidationError):
-        RirekishoCreate(**payload)
+    rirekisho = RirekishoCreate(**payload)
+    assert rirekisho.motivation == ""

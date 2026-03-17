@@ -79,11 +79,20 @@ class TechnologyStackItem(BaseModel):
 
 class Project(BaseModel):
     name: str = Field(max_length=200, default="")
+    start_date: str = Field(max_length=30, default="")
+    end_date: str = Field(max_length=30, default="")
+    is_current: bool = False
     role: str = Field(max_length=200, default="")
     description: str = Field(max_length=1500, default="")
     achievements: str = Field(max_length=1500, default="")
     scale: str = Field(max_length=60, default="")
     technology_stacks: list[TechnologyStackItem] = Field(default_factory=list)
+
+
+class Client(BaseModel):
+    """ユーザ（常駐先/クライアント企業）。"""
+    name: str = Field(max_length=200, default="")
+    projects: list[Project] = Field(default_factory=list)
 
 
 class Experience(BaseModel):
@@ -94,7 +103,16 @@ class Experience(BaseModel):
     is_current: bool = False
     employee_count: str = Field(max_length=60, default="")
     capital: str = Field(max_length=120, default="")
-    projects: list[Project] = Field(default_factory=list)
+    clients: list[Client] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_projects_to_clients(cls, data: dict) -> dict:
+        """旧形式（projects直下）を clients にラップする後方互換処理。"""
+        if isinstance(data, dict) and "projects" in data and "clients" not in data:
+            projects = data.pop("projects")
+            data["clients"] = [{"name": "", "projects": projects}]
+        return data
 
     @model_validator(mode="after")
     def validate_end_date(self) -> "Experience":
@@ -134,12 +152,14 @@ class RirekishoHistory(BaseModel):
 
 
 class RirekishoBase(BaseModel):
-    postal_code: str = Field(min_length=1, max_length=20)
+    name_furigana: str = Field(max_length=200, default="")
+    gender: Literal["male", "female", ""] = Field(default="")
     prefecture: str = Field(min_length=1, max_length=60)
     address: str = Field(min_length=1, max_length=400)
+    address_furigana: str = Field(max_length=400, default="")
     email: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=1, max_length=50)
-    motivation: str = Field(min_length=1, max_length=2000)
+    motivation: str = Field(max_length=2000, default="")
     personal_preferences: str = Field(max_length=2000, default="")
     photo: str | None = Field(default=None)
     educations: list[RirekishoHistory] = Field(default_factory=list)
