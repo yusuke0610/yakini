@@ -40,6 +40,7 @@ export type CareerExperienceForm = {
 
 export type BasicFormState = {
   full_name: string;
+  name_furigana: string;
   record_date: string;
   qualifications: BasicQualification[];
 };
@@ -51,7 +52,6 @@ export type CareerFormState = {
 };
 
 export type ResumeFormState = {
-  name_furigana: string;
   gender: "male" | "female" | "";
   prefecture: string;
   address: string;
@@ -72,6 +72,7 @@ export function hasAnyText(values: Array<string | null | undefined>): boolean {
 export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
   const payload: BasicInfoPayload = {
     full_name: state.full_name.trim(),
+    name_furigana: state.name_furigana.trim(),
     record_date: state.record_date.trim(),
     qualifications: state.qualifications
       .map((qualification) => ({
@@ -168,7 +169,6 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
 
 export function buildResumePayload(state: ResumeFormState): ResumePayload {
   const payload: ResumePayload = {
-    name_furigana: state.name_furigana.trim(),
     gender: state.gender,
     prefecture: state.prefecture.trim(),
     address: state.address.trim(),

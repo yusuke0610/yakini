@@ -10,6 +10,7 @@ const {
 test("buildBasicPayload trims values and excludes empty資格", () => {
   const payload = buildBasicPayload({
     full_name: "  山田 太郎  ",
+    name_furigana: "  やまだ たろう  ",
     record_date: "2026-02-21",
     qualifications: [
       {
@@ -36,6 +37,7 @@ test("buildBasicPayload throws when a 資格 is partially filled", () => {
     () =>
       buildBasicPayload({
         full_name: "山田 太郎",
+        name_furigana: "",
         record_date: "2026-02-21",
         qualifications: [
           {
@@ -137,7 +139,6 @@ test("buildResumePayload throws when required fields are empty", () => {
   assert.throws(
     () =>
       buildResumePayload({
-        name_furigana: "",
         gender: "",
         prefecture: "",
         address: "渋谷区",

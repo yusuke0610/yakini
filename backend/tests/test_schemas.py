@@ -83,7 +83,6 @@ def test_resume_requires_career_summary() -> None:
 
 def rirekisho_payload() -> dict:
     return {
-        "name_furigana": "やまだ たろう",
         "gender": "male",
         "prefecture": "東京都",
         "address": "渋谷区神南1-1-1",
@@ -99,7 +98,6 @@ def rirekisho_payload() -> dict:
 def test_rirekisho_create_valid() -> None:
     rirekisho = RirekishoCreate(**rirekisho_payload())
 
-    assert rirekisho.name_furigana == "やまだ たろう"
     assert rirekisho.gender == "male"
     assert len(rirekisho.educations) == 1
     assert len(rirekisho.work_histories) == 1

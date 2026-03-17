@@ -13,6 +13,7 @@ import { Combobox } from "./Combobox";
 export function BasicInfoForm() {
   const [form, setForm] = useState<BasicFormState>({
     full_name: "",
+    name_furigana: "",
     record_date: "",
     qualifications: [{ ...blankBasicQualification }],
   });
@@ -36,6 +37,7 @@ export function BasicInfoForm() {
         setBasicInfoId(latest.id);
         setForm({
           full_name: latest.full_name,
+          name_furigana: latest.name_furigana ?? "",
           record_date: latest.record_date,
           qualifications:
             latest.qualifications.length > 0
@@ -134,6 +136,15 @@ export function BasicInfoForm() {
           {success && <p className={shared.success}>{success}</p>}
 
           <section className={shared.section}>
+            <label>
+              ふりがな
+              <input
+                type="text"
+                value={form.name_furigana}
+                onChange={(e) => onChangeField("name_furigana", e.target.value)}
+                placeholder="例: やまだ たろう"
+              />
+            </label>
             <label>
               <span className={shared.labelText}>氏名<span className={shared.requiredBadge}>必須</span></span>
               <input

@@ -181,7 +181,7 @@ def test_rirekisho_crud(client: TestClient) -> None:
     headers = auth_header(client, "rirekishouser")
 
     resp = client.post("/api/rirekisho", json={
-        "name_furigana": "りれきしょ ゆーざー",
+
         "gender": "male",
         "prefecture": "東京都",
         "address": "渋谷区神南1-1-1",
@@ -200,7 +200,7 @@ def test_rirekisho_crud(client: TestClient) -> None:
     assert resp.json()["prefecture"] == "東京都"
 
     resp = client.put(f"/api/rirekisho/{rirekisho_id}", json={
-        "name_furigana": "りれきしょ ゆーざー",
+
         "gender": "female",
         "prefecture": "東京都",
         "address": "渋谷区神南2-2-2",
@@ -259,9 +259,11 @@ def test_resume_not_found(client: TestClient) -> None:
 def test_rirekisho_get_by_id(client: TestClient) -> None:
     headers = auth_header(client, "ririgetuser")
     resp = client.post("/api/rirekisho", json={
-        "postal_code": "150-0001",
+
+        "gender": "male",
         "prefecture": "東京都",
         "address": "渋谷区神南1-1-1",
+        "address_furigana": "しぶやく じんなん",
         "email": "test@example.com",
         "phone": "09012345678",
         "motivation": "志望動機",

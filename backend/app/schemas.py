@@ -52,6 +52,7 @@ class BasicQualification(BaseModel):
 
 class BasicInfoBase(BaseModel):
     full_name: str = Field(min_length=1, max_length=120)
+    name_furigana: str = Field(max_length=200, default="")
     record_date: str = Field(min_length=1, max_length=30)
     qualifications: list[BasicQualification] = Field(default_factory=list)
 
@@ -152,7 +153,6 @@ class RirekishoHistory(BaseModel):
 
 
 class RirekishoBase(BaseModel):
-    name_furigana: str = Field(max_length=200, default="")
     gender: Literal["male", "female", ""] = Field(default="")
     prefecture: str = Field(min_length=1, max_length=60)
     address: str = Field(min_length=1, max_length=400)
