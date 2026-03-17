@@ -13,9 +13,11 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from sqlalchemy.orm import Session
+
 from ..auth import get_current_user
 from ..database import get_db
-from ..models import User
+from ..models import BlogSummaryCache, User
 from ..repositories import BlogAccountRepository, BlogArticleRepository
 from ..schemas import (
     BlogAccountCreate,
@@ -130,16 +132,38 @@ async def sync_account(
     return BlogSyncResponse(synced_count=synced, total_count=total)
 
 
+@router.get("/summary-cache", response_model=BlogSummaryResponse)
+def get_summary_cache(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """保存済みのブログ AI 分析結果を取得する。"""
+    cache = db.query(BlogSummaryCache).filter_by(user_id=user.id).first()
+    if cache and cache.summary:
+        return BlogSummaryResponse(summary=cache.summary, available=True)
+    return BlogSummaryResponse(summary="", available=False)
+
+
 @router.post("/summarize", response_model=BlogSummaryResponse)
 async def summarize_blog(
     body: BlogSummaryRequest,
     user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """ブログ記事の AI サマリを生成する（Ollama）。"""
+    """ブログ記事の AI サマリを生成する（Ollama）。結果はDBに保存する。"""
     available = await check_ollama_available()
     if not available:
         return BlogSummaryResponse(summary="", available=False)
 
     articles_data = [art.model_dump() for art in body.articles]
     summary = await summarize_blog_articles(articles_data)
+
+    # DB にキャッシュ保存
+    cache = db.query(BlogSummaryCache).filter_by(user_id=user.id).first()
+    if not cache:
+        cache = BlogSummaryCache(user_id=user.id)
+        db.add(cache)
+    cache.summary = summary
+    db.commit()
+
     return BlogSummaryResponse(summary=summary, available=True)

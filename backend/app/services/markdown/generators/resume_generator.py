@@ -92,9 +92,27 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                     result = proj.get("result", "")
                     if result:
                         lines.append(field_line("成果", result))
-                    scale = proj.get("scale", "")
-                    if scale:
-                        lines.append(field_line("規模", f"{scale}名"))
+                    # 体制（後方互換: 旧 scale → team に変換）
+                    team = proj.get("team")
+                    if not team and proj.get("scale"):
+                        team = {"total": proj["scale"], "members": []}
+                    if team:
+                        total = team.get("total", "")
+                        members = team.get("members", [])
+                        member_strs = [
+                            f"{m.get('role', '')}:{m.get('count', 0)}"
+                            for m in members if m.get("role")
+                        ]
+                        team_text = f"{total}名" if total else ""
+                        if member_strs:
+                            sep = "（" if team_text else ""
+                            end = "）" if team_text else ""
+                            team_text += f"{sep}{' / '.join(member_strs)}{end}"
+                        if team_text:
+                            lines.append(field_line("体制", team_text))
+                    phases = proj.get("phases", [])
+                    if phases:
+                        lines.append(field_line("工程", ", ".join(phases)))
                     stacks = proj.get("technology_stacks", [])
                     if stacks:
                         cat_labels = {

@@ -136,27 +136,29 @@ export function BasicInfoForm() {
           {success && <p className={shared.success}>{success}</p>}
 
           <section className={shared.section}>
-            <label>
-              <span className={shared.labelText}>ふりがな<span className={shared.requiredBadge}>必須</span></span>
-              <input
-                type="text"
-                value={form.name_furigana}
-                onChange={(e) => onChangeField("name_furigana", e.target.value)}
-                placeholder="例: やまだ たろう"
-                pattern="^[ぁ-ゖー\s　]+$"
-                title="ひらがなで入力してください"
-                required
-              />
-            </label>
-            <label>
-              <span className={shared.labelText}>氏名<span className={shared.requiredBadge}>必須</span></span>
-              <input
-                type="text"
-                value={form.full_name}
-                onChange={(e) => onChangeField("full_name", e.target.value)}
-                required
-              />
-            </label>
+            <div className={shared.inline}>
+              <label>
+                <span className={shared.labelText}>氏名<span className={shared.requiredBadge}>必須</span></span>
+                <input
+                  type="text"
+                  value={form.full_name}
+                  onChange={(e) => onChangeField("full_name", e.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                <span className={shared.labelText}>ふりがな<span className={shared.requiredBadge}>必須</span></span>
+                <input
+                  type="text"
+                  value={form.name_furigana}
+                  onChange={(e) => onChangeField("name_furigana", e.target.value)}
+                  placeholder="例: やまだ たろう"
+                  pattern="^[ぁ-ゖー\s　]+$"
+                  title="ひらがなで入力してください"
+                  required
+                />
+              </label>
+            </div>
             <label>
               <span className={shared.labelText}>記載日<span className={shared.requiredBadge}>必須</span></span>
               <input

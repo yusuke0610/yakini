@@ -6,9 +6,16 @@ import type {
   CareerProject,
   CareerResumePayload,
   CareerTechnologyStack,
+  ProjectTeam,
   ResumeHistory,
   ResumePayload,
+  TeamMember,
 } from "./types";
+
+export type TeamMemberForm = {
+  role: string;
+  count: string;
+};
 
 export type CareerProjectForm = {
   name: string;
@@ -20,8 +27,12 @@ export type CareerProjectForm = {
   challenge: string;
   action: string;
   result: string;
-  scale: string;
+  team: {
+    total: string;
+    members: TeamMemberForm[];
+  };
   technology_stacks: CareerTechnologyStack[];
+  phases: string[];
 };
 
 export type CareerClientForm = {
@@ -71,7 +82,7 @@ export function hasAnyText(values: Array<string | null | undefined>): boolean {
   return values.some((value) => Boolean(value?.trim()));
 }
 
-const HIRAGANA_RE = /^[ぁ-ゖー\s　]+$/;
+const HIRAGANA_RE = /^[ぁ-ゖー\s\u3000]+$/;
 
 export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
   const payload: BasicInfoPayload = {
@@ -103,6 +114,16 @@ export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
   return payload;
 }
 
+function buildTeam(team: CareerProjectForm["team"]): ProjectTeam {
+  const members: TeamMember[] = team.members
+    .filter((m) => m.role.trim() && m.count.trim())
+    .map((m) => ({ role: m.role.trim(), count: Number(m.count) }));
+  return {
+    total: team.total.trim(),
+    members,
+  };
+}
+
 function buildProject(proj: CareerProjectForm): CareerProject {
   return {
     name: proj.name.trim(),
@@ -114,13 +135,14 @@ function buildProject(proj: CareerProjectForm): CareerProject {
     challenge: proj.challenge.trim(),
     action: proj.action.trim(),
     result: proj.result.trim(),
-    scale: proj.scale.trim(),
+    team: buildTeam(proj.team),
     technology_stacks: proj.technology_stacks
       .map((stack) => ({
         category: stack.category,
         name: stack.name.trim(),
       }))
       .filter((stack) => Boolean(stack.name)),
+    phases: proj.phases.filter((p) => Boolean(p)),
   };
 }
 
