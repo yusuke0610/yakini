@@ -57,3 +57,15 @@
   gap: 0.4rem;
   flex-shrink: 0;
 }
+
+.clientHeader {
+  margin-bottom: 0.5rem;
+}
+
+.clientCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}

@@ -56,6 +56,7 @@ export type CareerProject = {
 
 export type CareerClient = {
   name: string;
+  has_client: boolean;
   projects: CareerProject[];
 };
 

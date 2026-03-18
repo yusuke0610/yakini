@@ -96,6 +96,7 @@ export function CareerResumeForm() {
                       clients.length > 0
                         ? clients.map((c) => ({
                             ...c,
+                            has_client: (c as Record<string, unknown>).has_client !== false,
                             projects:
                               c.projects.length > 0
                                 ? (c.projects as Record<string, unknown>[]).map((p) => {
@@ -175,6 +176,21 @@ export function CareerResumeForm() {
           ...exp,
           clients: exp.clients.map((c, ci) =>
             ci === clientIndex ? { ...c, [key]: value } : c,
+          ),
+        };
+      }),
+    }));
+  };
+
+  const updateClientHasClient = (expIndex: number, clientIndex: number, value: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp, ei) => {
+        if (ei !== expIndex) return exp;
+        return {
+          ...exp,
+          clients: exp.clients.map((c, ci) =>
+            ci === clientIndex ? { ...c, has_client: value } : c,
           ),
         };
       }),
@@ -486,17 +502,31 @@ export function CareerResumeForm() {
                 <h3>取引先</h3>
                 {exp.clients.map((client, clientIndex) => (
                   <div key={`client-${expIndex}-${clientIndex}`} className={shared.entry}>
-                    <label>
-                      取引先名（呼称）
-                      <input
-                        type="text"
-                        value={client.name}
-                        onChange={(e) =>
-                          updateClientField(expIndex, clientIndex, "name", e.target.value)
-                        }
-                        placeholder="例: 〇〇社（略称）"
-                      />
-                    </label>
+                    <div className={styles.clientHeader}>
+                      <label className={styles.clientCheckbox}>
+                        <input
+                          type="checkbox"
+                          checked={!client.has_client}
+                          onChange={(e) =>
+                            updateClientHasClient(expIndex, clientIndex, !e.target.checked)
+                          }
+                        />
+                        取引先なし（自社サービス）
+                      </label>
+                    </div>
+                    {client.has_client && (
+                      <label>
+                        取引先名（呼称）
+                        <input
+                          type="text"
+                          value={client.name}
+                          onChange={(e) =>
+                            updateClientField(expIndex, clientIndex, "name", e.target.value)
+                          }
+                          placeholder="例: 〇〇社（略称）"
+                        />
+                      </label>
+                    )}
 
                     {/* プロジェクト一覧（サマリー表示） */}
                     <div className={styles.stackSection}>

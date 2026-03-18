@@ -66,6 +66,7 @@ export const blankCareerProject: CareerProjectForm = {
 
 export const blankCareerClient: CareerClientForm = {
   name: "",
+  has_client: true,
   projects: [{ ...blankCareerProject, technology_stacks: [{ ...blankCareerTechnologyStack }] }],
 };
 

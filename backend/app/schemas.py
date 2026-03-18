@@ -119,6 +119,7 @@ class Project(BaseModel):
 class Client(BaseModel):
     """ユーザ（常駐先/クライアント企業）。"""
     name: str = Field(max_length=200, default="")
+    has_client: bool = True
     projects: list[Project] = Field(default_factory=list)
 
 
