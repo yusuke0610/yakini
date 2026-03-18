@@ -54,7 +54,9 @@ async def add_account(
     user: User = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    """連携アカウントを登録する。同じプラットフォームは1つまで。ユーザー存在チェックあり。"""
+    """連携アカウントを登録する。
+    同じプラットフォームは1つまで。ユーザー存在チェックあり。
+    """
     repo = BlogAccountRepository(db, user.id)
     existing = repo.get_by_platform(body.platform)
     if existing:
@@ -68,7 +70,10 @@ async def add_account(
     if not user_exists:
         raise HTTPException(
             status_code=404,
-            detail=f"{body.platform} にユーザー「{body.username}」が見つかりません。ユーザー名を確認してください。",
+            detail=(
+                f"{body.platform} にユーザー「{body.username}」が"
+                "見つかりません。ユーザー名を確認してください。"
+            ),
         )
 
     account = repo.upsert(body.platform, body.username)
@@ -116,10 +121,16 @@ async def sync_account(
     try:
         raw_articles = await fetch_articles(account.platform, account.username)
     except Exception:
-        logger.exception("ブログ記事の取得に失敗しました: %s/%s", account.platform, account.username)
+        logger.exception(
+            "ブログ記事の取得に失敗しました: %s/%s",
+            account.platform, account.username
+        )
         raise HTTPException(
             status_code=502,
-            detail=f"{account.platform} からの記事取得に失敗しました。ユーザー名を確認してください。",
+            detail=(
+                f"{account.platform} からの記事取得に失敗しました。"
+                "ユーザー名を確認してください。"
+            ),
         )
 
     for art in raw_articles:

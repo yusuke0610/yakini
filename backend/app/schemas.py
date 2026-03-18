@@ -54,7 +54,9 @@ class BasicQualification(BaseModel):
 
 class BasicInfoBase(BaseModel):
     full_name: str = Field(min_length=1, max_length=120)
-    name_furigana: str = Field(min_length=1, max_length=200, pattern=_HIRAGANA_PATTERN)
+    name_furigana: str = Field(
+        min_length=1, max_length=200, pattern=_HIRAGANA_PATTERN
+    )
     record_date: str = Field(min_length=1, max_length=30)
     qualifications: list[BasicQualification] = Field(default_factory=list)
 
@@ -76,7 +78,9 @@ class BasicInfoResponse(BasicInfoBase):
 
 
 class TechnologyStackItem(BaseModel):
-    category: Literal["language", "framework", "os", "db", "cloud_resource", "dev_tool"]
+    category: Literal[
+        "language", "framework", "os", "db", "cloud_resource", "dev_tool"
+    ]
     name: str = Field(min_length=1, max_length=120)
 
 
@@ -112,7 +116,9 @@ class Project(BaseModel):
         """旧形式 scale → team に自動変換する後方互換処理。"""
         if isinstance(data, dict) and "scale" in data and "team" not in data:
             scale = data.pop("scale")
-            data["team"] = {"total": str(scale) if scale else "", "members": []}
+            data["team"] = {
+                "total": str(scale) if scale else "", "members": []
+            }
         return data
 
 
@@ -137,7 +143,11 @@ class Experience(BaseModel):
     @classmethod
     def _migrate_projects_to_clients(cls, data: dict) -> dict:
         """旧形式（projects直下）を clients にラップする後方互換処理。"""
-        if isinstance(data, dict) and "projects" in data and "clients" not in data:
+        if (
+            isinstance(data, dict)
+            and "projects" in data
+            and "clients" not in data
+        ):
             projects = data.pop("projects")
             data["clients"] = [{"name": "", "projects": projects}]
         return data
@@ -185,7 +195,9 @@ class RirekishoBase(BaseModel):
     postal_code: str = Field(min_length=1, max_length=20)
     prefecture: str = Field(min_length=1, max_length=60)
     address: str = Field(min_length=1, max_length=400)
-    address_furigana: str = Field(min_length=1, max_length=400, pattern=_HIRAGANA_PATTERN)
+    address_furigana: str = Field(
+        min_length=1, max_length=400, pattern=_HIRAGANA_PATTERN
+    )
     email: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=1, max_length=50)
     motivation: str = Field(max_length=2000, default="")

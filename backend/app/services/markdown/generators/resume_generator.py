@@ -22,7 +22,9 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
         lines.append(tpl.SECTION_QUALIFICATIONS)
         lines.append("")
         for q in qualifications:
-            lines.append(f"- {q.get('name', '')} ({q.get('acquired_date', '')}取得)")
+            name = q.get("name", "")
+            date = q.get("acquired_date", "")
+            lines.append(f"- {name} ({date}取得)")
         lines.append("")
 
     career_summary = payload.get("career_summary", "")
@@ -75,7 +77,9 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                     proj_end = proj.get("end_date", "")
                     proj_is_current = proj.get("is_current", False)
                     if proj_start:
-                        proj_period = format_period(proj_start, proj_end, proj_is_current)
+                        proj_period = format_period(
+                            proj_start, proj_end, proj_is_current
+                        )
                         lines.append(field_line("期間", proj_period))
                     role = proj.get("role", "")
                     if role:

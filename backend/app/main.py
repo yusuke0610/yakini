@@ -5,15 +5,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from slowapi.errors import RateLimitExceeded
-from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi import FastAPI, Request, Response  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
+from slowapi.errors import RateLimitExceeded  # noqa: E402
+from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
-from .bootstrap import bootstrap
-from .dependencies import limiter
-from .routers import (
+from .bootstrap import bootstrap  # noqa: E402
+from .dependencies import limiter  # noqa: E402
+from .routers import (  # noqa: E402
     admin_router,
     auth_router,
     basic_info_router,
@@ -24,7 +24,9 @@ from .routers import (
     resumes_router,
     rirekisho_router,
 )
-from .settings import get_cors_origins
+from .settings import get_cors_origins  # noqa: E402
+
+load_dotenv()
 
 
 @asynccontextmanager

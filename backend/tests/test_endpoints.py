@@ -20,7 +20,11 @@ def test_register_success(client: TestClient) -> None:
 
 
 def test_register_duplicate_username(client: TestClient) -> None:
-    payload = {"username": "bob", "email": "bob@example.com", "password": "SecurePass123"}
+    payload = {
+        "username": "bob",
+        "email": "bob@example.com",
+        "password": "SecurePass123",
+    }
     client.post("/auth/register", json=payload)
 
     resp = client.post("/auth/register", json={
@@ -32,7 +36,11 @@ def test_register_duplicate_username(client: TestClient) -> None:
 
 
 def test_register_duplicate_email(client: TestClient) -> None:
-    payload = {"username": "carol", "email": "carol@example.com", "password": "SecurePass123"}
+    payload = {
+        "username": "carol",
+        "email": "carol@example.com",
+        "password": "SecurePass123",
+    }
     client.post("/auth/register", json=payload)
 
     resp = client.post("/auth/register", json={
@@ -112,7 +120,9 @@ def test_login_nonexistent_user(client: TestClient) -> None:
     ("post", "/api/rirekisho"),
     ("get", "/api/rirekisho/latest"),
 ])
-def test_endpoints_require_auth(client: TestClient, method: str, path: str) -> None:
+def test_endpoints_require_auth(
+    client: TestClient, method: str, path: str
+) -> None:
     resp = getattr(client, method)(path)
     assert resp.status_code == 401
 

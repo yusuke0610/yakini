@@ -1,9 +1,14 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter, Depends, HTTPException, Request, Response, status
+)
 from sqlalchemy.orm import Session
 
-from ..auth import create_access_token, verify_password, hash_password, _COOKIE_NAME, _COOKIE_MAX_AGE
+from ..auth import (
+    create_access_token, verify_password, hash_password,
+    _COOKIE_NAME, _COOKIE_MAX_AGE
+)
 from ..database import get_db
 from ..dependencies import limiter
 from ..logging_utils import log_event
@@ -15,13 +20,18 @@ from ..schemas import (
     TokenResponse,
 )
 from ..encryption import encrypt_field
-from ..settings import get_cors_origins, get_github_client_id, get_github_client_secret
+from ..settings import (
+    get_cors_origins, get_github_client_id, get_github_client_secret
+)
 
 
 def _set_auth_cookie(response: Response, token: str) -> None:
     """認証トークンを HttpOnly Cookie にセットする。"""
     origins = get_cors_origins()
-    is_https = all(o.startswith("https://") for o in origins) if origins else False
+    is_https = (
+        all(o.startswith("https://") for o in origins)
+        if origins else False
+    )
     response.set_cookie(
         key=_COOKIE_NAME,
         value=token,
@@ -39,7 +49,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=TokenResponse, status_code=201)
 @limiter.limit("5/minute")
 def register(
-    request: Request, response: Response, payload: RegisterRequest, db: Session = Depends(get_db)
+    request: Request,
+    response: Response,
+    payload: RegisterRequest,
+    db: Session = Depends(get_db)
 ) -> TokenResponse:
     repo = UserRepository(db)
     if repo.get_by_username(payload.username):
@@ -52,7 +65,9 @@ def register(
             status_code=status.HTTP_409_CONFLICT,
             detail="このメールアドレスは既に使用されています",
         )
-    user = repo.create(payload.username, hash_password(payload.password), email=payload.email)
+    user = repo.create(
+        payload.username, hash_password(payload.password), email=payload.email
+    )
     token = create_access_token(user.username)
     _set_auth_cookie(response, token)
     return TokenResponse(username=user.username)
@@ -61,7 +76,10 @@ def register(
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("5/minute")
 def login(
-    request: Request, response: Response, payload: LoginRequest, db: Session = Depends(get_db)
+    request: Request,
+    response: Response,
+    payload: LoginRequest,
+    db: Session = Depends(get_db)
 ) -> TokenResponse:
     user = UserRepository(db).get_by_email(payload.email)
     if not user or not verify_password(
