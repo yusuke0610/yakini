@@ -5,13 +5,12 @@ from io import BytesIO
 from pathlib import Path
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Frame, Paragraph
 
 _FONT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "fonts"
 _FONT_REGISTERED = False
@@ -35,7 +34,6 @@ PAGE_W, PAGE_H = A4
 MARGIN = 15 * mm
 
 TABLE_BORDER = colors.HexColor("#666666")
-TABLE_INNER = colors.HexColor("#999999")
 HEADER_BG = colors.HexColor("#d6dce8")
 
 
@@ -95,11 +93,6 @@ def escape(text: str) -> str:
     return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def nl2br(text: str) -> str:
-    """改行コードを <br/> タグに変換します。"""
-    return escape(text).replace("\n", "<br/>")
-
-
 def format_period(start_date: str, end_date: str | None, is_current: bool) -> str:
     """期間（開始〜終了）をフォーマットします。"""
     start = start_date.replace("-", " 年 ") + " 月" if "-" in start_date else start_date
@@ -132,52 +125,3 @@ def decode_photo(data_url: str | None) -> BytesIO | None:
     except Exception:
         logging.warning("Failed to decode photo data URL", exc_info=True)
         return None
-
-
-def format_record_date(record_date: str) -> str:
-    """表示用に記載日文字列をフォーマットします。"""
-    if record_date and "-" in record_date:
-        parts = record_date.split("-")
-        if len(parts) >= 2:
-            formatted = f"{parts[0]}年{parts[1].lstrip('0')}月"
-        if len(parts) == 3:
-            formatted += f"{parts[2].lstrip('0')}日"
-        return f"{formatted}現在"
-    return f"{record_date}現在" if record_date else ""
-
-
-def draw_bordered_rect(c, x: float, y: float, w: float, h: float,
-                       line_width: float = 0.5) -> None:
-    """枠線付きの長方形を描画します（yは上端、下向きに描画）。"""
-    c.setLineWidth(line_width)
-    c.setStrokeColor(colors.black)
-    c.rect(x, y - h, w, h)
-
-
-def draw_cell_text(c, text: str, x: float, y: float, w: float, h: float,
-                   font_size: float = 9, align: str = "left", v_center: bool = True) -> None:
-    """セル領域内にテキストを描画します。yはセルの上端です。"""
-    c.setFont(FONT_NAME, font_size)
-    c.setFillColor(colors.black)
-    text_y = y - h / 2 - font_size * 0.3 if v_center else y - font_size - 1 * mm
-    pad = 2 * mm
-    if align == "left":
-        c.drawString(x + pad, text_y, text)
-    elif align == "center":
-        c.drawCentredString(x + w / 2, text_y, text)
-    elif align == "right":
-        c.drawRightString(x + w - pad, text_y, text)
-
-
-def draw_text_area(c, text: str, x: float, y: float, w: float, h: float,
-                   font_size: float = 9, leading: float = 14) -> None:
-    """Frame と Paragraph を使用して、指定された範囲内に複数行のテキストを描画します。"""
-    register_font()
-    style = ParagraphStyle(
-        "text_area", fontName=FONT_NAME, fontSize=font_size,
-        leading=leading, alignment=TA_LEFT,
-    )
-    story = [Paragraph(nl2br(text), style)]
-    frame = Frame(x + 2 * mm, y - h, w - 4 * mm, h - 2 * mm,
-                  leftPadding=0, rightPadding=0, topPadding=2 * mm, bottomPadding=0)
-    frame.addFromList(story, c)

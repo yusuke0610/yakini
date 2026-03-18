@@ -37,6 +37,7 @@ export type CareerProjectForm = {
 
 export type CareerClientForm = {
   name: string;
+  has_client: boolean;
   projects: CareerProjectForm[];
 };
 
@@ -66,6 +67,8 @@ export type CareerFormState = {
 
 export type ResumeFormState = {
   gender: "male" | "female" | "";
+  birthday: string;
+  postal_code: string;
   prefecture: string;
   address: string;
   address_furigana: string;
@@ -116,7 +119,7 @@ export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
 
 function buildTeam(team: CareerProjectForm["team"]): ProjectTeam {
   const members: TeamMember[] = team.members
-    .filter((m) => m.role.trim() && m.count.trim())
+    .filter((m) => m.role.trim() && String(m.count).trim())
     .map((m) => ({ role: m.role.trim(), count: Number(m.count) }));
   return {
     total: team.total.trim(),
@@ -148,7 +151,8 @@ function buildProject(proj: CareerProjectForm): CareerProject {
 
 function buildClient(client: CareerClientForm): CareerClient {
   return {
-    name: client.name.trim(),
+    name: client.has_client ? client.name.trim() : "",
+    has_client: client.has_client,
     projects: client.projects
       .map(buildProject)
       .filter((p) => hasAnyText([p.name, p.description, p.challenge, p.action, p.result])),
@@ -177,7 +181,7 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
       capital: exp.capital.trim(),
       clients: exp.clients
         .map(buildClient)
-        .filter((c) => c.name.trim() || c.projects.length > 0),
+        .filter((c) => !c.has_client || c.name.trim() || c.projects.length > 0),
     }))
     .filter((exp) =>
       hasAnyText([exp.company, exp.business_description, exp.start_date, exp.end_date ?? ""]),
@@ -202,6 +206,8 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
 export function buildResumePayload(state: ResumeFormState): ResumePayload {
   const payload: ResumePayload = {
     gender: state.gender as "male" | "female",
+    birthday: state.birthday.trim(),
+    postal_code: state.postal_code.trim(),
     prefecture: state.prefecture.trim(),
     address: state.address.trim(),
     address_furigana: state.address_furigana.trim(),

@@ -40,7 +40,9 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
         required_skills=["JavaScript", "TypeScript", "React", "Vue", "Angular",
                          "Svelte", "Next.js"],
         required_categories=["language", "frontend_framework"],
-        next_roles=["Senior Frontend Engineer", "Full-Stack Developer", "Tech Lead"],
+        next_roles=[
+            "Senior Frontend Engineer", "Full-Stack Developer", "Tech Lead"
+        ],
         seniority=2,
     ),
     "Full-Stack Developer": RoleDefinition(
@@ -48,8 +50,12 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
         required_skills=["JavaScript", "TypeScript", "React", "Vue", "Angular",
                          "Python", "Go", "FastAPI", "Django", "Express",
                          "Next.js"],
-        required_categories=["language", "frontend_framework", "backend_framework"],
-        next_roles=["Senior Full-Stack Developer", "Tech Lead", "Platform Engineer"],
+        required_categories=[
+            "language", "frontend_framework", "backend_framework"
+        ],
+        next_roles=[
+            "Senior Full-Stack Developer", "Tech Lead", "Platform Engineer"
+        ],
         seniority=2,
     ),
     "Mobile Developer": RoleDefinition(
@@ -100,7 +106,9 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
                          "Terraform", "AWS", "GCP", "Shell",
                          "OpenTelemetry"],
         required_categories=["infrastructure", "monitoring", "cloud"],
-        next_roles=["Cloud Architect", "Platform Engineer", "Engineering Manager"],
+        next_roles=[
+            "Cloud Architect", "Platform Engineer", "Engineering Manager"
+        ],
         seniority=3,
     ),
     "Security Engineer": RoleDefinition(
@@ -145,7 +153,9 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
         role_name="Senior Full-Stack Developer",
         required_skills=["TypeScript", "React", "Python", "Docker",
                          "PostgreSQL"],
-        required_categories=["language", "frontend_framework", "backend_framework", "database"],
+        required_categories=[
+            "language", "frontend_framework", "backend_framework", "database"
+        ],
         next_roles=["Tech Lead", "Staff Engineer", "Engineering Manager"],
         seniority=3,
     ),
@@ -168,7 +178,9 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
         role_name="Senior ML Engineer",
         required_skills=["Python", "PyTorch", "TensorFlow", "MLflow"],
         required_categories=["language", "ml"],
-        next_roles=["AI Architect", "Research Engineer", "Engineering Manager"],
+        next_roles=[
+            "AI Architect", "Research Engineer", "Engineering Manager"
+        ],
         seniority=4,
     ),
     "Senior Security Engineer": RoleDefinition(

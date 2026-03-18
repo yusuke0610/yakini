@@ -39,9 +39,15 @@ def _build_user_prompt(analysis: Dict[str, Any]) -> str:
     # 成長トレンド（データがある場合のみ）
     growth = analysis.get("growth", [])
     if growth:
-        emerging = [g["skill_name"] for g in growth if g.get("trend") == "emerging"]
-        stable = [g["skill_name"] for g in growth if g.get("trend") == "stable"]
-        declining = [g["skill_name"] for g in growth if g.get("trend") == "declining"]
+        emerging = [
+            g["skill_name"] for g in growth if g.get("trend") == "emerging"
+        ]
+        stable = [
+            g["skill_name"] for g in growth if g.get("trend") == "stable"
+        ]
+        declining = [
+            g["skill_name"] for g in growth if g.get("trend") == "declining"
+        ]
 
         if emerging:
             summary_parts.append(f"成長中のスキル: {', '.join(emerging[:5])}")

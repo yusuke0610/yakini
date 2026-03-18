@@ -10,7 +10,7 @@ from .models import (
     MTechnologyStack, Resume, Rirekisho, User,
 )
 
-_ENCRYPTED_RIREKISHO_FIELDS = {"email", "phone", "address"}
+_ENCRYPTED_RIREKISHO_FIELDS = {"email", "phone", "postal_code", "address"}
 
 T = TypeVar("T")
 
@@ -19,8 +19,12 @@ class UserRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, username: str, hashed_password: str, email: str | None = None) -> User:
-        user = User(username=username, hashed_password=hashed_password, email=email)
+    def create(
+        self, username: str, hashed_password: str, email: str | None = None
+    ) -> User:
+        user = User(
+            username=username, hashed_password=hashed_password, email=email
+        )
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)
@@ -114,7 +118,10 @@ class RirekishoRepository(BaseUserDocRepository):
                 try:
                     setattr(rirekisho, field, decrypt_field(value))
                 except Exception:
-                    logging.warning("Failed to decrypt field %s, returning raw value", field, exc_info=True)
+                    logging.warning(
+                        "Failed to decrypt field %s, returning raw value",
+                        field, exc_info=True
+                    )
 
     def create(self, payload: dict[str, Any]) -> Rirekisho:
         rirekisho = super().create(self._encrypt_payload(payload))
@@ -181,7 +188,9 @@ class BlogAccountRepository:
             self.db.commit()
             self.db.refresh(existing)
             return existing
-        account = BlogAccount(user_id=self.user_id, platform=platform, username=username)
+        account = BlogAccount(
+            user_id=self.user_id, platform=platform, username=username
+        )
         self.db.add(account)
         self.db.commit()
         self.db.refresh(account)
@@ -240,7 +249,9 @@ class BlogArticleRepository:
     def count_by_user(self) -> int:
         """ユーザーの記事数を取得する。"""
         return self.db.scalar(
-            select(func.count()).select_from(BlogArticle).where(BlogArticle.user_id == self.user_id)
+            select(func.count())
+            .select_from(BlogArticle)
+            .where(BlogArticle.user_id == self.user_id)
         ) or 0
 
     def delete_by_account(self, account_id: str) -> int:
@@ -268,7 +279,9 @@ class BaseMasterRepository:
 
     def list_all(self) -> list:
         """マスタ一覧を取得する。"""
-        statement = select(self._model).order_by(self._model.sort_order, self._model.name)
+        statement = select(self._model).order_by(
+            self._model.sort_order, self._model.name
+        )
         return list(self.db.scalars(statement).all())
 
     def create(self, name: str, sort_order: int = 0) -> Any:
@@ -281,7 +294,9 @@ class BaseMasterRepository:
 
     def update(self, item_id: str, name: str, sort_order: int = 0) -> Any:
         """マスタを更新する。"""
-        item = self.db.scalar(select(self._model).where(self._model.id == item_id))
+        item = self.db.scalar(
+            select(self._model).where(self._model.id == item_id)
+        )
         if not item:
             return None
         item.name = name
@@ -292,7 +307,9 @@ class BaseMasterRepository:
 
     def delete(self, item_id: str) -> bool:
         """マスタを削除する。"""
-        item = self.db.scalar(select(self._model).where(self._model.id == item_id))
+        item = self.db.scalar(
+            select(self._model).where(self._model.id == item_id)
+        )
         if not item:
             return False
         self.db.delete(item)
@@ -332,19 +349,29 @@ class MTechnologyStackRepository(BaseMasterRepository):
         )
         return list(self.db.scalars(statement).all())
 
-    def create(self, category: str, name: str, sort_order: int = 0) -> MTechnologyStack:
+    def create(
+        self, category: str, name: str, sort_order: int = 0
+    ) -> MTechnologyStack:
         """技術スタックマスタを作成する。"""
-        item = MTechnologyStack(category=category, name=name, sort_order=sort_order)
+        item = MTechnologyStack(
+            category=category, name=name, sort_order=sort_order
+        )
         self.db.add(item)
         self.db.commit()
         self.db.refresh(item)
         return item
 
     def update(
-        self, item_id: str, name: str, sort_order: int = 0, category: str | None = None
+        self,
+        item_id: str,
+        name: str,
+        sort_order: int = 0,
+        category: str | None = None
     ) -> MTechnologyStack | None:
         """技術スタックマスタを更新する。"""
-        item = self.db.scalar(select(MTechnologyStack).where(MTechnologyStack.id == item_id))
+        item = self.db.scalar(
+            select(MTechnologyStack).where(MTechnologyStack.id == item_id)
+        )
         if not item:
             return None
         item.name = name
