@@ -228,7 +228,9 @@ def _build_html(data: dict) -> str:
         "<tr>"
         f'<td class="label">生年月日</td>'
         f'<td class="bd">{_esc(bd_display)}</td>'
-        f'<td class="gender">{"<span class=\"gender-note\">※性別</span><br/>" + _esc(gender_text) if gender_text else "※性別"}</td>'
+        '<td class="gender">'
+        f'{"<span class=\"gender-note\">※性別</span><br/>" + _esc(gender_text) if gender_text else "※性別"}'
+        "</td>"
         "</tr>"
     )
     # 住所ふりがな行

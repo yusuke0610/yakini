@@ -37,6 +37,7 @@ export type CareerProjectForm = {
 
 export type CareerClientForm = {
   name: string;
+  has_client: boolean;
   projects: CareerProjectForm[];
 };
 
@@ -150,7 +151,8 @@ function buildProject(proj: CareerProjectForm): CareerProject {
 
 function buildClient(client: CareerClientForm): CareerClient {
   return {
-    name: client.name.trim(),
+    name: client.has_client ? client.name.trim() : "",
+    has_client: client.has_client,
     projects: client.projects
       .map(buildProject)
       .filter((p) => hasAnyText([p.name, p.description, p.challenge, p.action, p.result])),
@@ -179,7 +181,7 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
       capital: exp.capital.trim(),
       clients: exp.clients
         .map(buildClient)
-        .filter((c) => c.name.trim() || c.projects.length > 0),
+        .filter((c) => !c.has_client || c.name.trim() || c.projects.length > 0),
     }))
     .filter((exp) =>
       hasAnyText([exp.company, exp.business_description, exp.start_date, exp.end_date ?? ""]),
