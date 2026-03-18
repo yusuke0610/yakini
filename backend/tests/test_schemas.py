@@ -92,6 +92,8 @@ def test_resume_requires_career_summary() -> None:
 def rirekisho_payload() -> dict:
     return {
         "gender": "male",
+        "birthday": "1990-01-15",
+        "postal_code": "150-0041",
         "prefecture": "東京都",
         "address": "渋谷区神南1-1-1",
         "address_furigana": "しぶやく じんなん",

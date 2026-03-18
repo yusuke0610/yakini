@@ -16,6 +16,8 @@ export type CareerProjectFieldKey = "name" | "start_date" | "end_date" | "is_cur
 
 export type ResumeTextFieldKey =
   | "gender"
+  | "birthday"
+  | "postal_code"
   | "prefecture"
   | "address"
   | "address_furigana"

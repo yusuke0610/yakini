@@ -29,7 +29,11 @@ async def fetch_zenn_articles(username: str) -> list[dict]:
                     "external_id": slug,
                     "title": item.get("title", ""),
                     "url": f"https://zenn.dev/{username}/articles/{slug}",
-                    "published_at": item.get("published_at", "")[:10] if item.get("published_at") else None,
+                    "published_at": (
+                        item.get("published_at", "")[:10]
+                        if item.get("published_at")
+                        else None
+                    ),
                     "likes_count": item.get("liked_count", 0),
                     "summary": "",
                     "tags": [],

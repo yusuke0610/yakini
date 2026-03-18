@@ -20,7 +20,11 @@ def test_register_success(client: TestClient) -> None:
 
 
 def test_register_duplicate_username(client: TestClient) -> None:
-    payload = {"username": "bob", "email": "bob@example.com", "password": "SecurePass123"}
+    payload = {
+        "username": "bob",
+        "email": "bob@example.com",
+        "password": "SecurePass123",
+    }
     client.post("/auth/register", json=payload)
 
     resp = client.post("/auth/register", json={
@@ -32,7 +36,11 @@ def test_register_duplicate_username(client: TestClient) -> None:
 
 
 def test_register_duplicate_email(client: TestClient) -> None:
-    payload = {"username": "carol", "email": "carol@example.com", "password": "SecurePass123"}
+    payload = {
+        "username": "carol",
+        "email": "carol@example.com",
+        "password": "SecurePass123",
+    }
     client.post("/auth/register", json=payload)
 
     resp = client.post("/auth/register", json={
@@ -112,7 +120,9 @@ def test_login_nonexistent_user(client: TestClient) -> None:
     ("post", "/api/rirekisho"),
     ("get", "/api/rirekisho/latest"),
 ])
-def test_endpoints_require_auth(client: TestClient, method: str, path: str) -> None:
+def test_endpoints_require_auth(
+    client: TestClient, method: str, path: str
+) -> None:
     resp = getattr(client, method)(path)
     assert resp.status_code == 401
 
@@ -183,8 +193,9 @@ def test_rirekisho_crud(client: TestClient) -> None:
     headers = auth_header(client, "rirekishouser")
 
     resp = client.post("/api/rirekisho", json={
-
         "gender": "male",
+        "birthday": "1990-01-15",
+        "postal_code": "150-0041",
         "prefecture": "東京都",
         "address": "渋谷区神南1-1-1",
         "address_furigana": "しぶやく じんなん",
@@ -202,8 +213,9 @@ def test_rirekisho_crud(client: TestClient) -> None:
     assert resp.json()["prefecture"] == "東京都"
 
     resp = client.put(f"/api/rirekisho/{rirekisho_id}", json={
-
         "gender": "female",
+        "birthday": "1990-01-15",
+        "postal_code": "150-0041",
         "prefecture": "東京都",
         "address": "渋谷区神南2-2-2",
         "address_furigana": "しぶやく じんなん",
@@ -261,8 +273,9 @@ def test_resume_not_found(client: TestClient) -> None:
 def test_rirekisho_get_by_id(client: TestClient) -> None:
     headers = auth_header(client, "ririgetuser")
     resp = client.post("/api/rirekisho", json={
-
         "gender": "male",
+        "birthday": "1990-01-15",
+        "postal_code": "150-0041",
         "prefecture": "東京都",
         "address": "渋谷区神南1-1-1",
         "address_furigana": "しぶやく じんなん",

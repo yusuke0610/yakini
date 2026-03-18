@@ -56,6 +56,7 @@ export type CareerProject = {
 
 export type CareerClient = {
   name: string;
+  has_client: boolean;
   projects: CareerProject[];
 };
 
@@ -89,6 +90,8 @@ export type ResumeHistory = {
 
 export type ResumePayload = {
   gender: "male" | "female";
+  birthday: string;
+  postal_code: string;
   prefecture: string;
   address: string;
   address_furigana: string;
