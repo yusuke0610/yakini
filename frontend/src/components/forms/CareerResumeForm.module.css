@@ -59,13 +59,27 @@
 }
 
 .clientHeader {
-  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.clientNameLabel {
+  flex: 1;
+  min-width: 200px;
+  margin-bottom: 0 !important;
 }
 
 .clientCheckbox {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
   cursor: pointer;
   font-size: 0.9rem;
+  margin-bottom: 0 !important;
+  /* 入力欄の高さに合わせて調整 */
+  height: 2.6rem;
+  white-space: nowrap;
 }

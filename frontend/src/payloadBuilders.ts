@@ -119,7 +119,7 @@ export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
 
 function buildTeam(team: CareerProjectForm["team"]): ProjectTeam {
   const members: TeamMember[] = team.members
-    .filter((m) => m.role.trim() && m.count.trim())
+    .filter((m) => m.role.trim() && String(m.count).trim())
     .map((m) => ({ role: m.role.trim(), count: Number(m.count) }));
   return {
     total: team.total.trim(),
