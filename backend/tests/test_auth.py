@@ -16,7 +16,9 @@ def test_verify_wrong_password() -> None:
     assert not verify_password("wrong", hashed)
 
 
-def test_create_access_token_contains_username(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_access_token_contains_username(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("SECRET_KEY", "testsecret")
 
     token = create_access_token("alice")
@@ -25,7 +27,9 @@ def test_create_access_token_contains_username(monkeypatch: pytest.MonkeyPatch) 
     assert payload["sub"] == "alice"
 
 
-def test_create_access_token_has_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_access_token_has_expiry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("SECRET_KEY", "testsecret")
 
     token = create_access_token("alice")

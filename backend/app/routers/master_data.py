@@ -34,7 +34,11 @@ def _register_master_crud(
     def list_items(db: Session = Depends(get_db)):
         return repo_factory(db).list_all()
 
-    @router.post(f"/{path}", response_model=MasterItem, status_code=status.HTTP_201_CREATED)
+    @router.post(
+        f"/{path}",
+        response_model=MasterItem,
+        status_code=status.HTTP_201_CREATED,
+    )
     def create_item(
         body: MasterItemCreate,
         db: Session = Depends(get_db),
@@ -54,7 +58,9 @@ def _register_master_crud(
             raise HTTPException(status_code=404, detail=f"{label}が見つかりません")
         return updated
 
-    @router.delete(f"/{path}/{{item_id}}", status_code=status.HTTP_204_NO_CONTENT)
+    @router.delete(
+        f"/{path}/{{item_id}}", status_code=status.HTTP_204_NO_CONTENT
+    )
     def delete_item(
         item_id: str,
         db: Session = Depends(get_db),
@@ -70,7 +76,9 @@ def _register_master_crud(
     delete_item.__name__ = f"delete_{path}"
 
 
-_register_master_crud("qualification", MQualificationRepository, "資格マスタ")
+_register_master_crud(
+    "qualification", MQualificationRepository, "資格マスタ"
+)
 _register_master_crud("prefecture", MPrefectureRepository, "都道府県マスタ")
 
 
@@ -82,14 +90,20 @@ def list_technology_stacks(db: Session = Depends(get_db)):
     return MTechnologyStackRepository(db).list_all()
 
 
-@router.post("/technology-stack", response_model=TechStackMasterItem, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/technology-stack",
+    response_model=TechStackMasterItem,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_technology_stack(
     body: TechStackMasterCreate,
     db: Session = Depends(get_db),
     _: None = Depends(verify_admin_token),
 ):
     """技術スタックマスタを新規作成する（admin認証必須）。"""
-    return MTechnologyStackRepository(db).create(body.category, body.name, body.sort_order)
+    return MTechnologyStackRepository(db).create(
+        body.category, body.name, body.sort_order
+    )
 
 
 @router.put("/technology-stack/{item_id}", response_model=TechStackMasterItem)
@@ -100,13 +114,17 @@ def update_technology_stack(
     _: None = Depends(verify_admin_token),
 ):
     """技術スタックマスタを更新する（admin認証必須）。"""
-    updated = MTechnologyStackRepository(db).update(item_id, body.name, body.sort_order, body.category)
+    updated = MTechnologyStackRepository(db).update(
+        item_id, body.name, body.sort_order, body.category
+    )
     if not updated:
         raise HTTPException(status_code=404, detail="技術スタックマスタが見つかりません")
     return updated
 
 
-@router.delete("/technology-stack/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/technology-stack/{item_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 def delete_technology_stack(
     item_id: str,
     db: Session = Depends(get_db),

@@ -5,17 +5,20 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-os.environ.setdefault("SECRET_KEY", "test-secret-key")
-os.environ.setdefault("SQLITE_DB_PATH", ":memory:")
-os.environ.setdefault("APP_BOOTSTRAPPED", "1")
-os.environ.setdefault("FIELD_ENCRYPTION_KEY", "pVo6M_raAWEpAv25F4p4RziywsjfPENokI10DZbNO7E=")
-
 from app.database import Base, get_db
 from app.models import (  # noqa: F401 — ensure models registered
     BasicInfo, BlogAccount, BlogArticle, MPrefecture, MQualification,
     MTechnologyStack, Resume, Rirekisho, User,
 )
 from app.main import app, limiter
+
+os.environ.setdefault("SECRET_KEY", "test-secret-key")
+os.environ.setdefault("SQLITE_DB_PATH", ":memory:")
+os.environ.setdefault("APP_BOOTSTRAPPED", "1")
+os.environ.setdefault(
+    "FIELD_ENCRYPTION_KEY",
+    "pVo6M_raAWEpAv25F4p4RziywsjfPENokI10DZbNO7E="
+)
 
 
 @pytest.fixture()

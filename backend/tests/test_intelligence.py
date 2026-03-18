@@ -330,7 +330,10 @@ class TestDependencyParsing:
         from app.services.intelligence.github_collector import (
             _parse_package_json,
         )
-        content = '{"dependencies":{"react":"^18"},"devDependencies":{"jest":"^29"}}'
+        content = (
+            '{"dependencies":{"react":"^18"},'
+            '"devDependencies":{"jest":"^29"}}'
+        )
         result = _parse_package_json(content)
         assert "react" in result
         assert "jest" in result
@@ -358,7 +361,10 @@ class TestDependencyParsing:
         from app.services.intelligence.github_collector import (
             _parse_go_mod,
         )
-        content = "module example.com/app\n\nrequire (\n\tgithub.com/gin-gonic/gin v1.9\n)\n"
+        content = (
+            "module example.com/app\n\nrequire (\n"
+            "\tgithub.com/gin-gonic/gin v1.9\n)\n"
+        )
         result = _parse_go_mod(content)
         assert "github.com/gin-gonic/gin" in result
 
@@ -508,14 +514,24 @@ class TestCareerPathsMatching:
 
     def test_match_score_between_0_and_1(self):
         skills = {"Python", "FastAPI", "Docker", "AWS"}
-        categories = {"language", "backend_framework", "infrastructure", "cloud"}
+        categories = {
+            "language",
+            "backend_framework",
+            "infrastructure",
+            "cloud"
+        }
         matches = match_skills_to_roles(skills, categories)
         for m in matches:
             assert 0 < m.match_score <= 1.0
 
     def test_matches_sorted_by_score(self):
         skills = {"Python", "FastAPI", "Docker", "TypeScript", "React"}
-        categories = {"language", "backend_framework", "infrastructure", "frontend_framework"}
+        categories = {
+            "language",
+            "backend_framework",
+            "infrastructure",
+            "frontend_framework",
+        }
         matches = match_skills_to_roles(skills, categories)
         scores = [m.match_score for m in matches]
         assert scores == sorted(scores, reverse=True)
@@ -620,13 +636,22 @@ class TestConfidenceScorer:
 
     def test_longer_path_lower_confidence(self):
         skills = {"Python", "FastAPI", "Docker", "AWS", "Terraform"}
-        categories = {"language", "backend_framework", "infrastructure", "cloud"}
+        categories = {
+            "language",
+            "backend_framework",
+            "infrastructure",
+            "cloud"
+            }
         short = score_path(
             ["Backend Engineer", "Platform Engineer"],
             skills, categories, {},
         )
         long = score_path(
-            ["Backend Engineer", "Platform Engineer", "Cloud Architect", "CTO"],
+            [
+                "Backend Engineer",
+                "Platform Engineer",
+                "Cloud Architect",
+                "CTO"],
             skills, categories, {},
         )
         assert short >= long
@@ -635,18 +660,42 @@ class TestConfidenceScorer:
         assert score_path([], set(), set(), {}) == 0.0
 
     def test_single_role_path(self):
-        assert score_path(["Backend Engineer"], {"Python"}, {"language"}, {}) == 0.0
+        assert (
+            score_path(
+                ["Backend Engineer"],
+                {"Python"},
+                {"language"},
+                {},
+            ) == 0.0
+        )
 
     def test_better_skill_match_higher_score(self):
-        categories = {"language", "backend_framework", "infrastructure", "cloud"}
+        categories = {
+            "language",
+            "backend_framework",
+            "infrastructure",
+            "cloud",
+        }
         path = ["Backend Engineer", "Platform Engineer"]
         low = score_path(
-            path, {"Python"}, categories, {},
+            path,
+            {"Python"},
+            categories,
+            {},
         )
+        skills_high = {
+            "Python",
+            "FastAPI",
+            "Docker",
+            "Kubernetes",
+            "Terraform",
+            "AWS",
+        }
         high = score_path(
             path,
-            {"Python", "FastAPI", "Docker", "Kubernetes", "Terraform", "AWS"},
-            categories, {},
+            skills_high,
+            categories,
+            {},
         )
         assert high >= low
 

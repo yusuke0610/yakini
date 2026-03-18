@@ -54,8 +54,14 @@ def test_list_blog_accounts(client: TestClient) -> None:
     """GET でアカウント一覧取得。"""
     auth_header(client)
     with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True):
-        client.post("/api/blog/accounts", json={"platform": "zenn", "username": "u1"})
-        client.post("/api/blog/accounts", json={"platform": "note", "username": "u2"})
+        client.post(
+            "/api/blog/accounts",
+            json={"platform": "zenn", "username": "u1"}
+        )
+        client.post(
+            "/api/blog/accounts",
+            json={"platform": "note", "username": "u2"}
+        )
 
     resp = client.get("/api/blog/accounts")
     assert resp.status_code == 200

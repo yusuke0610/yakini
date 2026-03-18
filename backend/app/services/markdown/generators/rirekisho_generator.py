@@ -65,7 +65,9 @@ def build_rirekisho_markdown(payload: dict[str, Any]) -> str:
         lines.append(tpl.SECTION_QUALIFICATIONS)
         lines.append("")
         for q in qualifications:
-            lines.append(f"- {q.get('name', '')} ({q.get('acquired_date', '')}取得)")
+            name = q.get("name", "")
+            date = q.get("acquired_date", "")
+            lines.append(f"- {name} ({date}取得)")
         lines.append("")
 
     motivation = payload.get("motivation", "")

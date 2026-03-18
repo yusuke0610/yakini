@@ -91,7 +91,11 @@ async def analyze(
         result = await asyncio.wait_for(
             run_pipeline(
                 username=github_username,
-                token=decrypt_field(user.github_token) if user.github_token else None,
+                token=(
+                    decrypt_field(user.github_token)
+                    if user.github_token
+                    else None
+                ),
                 include_forks=request.include_forks,
             ),
             timeout=120.0,
@@ -117,7 +121,10 @@ async def analyze(
         )
         raise HTTPException(
             status_code=502,
-            detail="GitHubプロフィールの分析に失敗しました。しばらくしてから再度お試しください。",
+            detail=(
+                "GitHubプロフィールの分析に失敗しました。"
+                "しばらくしてから再度お試しください。"
+            ),
         )
 
     response = map_pipeline_result(result)

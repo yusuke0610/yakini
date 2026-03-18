@@ -1,7 +1,11 @@
 """マスタデータの初期シードを投入するモジュール。"""
 from sqlalchemy.orm import Session
 
-from .repositories import MPrefectureRepository, MQualificationRepository, MTechnologyStackRepository
+from .repositories import (
+    MPrefectureRepository,
+    MQualificationRepository,
+    MTechnologyStackRepository,
+)
 
 # 資格マスタ
 _QUALIFICATIONS = [

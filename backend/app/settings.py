@@ -13,9 +13,12 @@ def get_database_url() -> str:
 
 
 def get_cors_origins() -> list[str]:
+    cors_origins = os.getenv(
+        "CORS_ORIGINS", "http://localhost:5173"
+    )
     return [
         origin.strip()
-        for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+        for origin in cors_origins.split(",")
         if origin.strip()
     ]
 
