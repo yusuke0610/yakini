@@ -1,16 +1,13 @@
-"""Ollama / Qwen2.5 を利用したキャリア分析・ブログ記事の要約生成。"""
+"""LLM を利用したキャリア分析・ブログ記事の要約生成。"""
 
 import logging
-import os
 from typing import Any, Dict, List
 
-import httpx
+from .llm import get_llm_client
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
-OLLAMA_TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "180"))
+_client = get_llm_client()
 
 SYSTEM_PROMPT = (
     "あなたはキャリア分析の専門家です。"
@@ -66,14 +63,9 @@ def _build_user_prompt(analysis: Dict[str, Any]) -> str:
     return "\n".join(summary_parts)
 
 
-async def check_ollama_available() -> bool:
-    """Ollama サーバーに接続可能か確認します。"""
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
-            return resp.status_code == 200
-    except (httpx.ConnectError, httpx.TimeoutException):
-        return False
+async def check_llm_available() -> bool:
+    """LLM バックエンドが利用可能か確認します。"""
+    return await _client.check_available()
 
 
 BLOG_SYSTEM_PROMPT = (
@@ -105,58 +97,18 @@ def _build_blog_prompt(articles: List[Dict[str, Any]]) -> str:
 
 
 async def summarize_blog_articles(articles: List[Dict[str, Any]]) -> str:
-    """ブログ記事一覧から Ollama で AI サマリを生成する。
+    """ブログ記事一覧から LLM で AI サマリを生成する。
 
-    Ollama に接続できない場合は空文字列を返す。
+    LLM に接続できない場合は空文字列を返す。
     """
     prompt = _build_blog_prompt(articles)
-
-    try:
-        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
-            resp = await client.post(
-                f"{OLLAMA_BASE_URL}/api/generate",
-                json={
-                    "model": OLLAMA_MODEL,
-                    "system": BLOG_SYSTEM_PROMPT,
-                    "prompt": prompt,
-                    "stream": False,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data.get("response", "").strip()
-    except (httpx.ConnectError, httpx.TimeoutException):
-        logger.info("Ollama が %s で利用できません", OLLAMA_BASE_URL)
-        return ""
-    except Exception:
-        logger.exception("ブログ記事の要約生成に失敗しました")
-        return ""
+    return await _client.generate(BLOG_SYSTEM_PROMPT, prompt)
 
 
 async def summarize_analysis(analysis: Dict[str, Any]) -> str:
-    """Ollama を使用して分析結果の自然言語要約を生成する。
+    """LLM を使用して分析結果の自然言語要約を生成する。
 
-    Ollama に接続できない場合は空文字列を返す。
+    LLM に接続できない場合は空文字列を返す。
     """
     user_prompt = _build_user_prompt(analysis)
-
-    try:
-        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
-            resp = await client.post(
-                f"{OLLAMA_BASE_URL}/api/generate",
-                json={
-                    "model": OLLAMA_MODEL,
-                    "system": SYSTEM_PROMPT,
-                    "prompt": user_prompt,
-                    "stream": False,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data.get("response", "").strip()
-    except (httpx.ConnectError, httpx.TimeoutException):
-        logger.info("Ollama が %s で利用できません", OLLAMA_BASE_URL)
-        return ""
-    except Exception:
-        logger.exception("Ollama による要約生成に失敗しました")
-        return ""
+    return await _client.generate(SYSTEM_PROMPT, user_prompt)

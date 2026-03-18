@@ -29,7 +29,7 @@ from ..services.intelligence.github_collector import (
     GitHubUserNotFoundError,
 )
 from ..services.intelligence.llm_summarizer import (
-    check_ollama_available,
+    check_llm_available,
     summarize_analysis,
 )
 from ..services.intelligence.pipeline import run_pipeline
@@ -152,7 +152,7 @@ async def summarize(
 
     Ollama サーバーに接続できない場合は available: false を返します。
     """
-    available = await check_ollama_available()
+    available = await check_llm_available()
     if not available:
         return SummarizeResponse(summary="", available=False)
 
