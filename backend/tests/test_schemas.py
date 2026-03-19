@@ -1,7 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import Experience, Project, ResumeCreate, RirekishoCreate
+from app.schemas import (
+    BlogSummaryRequest,
+    Experience,
+    Project,
+    ResumeCreate,
+    RirekishoCreate,
+)
 
 
 def experience_payload() -> dict:
@@ -138,3 +144,18 @@ def test_rirekisho_allows_empty_motivation() -> None:
 
     rirekisho = RirekishoCreate(**payload)
     assert rirekisho.motivation == ""
+
+
+def test_blog_summary_request_limits_article_count() -> None:
+    article = {
+        "platform": "zenn",
+        "title": "記事タイトル",
+        "url": "https://zenn.dev/example/articles/test",
+        "published_at": "2026-03-19",
+        "likes_count": 1,
+        "summary": "概要",
+        "tags": ["Python"],
+    }
+
+    with pytest.raises(ValidationError):
+        BlogSummaryRequest(articles=[article] * 51)

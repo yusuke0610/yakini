@@ -1,16 +1,17 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent } from "react";
 
 import {
+  assertBasicInfoReady,
   createResume,
   downloadResumeMarkdown,
   downloadResumePdf,
-  getLatestBasicInfo,
   getLatestResume,
   getResumePdfBlobUrl,
   updateResume,
 } from "../../api";
+import { createInitialResumeForm, mapResumeToForm } from "../../formMappers";
+import { useDocumentForm } from "../../hooks/useDocumentForm";
 import { buildResumePayload } from "../../payloadBuilders";
-import type { ResumeFormState } from "../../payloadBuilders";
 import type { ResumeHistory } from "../../types";
 import { blankHistory } from "../../constants";
 import type { ResumeTextFieldKey } from "../../formTypes";
@@ -23,27 +24,28 @@ import { PdfPreviewModal } from "./PdfPreviewModal";
 import styles from "./ResumeForm.module.css";
 
 export function ResumeForm() {
-  const [form, setForm] = useState<ResumeFormState>({
-    gender: "",
-    birthday: "",
-    postal_code: "",
-    prefecture: "",
-    address: "",
-    address_furigana: "",
-    email: "",
-    phone: "",
-    motivation: "",
-    personal_preferences: "",
-    educations: [{ ...blankHistory }],
-    work_histories: [{ ...blankHistory }],
-    photo: null,
-  });
-  const [resumeId, setresumeId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
   const { items: prefectureOptions } = usePrefectures();
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const {
+    form,
+    setForm,
+    documentId: resumeId,
+    saving,
+    error,
+    success,
+    setError,
+    setSuccess,
+    save,
+    saveButtonText,
+  } = useDocumentForm({
+    createInitialForm: createInitialResumeForm,
+    loadLatest: getLatestResume,
+    createDocument: createResume,
+    updateDocument: updateResume,
+    buildPayload: buildResumePayload,
+    mapResponseToForm: mapResumeToForm,
+    successMessage: "履歴書を保存しました。PDF出力できます。",
+    beforeSave: assertBasicInfoReady,
+  });
 
   const { downloading, previewUrl, closePreview, onDownloadPdf, onDownloadMarkdown, onPreviewPdf } =
     usePdfActions({
@@ -51,47 +53,6 @@ export function ResumeForm() {
       downloadMarkdown: downloadResumeMarkdown,
       getPdfBlobUrl: getResumePdfBlobUrl,
     });
-
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
-      try {
-        const latest = await getLatestResume();
-        if (!active) return;
-        setresumeId(latest.id);
-        setForm({
-          gender: ((latest as Record<string, unknown>).gender as ResumeFormState["gender"]) ?? "",
-          birthday: (latest as Record<string, unknown>).birthday as string ?? "",
-          postal_code: (latest as Record<string, unknown>).postal_code as string ?? "",
-          prefecture: latest.prefecture,
-          address: latest.address,
-          address_furigana: (latest as Record<string, unknown>).address_furigana as string ?? "",
-          email: latest.email,
-          phone: latest.phone,
-          motivation: latest.motivation,
-          personal_preferences: latest.personal_preferences ?? "",
-          educations: latest.educations.length > 0 ? latest.educations : [{ ...blankHistory }],
-          work_histories:
-            latest.work_histories.length > 0 ? latest.work_histories : [{ ...blankHistory }],
-          photo: latest.photo ?? null,
-        });
-      } catch {
-        if (!active) return;
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const saveButtonText = useMemo(() => {
-    if (saving) {
-      return "保存中...";
-    }
-    return resumeId ? "更新する" : "保存する";
-  }, [resumeId, saving]);
 
   const onChangeField = (key: ResumeTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -174,36 +135,7 @@ export function ResumeForm() {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      try {
-        const basicInfo = await getLatestBasicInfo();
-        if (!basicInfo.full_name || !basicInfo.record_date) {
-          setError("基本情報の氏名と記載日を先に登録してください。");
-          setSaving(false);
-          return;
-        }
-      } catch {
-        setError("基本情報の氏名と記載日を先に登録してください。");
-        setSaving(false);
-        return;
-      }
-
-      const payload = buildResumePayload(form);
-      const saved = resumeId ? await updateResume(resumeId, payload) : await createResume(payload);
-
-      setresumeId(saved.id);
-      setSuccess("履歴書を保存しました。PDF出力できます。");
-    } catch (submitError) {
-      const message =
-        submitError instanceof Error ? submitError.message : "保存中に不明なエラーが発生しました。";
-      setError(message);
-    } finally {
-      setSaving(false);
-    }
+    await save();
   };
 
   return (

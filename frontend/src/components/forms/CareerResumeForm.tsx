@@ -1,16 +1,18 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 
 import {
+  assertBasicInfoReady,
   createCareerResume,
   downloadCareerResumeMarkdown,
   downloadCareerResumePdf,
   getCareerResumePdfBlobUrl,
-  getLatestBasicInfo,
   getLatestCareerResume,
   updateCareerResume,
 } from "../../api";
+import { createInitialCareerForm, mapCareerResumeToForm } from "../../formMappers";
+import { useDocumentForm } from "../../hooks/useDocumentForm";
 import { buildCareerPayload } from "../../payloadBuilders";
-import type { CareerFormState, CareerProjectForm } from "../../payloadBuilders";
+import type { CareerProjectForm } from "../../payloadBuilders";
 import {
   blankCareerClient,
   blankCareerExperience,
@@ -39,16 +41,28 @@ type ProjectModalTarget = {
 };
 
 export function CareerResumeForm() {
-  const [form, setForm] = useState<CareerFormState>({
-    career_summary: "",
-    self_pr: "",
-    experiences: [{ ...blankCareerExperience }],
-  });
-  const [resumeId, setResumeId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [modalTarget, setModalTarget] = useState<ProjectModalTarget | null>(null);
+  const {
+    form,
+    setForm,
+    documentId: resumeId,
+    saving,
+    error,
+    success,
+    setError,
+    setSuccess,
+    save,
+    saveButtonText,
+  } = useDocumentForm({
+    createInitialForm: createInitialCareerForm,
+    loadLatest: getLatestCareerResume,
+    createDocument: createCareerResume,
+    updateDocument: updateCareerResume,
+    buildPayload: buildCareerPayload,
+    mapResponseToForm: mapCareerResumeToForm,
+    successMessage: "職務経歴書を保存しました。PDF出力できます。",
+    beforeSave: assertBasicInfoReady,
+  });
 
   const { items: techStackOptions } = useTechnologyStacks();
   /** カテゴリごとの名称リストを生成する */
@@ -68,85 +82,6 @@ export function CareerResumeForm() {
       downloadMarkdown: downloadCareerResumeMarkdown,
       getPdfBlobUrl: getCareerResumePdfBlobUrl,
     });
-
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
-      try {
-        const latest = await getLatestCareerResume();
-        if (!active) return;
-        setResumeId(latest.id);
-        setForm({
-          career_summary: latest.career_summary,
-          self_pr: latest.self_pr,
-          experiences:
-            latest.experiences.length > 0
-              ? latest.experiences.map((exp) => {
-                const raw = exp as Record<string, unknown>;
-                /* 後方互換: 旧形式（projects直下）を clients にラップ */
-                const clients = (raw.clients as typeof exp.clients) ??
-                  (raw.projects
-                    ? [{ name: "", projects: raw.projects as typeof exp.clients[0]["projects"] }]
-                    : []);
-                return {
-                  ...exp,
-                  end_date: exp.end_date ?? "",
-                  clients:
-                    clients.length > 0
-                      ? clients.map((c) => ({
-                        ...c,
-                        has_client: (c as Record<string, unknown>).has_client !== false,
-                        projects:
-                          c.projects.length > 0
-                            ? (c.projects as Record<string, unknown>[]).map((p) => {
-                              /* 後方互換: 旧 scale → team, phases 未定義時の補完 */
-                              const patched = { ...p };
-                              if (!patched.team && patched.scale !== undefined) {
-                                patched.team = {
-                                  total: String(patched.scale || ""),
-                                  members: [],
-                                };
-                              }
-                              if (!patched.team) {
-                                patched.team = { total: "", members: [] };
-                              }
-                              /* members.count を文字列に変換（APIは数値で返す） */
-                              const team = patched.team as Record<string, unknown>;
-                              if (Array.isArray(team.members)) {
-                                team.members = (team.members as Record<string, unknown>[]).map(
-                                  (m) => ({ ...m, count: String(m.count ?? "") }),
-                                );
-                              }
-                              team.total = String(team.total ?? "");
-                              if (!patched.phases) {
-                                patched.phases = [];
-                              }
-                              return patched as unknown as CareerProjectForm;
-                            })
-                            : [{ ...blankCareerProject }],
-                      }))
-                      : [{ ...blankCareerClient }],
-                };
-              })
-              : [{ ...blankCareerExperience }],
-        });
-      } catch {
-        if (!active) return;
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const saveButtonText = useMemo(() => {
-    if (saving) {
-      return "保存中...";
-    }
-    return resumeId ? "更新する" : "保存する";
-  }, [resumeId, saving]);
 
   const onChangeField = (key: CareerTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -299,38 +234,7 @@ export function CareerResumeForm() {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      try {
-        const basicInfo = await getLatestBasicInfo();
-        if (!basicInfo.full_name || !basicInfo.record_date) {
-          setError("基本情報の氏名と記載日を先に登録してください。");
-          setSaving(false);
-          return;
-        }
-      } catch {
-        setError("基本情報の氏名と記載日を先に登録してください。");
-        setSaving(false);
-        return;
-      }
-
-      const payload = buildCareerPayload(form);
-      const saved = resumeId
-        ? await updateCareerResume(resumeId, payload)
-        : await createCareerResume(payload);
-
-      setResumeId(saved.id);
-      setSuccess("職務経歴書を保存しました。PDF出力できます。");
-    } catch (submitError) {
-      const message =
-        submitError instanceof Error ? submitError.message : "保存中に不明なエラーが発生しました。";
-      setError(message);
-    } finally {
-      setSaving(false);
-    }
+    await save();
   };
 
   /** モーダルに渡すプロジェクトデータを取得する */

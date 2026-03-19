@@ -26,8 +26,6 @@ from .routers import (  # noqa: E402
 )
 from .settings import get_cors_origins  # noqa: E402
 
-load_dotenv()
-
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
