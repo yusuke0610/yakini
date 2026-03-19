@@ -1,13 +1,14 @@
 #!/bin/sh
 
-blocked_ref="refs/heads/main"
-
 while read -r local_ref local_sha remote_ref remote_sha
 do
-  if [ "$remote_ref" = "$blocked_ref" ]; then
-    echo "Error: main ブランチへの直接 push は禁止です。Pull Request 経由で反映してください。"
-    exit 1
-  fi
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/stg|refs/heads/dev)
+      branch_name="${remote_ref#refs/heads/}"
+      echo "Error: $branch_name ブランチへの直接 push は禁止です。Pull Request 経由で反映してください。"
+      exit 1
+      ;;
+  esac
 done
 
 exit 0

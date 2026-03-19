@@ -162,15 +162,20 @@ cd backend
 ## CI (GitHub Actions)
 - ワークフロー: `.github/workflows/ci.yml`
 - 実行タイミング:
-  - `pull_request` (target: `main`, `frontend/**` または `backend/**` の変更時)
-  - `push` (`main`, `frontend/**` または `backend/**` の変更時)
+  - `pull_request` (target: `dev` / `stg` / `main`)
+  - `push` (`dev` / `stg` / `main`)
 - 実行内容:
-  - frontend: `npm run test`, `npm run build`
-  - backend: `python -m pytest -q tests` (working-directory: `backend`)
+  - `frontend/**` / `backend/**` / `.github/workflows/ci.yml` に変更がある場合:
+    - frontend: `npm run test`, `npm run build`
+    - backend: `python -m pytest -q tests` (working-directory: `backend`)
+  - 上記以外の変更のみの場合:
+    - `test` ジョブは軽量な no-op で成功を返す
 - 低コスト運用の工夫:
   - Linuxランナーのみ使用
   - Node/Python依存キャッシュを利用
+  - アプリ差分がない場合は重い処理をスキップ
   - `concurrency` で古い実行を自動キャンセル
+  - `dev` への `push` のみ CD を実行
 
 ## Terraform (GCS backend)
 - テンプレート配置: `infra/`
@@ -199,35 +204,39 @@ terraform apply
 ### Terraform検証CI
 - ワークフロー: `.github/workflows/terraform-ci.yml`
 - 実行タイミング:
-  - `pull_request` (target: `main`, `infra/**` 変更時)
-  - `push` (`main`, `infra/**` 変更時)
+  - `pull_request` (target: `dev` / `stg` / `main`)
+  - `push` (`dev` / `stg` / `main`)
 - 実行内容:
-  - `terraform fmt -check -recursive`
-  - `terraform init -backend=false`
-  - `terraform validate`
+  - `infra/**` または `.github/workflows/terraform-ci.yml` に変更がある場合:
+    - `terraform fmt -check -recursive`
+    - `terraform init -backend=false`
+    - `terraform validate`
+  - 上記以外の変更のみの場合:
+    - Terraform ジョブは軽量な no-op で成功を返す
 
-## main ブランチ保護
+## protected branches
 ### ローカル（ターミナル）での直コミット/直push防止
 ```bash
 ./scripts/setup-git-hooks.sh
 ```
 
-- `.githooks/pre-commit`: `main` への直接コミットを拒否
-- `.githooks/pre-push`: `main` への直接pushを拒否
+- `.githooks/pre-commit`: `dev` / `stg` / `main` への直接コミットを拒否
+- `.githooks/pre-push`: `dev` / `stg` / `main` への直接pushを拒否
 
 ### GitHub 側での強制保護（推奨）
 1. GitHub リポジトリの `Settings` -> `Branches` -> `Add branch protection rule`
-2. `Branch name pattern` に `main` を設定
+2. `Branch name pattern` に `dev` を設定
 3. 以下を有効化
    - `Require a pull request before merging`
    - `Require status checks to pass before merging`
-     - `test` (Application CI)
+     - `test`
      - `terraform-fmt`
      - `terraform-validate-dev`
      - `terraform-validate-stg`
      - `terraform-validate-prod`
-   - `Do not allow bypassing the above settings`（利用可能な場合）
-4. 保存
+4. `stg` と `main` についても同じ設定を追加
+5. `Do not allow bypassing the above settings`（利用可能な場合）を有効化
+6. 保存
 
 ---
 
