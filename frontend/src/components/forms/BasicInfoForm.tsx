@@ -1,8 +1,9 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent } from "react";
 
 import { createBasicInfo, getLatestBasicInfo, updateBasicInfo } from "../../api";
+import { createInitialBasicForm, mapBasicInfoToForm } from "../../formMappers";
+import { useDocumentForm } from "../../hooks/useDocumentForm";
 import { buildBasicPayload } from "../../payloadBuilders";
-import type { BasicFormState } from "../../payloadBuilders";
 import type { BasicQualification } from "../../types";
 import { blankBasicQualification } from "../../constants";
 import type { BasicTextFieldKey } from "../../formTypes";
@@ -11,57 +12,25 @@ import shared from "../../styles/shared.module.css";
 import { Combobox } from "./Combobox";
 
 export function BasicInfoForm() {
-  const [form, setForm] = useState<BasicFormState>({
-    full_name: "",
-    name_furigana: "",
-    record_date: "",
-    qualifications: [{ ...blankBasicQualification }],
-  });
-  const [basicInfoId, setBasicInfoId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
   const { items: qualificationOptions } = useQualifications();
   const qualificationNames = qualificationOptions.map((item) => item.name);
-
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
-      try {
-        const latest = await getLatestBasicInfo();
-        if (!active) {
-          return;
-        }
-        setBasicInfoId(latest.id);
-        setForm({
-          full_name: latest.full_name,
-          name_furigana: latest.name_furigana ?? "",
-          record_date: latest.record_date,
-          qualifications:
-            latest.qualifications.length > 0
-              ? latest.qualifications
-              : [{ ...blankBasicQualification }],
-        });
-      } catch {
-        if (!active) {
-          return;
-        }
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const saveButtonText = useMemo(() => {
-    if (saving) {
-      return "保存中...";
-    }
-    return basicInfoId ? "更新する" : "保存する";
-  }, [basicInfoId, saving]);
+  const {
+    form,
+    setForm,
+    saving,
+    error,
+    success,
+    save,
+    saveButtonText,
+  } = useDocumentForm({
+    createInitialForm: createInitialBasicForm,
+    loadLatest: getLatestBasicInfo,
+    createDocument: createBasicInfo,
+    updateDocument: updateBasicInfo,
+    buildPayload: buildBasicPayload,
+    mapResponseToForm: mapBasicInfoToForm,
+    successMessage: "基本情報を保存しました。",
+  });
 
   const onChangeField = (key: BasicTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -99,24 +68,7 @@ export function BasicInfoForm() {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const payload = buildBasicPayload(form);
-      const saved = basicInfoId
-        ? await updateBasicInfo(basicInfoId, payload)
-        : await createBasicInfo(payload);
-      setBasicInfoId(saved.id);
-      setSuccess("基本情報を保存しました。");
-    } catch (submitError) {
-      const message =
-        submitError instanceof Error ? submitError.message : "保存中に不明なエラーが発生しました。";
-      setError(message);
-    } finally {
-      setSaving(false);
-    }
+    await save();
   };
 
   return (

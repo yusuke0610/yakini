@@ -115,7 +115,7 @@ def update_technology_stack(
 ):
     """技術スタックマスタを更新する（admin認証必須）。"""
     updated = MTechnologyStackRepository(db).update(
-        item_id, body.name, body.sort_order, body.category
+        item_id, body.category, body.name, body.sort_order
     )
     if not updated:
         raise HTTPException(status_code=404, detail="技術スタックマスタが見つかりません")

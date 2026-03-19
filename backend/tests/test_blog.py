@@ -148,3 +148,37 @@ def test_upsert_articles_no_duplicates(client: TestClient, db_session) -> None:
 
     # 合計1件のまま
     assert repo.count_by_user() == 1
+
+
+def test_list_blog_articles_returns_platform_and_tags(
+    client: TestClient, db_session
+) -> None:
+    auth_header(client)
+
+    with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True):
+        resp = client.post("/api/blog/accounts", json={
+            "platform": "zenn",
+            "username": "testuser",
+        })
+    account_id = resp.json()["id"]
+
+    from app.repositories import BlogArticleRepository, UserRepository
+    user = UserRepository(db_session).get_by_username("testuser")
+    repo = BlogArticleRepository(db_session, user.id)
+    repo.upsert_many([{
+        "account_id": account_id,
+        "platform": "zenn",
+        "external_id": "slug-2",
+        "title": "記事2",
+        "url": "https://zenn.dev/testuser/articles/slug-2",
+        "published_at": "2026-03-02",
+        "likes_count": 5,
+        "summary": "要約",
+        "tags": ["Python", "FastAPI"],
+    }])
+
+    resp = client.get("/api/blog/articles")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data[0]["platform"] == "zenn"
+    assert data[0]["tags"] == ["Python", "FastAPI"]
