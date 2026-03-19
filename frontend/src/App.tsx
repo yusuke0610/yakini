@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { setOnUnauthorized, githubCallback, verifyOAuthState, logout } from "./api";
+import { getCurrentUser, logout, setOnUnauthorized } from "./api";
 import type { PageKey } from "./formTypes";
 import { useTheme } from "./hooks/useTheme";
 import { LoginForm } from "./components/auth/LoginForm";
@@ -33,12 +33,8 @@ export default function App() {
     }
     return null;
   });
-
+  const [authLoading, setAuthLoading] = useState(user === null);
   const [githubError, setGithubError] = useState<string | null>(null);
-  const [githubLoading, setGithubLoading] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return !!params.get("code") && !user;
-  });
   const [page, setPage] = useState<PageKey>(() => {
     const saved = sessionStorage.getItem("current_page");
     if (saved === "career" || saved === "Resume" || saved === "blog") return saved;
@@ -57,14 +53,30 @@ export default function App() {
     sessionStorage.setItem("auth_mode", authMode);
   }, [authMode]);
 
+  const clearAuthenticatedUser = () => {
+    sessionStorage.removeItem("auth_user");
+    sessionStorage.removeItem("current_page");
+    setUser(null);
+  };
+
   /**
    * ログイン成功時の処理。
    */
-  const handleLogin = (username: string, isGitHubUser: boolean) => {
+  const setAuthenticatedUser = (
+    username: string,
+    isGitHubUser: boolean,
+    resetPage: boolean,
+  ) => {
     const authUser: AuthUser = { username, isGitHubUser };
     sessionStorage.setItem("auth_user", JSON.stringify(authUser));
     setUser(authUser);
-    setPage("basic");
+    if (resetPage) {
+      setPage("basic");
+    }
+  };
+
+  const handleLogin = (username: string, isGitHubUser: boolean) => {
+    setAuthenticatedUser(username, isGitHubUser, true);
   };
 
   /**
@@ -72,46 +84,76 @@ export default function App() {
    */
   const handleLogout = () => {
     logout();
-    sessionStorage.removeItem("auth_user");
-    sessionStorage.removeItem("current_page");
-    setUser(null);
+    clearAuthenticatedUser();
     setAuthMode("login");
   };
 
   useEffect(() => {
     setOnUnauthorized(() => {
       sessionStorage.removeItem("auth_user");
+      sessionStorage.removeItem("current_page");
       setUser(null);
     });
+  }, []);
 
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const state = params.get("state");
-    if (code && state && !user) {
+    const error = params.get("github_error");
+    if (error) {
       window.history.replaceState({}, "", window.location.pathname);
-      if (!verifyOAuthState(state)) {
-        setTimeout(() => setGithubError("OAuth state の検証に失敗しました。もう一度お試しください。"), 0);
-        return;
-      }
-      setTimeout(() => setGithubLoading(true), 0);
-      githubCallback(code, state)
-        .then((result) => {
-          handleLogin(result.username, result.is_github_user);
-        })
-        .catch(() => {
-          setGithubError("GitHub認証に失敗しました。もう一度お試しください。");
-        })
-        .finally(() => {
-          setGithubLoading(false);
-        });
+      setGithubError(error);
     }
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    if (user) {
+      setAuthLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    (async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (!active || !currentUser) return;
+        const authUser: AuthUser = {
+          username: currentUser.username,
+          isGitHubUser: currentUser.is_github_user,
+        };
+        sessionStorage.setItem("auth_user", JSON.stringify(authUser));
+        setUser(authUser);
+      } catch {
+        if (!active) return;
+      } finally {
+        if (active) {
+          setAuthLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  if (authLoading) {
+    return (
+      <div className={shared.page}>
+        <main className={shared.container}>
+          <p>認証状態を確認中...</p>
+        </main>
+      </div>
+    );
+  }
 
   if (!user) {
     if (authMode === "register") {
       return <RegisterForm onLogin={handleLogin} onSwitchToLogin={() => setAuthMode("login")} />;
     }
-    return <LoginForm onLogin={handleLogin} onSwitchToRegister={() => setAuthMode("register")} githubError={githubError} githubLoading={githubLoading} />;
+    return <LoginForm onLogin={handleLogin} onSwitchToRegister={() => setAuthMode("register")} githubError={githubError} />;
   }
 
   return (

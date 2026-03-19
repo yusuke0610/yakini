@@ -1,5 +1,24 @@
 import os
 from pathlib import Path
+from urllib.parse import urlparse
+
+
+def _parse_bool_env(name: str) -> bool | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"{name} must be a boolean value")
+
+
+def _is_loopback_origin(origin: str) -> bool:
+    parsed = urlparse(origin)
+    return parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}
 
 
 def get_sqlite_db_path() -> Path:
@@ -21,6 +40,24 @@ def get_cors_origins() -> list[str]:
         for origin in cors_origins.split(",")
         if origin.strip()
     ]
+
+
+def get_cookie_secure() -> bool:
+    configured = _parse_bool_env("COOKIE_SECURE")
+    if configured is not None:
+        return configured
+
+    origins = get_cors_origins()
+    if origins and all(_is_loopback_origin(origin) for origin in origins):
+        return False
+    return True
+
+
+def get_cookie_samesite() -> str:
+    value = os.getenv("COOKIE_SAMESITE", "lax").strip().lower()
+    if value not in {"lax", "strict", "none"}:
+        raise RuntimeError("COOKIE_SAMESITE must be one of: lax, strict, none")
+    return value
 
 
 def get_gcs_bucket_name() -> str:

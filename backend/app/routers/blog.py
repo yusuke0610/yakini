@@ -11,12 +11,13 @@ POST   /api/blog/summarize         — AI サマリ生成
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..database import get_db
+from ..dependencies import limiter
 from ..models import BlogSummaryCache, User
 from ..repositories import BlogAccountRepository, BlogArticleRepository
 from ..schemas import (
@@ -49,7 +50,9 @@ def list_accounts(
 
 
 @router.post("/accounts", response_model=BlogAccountResponse, status_code=201)
+@limiter.limit("10/minute")
 async def add_account(
+    request: Request,
     body: BlogAccountCreate,
     user: User = Depends(get_current_user),
     db=Depends(get_db),
@@ -87,9 +90,6 @@ def delete_account(
     db=Depends(get_db),
 ):
     """連携アカウントを解除する。紐づく記事も削除される。"""
-    article_repo = BlogArticleRepository(db, user.id)
-    article_repo.delete_by_account(account_id)
-
     account_repo = BlogAccountRepository(db, user.id)
     if not account_repo.delete(account_id):
         raise HTTPException(status_code=404, detail="アカウントが見つかりません")
@@ -107,7 +107,9 @@ def list_articles(
 
 
 @router.post("/accounts/{account_id}/sync", response_model=BlogSyncResponse)
+@limiter.limit("10/minute")
 async def sync_account(
+    request: Request,
     account_id: str,
     user: User = Depends(get_current_user),
     db=Depends(get_db),
@@ -156,7 +158,9 @@ def get_summary_cache(
 
 
 @router.post("/summarize", response_model=BlogSummaryResponse)
+@limiter.limit("5/minute")
 async def summarize_blog(
+    request: Request,
     body: BlogSummaryRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
