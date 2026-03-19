@@ -25,7 +25,10 @@ def create_rirekisho(
     current_user: User = Depends(get_current_user),
 ) -> RirekishoResponse:
     repository = RirekishoRepository(db, current_user.id)
-    return repository.create(payload.model_dump())
+    try:
+        return repository.create(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/latest", response_model=RirekishoResponse)

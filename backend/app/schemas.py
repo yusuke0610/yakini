@@ -51,6 +51,8 @@ class BasicQualification(BaseModel):
     acquired_date: str = Field(min_length=1, max_length=30)
     name: str = Field(min_length=1, max_length=120)
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class BasicInfoBase(BaseModel):
     full_name: str = Field(min_length=1, max_length=120)
@@ -83,17 +85,23 @@ class TechnologyStackItem(BaseModel):
     ]
     name: str = Field(min_length=1, max_length=120)
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class TeamMember(BaseModel):
     """体制の役割ごとの人数。"""
     role: str = Field(max_length=60)
     count: int = Field(ge=0)
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class ProjectTeam(BaseModel):
     """プロジェクト体制（全体人数 + 役割別内訳）。"""
     total: str = Field(max_length=60, default="")
     members: list[TeamMember] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Project(BaseModel):
@@ -109,6 +117,8 @@ class Project(BaseModel):
     team: ProjectTeam = Field(default_factory=ProjectTeam)
     technology_stacks: list[TechnologyStackItem] = Field(default_factory=list)
     phases: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
 
     @model_validator(mode="before")
     @classmethod
@@ -128,6 +138,8 @@ class Client(BaseModel):
     has_client: bool = True
     projects: list[Project] = Field(default_factory=list)
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class Experience(BaseModel):
     company: str = Field(min_length=1, max_length=120)
@@ -138,6 +150,8 @@ class Experience(BaseModel):
     employee_count: str = Field(max_length=60, default="")
     capital: str = Field(max_length=120, default="")
     clients: list[Client] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
 
     @model_validator(mode="before")
     @classmethod
@@ -187,6 +201,8 @@ class ResumeResponse(ResumeBase):
 class RirekishoHistory(BaseModel):
     date: str = Field(min_length=1, max_length=30)
     name: str = Field(min_length=1, max_length=300)
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RirekishoBase(BaseModel):
@@ -262,9 +278,20 @@ class BlogSyncResponse(BaseModel):
     total_count: int
 
 
+class BlogSummaryArticle(BaseModel):
+    """ブログ AI 分析に渡す記事情報。"""
+    platform: Literal["zenn", "note"]
+    title: str = Field(min_length=1, max_length=500)
+    url: str = Field(min_length=1, max_length=1000)
+    published_at: str | None = Field(default=None, max_length=30)
+    likes_count: int = Field(default=0, ge=0, le=1_000_000)
+    summary: str | None = Field(default=None, max_length=1000)
+    tags: list[str] = Field(default_factory=list, max_length=20)
+
+
 class BlogSummaryRequest(BaseModel):
     """ブログ記事 AI 分析リクエスト。"""
-    articles: list[BlogArticleResponse]
+    articles: list[BlogSummaryArticle] = Field(min_length=1, max_length=50)
 
 
 class BlogSummaryResponse(BaseModel):

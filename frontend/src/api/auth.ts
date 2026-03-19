@@ -1,6 +1,7 @@
 import { request, API_BASE_URL } from "./client";
 
 type AuthResponse = { username: string; is_github_user: boolean };
+type GitHubLoginUrlResponse = { authorization_url: string };
 
 export function login(email: string, password: string): Promise<AuthResponse> {
   return request("/auth/login", {
@@ -27,26 +28,35 @@ export async function logout(): Promise<void> {
   });
 }
 
-export function getGitHubOAuthUrl(): string {
-  const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID ?? "";
-  const redirectUri = `${window.location.origin}/`;
-  const state = crypto.randomUUID();
-  sessionStorage.setItem("github_oauth_state", state);
-  return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read:user&state=${encodeURIComponent(state)}`;
-}
-
-export function verifyOAuthState(state: string): boolean {
-  const saved = sessionStorage.getItem("github_oauth_state");
-  sessionStorage.removeItem("github_oauth_state");
-  return saved === state;
-}
-
-export function githubCallback(
-  code: string,
-  state: string,
-): Promise<AuthResponse> {
-  return request("/auth/github/callback", {
-    method: "POST",
-    body: JSON.stringify({ code, state }),
+export async function getCurrentUser(): Promise<AuthResponse | null> {
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    credentials: "include",
   });
+  if (response.status === 401) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error("ログイン状態の確認に失敗しました。");
+  }
+  return (await response.json()) as AuthResponse;
+}
+
+export async function getGitHubLoginUrl(): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/auth/github/login-url`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    let message = "GitHub認証の開始に失敗しました。";
+    try {
+      const body = await response.json();
+      if (typeof body.detail === "string") {
+        message = body.detail;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+  const result = (await response.json()) as GitHubLoginUrlResponse;
+  return result.authorization_url;
 }

@@ -65,6 +65,7 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
         capital: "  1億円  ",
         clients: [
           {
+            has_client: true,
             name: "  クライアントA  ",
             projects: [
               {
@@ -88,11 +89,11 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
                 phases: ["要件定義", "開発", ""],
                 technology_stacks: [
                   {
-                    category: "フレームワーク",
+                    category: "framework",
                     name: "  FastAPI  "
                   },
                   {
-                    category: "言語",
+                    category: "language",
                     name: "   "
                   }
                 ]
@@ -116,7 +117,7 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
   assert.equal(payload.experiences[0].clients[0].projects[0].role, "メンバー");
   assert.deepEqual(payload.experiences[0].clients[0].projects[0].technology_stacks, [
     {
-      category: "フレームワーク",
+      category: "framework",
       name: "FastAPI"
     }
   ]);
@@ -150,6 +151,8 @@ test("buildResumePayload throws when required fields are empty", () => {
     () =>
       buildResumePayload({
         gender: "male",
+        birthday: "",
+        postal_code: "",
         prefecture: "",
         address: "渋谷区",
         address_furigana: "",

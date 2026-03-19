@@ -9,12 +9,14 @@ GET  /api/intelligence/cache — 保存済みの分析結果を取得。
 
 import asyncio
 import logging
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..database import get_db
+from ..dependencies import limiter
 from ..encryption import decrypt_field
 from ..models import GitHubAnalysisCache, User
 from ..schemas_intelligence import (
@@ -68,8 +70,10 @@ def get_cache(
 
 
 @router.post("/analyze", response_model=AnalysisResponse)
+@limiter.limit("5/minute")
 async def analyze(
-    request: AnalyzeRequest,
+    request: Request,
+    payload: AnalyzeRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -96,7 +100,7 @@ async def analyze(
                     if user.github_token
                     else None
                 ),
-                include_forks=request.include_forks,
+                include_forks=payload.include_forks,
             ),
             timeout=120.0,
         )
@@ -141,8 +145,10 @@ async def analyze(
 
 
 @router.post("/summarize", response_model=SummarizeResponse)
+@limiter.limit("10/minute")
 async def summarize(
-    request: SummarizeRequest,
+    request: Request,
+    payload: SummarizeRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -156,7 +162,7 @@ async def summarize(
     if not available:
         return SummarizeResponse(summary="", available=False)
 
-    analysis_dict = request.analysis.model_dump()
+    analysis_dict = payload.analysis.model_dump()
     summary = await summarize_analysis(analysis_dict)
 
     # AI要約をDBに保存
@@ -168,8 +174,10 @@ async def summarize(
 
 
 @router.post("/skill-activity", response_model=SkillActivityResponse)
+@limiter.limit("10/minute")
 async def skill_activity(
-    interval: str = "month",
+    request: Request,
+    interval: Literal["month", "year"] = "month",
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
