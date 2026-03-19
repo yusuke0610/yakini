@@ -33,3 +33,15 @@ variable "cors_origins" {
   type        = string
   default     = "https://storage.googleapis.com"
 }
+
+variable "llm_provider" {
+  description = "LLM バックエンド (ollama / vertex)。"
+  type        = string
+  default     = "vertex"
+}
+
+variable "vertex_model" {
+  description = "Vertex AI で使用するモデル名。"
+  type        = string
+  default     = "gemini-2.0-flash"
+}

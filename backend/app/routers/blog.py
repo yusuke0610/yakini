@@ -29,7 +29,7 @@ from ..schemas import (
 )
 from ..services.blog_collector import fetch_articles, verify_user_exists
 from ..services.intelligence.llm_summarizer import (
-    check_ollama_available,
+    check_llm_available,
     summarize_blog_articles,
 )
 
@@ -162,7 +162,7 @@ async def summarize_blog(
     db: Session = Depends(get_db),
 ):
     """ブログ記事の AI サマリを生成する（Ollama）。結果はDBに保存する。"""
-    available = await check_ollama_available()
+    available = await check_llm_available()
     if not available:
         return BlogSummaryResponse(summary="", available=False)
 
