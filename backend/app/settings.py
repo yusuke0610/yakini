@@ -48,3 +48,15 @@ def get_github_client_id() -> str:
 
 def get_github_client_secret() -> str:
     return os.getenv("GITHUB_CLIENT_SECRET", "").strip()
+
+
+def get_llm_provider() -> str:
+    return os.environ.get("LLM_PROVIDER", "ollama")
+
+
+def get_vertex_project_id() -> str:
+    return os.environ.get("VERTEX_PROJECT_ID", "")
+
+
+def get_vertex_location() -> str:
+    return os.environ.get("VERTEX_LOCATION", "asia-northeast1")

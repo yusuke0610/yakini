@@ -64,6 +64,23 @@ resource "google_cloud_run_v2_service" "app" {
         value = var.cors_origins
       }
 
+      env {
+        name  = "LLM_PROVIDER"
+        value = var.llm_provider
+      }
+      env {
+        name  = "VERTEX_PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "VERTEX_LOCATION"
+        value = var.region
+      }
+      env {
+        name  = "VERTEX_MODEL"
+        value = var.vertex_model
+      }
+
       dynamic "env" {
         for_each = {
           SECRET_KEY           = "secret-key"
