@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class IntelligenceResult:
     """パイプラインの実行結果を保持するデータクラス。"""
+
     username: str
     repos_analyzed: int
     unique_skills: int
@@ -48,7 +49,9 @@ async def run_pipeline(
 
     # ステージ 1: GitHub データを収集
     repos: List[RepoData] = await collect_repos(
-        username, token=token, include_forks=include_forks,
+        username,
+        token=token,
+        include_forks=include_forks,
     )
 
     # 全リポジトリの言語バイト数を集計

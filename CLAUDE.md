@@ -7,8 +7,9 @@
 - **エラーメッセージ**: HTTPException の `detail` 等、ユーザーに返すエラーメッセージはすべて**日本語**で記述すること。
 
 ### Python (backend)
-- PEP 8 / flake8 に準拠すること
-- flake8 の設定は `backend/setup.cfg` に定義済み（max-line-length=120）
+- flake8 に準拠すること
+- PEP8を守るな、PEP8を理解した上で抽象化しろ
+- flake8 の設定は `backend/setup.cfg` に定義済み
 - コード変更後は `cd backend && .venv/bin/python -m flake8` を実行し、違反がないことを確認すること
 - 未使用の import を残さないこと（F401）
 

@@ -68,9 +68,7 @@ def test_decode_photo_valid() -> None:
         b"\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00"
         b"\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82"
     )
-    data_url = "data:image/png;base64," + base64.b64encode(
-        png_bytes
-    ).decode()
+    data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
     result = _decode_photo(data_url)
     assert result is not None
     assert result.read()[:4] == b"\x89PNG"
@@ -117,14 +115,8 @@ def test_rirekisho_pdf_with_education_and_work() -> None:
 
 def test_rirekisho_pdf_overflow_rows() -> None:
     """Many education/work rows should overflow to page 2."""
-    educations = [
-        {"date": f"20{10 + i}-04", "name": f"学校{i}"}
-        for i in range(15)
-    ]
-    work_histories = [
-        {"date": f"20{25 + i}-04", "name": f"会社{i}"}
-        for i in range(15)
-    ]
+    educations = [{"date": f"20{10 + i}-04", "name": f"学校{i}"} for i in range(15)]
+    work_histories = [{"date": f"20{25 + i}-04", "name": f"会社{i}"} for i in range(15)]
     payload = {
         "full_name": "テスト 太郎",
         "record_date": "2026-03-12",

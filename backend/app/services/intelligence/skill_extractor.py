@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExtractedSkill:
     """単一のリポジトリから抽出されたスキル。"""
+
     skill_name: str
     category: str
     source: str  # "language", "topic", "description" など
@@ -66,7 +67,9 @@ def extract_skills(repos: List[RepoData]) -> ExtractionResult:
 
     logger.info(
         "Extracted %d skill observations (%d unique) from %d repos",
-        len(all_skills), len(unique), len(repos),
+        len(all_skills),
+        len(unique),
+        len(repos),
     )
     return ExtractionResult(
         skills=all_skills,
@@ -85,15 +88,17 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
         skill_name = LANGUAGE_TO_SKILL.get(lang)
         if skill_name and skill_name not in seen:
             seen.add(skill_name)
-            skills.append(ExtractedSkill(
-                skill_name=skill_name,
-                category=get_skill_category(skill_name),
-                source="language",
-                repo_name=repo.name,
-                repo_created_at=repo.created_at,
-                repo_pushed_at=repo.pushed_at,
-                language_bytes=byte_count,
-            ))
+            skills.append(
+                ExtractedSkill(
+                    skill_name=skill_name,
+                    category=get_skill_category(skill_name),
+                    source="language",
+                    repo_name=repo.name,
+                    repo_created_at=repo.created_at,
+                    repo_pushed_at=repo.pushed_at,
+                    language_bytes=byte_count,
+                )
+            )
 
     # 2. トピック
     for topic in repo.topics:
@@ -102,14 +107,16 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
         for skill_name in matched_skills:
             if skill_name not in seen:
                 seen.add(skill_name)
-                skills.append(ExtractedSkill(
-                    skill_name=skill_name,
-                    category=get_skill_category(skill_name),
-                    source="topic",
-                    repo_name=repo.name,
-                    repo_created_at=repo.created_at,
-                    repo_pushed_at=repo.pushed_at,
-                ))
+                skills.append(
+                    ExtractedSkill(
+                        skill_name=skill_name,
+                        category=get_skill_category(skill_name),
+                        source="topic",
+                        repo_name=repo.name,
+                        repo_created_at=repo.created_at,
+                        repo_pushed_at=repo.pushed_at,
+                    )
+                )
 
     # 3. 説明文のキーワード
     if repo.description:
@@ -119,40 +126,46 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
                 for skill_name in matched_skills:
                     if skill_name not in seen:
                         seen.add(skill_name)
-                        skills.append(ExtractedSkill(
-                            skill_name=skill_name,
-                            category=get_skill_category(skill_name),
-                            source="description",
-                            repo_name=repo.name,
-                            repo_created_at=repo.created_at,
-                            repo_pushed_at=repo.pushed_at,
-                        ))
+                        skills.append(
+                            ExtractedSkill(
+                                skill_name=skill_name,
+                                category=get_skill_category(skill_name),
+                                source="description",
+                                repo_name=repo.name,
+                                repo_created_at=repo.created_at,
+                                repo_pushed_at=repo.pushed_at,
+                            )
+                        )
 
     # 4. 依存関係 (requirements.txt, package.json などから解析)
     for dep in repo.dependencies:
         framework = DEPENDENCY_TO_FRAMEWORK.get(dep)
         if framework and framework not in seen:
             seen.add(framework)
-            skills.append(ExtractedSkill(
-                skill_name=framework,
-                category=get_skill_category(framework),
-                source="dependency",
-                repo_name=repo.name,
-                repo_created_at=repo.created_at,
-                repo_pushed_at=repo.pushed_at,
-            ))
+            skills.append(
+                ExtractedSkill(
+                    skill_name=framework,
+                    category=get_skill_category(framework),
+                    source="dependency",
+                    repo_name=repo.name,
+                    repo_created_at=repo.created_at,
+                    repo_pushed_at=repo.pushed_at,
+                )
+            )
 
     # 5. ルートファイル / ディレクトリ検出
     for framework in repo.detected_frameworks:
         if framework not in seen:
             seen.add(framework)
-            skills.append(ExtractedSkill(
-                skill_name=framework,
-                category=get_skill_category(framework),
-                source="root_file",
-                repo_name=repo.name,
-                repo_created_at=repo.created_at,
-                repo_pushed_at=repo.pushed_at,
-            ))
+            skills.append(
+                ExtractedSkill(
+                    skill_name=framework,
+                    category=get_skill_category(framework),
+                    source="root_file",
+                    repo_name=repo.name,
+                    repo_created_at=repo.created_at,
+                    repo_pushed_at=repo.pushed_at,
+                )
+            )
 
     return skills

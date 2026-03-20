@@ -26,103 +26,178 @@ class RoleDefinition:
 CAREER_ROLES: Dict[str, RoleDefinition] = {
     "Backend Engineer": RoleDefinition(
         role_name="Backend Engineer",
-        required_skills=["Python", "Go", "Java", "FastAPI", "Django", "Flask",
-                         "Express", "Spring Boot", "Gin", "Rails"],
+        required_skills=[
+            "Python",
+            "Go",
+            "Java",
+            "FastAPI",
+            "Django",
+            "Flask",
+            "Express",
+            "Spring Boot",
+            "Gin",
+            "Rails",
+        ],
         required_categories=["language", "backend_framework"],
         next_roles=[
-            "Senior Backend Engineer", "Full-Stack Developer",
-            "Platform Engineer", "DevOps Engineer", "Tech Lead",
+            "Senior Backend Engineer",
+            "Full-Stack Developer",
+            "Platform Engineer",
+            "DevOps Engineer",
+            "Tech Lead",
         ],
         seniority=2,
     ),
     "Frontend Engineer": RoleDefinition(
         role_name="Frontend Engineer",
-        required_skills=["JavaScript", "TypeScript", "React", "Vue", "Angular",
-                         "Svelte", "Next.js"],
-        required_categories=["language", "frontend_framework"],
-        next_roles=[
-            "Senior Frontend Engineer", "Full-Stack Developer", "Tech Lead"
+        required_skills=[
+            "JavaScript",
+            "TypeScript",
+            "React",
+            "Vue",
+            "Angular",
+            "Svelte",
+            "Next.js",
         ],
+        required_categories=["language", "frontend_framework"],
+        next_roles=["Senior Frontend Engineer", "Full-Stack Developer", "Tech Lead"],
         seniority=2,
     ),
     "Full-Stack Developer": RoleDefinition(
         role_name="Full-Stack Developer",
-        required_skills=["JavaScript", "TypeScript", "React", "Vue", "Angular",
-                         "Python", "Go", "FastAPI", "Django", "Express",
-                         "Next.js"],
-        required_categories=[
-            "language", "frontend_framework", "backend_framework"
+        required_skills=[
+            "JavaScript",
+            "TypeScript",
+            "React",
+            "Vue",
+            "Angular",
+            "Python",
+            "Go",
+            "FastAPI",
+            "Django",
+            "Express",
+            "Next.js",
         ],
-        next_roles=[
-            "Senior Full-Stack Developer", "Tech Lead", "Platform Engineer"
-        ],
+        required_categories=["language", "frontend_framework", "backend_framework"],
+        next_roles=["Senior Full-Stack Developer", "Tech Lead", "Platform Engineer"],
         seniority=2,
     ),
     "Mobile Developer": RoleDefinition(
         role_name="Mobile Developer",
-        required_skills=["Swift", "Kotlin", "Dart", "React Native", "Flutter",
-                         "SwiftUI", "Jetpack Compose"],
+        required_skills=[
+            "Swift",
+            "Kotlin",
+            "Dart",
+            "React Native",
+            "Flutter",
+            "SwiftUI",
+            "Jetpack Compose",
+        ],
         required_categories=["language", "mobile"],
         next_roles=["Senior Mobile Developer", "Tech Lead"],
         seniority=2,
     ),
     "DevOps Engineer": RoleDefinition(
         role_name="DevOps Engineer",
-        required_skills=["Docker", "Kubernetes", "GitHub Actions", "GitLab CI",
-                         "Jenkins", "Terraform", "Ansible", "Shell"],
+        required_skills=[
+            "Docker",
+            "Kubernetes",
+            "GitHub Actions",
+            "GitLab CI",
+            "Jenkins",
+            "Terraform",
+            "Ansible",
+            "Shell",
+        ],
         required_categories=["infrastructure", "cicd"],
         next_roles=["Platform Engineer", "SRE", "Cloud Architect"],
         seniority=2,
     ),
     "Platform Engineer": RoleDefinition(
         role_name="Platform Engineer",
-        required_skills=["Docker", "Kubernetes", "Terraform", "AWS", "GCP",
-                         "Azure", "Helm", "ArgoCD"],
+        required_skills=[
+            "Docker",
+            "Kubernetes",
+            "Terraform",
+            "AWS",
+            "GCP",
+            "Azure",
+            "Helm",
+            "ArgoCD",
+        ],
         required_categories=["infrastructure", "cloud"],
         next_roles=["Cloud Architect", "SRE", "Engineering Manager"],
         seniority=3,
     ),
     "Data Engineer": RoleDefinition(
         role_name="Data Engineer",
-        required_skills=["Python", "SQL", "Apache Spark", "Apache Kafka",
-                         "Airflow", "dbt", "BigQuery", "Snowflake",
-                         "Redshift"],
+        required_skills=[
+            "Python",
+            "SQL",
+            "Apache Spark",
+            "Apache Kafka",
+            "Airflow",
+            "dbt",
+            "BigQuery",
+            "Snowflake",
+            "Redshift",
+        ],
         required_categories=["language", "data_engineering"],
         next_roles=["Senior Data Engineer", "ML Engineer", "Data Architect"],
         seniority=2,
     ),
     "ML Engineer": RoleDefinition(
         role_name="ML Engineer",
-        required_skills=["Python", "TensorFlow", "PyTorch", "scikit-learn",
-                         "Hugging Face", "MLflow", "Pandas", "NumPy",
-                         "Jupyter"],
+        required_skills=[
+            "Python",
+            "TensorFlow",
+            "PyTorch",
+            "scikit-learn",
+            "Hugging Face",
+            "MLflow",
+            "Pandas",
+            "NumPy",
+            "Jupyter",
+        ],
         required_categories=["language", "ml"],
         next_roles=["Senior ML Engineer", "AI Architect", "Research Engineer"],
         seniority=3,
     ),
     "SRE": RoleDefinition(
         role_name="SRE",
-        required_skills=["Docker", "Kubernetes", "Prometheus", "Grafana",
-                         "Terraform", "AWS", "GCP", "Shell",
-                         "OpenTelemetry"],
-        required_categories=["infrastructure", "monitoring", "cloud"],
-        next_roles=[
-            "Cloud Architect", "Platform Engineer", "Engineering Manager"
+        required_skills=[
+            "Docker",
+            "Kubernetes",
+            "Prometheus",
+            "Grafana",
+            "Terraform",
+            "AWS",
+            "GCP",
+            "Shell",
+            "OpenTelemetry",
         ],
+        required_categories=["infrastructure", "monitoring", "cloud"],
+        next_roles=["Cloud Architect", "Platform Engineer", "Engineering Manager"],
         seniority=3,
     ),
     "Security Engineer": RoleDefinition(
         role_name="Security Engineer",
-        required_skills=["OAuth", "JWT", "OpenID Connect", "Vault",
-                         "Docker", "Linux", "Shell"],
+        required_skills=[
+            "OAuth",
+            "JWT",
+            "OpenID Connect",
+            "Vault",
+            "Docker",
+            "Linux",
+            "Shell",
+        ],
         required_categories=["security"],
         next_roles=["Senior Security Engineer", "Cloud Architect"],
         seniority=3,
     ),
     "Cloud Architect": RoleDefinition(
         role_name="Cloud Architect",
-        required_skills=["AWS", "GCP", "Azure", "Terraform", "Kubernetes",
-                         "Docker"],
+        required_skills=["AWS", "GCP", "Azure", "Terraform", "Kubernetes", "Docker"],
         required_categories=["cloud", "infrastructure"],
         next_roles=["Engineering Manager", "CTO"],
         seniority=4,
@@ -136,8 +211,16 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
     ),
     "Senior Backend Engineer": RoleDefinition(
         role_name="Senior Backend Engineer",
-        required_skills=["Python", "Go", "Java", "FastAPI", "Django",
-                         "Docker", "PostgreSQL", "Redis"],
+        required_skills=[
+            "Python",
+            "Go",
+            "Java",
+            "FastAPI",
+            "Django",
+            "Docker",
+            "PostgreSQL",
+            "Redis",
+        ],
         required_categories=["language", "backend_framework", "database"],
         next_roles=["Tech Lead", "Platform Engineer", "Staff Engineer"],
         seniority=3,
@@ -151,10 +234,12 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
     ),
     "Senior Full-Stack Developer": RoleDefinition(
         role_name="Senior Full-Stack Developer",
-        required_skills=["TypeScript", "React", "Python", "Docker",
-                         "PostgreSQL"],
+        required_skills=["TypeScript", "React", "Python", "Docker", "PostgreSQL"],
         required_categories=[
-            "language", "frontend_framework", "backend_framework", "database"
+            "language",
+            "frontend_framework",
+            "backend_framework",
+            "database",
         ],
         next_roles=["Tech Lead", "Staff Engineer", "Engineering Manager"],
         seniority=3,
@@ -168,8 +253,7 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
     ),
     "Senior Data Engineer": RoleDefinition(
         role_name="Senior Data Engineer",
-        required_skills=["Python", "Apache Spark", "Airflow", "BigQuery",
-                         "Snowflake"],
+        required_skills=["Python", "Apache Spark", "Airflow", "BigQuery", "Snowflake"],
         required_categories=["language", "data_engineering"],
         next_roles=["Data Architect", "ML Engineer", "Engineering Manager"],
         seniority=3,
@@ -178,9 +262,7 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
         role_name="Senior ML Engineer",
         required_skills=["Python", "PyTorch", "TensorFlow", "MLflow"],
         required_categories=["language", "ml"],
-        next_roles=[
-            "AI Architect", "Research Engineer", "Engineering Manager"
-        ],
+        next_roles=["AI Architect", "Research Engineer", "Engineering Manager"],
         seniority=4,
     ),
     "Senior Security Engineer": RoleDefinition(
@@ -199,8 +281,13 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
     ),
     "Data Architect": RoleDefinition(
         role_name="Data Architect",
-        required_skills=["SQL", "BigQuery", "Snowflake", "Apache Spark",
-                         "Apache Kafka"],
+        required_skills=[
+            "SQL",
+            "BigQuery",
+            "Snowflake",
+            "Apache Spark",
+            "Apache Kafka",
+        ],
         required_categories=["data_engineering", "cloud"],
         next_roles=["Engineering Manager", "CTO"],
         seniority=4,
@@ -214,8 +301,7 @@ CAREER_ROLES: Dict[str, RoleDefinition] = {
     ),
     "Research Engineer": RoleDefinition(
         role_name="Research Engineer",
-        required_skills=["Python", "PyTorch", "TensorFlow", "Jupyter",
-                         "NumPy"],
+        required_skills=["Python", "PyTorch", "TensorFlow", "Jupyter", "NumPy"],
         required_categories=["ml"],
         next_roles=["AI Architect", "Senior ML Engineer"],
         seniority=4,
@@ -247,10 +333,7 @@ def get_all_role_names() -> List[str]:
 
 def get_entry_roles() -> List[str]:
     """シニアリティレベル 2 のロール（典型的な開始点）。"""
-    return [
-        name for name, role in CAREER_ROLES.items()
-        if role.seniority == 2
-    ]
+    return [name for name, role in CAREER_ROLES.items() if role.seniority == 2]
 
 
 @dataclass
@@ -286,12 +369,14 @@ def match_skills_to_roles(
         score = 0.6 * skill_score + 0.4 * cat_score
 
         if score > 0:
-            matches.append(RoleMatch(
-                role_name=name,
-                skill_overlap=overlap,
-                category_coverage=cat_score,
-                match_score=round(score, 3),
-            ))
+            matches.append(
+                RoleMatch(
+                    role_name=name,
+                    skill_overlap=overlap,
+                    category_coverage=cat_score,
+                    match_score=round(score, 3),
+                )
+            )
 
     matches.sort(key=lambda m: m.match_score, reverse=True)
     return matches

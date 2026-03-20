@@ -8,11 +8,25 @@ from sqlalchemy.orm.attributes import set_committed_value
 from .date_utils import parse_iso_date, parse_year_month
 from .encryption import decrypt_field, encrypt_field
 from .models import (
-    BasicInfo, BasicInfoQualification, BlogAccount, BlogArticle, BlogArticleTag,
-    MPrefecture, MQualification, MTechnologyStack, Resume, ResumeClient,
-    ResumeExperience, ResumeProject, ResumeProjectPhase,
-    ResumeProjectTechnologyStack, ResumeProjectTeamMember, Rirekisho,
-    RirekishoEducation, RirekishoWorkHistory, User,
+    BasicInfo,
+    BasicInfoQualification,
+    BlogAccount,
+    BlogArticle,
+    BlogArticleTag,
+    MPrefecture,
+    MQualification,
+    MTechnologyStack,
+    Resume,
+    ResumeClient,
+    ResumeExperience,
+    ResumeProject,
+    ResumeProjectPhase,
+    ResumeProjectTechnologyStack,
+    ResumeProjectTeamMember,
+    Rirekisho,
+    RirekishoEducation,
+    RirekishoWorkHistory,
+    User,
 )
 
 _ENCRYPTED_RIREKISHO_FIELDS = {"email", "phone", "postal_code", "address"}
@@ -27,9 +41,7 @@ class UserRepository:
     def create(
         self, username: str, hashed_password: str, email: str | None = None
     ) -> User:
-        user = User(
-            username=username, hashed_password=hashed_password, email=email
-        )
+        user = User(username=username, hashed_password=hashed_password, email=email)
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)
@@ -101,9 +113,7 @@ class SingleUserDocumentRepository:
 
 class BasicInfoRepository(SingleUserDocumentRepository):
     _model = BasicInfo
-    _loader_options = (
-        selectinload(BasicInfo.qualification_rows),
-    )
+    _loader_options = (selectinload(BasicInfo.qualification_rows),)
 
     def _apply_payload(self, entity: BasicInfo, payload: dict[str, Any]) -> None:
         entity.full_name = payload["full_name"]
@@ -240,9 +250,7 @@ class RirekishoRepository(SingleUserDocumentRepository):
             value = getattr(rirekisho, field, None)
             if isinstance(value, str):
                 try:
-                    set_committed_value(
-                        rirekisho, field, decrypt_field(value)
-                    )
+                    set_committed_value(rirekisho, field, decrypt_field(value))
                 except Exception:
                     logging.warning(
                         "Failed to decrypt field %s, returning raw value",
@@ -254,9 +262,7 @@ class RirekishoRepository(SingleUserDocumentRepository):
         entity.gender = payload["gender"]
         entity.birthday_value = parse_iso_date(payload["birthday"])
         entity.prefecture = payload["prefecture"]
-        entity.postal_code = self._encrypt_value(
-            "postal_code", payload["postal_code"]
-        )
+        entity.postal_code = self._encrypt_value("postal_code", payload["postal_code"])
         entity.address = self._encrypt_value("address", payload["address"])
         entity.address_furigana = payload["address_furigana"]
         entity.email = self._encrypt_value("email", payload["email"])
@@ -431,21 +437,26 @@ class BlogArticleRepository:
 
     def count_by_user(self) -> int:
         """ユーザーの記事数を取得する。"""
-        return self.db.scalar(
-            select(func.count())
-            .select_from(BlogArticle)
-            .join(BlogArticle.account)
-            .where(BlogAccount.user_id == self.user_id)
-        ) or 0
+        return (
+            self.db.scalar(
+                select(func.count())
+                .select_from(BlogArticle)
+                .join(BlogArticle.account)
+                .where(BlogAccount.user_id == self.user_id)
+            )
+            or 0
+        )
 
     def delete_by_account(self, account_id: str) -> int:
         """アカウントに紐づく記事を全削除する。戻り値は削除件数。"""
-        articles = list(self.db.scalars(
-            select(BlogArticle)
-            .join(BlogArticle.account)
-            .where(BlogAccount.user_id == self.user_id)
-            .where(BlogArticle.account_id == account_id)
-        ).all())
+        articles = list(
+            self.db.scalars(
+                select(BlogArticle)
+                .join(BlogArticle.account)
+                .where(BlogAccount.user_id == self.user_id)
+                .where(BlogArticle.account_id == account_id)
+            ).all()
+        )
         count = len(articles)
         for article in articles:
             self.db.delete(article)
@@ -501,9 +512,7 @@ class BaseMasterRepository:
 
     def update(self, item_id: str, name: str, sort_order: int = 0) -> Any:
         """マスタを更新する。"""
-        item = self.db.scalar(
-            select(self._model).where(self._model.id == item_id)
-        )
+        item = self.db.scalar(select(self._model).where(self._model.id == item_id))
         if not item:
             return None
         item.name = name
@@ -514,9 +523,7 @@ class BaseMasterRepository:
 
     def delete(self, item_id: str) -> bool:
         """マスタを削除する。"""
-        item = self.db.scalar(
-            select(self._model).where(self._model.id == item_id)
-        )
+        item = self.db.scalar(select(self._model).where(self._model.id == item_id))
         if not item:
             return False
         self.db.delete(item)
@@ -535,16 +542,19 @@ class BaseMasterRepository:
 
 class MQualificationRepository(BaseMasterRepository):
     """資格マスタリポジトリ。"""
+
     _model = MQualification
 
 
 class MPrefectureRepository(BaseMasterRepository):
     """都道府県マスタリポジトリ。"""
+
     _model = MPrefecture
 
 
 class MTechnologyStackRepository(BaseMasterRepository):
     """技術スタックマスタリポジトリ。category フィールドを追加で管理する。"""
+
     _model = MTechnologyStack
 
     def list_by_category(self, category: str) -> list[MTechnologyStack]:
@@ -556,13 +566,9 @@ class MTechnologyStackRepository(BaseMasterRepository):
         )
         return list(self.db.scalars(statement).all())
 
-    def create(
-        self, category: str, name: str, sort_order: int = 0
-    ) -> MTechnologyStack:
+    def create(self, category: str, name: str, sort_order: int = 0) -> MTechnologyStack:
         """技術スタックマスタを作成する。"""
-        item = MTechnologyStack(
-            category=category, name=name, sort_order=sort_order
-        )
+        item = MTechnologyStack(category=category, name=name, sort_order=sort_order)
         self.db.add(item)
         self.db.commit()
         self.db.refresh(item)

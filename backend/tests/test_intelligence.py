@@ -29,6 +29,7 @@ from app.services.intelligence.confidence_scorer import score_path
 
 # ── Test Fixtures ───────────────────────────────────────────────────────
 
+
 def _make_repo(
     name="my-repo",
     languages=None,
@@ -103,6 +104,7 @@ SAMPLE_REPOS = [
 
 # ── Skill Extractor ─────────────────────────────────────────────────────
 
+
 class TestSkillExtractor:
 
     def test_extracts_from_languages(self):
@@ -129,14 +131,17 @@ class TestSkillExtractor:
 
     def test_deduplicates_within_repo(self):
         """Same skill from language + topic should appear once per repo."""
-        repos = [_make_repo(
-            languages={"Python": 10000},
-            topics=["fastapi"],
-            description="A FastAPI project",
-        )]
+        repos = [
+            _make_repo(
+                languages={"Python": 10000},
+                topics=["fastapi"],
+                description="A FastAPI project",
+            )
+        ]
         result = extract_skills(repos)
         python_count = sum(
-            1 for s in result.skills
+            1
+            for s in result.skills
             if s.skill_name == "Python" and s.repo_name == "my-repo"
         )
         assert python_count == 1
@@ -158,28 +163,34 @@ class TestSkillExtractor:
         assert result.repos_analyzed == 5
 
     def test_source_tracking(self):
-        repos = [_make_repo(
-            languages={"Python": 10000},
-            topics=["docker"],
-        )]
+        repos = [
+            _make_repo(
+                languages={"Python": 10000},
+                topics=["docker"],
+            )
+        ]
         result = extract_skills(repos)
         sources = {s.source for s in result.skills}
         assert "language" in sources
         assert "topic" in sources
 
     def test_extracts_from_dependencies(self):
-        repos = [_make_repo(
-            dependencies=["fastapi", "sqlalchemy", "uvicorn"],
-        )]
+        repos = [
+            _make_repo(
+                dependencies=["fastapi", "sqlalchemy", "uvicorn"],
+            )
+        ]
         result = extract_skills(repos)
         names = {s.skill_name for s in result.skills}
         assert "FastAPI" in names
         assert "SQLAlchemy" in names
 
     def test_extracts_from_detected_frameworks(self):
-        repos = [_make_repo(
-            detected_frameworks=["Docker", "GitHub Actions", "Terraform"],
-        )]
+        repos = [
+            _make_repo(
+                detected_frameworks=["Docker", "GitHub Actions", "Terraform"],
+            )
+        ]
         result = extract_skills(repos)
         names = {s.skill_name for s in result.skills}
         assert "Docker" in names
@@ -200,39 +211,41 @@ class TestSkillExtractor:
 
     def test_dedup_dependency_and_topic(self):
         """Same skill from topic + dependency should appear once."""
-        repos = [_make_repo(
-            topics=["fastapi"],
-            dependencies=["fastapi"],
-        )]
+        repos = [
+            _make_repo(
+                topics=["fastapi"],
+                dependencies=["fastapi"],
+            )
+        ]
         result = extract_skills(repos)
-        fastapi_count = sum(
-            1 for s in result.skills if s.skill_name == "FastAPI"
-        )
+        fastapi_count = sum(1 for s in result.skills if s.skill_name == "FastAPI")
         assert fastapi_count == 1
 
     def test_dedup_root_file_and_language(self):
         """Docker from language + root_file should appear once."""
-        repos = [_make_repo(
-            languages={"Dockerfile": 500},
-            detected_frameworks=["Docker"],
-        )]
+        repos = [
+            _make_repo(
+                languages={"Dockerfile": 500},
+                detected_frameworks=["Docker"],
+            )
+        ]
         result = extract_skills(repos)
-        docker_count = sum(
-            1 for s in result.skills if s.skill_name == "Docker"
-        )
+        docker_count = sum(1 for s in result.skills if s.skill_name == "Docker")
         assert docker_count == 1
 
     def test_full_repo_with_all_sources(self):
         """A realistic repo should produce rich skill set."""
-        repos = [_make_repo(
-            name="fullstack-app",
-            languages={"Python": 50000, "Dockerfile": 500},
-            topics=["fastapi", "postgresql"],
-            description="Backend API",
-            dependencies=["fastapi", "sqlalchemy", "boto3"],
-            root_files=["Dockerfile", ".github", "terraform"],
-            detected_frameworks=["Docker", "GitHub Actions", "Terraform"],
-        )]
+        repos = [
+            _make_repo(
+                name="fullstack-app",
+                languages={"Python": 50000, "Dockerfile": 500},
+                topics=["fastapi", "postgresql"],
+                description="Backend API",
+                dependencies=["fastapi", "sqlalchemy", "boto3"],
+                root_files=["Dockerfile", ".github", "terraform"],
+                detected_frameworks=["Docker", "GitHub Actions", "Terraform"],
+            )
+        ]
         result = extract_skills(repos)
         names = {s.skill_name for s in result.skills}
         assert "Python" in names
@@ -247,12 +260,14 @@ class TestSkillExtractor:
 
 # ── Root File Detection ─────────────────────────────────────────────────
 
+
 class TestRootFileDetection:
 
     def test_dockerfile_detected(self):
         from app.services.intelligence.github_collector import (
             _detect_from_root_files,
         )
+
         result = _detect_from_root_files(["Dockerfile"])
         assert "Docker" in result
 
@@ -260,6 +275,7 @@ class TestRootFileDetection:
         from app.services.intelligence.github_collector import (
             _detect_from_root_files,
         )
+
         result = _detect_from_root_files(["docker-compose.yml"])
         assert "Docker Compose" in result
 
@@ -267,6 +283,7 @@ class TestRootFileDetection:
         from app.services.intelligence.github_collector import (
             _detect_from_root_files,
         )
+
         result = _detect_from_root_files([".github"])
         assert "GitHub Actions" in result
 
@@ -274,6 +291,7 @@ class TestRootFileDetection:
         from app.services.intelligence.github_collector import (
             _detect_from_root_files,
         )
+
         result = _detect_from_root_files(["terraform"])
         assert "Terraform" in result
 
@@ -281,6 +299,7 @@ class TestRootFileDetection:
         from app.services.intelligence.github_collector import (
             _detect_from_root_files,
         )
+
         result = _detect_from_root_files(["Makefile"])
         assert "Build Automation" in result
 
@@ -288,13 +307,18 @@ class TestRootFileDetection:
         from app.services.intelligence.github_collector import (
             _detect_from_root_files,
         )
-        result = _detect_from_root_files([
-            "terraform", ".terraform",
-        ])
+
+        result = _detect_from_root_files(
+            [
+                "terraform",
+                ".terraform",
+            ]
+        )
         assert result.count("Terraform") == 1
 
 
 # ── Dependency Parsing ──────────────────────────────────────────────────
+
 
 class TestDependencyParsing:
 
@@ -302,6 +326,7 @@ class TestDependencyParsing:
         from app.services.intelligence.github_collector import (
             _parse_requirements_txt,
         )
+
         content = "fastapi>=0.100\nuvicorn\nsqlalchemy==2.0\n# comment\n"
         result = _parse_requirements_txt(content)
         assert "fastapi" in result
@@ -312,6 +337,7 @@ class TestDependencyParsing:
         from app.services.intelligence.github_collector import (
             _parse_requirements_txt,
         )
+
         content = "uvicorn[standard]>=0.20\nboto3\n"
         result = _parse_requirements_txt(content)
         assert "uvicorn" in result
@@ -321,6 +347,7 @@ class TestDependencyParsing:
         from app.services.intelligence.github_collector import (
             _parse_package_json,
         )
+
         content = '{"dependencies":{"react":"^18","next":"^14"}}'
         result = _parse_package_json(content)
         assert "react" in result
@@ -330,10 +357,8 @@ class TestDependencyParsing:
         from app.services.intelligence.github_collector import (
             _parse_package_json,
         )
-        content = (
-            '{"dependencies":{"react":"^18"},'
-            '"devDependencies":{"jest":"^29"}}'
-        )
+
+        content = '{"dependencies":{"react":"^18"},' '"devDependencies":{"jest":"^29"}}'
         result = _parse_package_json(content)
         assert "react" in result
         assert "jest" in result
@@ -342,6 +367,7 @@ class TestDependencyParsing:
         from app.services.intelligence.github_collector import (
             _parse_package_json,
         )
+
         result = _parse_package_json("not json")
         assert result == []
 
@@ -349,6 +375,7 @@ class TestDependencyParsing:
         from app.services.intelligence.github_collector import (
             _parse_pom_xml,
         )
+
         content = (
             "<project><dependencies><dependency>"
             "<artifactId>spring-boot-starter-web</artifactId>"
@@ -361,6 +388,7 @@ class TestDependencyParsing:
         from app.services.intelligence.github_collector import (
             _parse_go_mod,
         )
+
         content = (
             "module example.com/app\n\nrequire (\n"
             "\tgithub.com/gin-gonic/gin v1.9\n)\n"
@@ -372,6 +400,7 @@ class TestDependencyParsing:
         from app.services.intelligence.github_collector import (
             DEPENDENCY_TO_FRAMEWORK,
         )
+
         assert DEPENDENCY_TO_FRAMEWORK["fastapi"] == "FastAPI"
         assert DEPENDENCY_TO_FRAMEWORK["react"] == "React"
         assert DEPENDENCY_TO_FRAMEWORK["torch"] == "PyTorch"
@@ -379,6 +408,7 @@ class TestDependencyParsing:
 
 
 # ── Skill Timeline ──────────────────────────────────────────────────────
+
 
 class TestSkillTimeline:
 
@@ -435,6 +465,7 @@ class TestSkillTimeline:
 
 # ── Skill Growth Analyzer ──────────────────────────────────────────────
 
+
 class TestSkillGrowthAnalyzer:
 
     def _analyze(self, current_year="2024"):
@@ -471,11 +502,13 @@ class TestSkillGrowthAnalyzer:
 
     def test_single_year_skill_is_new(self):
         """A skill seen only in one year should be classified as NEW."""
-        repos = [_make_repo(
-            languages={"Rust": 5000},
-            created_at="2024-01-01T00:00:00Z",
-            pushed_at="2024-01-01T00:00:00Z",
-        )]
+        repos = [
+            _make_repo(
+                languages={"Rust": 5000},
+                created_at="2024-01-01T00:00:00Z",
+                pushed_at="2024-01-01T00:00:00Z",
+            )
+        ]
         extraction = extract_skills(repos)
         timelines = build_timeline(extraction)
         growth = analyze_growth(timelines)
@@ -484,6 +517,7 @@ class TestSkillGrowthAnalyzer:
 
 
 # ── Career Paths Matching ──────────────────────────────────────────────
+
 
 class TestCareerPathsMatching:
 
@@ -514,12 +548,7 @@ class TestCareerPathsMatching:
 
     def test_match_score_between_0_and_1(self):
         skills = {"Python", "FastAPI", "Docker", "AWS"}
-        categories = {
-            "language",
-            "backend_framework",
-            "infrastructure",
-            "cloud"
-        }
+        categories = {"language", "backend_framework", "infrastructure", "cloud"}
         matches = match_skills_to_roles(skills, categories)
         for m in matches:
             assert 0 < m.match_score <= 1.0
@@ -538,6 +567,7 @@ class TestCareerPathsMatching:
 
 
 # ── Career Predictor ────────────────────────────────────────────────────
+
 
 class TestCareerPredictor:
 
@@ -564,9 +594,7 @@ class TestCareerPredictor:
     def test_skill_summary_populated(self):
         prediction = self._predict()
         assert len(prediction.skill_summary) > 0
-        total_skills = sum(
-            len(skills) for skills in prediction.skill_summary.values()
-        )
+        total_skills = sum(len(skills) for skills in prediction.skill_summary.values())
         assert total_skills > 0
 
     def test_empty_input(self):
@@ -576,6 +604,7 @@ class TestCareerPredictor:
 
 
 # ── Career Simulator ────────────────────────────────────────────────────
+
 
 class TestCareerSimulator:
 
@@ -623,6 +652,7 @@ class TestCareerSimulator:
 
 # ── Confidence Scorer ───────────────────────────────────────────────────
 
+
 class TestConfidenceScorer:
 
     def test_score_range(self):
@@ -630,29 +660,26 @@ class TestConfidenceScorer:
         categories = {"language", "backend_framework", "infrastructure"}
         score = score_path(
             ["Backend Engineer", "Platform Engineer"],
-            skills, categories, {},
+            skills,
+            categories,
+            {},
         )
         assert 0 <= score <= 1.0
 
     def test_longer_path_lower_confidence(self):
         skills = {"Python", "FastAPI", "Docker", "AWS", "Terraform"}
-        categories = {
-            "language",
-            "backend_framework",
-            "infrastructure",
-            "cloud"
-            }
+        categories = {"language", "backend_framework", "infrastructure", "cloud"}
         short = score_path(
             ["Backend Engineer", "Platform Engineer"],
-            skills, categories, {},
+            skills,
+            categories,
+            {},
         )
         long = score_path(
-            [
-                "Backend Engineer",
-                "Platform Engineer",
-                "Cloud Architect",
-                "CTO"],
-            skills, categories, {},
+            ["Backend Engineer", "Platform Engineer", "Cloud Architect", "CTO"],
+            skills,
+            categories,
+            {},
         )
         assert short >= long
 
@@ -666,7 +693,8 @@ class TestConfidenceScorer:
                 {"Python"},
                 {"language"},
                 {},
-            ) == 0.0
+            )
+            == 0.0
         )
 
     def test_better_skill_match_higher_score(self):

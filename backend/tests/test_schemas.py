@@ -37,7 +37,9 @@ def experience_payload() -> dict:
                                 {"role": "PG", "count": 2},
                             ],
                         },
-                        "technology_stacks": [{"category": "language", "name": "Python"}],
+                        "technology_stacks": [
+                            {"category": "language", "name": "Python"}
+                        ],
                     }
                 ],
             }
@@ -72,7 +74,9 @@ def test_framework_category_is_accepted() -> None:
 
     experience = Experience(**payload)
 
-    assert experience.clients[0].projects[0].technology_stacks[0].category == "framework"
+    assert (
+        experience.clients[0].projects[0].technology_stacks[0].category == "framework"
+    )
 
 
 def test_unknown_category_is_rejected() -> None:
@@ -129,11 +133,13 @@ def test_rirekisho_requires_prefecture() -> None:
 
 def test_project_migrates_scale_to_team() -> None:
     """旧形式 scale → team に自動変換されることを検証する。"""
-    proj = Project(**{
-        "name": "テスト",
-        "scale": "10",
-        "technology_stacks": [],
-    })
+    proj = Project(
+        **{
+            "name": "テスト",
+            "scale": "10",
+            "technology_stacks": [],
+        }
+    )
     assert proj.team.total == "10"
     assert proj.team.members == []
 

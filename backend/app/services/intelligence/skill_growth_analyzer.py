@@ -28,7 +28,7 @@ class SkillGrowth:
     skill_name: str
     category: str
     trend: GrowthTrend
-    velocity: float           # 成長率（正 = 成長中）
+    velocity: float  # 成長率（正 = 成長中）
     yearly_usage: Dict[str, int]
     first_seen: str
     last_seen: str
@@ -54,31 +54,35 @@ def analyze_growth(
         years = sorted(yearly.keys())
 
         if len(years) <= 1:
-            results.append(SkillGrowth(
-                skill_name=timeline.skill_name,
-                category=timeline.category,
-                trend=GrowthTrend.NEW,
-                velocity=0.0,
-                yearly_usage=yearly,
-                first_seen=timeline.first_seen,
-                last_seen=timeline.last_seen,
-                total_repos=timeline.usage_frequency,
-            ))
+            results.append(
+                SkillGrowth(
+                    skill_name=timeline.skill_name,
+                    category=timeline.category,
+                    trend=GrowthTrend.NEW,
+                    velocity=0.0,
+                    yearly_usage=yearly,
+                    first_seen=timeline.first_seen,
+                    last_seen=timeline.last_seen,
+                    total_repos=timeline.usage_frequency,
+                )
+            )
             continue
 
         velocity = _calculate_velocity(yearly)
         trend = _classify_trend(velocity, yearly, current_year)
 
-        results.append(SkillGrowth(
-            skill_name=timeline.skill_name,
-            category=timeline.category,
-            trend=trend,
-            velocity=round(velocity, 3),
-            yearly_usage=yearly,
-            first_seen=timeline.first_seen,
-            last_seen=timeline.last_seen,
-            total_repos=timeline.usage_frequency,
-        ))
+        results.append(
+            SkillGrowth(
+                skill_name=timeline.skill_name,
+                category=timeline.category,
+                trend=trend,
+                velocity=round(velocity, 3),
+                yearly_usage=yearly,
+                first_seen=timeline.first_seen,
+                last_seen=timeline.last_seen,
+                total_repos=timeline.usage_frequency,
+            )
+        )
 
     results.sort(key=lambda g: g.velocity, reverse=True)
     logger.info(
@@ -109,10 +113,7 @@ def _calculate_velocity(yearly_usage: Dict[str, int]) -> float:
     x_mean = sum(x_vals) / n
     y_mean = sum(y_vals) / n
 
-    numerator = sum(
-        (x - x_mean) * (y - y_mean)
-        for x, y in zip(x_vals, y_vals)
-    )
+    numerator = sum((x - x_mean) * (y - y_mean) for x, y in zip(x_vals, y_vals))
     denominator = sum((x - x_mean) ** 2 for x in x_vals)
 
     if denominator == 0:

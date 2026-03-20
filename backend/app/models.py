@@ -2,8 +2,16 @@ import uuid
 from datetime import date, datetime
 
 from sqlalchemy import (
-    JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text,
-    UniqueConstraint, func
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,9 +25,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    username: Mapped[str] = mapped_column(
-        String(120), unique=True, nullable=False
-    )
+    username: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(
         String(255), nullable=False, default=""
     )
@@ -41,9 +47,7 @@ class User(Base):
 
 class BasicInfo(Base):
     __tablename__ = "basic_info"
-    __table_args__ = (
-        UniqueConstraint("user_id", name="uq_basic_info_user"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", name="uq_basic_info_user"),)
 
     id: Mapped[str] = mapped_column(
         String(36),
@@ -54,12 +58,8 @@ class BasicInfo(Base):
         String(36), ForeignKey("users.id"), nullable=False, index=True
     )
     full_name: Mapped[str] = mapped_column(String(120), nullable=False)
-    name_furigana: Mapped[str] = mapped_column(
-        String(200), nullable=False, default=""
-    )
-    record_date_value: Mapped[date] = mapped_column(
-        "record_date", Date, nullable=False
-    )
+    name_furigana: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    record_date_value: Mapped[date] = mapped_column("record_date", Date, nullable=False)
     qualification_rows: Mapped[list["BasicInfoQualification"]] = relationship(
         back_populates="basic_info",
         cascade="all, delete-orphan",
@@ -72,7 +72,7 @@ class BasicInfo(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False
+        nullable=False,
     )
 
     @property
@@ -101,9 +101,7 @@ class BasicInfoQualification(Base):
         "acquired_date", Date, nullable=False
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    basic_info: Mapped["BasicInfo"] = relationship(
-        back_populates="qualification_rows"
-    )
+    basic_info: Mapped["BasicInfo"] = relationship(back_populates="qualification_rows")
 
     @property
     def acquired_date(self) -> str:
@@ -112,9 +110,7 @@ class BasicInfoQualification(Base):
 
 class Resume(Base):
     __tablename__ = "resumes"
-    __table_args__ = (
-        UniqueConstraint("user_id", name="uq_resumes_user"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", name="uq_resumes_user"),)
 
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
@@ -122,9 +118,7 @@ class Resume(Base):
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=False, index=True
     )
-    career_summary: Mapped[str] = mapped_column(
-        Text, nullable=False, default=""
-    )
+    career_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     self_pr: Mapped[str] = mapped_column(Text, nullable=False)
     experience_rows: Mapped[list["ResumeExperience"]] = relationship(
         back_populates="resume",
@@ -138,7 +132,7 @@ class Resume(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False
+        nullable=False,
     )
 
     @property
@@ -160,15 +154,9 @@ class ResumeExperience(Base):
     )
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     company: Mapped[str] = mapped_column(String(120), nullable=False)
-    business_description: Mapped[str] = mapped_column(
-        String(200), nullable=False
-    )
-    start_date_value: Mapped[date] = mapped_column(
-        "start_date", Date, nullable=False
-    )
-    end_date_value: Mapped[date | None] = mapped_column(
-        "end_date", Date, nullable=True
-    )
+    business_description: Mapped[str] = mapped_column(String(200), nullable=False)
+    start_date_value: Mapped[date] = mapped_column("start_date", Date, nullable=False)
+    end_date_value: Mapped[date | None] = mapped_column("end_date", Date, nullable=True)
     is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     employee_count: Mapped[str] = mapped_column(String(60), nullable=False, default="")
     capital: Mapped[str] = mapped_column(String(120), nullable=False, default="")
@@ -233,12 +221,8 @@ class ResumeProject(Base):
     )
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
-    start_date_value: Mapped[date] = mapped_column(
-        "start_date", Date, nullable=False
-    )
-    end_date_value: Mapped[date | None] = mapped_column(
-        "end_date", Date, nullable=True
-    )
+    start_date_value: Mapped[date] = mapped_column("start_date", Date, nullable=False)
+    end_date_value: Mapped[date | None] = mapped_column("end_date", Date, nullable=True)
     is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     role: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -344,9 +328,7 @@ class ResumeProjectPhase(Base):
 
 class Rirekisho(Base):
     __tablename__ = "rirekisho"
-    __table_args__ = (
-        UniqueConstraint("user_id", name="uq_rirekisho_user"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", name="uq_rirekisho_user"),)
 
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
@@ -354,16 +336,10 @@ class Rirekisho(Base):
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=False, index=True
     )
-    gender: Mapped[str] = mapped_column(
-        String(10), nullable=False, default=""
-    )
-    birthday_value: Mapped[date] = mapped_column(
-        "birthday", Date, nullable=False
-    )
+    gender: Mapped[str] = mapped_column(String(10), nullable=False, default="")
+    birthday_value: Mapped[date] = mapped_column("birthday", Date, nullable=False)
     prefecture: Mapped[str] = mapped_column(String(60), nullable=False)
-    postal_code: Mapped[str] = mapped_column(
-        String(255), nullable=False, default=""
-    )
+    postal_code: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     address: Mapped[str] = mapped_column(Text, nullable=False)
     address_furigana: Mapped[str] = mapped_column(
         String(400), nullable=False, default=""
@@ -371,9 +347,7 @@ class Rirekisho(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(255), nullable=False)
     motivation: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    personal_preferences: Mapped[str] = mapped_column(
-        Text, nullable=False, default=""
-    )
+    personal_preferences: Mapped[str] = mapped_column(Text, nullable=False, default="")
     photo: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     education_rows: Mapped[list["RirekishoEducation"]] = relationship(
         back_populates="rirekisho",
@@ -392,7 +366,7 @@ class Rirekisho(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False
+        nullable=False,
     )
 
     @property
@@ -518,7 +492,7 @@ class BlogArticle(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False
+        nullable=False,
     )
 
     @property
@@ -573,7 +547,7 @@ class GitHubAnalysisCache(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False
+        nullable=False,
     )
 
 
@@ -596,7 +570,7 @@ class BlogSummaryCache(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False
+        nullable=False,
     )
 
 
@@ -620,7 +594,9 @@ class MTechnologyStack(Base):
 
     __tablename__ = "m_technology_stack"
     __table_args__ = (
-        UniqueConstraint("category", "name", name="uq_m_technology_stack_category_name"),
+        UniqueConstraint(
+            "category", "name", name="uq_m_technology_stack_category_name"
+        ),
     )
 
     id: Mapped[str] = mapped_column(
