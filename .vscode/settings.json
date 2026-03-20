@@ -1,3 +1,28 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:venv"
+    "python-envs.defaultEnvManager": "ms-python.python:venv",
+    "python.testing.pytestArgs": [
+        "backend"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "cSpell.words": [
+        "devforge",
+        "Ollama",
+        "Zenn",
+        "Pydantic",
+        "Fernet",
+        "venv",
+        "Weasy",
+        "uvicorn",
+        "rirekisho",
+        "pytest",
+        "tfvars",
+        "tfstate",
+        "artifactregistry",
+        "passlib",
+        "pycache",
+    ],
+    "editor.linkedEditing": true,
+    "html.autoClosingTags": true,
+    "js/ts.autoClosingTags.enabled": true,
 }
