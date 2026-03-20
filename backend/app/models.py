@@ -22,22 +22,12 @@ from .date_utils import format_iso_date, format_year_month
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     username: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(
-        String(255), nullable=False, default=""
-    )
-    email: Mapped[str | None] = mapped_column(
-        String(255), unique=True, nullable=True, default=None
-    )
-    github_id: Mapped[int | None] = mapped_column(
-        nullable=True, unique=True, default=None
-    )
-    github_token: Mapped[str | None] = mapped_column(
-        String(255), nullable=True, default=None
-    )
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, default=None)
+    github_id: Mapped[int | None] = mapped_column(nullable=True, unique=True, default=None)
+    github_token: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -87,9 +77,7 @@ class BasicInfo(Base):
 class BasicInfoQualification(Base):
     __tablename__ = "basic_info_qualifications"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     basic_info_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("basic_info.id", ondelete="CASCADE"),
@@ -97,9 +85,7 @@ class BasicInfoQualification(Base):
         index=True,
     )
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    acquired_date_value: Mapped[date] = mapped_column(
-        "acquired_date", Date, nullable=False
-    )
+    acquired_date_value: Mapped[date] = mapped_column("acquired_date", Date, nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     basic_info: Mapped["BasicInfo"] = relationship(back_populates="qualification_rows")
 
@@ -112,9 +98,7 @@ class Resume(Base):
     __tablename__ = "resumes"
     __table_args__ = (UniqueConstraint("user_id", name="uq_resumes_user"),)
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=False, index=True
     )
@@ -143,9 +127,7 @@ class Resume(Base):
 class ResumeExperience(Base):
     __tablename__ = "resume_experiences"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     resume_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("resumes.id", ondelete="CASCADE"),
@@ -183,9 +165,7 @@ class ResumeExperience(Base):
 class ResumeClient(Base):
     __tablename__ = "resume_clients"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     experience_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("resume_experiences.id", ondelete="CASCADE"),
@@ -210,9 +190,7 @@ class ResumeClient(Base):
 class ResumeProject(Base):
     __tablename__ = "resume_projects"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     client_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("resume_clients.id", ondelete="CASCADE"),
@@ -274,9 +252,7 @@ class ResumeProject(Base):
 class ResumeProjectTeamMember(Base):
     __tablename__ = "resume_project_team_members"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     project_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("resume_projects.id", ondelete="CASCADE"),
@@ -292,9 +268,7 @@ class ResumeProjectTeamMember(Base):
 class ResumeProjectTechnologyStack(Base):
     __tablename__ = "resume_project_technology_stacks"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     project_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("resume_projects.id", ondelete="CASCADE"),
@@ -304,17 +278,13 @@ class ResumeProjectTechnologyStack(Base):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     category: Mapped[str] = mapped_column(String(30), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    project: Mapped["ResumeProject"] = relationship(
-        back_populates="technology_stack_rows"
-    )
+    project: Mapped["ResumeProject"] = relationship(back_populates="technology_stack_rows")
 
 
 class ResumeProjectPhase(Base):
     __tablename__ = "resume_project_phases"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     project_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("resume_projects.id", ondelete="CASCADE"),
@@ -330,9 +300,7 @@ class Rirekisho(Base):
     __tablename__ = "rirekisho"
     __table_args__ = (UniqueConstraint("user_id", name="uq_rirekisho_user"),)
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=False, index=True
     )
@@ -341,9 +309,7 @@ class Rirekisho(Base):
     prefecture: Mapped[str] = mapped_column(String(60), nullable=False)
     postal_code: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     address: Mapped[str] = mapped_column(Text, nullable=False)
-    address_furigana: Mapped[str] = mapped_column(
-        String(400), nullable=False, default=""
-    )
+    address_furigana: Mapped[str] = mapped_column(String(400), nullable=False, default="")
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(255), nullable=False)
     motivation: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -385,9 +351,7 @@ class Rirekisho(Base):
 class RirekishoEducation(Base):
     __tablename__ = "rirekisho_educations"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     rirekisho_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("rirekisho.id", ondelete="CASCADE"),
@@ -407,9 +371,7 @@ class RirekishoEducation(Base):
 class RirekishoWorkHistory(Base):
     __tablename__ = "rirekisho_work_histories"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     rirekisho_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("rirekisho.id", ondelete="CASCADE"),
@@ -434,9 +396,7 @@ class BlogAccount(Base):
         UniqueConstraint("user_id", "platform", name="uq_blog_accounts_user_platform"),
     )
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=False, index=True
     )
@@ -457,14 +417,10 @@ class BlogArticle(Base):
 
     __tablename__ = "blog_articles"
     __table_args__ = (
-        UniqueConstraint(
-            "account_id", "external_id", name="uq_blog_articles_account_external_id"
-        ),
+        UniqueConstraint("account_id", "external_id", name="uq_blog_articles_account_external_id"),
     )
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     account_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("blog_accounts.id", ondelete="CASCADE"),
@@ -474,9 +430,7 @@ class BlogArticle(Base):
     external_id: Mapped[str] = mapped_column(String(1000), nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     url: Mapped[str] = mapped_column(String(1000), nullable=False)
-    published_at_value: Mapped[date | None] = mapped_column(
-        "published_at", Date, nullable=True
-    )
+    published_at_value: Mapped[date | None] = mapped_column("published_at", Date, nullable=True)
     likes_count: Mapped[int] = mapped_column(Integer, default=0)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     tag_rows: Mapped[list["BlogArticleTag"]] = relationship(
@@ -511,9 +465,7 @@ class BlogArticle(Base):
 class BlogArticleTag(Base):
     __tablename__ = "blog_article_tags"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     article_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("blog_articles.id", ondelete="CASCADE"),
@@ -530,9 +482,7 @@ class GitHubAnalysisCache(Base):
 
     __tablename__ = "github_analysis_cache"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), unique=True, nullable=False
     )
@@ -556,9 +506,7 @@ class BlogSummaryCache(Base):
 
     __tablename__ = "blog_summary_cache"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), unique=True, nullable=False
     )
@@ -579,9 +527,7 @@ class MQualification(Base):
 
     __tablename__ = "m_qualification"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
     sort_order: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(
@@ -594,14 +540,10 @@ class MTechnologyStack(Base):
 
     __tablename__ = "m_technology_stack"
     __table_args__ = (
-        UniqueConstraint(
-            "category", "name", name="uq_m_technology_stack_category_name"
-        ),
+        UniqueConstraint("category", "name", name="uq_m_technology_stack_category_name"),
     )
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     category: Mapped[str] = mapped_column(String(60), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     sort_order: Mapped[int] = mapped_column(default=0)
@@ -615,9 +557,7 @@ class MPrefecture(Base):
 
     __tablename__ = "m_prefecture"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
     sort_order: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(

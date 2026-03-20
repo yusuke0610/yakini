@@ -25,8 +25,12 @@ def upgrade() -> None:
         sa.Column("ai_summary", sa.Text(), nullable=True),
         sa.Column("skill_activity_month", sa.JSON(), nullable=True),
         sa.Column("skill_activity_year", sa.JSON(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.UniqueConstraint("user_id", name="uq_github_analysis_cache_user"),

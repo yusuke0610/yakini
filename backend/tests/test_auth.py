@@ -82,10 +82,7 @@ def test_github_login_url_sets_state_cookie(client) -> None:
     )
 
     assert response.status_code == 200
-    assert (
-        "https://github.com/login/oauth/authorize"
-        in response.json()["authorization_url"]
-    )
+    assert "https://github.com/login/oauth/authorize" in response.json()["authorization_url"]
     assert "github_oauth_state=" in response.headers["set-cookie"]
 
 
@@ -104,9 +101,7 @@ def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
     parsed = urlparse(response.headers["location"])
     assert parsed.scheme == "http"
     assert parsed.netloc == "localhost:5173"
-    assert parse_qs(parsed.query)["github_error"] == [
-        "OAuth state の検証に失敗しました"
-    ]
+    assert parse_qs(parsed.query)["github_error"] == ["OAuth state の検証に失敗しました"]
 
 
 def test_github_callback_redirect_sets_auth_cookie(client) -> None:

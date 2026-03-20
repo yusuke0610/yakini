@@ -29,7 +29,12 @@ def upgrade() -> None:
             sa.Column("category", sa.String(length=60), nullable=False),
             sa.Column("name", sa.String(length=200), nullable=False),
             sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
-            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column(
+                "created_at",
+                sa.DateTime(timezone=True),
+                server_default=sa.func.now(),
+                nullable=False,
+            ),
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("category", "name", name="uq_master_data_category_name"),
         )

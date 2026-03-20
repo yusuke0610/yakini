@@ -77,9 +77,7 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                     proj_end = proj.get("end_date", "")
                     proj_is_current = proj.get("is_current", False)
                     if proj_start:
-                        proj_period = format_period(
-                            proj_start, proj_end, proj_is_current
-                        )
+                        proj_period = format_period(proj_start, proj_end, proj_is_current)
                         lines.append(field_line("期間", proj_period))
                     role = proj.get("role", "")
                     if role:
@@ -135,8 +133,7 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                                 grouped[cat] = []
                             grouped[cat].append(st.get("name", ""))
                         parts = [
-                            f"{cat_labels.get(c, c)}: {', '.join(ns)}"
-                            for c, ns in grouped.items()
+                            f"{cat_labels.get(c, c)}: {', '.join(ns)}" for c, ns in grouped.items()
                         ]
                         lines.append(field_line("技術スタック", " / ".join(parts)))
                     lines.append("")
