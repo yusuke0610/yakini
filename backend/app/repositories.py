@@ -38,9 +38,7 @@ class UserRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(
-        self, username: str, hashed_password: str, email: str | None = None
-    ) -> User:
+    def create(self, username: str, hashed_password: str, email: str | None = None) -> User:
         user = User(username=username, hashed_password=hashed_password, email=email)
         self.db.add(user)
         self.db.commit()
@@ -155,18 +153,14 @@ class ResumeRepository(SingleUserDocumentRepository):
             for index, experience in enumerate(payload.get("experiences", []))
         ]
 
-    def _build_experience_row(
-        self, index: int, payload: dict[str, Any]
-    ) -> ResumeExperience:
+    def _build_experience_row(self, index: int, payload: dict[str, Any]) -> ResumeExperience:
         return ResumeExperience(
             sort_order=index,
             company=payload["company"],
             business_description=payload["business_description"],
             start_date_value=parse_year_month(payload["start_date"]),
             end_date_value=(
-                parse_year_month(payload["end_date"])
-                if payload.get("end_date")
-                else None
+                parse_year_month(payload["end_date"]) if payload.get("end_date") else None
             ),
             is_current=payload.get("is_current", False),
             employee_count=payload.get("employee_count", ""),
@@ -195,9 +189,7 @@ class ResumeRepository(SingleUserDocumentRepository):
             name=payload.get("name", ""),
             start_date_value=parse_year_month(payload["start_date"]),
             end_date_value=(
-                parse_year_month(payload["end_date"])
-                if payload.get("end_date")
-                else None
+                parse_year_month(payload["end_date"]) if payload.get("end_date") else None
             ),
             is_current=payload.get("is_current", False),
             role=payload.get("role", ""),
@@ -220,9 +212,7 @@ class ResumeRepository(SingleUserDocumentRepository):
                     category=stack["category"],
                     name=stack["name"],
                 )
-                for stack_index, stack in enumerate(
-                    payload.get("technology_stacks", [])
-                )
+                for stack_index, stack in enumerate(payload.get("technology_stacks", []))
             ],
             phase_rows=[
                 ResumeProjectPhase(sort_order=phase_index, name=phase)
@@ -352,9 +342,7 @@ class BlogAccountRepository:
             self.db.commit()
             self.db.refresh(existing)
             return existing
-        account = BlogAccount(
-            user_id=self.user_id, platform=platform, username=username
-        )
+        account = BlogAccount(user_id=self.user_id, platform=platform, username=username)
         self.db.add(account)
         self.db.commit()
         self.db.refresh(account)
@@ -414,8 +402,7 @@ class BlogArticleRepository:
         )
         existing_articles = list(self.db.scalars(existing_statement).all())
         existing_map = {
-            (article.account_id, article.external_id): article
-            for article in existing_articles
+            (article.account_id, article.external_id): article for article in existing_articles
         }
 
         added = 0
@@ -468,16 +455,12 @@ class BlogArticleRepository:
         normalized["external_id"] = normalized.get("external_id") or normalized["url"]
         return normalized
 
-    def _apply_article_payload(
-        self, entity: BlogArticle, payload: dict[str, Any]
-    ) -> None:
+    def _apply_article_payload(self, entity: BlogArticle, payload: dict[str, Any]) -> None:
         entity.external_id = payload["external_id"]
         entity.title = payload["title"]
         entity.url = payload["url"]
         entity.published_at_value = (
-            parse_iso_date(payload["published_at"])
-            if payload.get("published_at")
-            else None
+            parse_iso_date(payload["published_at"]) if payload.get("published_at") else None
         )
         entity.likes_count = payload.get("likes_count", 0)
         entity.summary = payload.get("summary")
@@ -497,9 +480,7 @@ class BaseMasterRepository:
 
     def list_all(self) -> list:
         """マスタ一覧を取得する。"""
-        statement = select(self._model).order_by(
-            self._model.sort_order, self._model.name
-        )
+        statement = select(self._model).order_by(self._model.sort_order, self._model.name)
         return list(self.db.scalars(statement).all())
 
     def create(self, name: str, sort_order: int = 0) -> Any:
@@ -578,9 +559,7 @@ class MTechnologyStackRepository(BaseMasterRepository):
         self, item_id: str, category: str, name: str, sort_order: int = 0
     ) -> MTechnologyStack | None:
         """技術スタックマスタを更新する。"""
-        item = self.db.scalar(
-            select(MTechnologyStack).where(MTechnologyStack.id == item_id)
-        )
+        item = self.db.scalar(select(MTechnologyStack).where(MTechnologyStack.id == item_id))
         if not item:
             return None
         item.category = category

@@ -171,9 +171,7 @@ def test_basic_info_crud(client: TestClient) -> None:
             "full_name": "田中太郎",
             "name_furigana": "たなか たろう",
             "record_date": "2026-03-12",
-            "qualifications": [
-                {"acquired_date": "2020-04-01", "name": "応用情報技術者"}
-            ],
+            "qualifications": [{"acquired_date": "2020-04-01", "name": "応用情報技術者"}],
         },
         headers=headers,
     )
@@ -210,9 +208,7 @@ def test_basic_info_duplicate_create_conflicts(client: TestClient) -> None:
         "record_date": "2026-03-12",
         "qualifications": [],
     }
-    assert (
-        client.post("/api/basic-info", json=payload, headers=headers).status_code == 201
-    )
+    assert client.post("/api/basic-info", json=payload, headers=headers).status_code == 201
 
     resp = client.post("/api/basic-info", json=payload, headers=headers)
     assert resp.status_code == 409
@@ -382,9 +378,7 @@ def test_rirekisho_duplicate_create_conflicts(client: TestClient) -> None:
         "educations": [],
         "work_histories": [],
     }
-    assert (
-        client.post("/api/rirekisho", json=payload, headers=headers).status_code == 201
-    )
+    assert client.post("/api/rirekisho", json=payload, headers=headers).status_code == 201
 
     resp = client.post("/api/rirekisho", json=payload, headers=headers)
     assert resp.status_code == 409

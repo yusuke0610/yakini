@@ -129,11 +129,7 @@ def format_period(start_date: str, end_date: str | None, is_current: bool) -> st
     start = start_date.replace("-", " 年 ") + " 月" if "-" in start_date else start_date
     if is_current:
         return f"{start}〜現在"
-    end = (
-        end_date.replace("-", " 年 ") + " 月"
-        if end_date and "-" in end_date
-        else (end_date or "")
-    )
+    end = end_date.replace("-", " 年 ") + " 月" if end_date and "-" in end_date else (end_date or "")
     return f"{start}〜{end}"
 
 

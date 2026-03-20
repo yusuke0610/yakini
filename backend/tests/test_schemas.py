@@ -37,9 +37,7 @@ def experience_payload() -> dict:
                                 {"role": "PG", "count": 2},
                             ],
                         },
-                        "technology_stacks": [
-                            {"category": "language", "name": "Python"}
-                        ],
+                        "technology_stacks": [{"category": "language", "name": "Python"}],
                     }
                 ],
             }
@@ -74,9 +72,7 @@ def test_framework_category_is_accepted() -> None:
 
     experience = Experience(**payload)
 
-    assert (
-        experience.clients[0].projects[0].technology_stacks[0].category == "framework"
-    )
+    assert experience.clients[0].projects[0].technology_stacks[0].category == "framework"
 
 
 def test_unknown_category_is_rejected() -> None:

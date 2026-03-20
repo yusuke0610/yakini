@@ -121,7 +121,14 @@
         "TOPPADDING",
         "BOTTOMPADDING",
         "LEFTPADDING",
-        "RIGHTPADDING"
+        "RIGHTPADDING",
+        "pdfbase",
+        "pdfmetrics",
+        "ttfonts",
+        "reportlab",
+        "autopep",
+        "weasyprint",
+        "pydyf"
     ],
     "editor.linkedEditing": true,
     "html.autoClosingTags": true,

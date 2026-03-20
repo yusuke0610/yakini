@@ -6,9 +6,7 @@ import weasyprint
 
 _CSS_PATH = Path(__file__).resolve().parent.parent / "templates" / "resume.css"
 _FONT_PATH = (
-    Path(__file__).resolve().parent.parent.parent.parent
-    / "fonts"
-    / "NotoSansJP-Regular.ttf"
+    Path(__file__).resolve().parent.parent.parent.parent / "fonts" / "NotoSansJP-Regular.ttf"
 )
 
 _CATEGORY_LABELS = {
@@ -86,17 +84,14 @@ def _build_project_html(project: dict) -> str:
     header_lines = [ln for ln in [line1, line2, line3] if ln]
     header_html = ""
     if header_lines:
-        header_html = (
-            '<div class="project-header">' + "<br/>".join(header_lines) + "</div>"
-        )
+        header_html = '<div class="project-header">' + "<br/>".join(header_lines) + "</div>"
 
     # 左カラム: 業務内容
     left_parts: list[str] = []
     desc = project.get("description", "")
     if desc:
         left_parts.append(
-            f"<strong>【プロジェクト概要】</strong>"
-            f'<div class="desc-bold">{_md(desc)}</div>',
+            f"<strong>【プロジェクト概要】</strong>" f'<div class="desc-bold">{_md(desc)}</div>',
         )
     challenge = project.get("challenge", "")
     if challenge:
@@ -137,9 +132,7 @@ def _build_project_html(project: dict) -> str:
             team_parts.append(f"{_esc(total)}名")
         members = team.get("members", [])
         member_strs = [
-            f"{_esc(m.get('role', ''))}:{m.get('count', 0)}"
-            for m in members
-            if m.get("role")
+            f"{_esc(m.get('role', ''))}:{m.get('count', 0)}" for m in members if m.get("role")
         ]
         if member_strs:
             team_parts.append(" / ".join(member_strs))
@@ -168,9 +161,7 @@ def _build_html(resume: dict) -> str:
     formatted_date = _format_record_date(record_date)
     full_name = resume.get("full_name") or ""
     parts.append(
-        f'<div class="meta">'
-        f"{_esc(formatted_date)}現在<br/>氏名　{_esc(full_name)}"
-        f"</div>",
+        f'<div class="meta">' f"{_esc(formatted_date)}現在<br/>氏名　{_esc(full_name)}" f"</div>",
     )
 
     # 職務要約
@@ -222,8 +213,7 @@ def _build_html(resume: dict) -> str:
                 client_name = client.get("name", "")
                 if client_name:
                     parts.append(
-                        f'<div class="client-name">'
-                        f"取引先名：{_esc(client_name)}</div>",
+                        f'<div class="client-name">' f"取引先名：{_esc(client_name)}</div>",
                     )
                 projects = client.get("projects", [])
                 for proj in projects:

@@ -37,9 +37,7 @@ def test_run_pipeline_aggregates_languages() -> None:
         new_callable=AsyncMock,
         return_value=repos,
     ):
-        result = asyncio.get_event_loop().run_until_complete(
-            run_pipeline(username="testuser")
-        )
+        result = asyncio.get_event_loop().run_until_complete(run_pipeline(username="testuser"))
 
     assert result.languages["Python"] == 30000
     assert result.languages["JavaScript"] == 5000
@@ -53,9 +51,7 @@ def test_run_pipeline_empty_repos() -> None:
         new_callable=AsyncMock,
         return_value=[],
     ):
-        result = asyncio.get_event_loop().run_until_complete(
-            run_pipeline(username="emptyuser")
-        )
+        result = asyncio.get_event_loop().run_until_complete(run_pipeline(username="emptyuser"))
 
     assert result.repos_analyzed == 0
     assert result.unique_skills == 0

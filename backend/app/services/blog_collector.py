@@ -24,20 +24,20 @@ async def fetch_zenn_articles(username: str) -> list[dict]:
 
             for item in data.get("articles", []):
                 slug = item.get("slug", "")
-                articles.append({
-                    "platform": "zenn",
-                    "external_id": slug,
-                    "title": item.get("title", ""),
-                    "url": f"https://zenn.dev/{username}/articles/{slug}",
-                    "published_at": (
-                        item.get("published_at", "")[:10]
-                        if item.get("published_at")
-                        else None
-                    ),
-                    "likes_count": item.get("liked_count", 0),
-                    "summary": "",
-                    "tags": [],
-                })
+                articles.append(
+                    {
+                        "platform": "zenn",
+                        "external_id": slug,
+                        "title": item.get("title", ""),
+                        "url": f"https://zenn.dev/{username}/articles/{slug}",
+                        "published_at": (
+                            item.get("published_at", "")[:10] if item.get("published_at") else None
+                        ),
+                        "likes_count": item.get("liked_count", 0),
+                        "summary": "",
+                        "tags": [],
+                    }
+                )
 
             next_page = data.get("next_page")
             if not next_page:
@@ -72,16 +72,18 @@ async def fetch_note_articles(username: str) -> list[dict]:
         # URLからexternal_idを抽出
         external_id = link.rstrip("/").split("/")[-1] if link else ""
 
-        articles.append({
-            "platform": "note",
-            "external_id": external_id,
-            "title": title,
-            "url": link,
-            "published_at": published_at,
-            "likes_count": 0,
-            "summary": _strip_html(description)[:500] if description else "",
-            "tags": [],
-        })
+        articles.append(
+            {
+                "platform": "note",
+                "external_id": external_id,
+                "title": title,
+                "url": link,
+                "published_at": published_at,
+                "likes_count": 0,
+                "summary": _strip_html(description)[:500] if description else "",
+                "tags": [],
+            }
+        )
 
     return articles
 
@@ -92,6 +94,7 @@ def _parse_rss_date(date_str: str) -> str | None:
         return None
     try:
         from email.utils import parsedate_to_datetime
+
         dt = parsedate_to_datetime(date_str)
         return dt.strftime("%Y-%m-%d")
     except Exception:
@@ -101,6 +104,7 @@ def _parse_rss_date(date_str: str) -> str | None:
 def _strip_html(text: str) -> str:
     """HTMLタグを除去する。"""
     import re
+
     return re.sub(r"<[^>]+>", "", text).strip()
 
 

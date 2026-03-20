@@ -137,9 +137,7 @@ def build_intelligence_pdf(payload: dict) -> bytes:
                         Paragraph(escape(missing) if missing else "-", s["body_small"]),
                     ]
                 )
-            role_table = Table(
-                role_data, colWidths=[45 * mm, 20 * mm, content_width - 65 * mm]
-            )
+            role_table = Table(role_data, colWidths=[45 * mm, 20 * mm, content_width - 65 * mm])
             role_table.setStyle(
                 TableStyle(
                     [
@@ -173,9 +171,7 @@ def build_intelligence_pdf(payload: dict) -> bytes:
     simulation = payload.get("simulation", {})
     paths = simulation.get("paths", [])
     if paths:
-        elements.append(
-            Paragraph("■ キャリアパスシミュレーション", s["section_header"])
-        )
+        elements.append(Paragraph("■ キャリアパスシミュレーション", s["section_header"]))
         for i, p in enumerate(paths, 1):
             path_str = " → ".join(p.get("path", []))
             conf = p.get("confidence", 0)

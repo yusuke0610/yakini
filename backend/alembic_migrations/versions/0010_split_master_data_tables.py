@@ -23,7 +23,9 @@ def upgrade() -> None:
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name", name="uq_m_qualification_name"),
     )
@@ -35,7 +37,9 @@ def upgrade() -> None:
         sa.Column("category", sa.String(length=60), nullable=False),
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("category", "name", name="uq_m_technology_stack_category_name"),
     )
@@ -47,23 +51,31 @@ def upgrade() -> None:
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("name", sa.String(length=60), nullable=False),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name", name="uq_m_prefecture_name"),
     )
 
     # 旧テーブル master_data からデータ移行
     conn = op.get_bind()
-    result = conn.execute(sa.text("SELECT name FROM sqlite_master WHERE type='table' AND name='master_data'"))
+    result = conn.execute(
+        sa.text("SELECT name FROM sqlite_master WHERE type='table' AND name='master_data'")
+    )
     if result.fetchone() is not None:
-        conn.execute(sa.text(
-            "INSERT INTO m_qualification (id, name, sort_order, created_at) "
-            "SELECT id, name, sort_order, created_at FROM master_data WHERE category = 'qualification'"
-        ))
-        conn.execute(sa.text(
-            "INSERT INTO m_prefecture (id, name, sort_order, created_at) "
-            "SELECT id, name, sort_order, created_at FROM master_data WHERE category = 'prefecture'"
-        ))
+        conn.execute(
+            sa.text(
+                "INSERT INTO m_qualification (id, name, sort_order, created_at) "
+                "SELECT id, name, sort_order, created_at FROM master_data WHERE category = 'qualification'"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO m_prefecture (id, name, sort_order, created_at) "
+                "SELECT id, name, sort_order, created_at FROM master_data WHERE category = 'prefecture'"
+            )
+        )
         # technology_stack はカテゴリなしだったので移行しない（シードで再投入される）
         op.drop_index("ix_master_data_category", table_name="master_data")
         op.drop_table("master_data")
@@ -76,7 +88,9 @@ def downgrade() -> None:
         sa.Column("category", sa.String(length=60), nullable=False),
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("category", "name", name="uq_master_data_category_name"),
     )
