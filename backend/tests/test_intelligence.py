@@ -106,7 +106,6 @@ SAMPLE_REPOS = [
 
 
 class TestSkillExtractor:
-
     def test_extracts_from_languages(self):
         repos = [_make_repo(languages={"Python": 10000, "Go": 5000})]
         result = extract_skills(repos)
@@ -140,9 +139,7 @@ class TestSkillExtractor:
         ]
         result = extract_skills(repos)
         python_count = sum(
-            1
-            for s in result.skills
-            if s.skill_name == "Python" and s.repo_name == "my-repo"
+            1 for s in result.skills if s.skill_name == "Python" and s.repo_name == "my-repo"
         )
         assert python_count == 1
 
@@ -262,7 +259,6 @@ class TestSkillExtractor:
 
 
 class TestRootFileDetection:
-
     def test_dockerfile_detected(self):
         from app.services.intelligence.github_collector import (
             _detect_from_root_files,
@@ -321,7 +317,6 @@ class TestRootFileDetection:
 
 
 class TestDependencyParsing:
-
     def test_parse_requirements_txt(self):
         from app.services.intelligence.github_collector import (
             _parse_requirements_txt,
@@ -389,10 +384,7 @@ class TestDependencyParsing:
             _parse_go_mod,
         )
 
-        content = (
-            "module example.com/app\n\nrequire (\n"
-            "\tgithub.com/gin-gonic/gin v1.9\n)\n"
-        )
+        content = "module example.com/app\n\nrequire (\n" "\tgithub.com/gin-gonic/gin v1.9\n)\n"
         result = _parse_go_mod(content)
         assert "github.com/gin-gonic/gin" in result
 
@@ -411,7 +403,6 @@ class TestDependencyParsing:
 
 
 class TestSkillTimeline:
-
     def _build(self):
         extraction = extract_skills(SAMPLE_REPOS)
         return build_timeline(extraction)
@@ -467,7 +458,6 @@ class TestSkillTimeline:
 
 
 class TestSkillGrowthAnalyzer:
-
     def _analyze(self, current_year="2024"):
         extraction = extract_skills(SAMPLE_REPOS)
         timelines = build_timeline(extraction)
@@ -520,7 +510,6 @@ class TestSkillGrowthAnalyzer:
 
 
 class TestCareerPathsMatching:
-
     def test_backend_skills_match_backend_engineer(self):
         skills = {"Python", "FastAPI", "PostgreSQL"}
         categories = {"language", "backend_framework", "database"}
@@ -570,7 +559,6 @@ class TestCareerPathsMatching:
 
 
 class TestCareerPredictor:
-
     def _predict(self):
         extraction = extract_skills(SAMPLE_REPOS)
         timelines = build_timeline(extraction)
@@ -607,7 +595,6 @@ class TestCareerPredictor:
 
 
 class TestCareerSimulator:
-
     def _simulate(self):
         extraction = extract_skills(SAMPLE_REPOS)
         timelines = build_timeline(extraction)
@@ -654,7 +641,6 @@ class TestCareerSimulator:
 
 
 class TestConfidenceScorer:
-
     def test_score_range(self):
         skills = {"Python", "FastAPI", "Docker"}
         categories = {"language", "backend_framework", "infrastructure"}

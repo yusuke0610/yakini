@@ -16,11 +16,7 @@ def admin_backup(
         return backup_sqlite_to_gcs()
     except RuntimeError as error:
         logging.warning("sqlite backup runtime error: %s", error)
-        raise HTTPException(
-            status_code=503, detail="バックアップサービスが利用できません"
-        ) from error
+        raise HTTPException(status_code=503, detail="バックアップサービスが利用できません") from error
     except Exception as error:
         logging.exception("sqlite backup failed")
-        raise HTTPException(
-            status_code=500, detail="バックアップに失敗しました"
-        ) from error
+        raise HTTPException(status_code=500, detail="バックアップに失敗しました") from error

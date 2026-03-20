@@ -7,8 +7,7 @@ import weasyprint
 
 _CSS_PATH = Path(__file__).resolve().parent.parent / "templates" / "rirekisho.css"
 _FONT_PATH = (
-    Path(__file__).resolve().parent.parent.parent.parent / "fonts"
-    / "NotoSansJP-Regular.ttf"
+    Path(__file__).resolve().parent.parent.parent.parent / "fonts" / "NotoSansJP-Regular.ttf"
 )
 
 _MAX_HISTORY_ROWS_PAGE1 = 23
@@ -93,7 +92,7 @@ def _build_history_table_html(
         "<tr>"
         f'<th class="year">年</th>'
         f'<th class="month">月</th>'
-        f'<th>{_esc(header_label)}</th>'
+        f"<th>{_esc(header_label)}</th>"
         "</tr>"
     )
 
@@ -134,11 +133,7 @@ def _build_qual_table_html(data: dict) -> str:
     parts: list[str] = []
     parts.append('<table class="qual-table">')
     parts.append(
-        "<tr>"
-        '<th class="year">年</th>'
-        '<th class="month">月</th>'
-        "<th>免許・資格</th>"
-        "</tr>"
+        "<tr>" '<th class="year">年</th>' '<th class="month">月</th>' "<th>免許・資格</th>" "</tr>"
     )
 
     drawn = 0
@@ -159,9 +154,7 @@ def _build_qual_table_html(data: dict) -> str:
     # 空行で埋める
     while drawn < _QUAL_MAX_ROWS:
         parts.append(
-            '<tr><td class="year"></td>'
-            '<td class="month"></td>'
-            '<td class="content"></td></tr>'
+            '<tr><td class="year"></td>' '<td class="month"></td>' '<td class="content"></td></tr>'
         )
         drawn += 1
 
@@ -196,6 +189,9 @@ def _build_html(data: dict) -> str:
             bd_display = f"{bd_parts[0]}年{bd_parts[1].lstrip('0')}月"
         if len(bd_parts) == 3:
             bd_display += f"{bd_parts[2].lstrip('0')}日生"
+    gender_html = "※性別"
+    if gender_text:
+        gender_html = '<span class="gender-note">※性別</span><br/>' f"{_esc(gender_text)}"
 
     photo_html = _build_photo_html(data)
     address_furigana = data.get("address_furigana", "")
@@ -229,7 +225,7 @@ def _build_html(data: dict) -> str:
         f'<td class="label">生年月日</td>'
         f'<td class="bd">{_esc(bd_display)}</td>'
         '<td class="gender">'
-        f'{"<span class=\"gender-note\">※性別</span><br/>" + _esc(gender_text) if gender_text else "※性別"}'
+        f"{gender_html}"
         "</td>"
         "</tr>"
     )
@@ -265,7 +261,9 @@ def _build_html(data: dict) -> str:
     # --- 学歴・職歴テーブル (1ページ目) ---
     all_rows = _build_history_rows(data)
     history_html, overflow = _build_history_table_html(
-        all_rows, header_label="学歴・職歴", max_rows=_MAX_HISTORY_ROWS_PAGE1,
+        all_rows,
+        header_label="学歴・職歴",
+        max_rows=_MAX_HISTORY_ROWS_PAGE1,
     )
     parts.append(history_html)
 
@@ -275,7 +273,8 @@ def _build_html(data: dict) -> str:
     # はみ出した学歴・職歴
     if overflow:
         overflow_html, _ = _build_history_table_html(
-            overflow, header_label="学歴・職歴（続き）",
+            overflow,
+            header_label="学歴・職歴（続き）",
         )
         parts.append(overflow_html)
 
@@ -285,9 +284,7 @@ def _build_html(data: dict) -> str:
     # --- 志望動機 ---
     motivation = data.get("motivation", "")
     parts.append('<div class="text-block">')
-    parts.append(
-        '<div class="text-block-header">志望の動機、自己PRなど</div>'
-    )
+    parts.append('<div class="text-block-header">志望の動機、自己PRなど</div>')
     parts.append(
         f'<div class="text-block-body motivation">{_md(motivation) if motivation else ""}</div>'
     )
@@ -297,9 +294,7 @@ def _build_html(data: dict) -> str:
     personal_preferences = data.get("personal_preferences", "")
     parts.append('<div class="text-block">')
     parts.append(
-        '<div class="text-block-header">'
-        "本人希望記入欄（特に給料・職種・勤務時間・勤務地・その他についての希望などがあれば記入）"
-        "</div>"
+        '<div class="text-block-header">' "本人希望記入欄（特に給料・職種・勤務時間・勤務地・その他についての希望などがあれば記入）" "</div>"
     )
     parts.append(
         f'<div class="text-block-body">'
@@ -317,7 +312,8 @@ def build_rirekisho_pdf(rirekisho: dict) -> bytes:
     # CSSテンプレートを読み込み、フォントパスを埋め込む
     css_text = _CSS_PATH.read_text(encoding="utf-8")
     css_text = css_text.replace(
-        "{{ font_path }}", _FONT_PATH.as_uri(),
+        "{{ font_path }}",
+        _FONT_PATH.as_uri(),
     )
 
     full_html = (

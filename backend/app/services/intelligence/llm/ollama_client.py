@@ -14,9 +14,7 @@ class OllamaClient(LLMClient):
     """Ollama API を使用した LLM クライアント。"""
 
     def __init__(self) -> None:
-        self.base_url = os.environ.get(
-            "OLLAMA_BASE_URL", "http://localhost:11434"
-        )
+        self.base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
         self.model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
         self.timeout = float(os.environ.get("OLLAMA_TIMEOUT", "180"))
 

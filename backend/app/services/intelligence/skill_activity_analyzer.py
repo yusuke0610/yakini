@@ -61,17 +61,13 @@ async def get_skill_activity(
             total_bytes = sum(repo_info.languages.values()) or 1
             # 主要言語の重みを算出（フレームワークに継承させるため）
             max_lang_weight = (
-                max(repo_info.languages.values()) / total_bytes
-                if repo_info.languages
-                else 0.1
+                max(repo_info.languages.values()) / total_bytes if repo_info.languages else 0.1
             )
             skill_weights: Dict[str, float] = {}
             for extracted in extracted_skills:
                 if extracted.language_bytes > 0:
                     # 言語系スキル: バイト比率を重みとして使用
-                    skill_weights[extracted.skill_name] = (
-                        extracted.language_bytes / total_bytes
-                    )
+                    skill_weights[extracted.skill_name] = extracted.language_bytes / total_bytes
                 elif extracted.source == "dependency":
                     # フレームワーク系スキル: 主要言語の重みを継承
                     skill_weights[extracted.skill_name] = max_lang_weight
@@ -138,10 +134,7 @@ async def get_skill_activity(
 
         # 期間でグループ化（重みの合計でアクティビティを算出）
         grouped = (
-            skill_df.set_index("date")["weight"]
-            .resample(freq)
-            .sum()
-            .reset_index(name="activity")
+            skill_df.set_index("date")["weight"].resample(freq).sum().reset_index(name="activity")
         )
 
         # 期間文字列をフォーマット

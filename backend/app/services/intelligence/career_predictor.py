@@ -174,9 +174,7 @@ def _score_next_roles(
 
         # カテゴリのカバレッジ
         role_cats = set(role_def.required_categories)
-        cat_score = (
-            len(user_categories & role_cats) / len(role_cats) if role_cats else 0.3
-        )
+        cat_score = len(user_categories & role_cats) / len(role_cats) if role_cats else 0.3
 
         confidence = min(
             (base_score * 0.5 + cat_score * 0.3 + emerging_bonus) * depth_penalty,

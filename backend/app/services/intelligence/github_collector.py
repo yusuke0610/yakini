@@ -216,9 +216,7 @@ async def _fetch_root_files(
         return [
             item["name"]
             for item in items
-            if isinstance(item, dict)
-            and "name" in item
-            and item["name"] in _INTERESTING_ROOT_FILES
+            if isinstance(item, dict) and "name" in item and item["name"] in _INTERESTING_ROOT_FILES
         ]
     except httpx.HTTPError:
         logger.warning("Failed to fetch contents for %s/%s", owner, repo)

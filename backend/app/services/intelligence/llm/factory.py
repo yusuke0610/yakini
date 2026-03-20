@@ -18,9 +18,11 @@ def get_llm_client() -> LLMClient:
 
     if provider == "vertex":
         from .vertex_client import VertexClient
+
         logger.info("LLM バックエンド: Vertex AI")
         return VertexClient()
 
     from .ollama_client import OllamaClient
+
     logger.info("LLM バックエンド: Ollama")
     return OllamaClient()

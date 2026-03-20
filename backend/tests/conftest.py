@@ -24,9 +24,7 @@ os.environ.setdefault("SQLITE_DB_PATH", ":memory:")
 os.environ.setdefault("APP_BOOTSTRAPPED", "1")
 os.environ.setdefault("GITHUB_CLIENT_ID", "test-github-client-id")
 os.environ.setdefault("GITHUB_CLIENT_SECRET", "test-github-client-secret")
-os.environ.setdefault(
-    "FIELD_ENCRYPTION_KEY", "pVo6M_raAWEpAv25F4p4RziywsjfPENokI10DZbNO7E="
-)
+os.environ.setdefault("FIELD_ENCRYPTION_KEY", "pVo6M_raAWEpAv25F4p4RziywsjfPENokI10DZbNO7E=")
 
 
 @pytest.fixture()
