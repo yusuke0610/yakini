@@ -25,11 +25,22 @@ _REPO_MIN_SIZE_BYTES = 1024
 
 # 特定のスキルを示すルートファイル/ディレクトリ
 _INTERESTING_ROOT_FILES = {
-    "Dockerfile", "docker-compose.yml", "docker-compose.yaml",
-    "package.json", "requirements.txt", "pyproject.toml",
-    "pom.xml", "go.mod", "Makefile", "Gemfile",
-    ".github", "terraform", ".terraform",
-    "Jenkinsfile", ".gitlab-ci.yml", ".circleci",
+    "Dockerfile",
+    "docker-compose.yml",
+    "docker-compose.yaml",
+    "package.json",
+    "requirements.txt",
+    "pyproject.toml",
+    "pom.xml",
+    "go.mod",
+    "Makefile",
+    "Gemfile",
+    ".github",
+    "terraform",
+    ".terraform",
+    "Jenkinsfile",
+    ".gitlab-ci.yml",
+    ".circleci",
 }
 
 # 依存関係ファイル → パーサー関数名
@@ -50,7 +61,7 @@ class RepoData:
     languages: Dict[str, int]  # 言語 → バイト数
     topics: List[str]
     created_at: str  # ISO 8601 形式
-    pushed_at: str   # ISO 8601 形式
+    pushed_at: str  # ISO 8601 形式
     fork: bool
     stargazers_count: int
     default_branch: str
@@ -126,35 +137,46 @@ async def collect_repos(
             repo_name = raw["name"]
 
             languages = await _fetch_languages(
-                client, owner_login, repo_name,
+                client,
+                owner_login,
+                repo_name,
             )
             root_files = await _fetch_root_files(
-                client, owner_login, repo_name,
+                client,
+                owner_login,
+                repo_name,
             )
             dependencies = await _parse_dependencies(
-                client, owner_login, repo_name, root_files,
+                client,
+                owner_login,
+                repo_name,
+                root_files,
             )
             detected_frameworks = _detect_from_root_files(root_files)
 
-            repos.append(RepoData(
-                name=repo_name,
-                owner=owner_login,
-                description=raw.get("description") or "",
-                languages=languages,
-                topics=raw.get("topics") or [],
-                created_at=raw.get("created_at", ""),
-                pushed_at=raw.get("pushed_at", ""),
-                fork=raw.get("fork", False),
-                stargazers_count=raw.get("stargazers_count", 0),
-                default_branch=raw.get("default_branch", "main"),
-                dependencies=dependencies,
-                root_files=root_files,
-                detected_frameworks=detected_frameworks,
-            ))
+            repos.append(
+                RepoData(
+                    name=repo_name,
+                    owner=owner_login,
+                    description=raw.get("description") or "",
+                    languages=languages,
+                    topics=raw.get("topics") or [],
+                    created_at=raw.get("created_at", ""),
+                    pushed_at=raw.get("pushed_at", ""),
+                    fork=raw.get("fork", False),
+                    stargazers_count=raw.get("stargazers_count", 0),
+                    default_branch=raw.get("default_branch", "main"),
+                    dependencies=dependencies,
+                    root_files=root_files,
+                    detected_frameworks=detected_frameworks,
+                )
+            )
 
     logger.info(
         "Collected %d repos for %s (skipped forks: %s)",
-        len(repos), username, not include_forks,
+        len(repos),
+        username,
+        not include_forks,
     )
     return repos
 
@@ -173,9 +195,7 @@ async def _fetch_languages(
         resp.raise_for_status()
         return resp.json()
     except httpx.HTTPError:
-        logger.warning(
-            "Failed to fetch languages for %s/%s", owner, repo
-        )
+        logger.warning("Failed to fetch languages for %s/%s", owner, repo)
         return {}
 
 
@@ -194,8 +214,10 @@ async def _fetch_root_files(
         if not isinstance(items, list):
             return []
         return [
-            item["name"] for item in items
-            if isinstance(item, dict) and "name" in item
+            item["name"]
+            for item in items
+            if isinstance(item, dict)
+            and "name" in item
             and item["name"] in _INTERESTING_ROOT_FILES
         ]
     except httpx.HTTPError:
@@ -221,7 +243,10 @@ async def _fetch_file_content(
         return resp.text
     except httpx.HTTPError:
         logger.warning(
-            "Failed to fetch %s for %s/%s", path, owner, repo,
+            "Failed to fetch %s for %s/%s",
+            path,
+            owner,
+            repo,
         )
         return None
 
@@ -307,9 +332,7 @@ def _parse_pyproject_toml(content: str) -> List[str]:
                 if name:
                     packages.append(name.lower())
                 continue
-            if stripped == "]" or (
-                stripped.startswith("[") and stripped != "]"
-            ):
+            if stripped == "]" or (stripped.startswith("[") and stripped != "]"):
                 in_deps = False
     return packages
 
@@ -317,6 +340,7 @@ def _parse_pyproject_toml(content: str) -> List[str]:
 def _parse_package_json(content: str) -> List[str]:
     """package.json から依存関係名を抽出します。"""
     import json
+
     try:
         data = json.loads(content)
     except (json.JSONDecodeError, ValueError):
@@ -332,10 +356,8 @@ def _parse_package_json(content: str) -> List[str]:
 def _parse_pom_xml(content: str) -> List[str]:
     """pom.xml から artifactId の値を抽出します（基本的な正規表現）。"""
     import re
-    return [
-        m.lower()
-        for m in re.findall(r"<artifactId>([^<]+)</artifactId>", content)
-    ]
+
+    return [m.lower() for m in re.findall(r"<artifactId>([^<]+)</artifactId>", content)]
 
 
 def _parse_go_mod(content: str) -> List[str]:

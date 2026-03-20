@@ -26,9 +26,9 @@ MAX_BRANCH_FACTOR = 3
 
 @dataclass
 class SimulatedPath:
-    path: List[str]        # ロール名のシーケンス
-    confidence: float      # パス全体の信頼度 (0.0 から 1.0)
-    description: str       # 人間が読める形式のサマリー
+    path: List[str]  # ロール名のシーケンス
+    confidence: float  # パス全体の信頼度 (0.0 から 1.0)
+    description: str  # 人間が読める形式のサマリー
 
 
 @dataclass
@@ -51,12 +51,8 @@ def simulate_careers(
     """
     current = prediction.current_role.role_name
     user_skills: Set[str] = {t.skill_name for t in timelines}
-    user_categories: Set[str] = {
-        get_skill_category(s) for s in user_skills
-    }
-    growth_map: Dict[str, SkillGrowth] = {
-        g.skill_name: g for g in growth
-    }
+    user_categories: Set[str] = {get_skill_category(s) for s in user_skills}
+    growth_map: Dict[str, SkillGrowth] = {g.skill_name: g for g in growth}
 
     # すべてのパスを見つけるための DFS
     all_paths: List[List[str]] = []
@@ -69,20 +65,27 @@ def simulate_careers(
             continue
 
         conf = score_path(
-            path, user_skills, user_categories, growth_map,
+            path,
+            user_skills,
+            user_categories,
+            growth_map,
         )
         desc = _generate_description(path)
-        scored.append(SimulatedPath(
-            path=path,
-            confidence=conf,
-            description=desc,
-        ))
+        scored.append(
+            SimulatedPath(
+                path=path,
+                confidence=conf,
+                description=desc,
+            )
+        )
 
     scored.sort(key=lambda s: s.confidence, reverse=True)
 
     logger.info(
         "Simulated %d career paths from %s (showing top %d)",
-        len(scored), current, max_paths,
+        len(scored),
+        current,
+        max_paths,
     )
 
     return CareerSimulation(

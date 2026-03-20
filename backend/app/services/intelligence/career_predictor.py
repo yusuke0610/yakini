@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PredictedRole:
     role_name: str
-    confidence: float       # 0.0 から 1.0
+    confidence: float  # 0.0 から 1.0
     matching_skills: List[str]
     missing_skills: List[str]
     seniority: int
@@ -55,18 +55,11 @@ def predict_career(
     """
     # スキルセットの構築
     user_skills: Set[str] = {t.skill_name for t in timelines}
-    user_categories: Set[str] = {
-        get_skill_category(s) for s in user_skills
-    }
+    user_categories: Set[str] = {get_skill_category(s) for s in user_skills}
 
     # 成長データのルックアップを構築
-    growth_map: Dict[str, SkillGrowth] = {
-        g.skill_name: g for g in growth
-    }
-    emerging_skills = {
-        g.skill_name for g in growth
-        if g.trend == GrowthTrend.EMERGING
-    }
+    growth_map: Dict[str, SkillGrowth] = {g.skill_name: g for g in growth}
+    emerging_skills = {g.skill_name for g in growth if g.trend == GrowthTrend.EMERGING}
 
     # 1. スキルをすべてのロールと照合する
     matches = match_skills_to_roles(user_skills, user_categories)
@@ -79,13 +72,14 @@ def predict_career(
 
     # 3. 次のロール：現在のロールの next_roles からスコアリング
     current_role_def = CAREER_ROLES.get(best_match.role_name)
-    next_role_names = (
-        current_role_def.next_roles if current_role_def else []
-    )
+    next_role_names = current_role_def.next_roles if current_role_def else []
 
     next_roles = _score_next_roles(
-        next_role_names, user_skills, user_categories,
-        emerging_skills, growth_map,
+        next_role_names,
+        user_skills,
+        user_categories,
+        emerging_skills,
+        growth_map,
     )
 
     # 4. 長期的なロール：グラフを2ホップ辿る
@@ -98,8 +92,12 @@ def predict_career(
     long_term_names -= {nr.role_name for nr in next_roles}
 
     long_term_roles = _score_next_roles(
-        list(long_term_names), user_skills, user_categories,
-        emerging_skills, growth_map, depth_penalty=0.5,
+        list(long_term_names),
+        user_skills,
+        user_categories,
+        emerging_skills,
+        growth_map,
+        depth_penalty=0.5,
     )
 
     # カテゴリ別のスキルサマリー
@@ -177,23 +175,23 @@ def _score_next_roles(
         # カテゴリのカバレッジ
         role_cats = set(role_def.required_categories)
         cat_score = (
-            len(user_categories & role_cats) / len(role_cats)
-            if role_cats else 0.3
+            len(user_categories & role_cats) / len(role_cats) if role_cats else 0.3
         )
 
         confidence = min(
-            (base_score * 0.5 + cat_score * 0.3 + emerging_bonus)
-            * depth_penalty,
+            (base_score * 0.5 + cat_score * 0.3 + emerging_bonus) * depth_penalty,
             1.0,
         )
 
-        scored.append(PredictedRole(
-            role_name=name,
-            confidence=round(confidence, 2),
-            matching_skills=sorted(overlap),
-            missing_skills=sorted(missing),
-            seniority=role_def.seniority,
-        ))
+        scored.append(
+            PredictedRole(
+                role_name=name,
+                confidence=round(confidence, 2),
+                matching_skills=sorted(overlap),
+                missing_skills=sorted(missing),
+                seniority=role_def.seniority,
+            )
+        )
 
     scored.sort(key=lambda r: r.confidence, reverse=True)
     return scored

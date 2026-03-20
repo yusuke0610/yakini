@@ -34,7 +34,7 @@ def build_intelligence_markdown(payload: dict[str, Any]) -> str:
 
         current = prediction.get("current_role", {})
         if current:
-            role_name = current.get('role_name', '')
+            role_name = current.get("role_name", "")
             conf = current.get("confidence", 0)
             lines.append(f"### 現在のロール: {role_name} ({conf:.0%})")
             lines.append("")

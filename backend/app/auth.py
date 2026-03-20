@@ -26,9 +26,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(username: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(
-        hours=_TOKEN_EXPIRE_HOURS
-    )
+    expire = datetime.now(timezone.utc) + timedelta(hours=_TOKEN_EXPIRE_HOURS)
     payload = {"sub": username, "exp": expire}
     return jwt.encode(payload, get_secret_key(), algorithm=_ALGORITHM)
 
@@ -44,9 +42,7 @@ def get_current_user(
             detail="認証が必要です",
         )
     try:
-        payload = jwt.decode(
-            token, get_secret_key(), algorithms=[_ALGORITHM]
-        )
+        payload = jwt.decode(token, get_secret_key(), algorithms=[_ALGORITHM])
         username: str | None = payload.get("sub")
         if not username:
             raise HTTPException(

@@ -1,4 +1,5 @@
 """マスタデータの初期シードを投入するモジュール。"""
+
 from sqlalchemy.orm import Session
 
 from .repositories import (
