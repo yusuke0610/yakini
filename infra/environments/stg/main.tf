@@ -35,6 +35,7 @@ module "cloud_run" {
   stack_name                      = local.stack_name
   service_account_email           = module.service_account.email
   artifact_registry_repository_id = module.artifact_registry.repository_id
+  container_image_tag             = var.container_image_tag
   db_backup_bucket_name           = module.storage.db_backup_bucket_name
   cors_origins                    = var.cors_origins
 }
