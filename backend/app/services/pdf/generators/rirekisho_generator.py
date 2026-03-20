@@ -7,7 +7,8 @@ import weasyprint
 
 _CSS_PATH = Path(__file__).resolve().parent.parent / "templates" / "rirekisho.css"
 _FONT_PATH = (
-    Path(__file__).resolve().parent.parent.parent.parent / "fonts"
+    Path(__file__).resolve().parent.parent.parent.parent
+    / "fonts"
     / "NotoSansJP-Regular.ttf"
 )
 
@@ -93,7 +94,7 @@ def _build_history_table_html(
         "<tr>"
         f'<th class="year">年</th>'
         f'<th class="month">月</th>'
-        f'<th>{_esc(header_label)}</th>'
+        f"<th>{_esc(header_label)}</th>"
         "</tr>"
     )
 
@@ -265,7 +266,9 @@ def _build_html(data: dict) -> str:
     # --- 学歴・職歴テーブル (1ページ目) ---
     all_rows = _build_history_rows(data)
     history_html, overflow = _build_history_table_html(
-        all_rows, header_label="学歴・職歴", max_rows=_MAX_HISTORY_ROWS_PAGE1,
+        all_rows,
+        header_label="学歴・職歴",
+        max_rows=_MAX_HISTORY_ROWS_PAGE1,
     )
     parts.append(history_html)
 
@@ -275,7 +278,8 @@ def _build_html(data: dict) -> str:
     # はみ出した学歴・職歴
     if overflow:
         overflow_html, _ = _build_history_table_html(
-            overflow, header_label="学歴・職歴（続き）",
+            overflow,
+            header_label="学歴・職歴（続き）",
         )
         parts.append(overflow_html)
 
@@ -285,9 +289,7 @@ def _build_html(data: dict) -> str:
     # --- 志望動機 ---
     motivation = data.get("motivation", "")
     parts.append('<div class="text-block">')
-    parts.append(
-        '<div class="text-block-header">志望の動機、自己PRなど</div>'
-    )
+    parts.append('<div class="text-block-header">志望の動機、自己PRなど</div>')
     parts.append(
         f'<div class="text-block-body motivation">{_md(motivation) if motivation else ""}</div>'
     )
@@ -317,7 +319,8 @@ def build_rirekisho_pdf(rirekisho: dict) -> bytes:
     # CSSテンプレートを読み込み、フォントパスを埋め込む
     css_text = _CSS_PATH.read_text(encoding="utf-8")
     css_text = css_text.replace(
-        "{{ font_path }}", _FONT_PATH.as_uri(),
+        "{{ font_path }}",
+        _FONT_PATH.as_uri(),
     )
 
     full_html = (

@@ -114,7 +114,14 @@
         "expressjs",
         "aspnet",
         "swiftui",
-        "huggingface"
+        "huggingface",
+        "Noto",
+        "rowspan",
+        "pagesizes",
+        "TOPPADDING",
+        "BOTTOMPADDING",
+        "LEFTPADDING",
+        "RIGHTPADDING"
     ],
     "editor.linkedEditing": true,
     "html.autoClosingTags": true,
