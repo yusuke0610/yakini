@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 class SkillTimeline:
     skill_name: str
     category: str
-    first_seen: str        # 年の文字列、例: "2019"
-    last_seen: str         # 年の文字列、例: "2024"
-    usage_frequency: int   # 合計リポジトリ数
+    first_seen: str  # 年の文字列、例: "2019"
+    last_seen: str  # 年の文字列、例: "2024"
+    usage_frequency: int  # 合計リポジトリ数
     repositories: List[str]
     yearly_usage: Dict[str, int]  # 年 → リポジトリ数
 
@@ -29,6 +29,7 @@ class SkillTimeline:
 @dataclass
 class YearSnapshot:
     """特定の年にアクティブだったスキル。"""
+
     year: str
     skills: List[str]
     new_skills: List[str]  # 初めて現れたスキル
@@ -72,15 +73,17 @@ def build_timeline(
 
         yearly_usage = {y: len(repos) for y, repos in sorted(yearly.items())}
 
-        timelines.append(SkillTimeline(
-            skill_name=skill_name,
-            category=category,
-            first_seen=years[0],
-            last_seen=years[-1],
-            usage_frequency=len(all_repos),
-            repositories=sorted(all_repos),
-            yearly_usage=yearly_usage,
-        ))
+        timelines.append(
+            SkillTimeline(
+                skill_name=skill_name,
+                category=category,
+                first_seen=years[0],
+                last_seen=years[-1],
+                usage_frequency=len(all_repos),
+                repositories=sorted(all_repos),
+                yearly_usage=yearly_usage,
+            )
+        )
 
     timelines.sort(key=lambda t: (t.first_seen, -t.usage_frequency))
     logger.info("Built timeline for %d skills", len(timelines))
@@ -101,24 +104,19 @@ def build_year_snapshots(
         all_years.update(t.yearly_usage.keys())
 
     # スキルごとの初出を追跡
-    first_seen_map: Dict[str, str] = {
-        t.skill_name: t.first_seen for t in timelines
-    }
+    first_seen_map: Dict[str, str] = {t.skill_name: t.first_seen for t in timelines}
 
     snapshots: List[YearSnapshot] = []
     for year in sorted(all_years):
-        active = [
-            t.skill_name for t in timelines
-            if year in t.yearly_usage
-        ]
-        new = [
-            s for s in active if first_seen_map.get(s) == year
-        ]
-        snapshots.append(YearSnapshot(
-            year=year,
-            skills=sorted(active),
-            new_skills=sorted(new),
-        ))
+        active = [t.skill_name for t in timelines if year in t.yearly_usage]
+        new = [s for s in active if first_seen_map.get(s) == year]
+        snapshots.append(
+            YearSnapshot(
+                year=year,
+                skills=sorted(active),
+                new_skills=sorted(new),
+            )
+        )
 
     return snapshots
 

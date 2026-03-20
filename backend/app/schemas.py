@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
-_HIRAGANA_PATTERN = r'^[ぁ-ゖー\s　]+$'
+_HIRAGANA_PATTERN = r"^[ぁ-ゖー\s　]+$"
 
 
 class LoginRequest(BaseModel):
@@ -56,9 +56,7 @@ class BasicQualification(BaseModel):
 
 class BasicInfoBase(BaseModel):
     full_name: str = Field(min_length=1, max_length=120)
-    name_furigana: str = Field(
-        min_length=1, max_length=200, pattern=_HIRAGANA_PATTERN
-    )
+    name_furigana: str = Field(min_length=1, max_length=200, pattern=_HIRAGANA_PATTERN)
     record_date: str = Field(min_length=1, max_length=30)
     qualifications: list[BasicQualification] = Field(default_factory=list)
 
@@ -80,9 +78,7 @@ class BasicInfoResponse(BasicInfoBase):
 
 
 class TechnologyStackItem(BaseModel):
-    category: Literal[
-        "language", "framework", "os", "db", "cloud_resource", "dev_tool"
-    ]
+    category: Literal["language", "framework", "os", "db", "cloud_resource", "dev_tool"]
     name: str = Field(min_length=1, max_length=120)
 
     model_config = ConfigDict(from_attributes=True)
@@ -90,6 +86,7 @@ class TechnologyStackItem(BaseModel):
 
 class TeamMember(BaseModel):
     """体制の役割ごとの人数。"""
+
     role: str = Field(max_length=60)
     count: int = Field(ge=0)
 
@@ -98,6 +95,7 @@ class TeamMember(BaseModel):
 
 class ProjectTeam(BaseModel):
     """プロジェクト体制（全体人数 + 役割別内訳）。"""
+
     total: str = Field(max_length=60, default="")
     members: list[TeamMember] = Field(default_factory=list)
 
@@ -126,14 +124,13 @@ class Project(BaseModel):
         """旧形式 scale → team に自動変換する後方互換処理。"""
         if isinstance(data, dict) and "scale" in data and "team" not in data:
             scale = data.pop("scale")
-            data["team"] = {
-                "total": str(scale) if scale else "", "members": []
-            }
+            data["team"] = {"total": str(scale) if scale else "", "members": []}
         return data
 
 
 class Client(BaseModel):
     """ユーザ（常駐先/クライアント企業）。"""
+
     name: str = Field(max_length=200, default="")
     has_client: bool = True
     projects: list[Project] = Field(default_factory=list)
@@ -157,11 +154,7 @@ class Experience(BaseModel):
     @classmethod
     def _migrate_projects_to_clients(cls, data: dict) -> dict:
         """旧形式（projects直下）を clients にラップする後方互換処理。"""
-        if (
-            isinstance(data, dict)
-            and "projects" in data
-            and "clients" not in data
-        ):
+        if isinstance(data, dict) and "projects" in data and "clients" not in data:
             projects = data.pop("projects")
             data["clients"] = [{"name": "", "projects": projects}]
         return data
@@ -244,12 +237,14 @@ class RirekishoResponse(RirekishoBase):
 
 class BlogAccountCreate(BaseModel):
     """ブログ連携アカウントの作成リクエスト。"""
+
     platform: Literal["zenn", "note"]
     username: str = Field(min_length=1, max_length=120)
 
 
 class BlogAccountResponse(BaseModel):
     """ブログ連携アカウントのレスポンス。"""
+
     id: UUID
     platform: str
     username: str
@@ -260,6 +255,7 @@ class BlogAccountResponse(BaseModel):
 
 class BlogArticleResponse(BaseModel):
     """ブログ記事のレスポンス。"""
+
     id: UUID
     platform: str
     title: str
@@ -274,12 +270,14 @@ class BlogArticleResponse(BaseModel):
 
 class BlogSyncResponse(BaseModel):
     """ブログ同期結果のレスポンス。"""
+
     synced_count: int
     total_count: int
 
 
 class BlogSummaryArticle(BaseModel):
     """ブログ AI 分析に渡す記事情報。"""
+
     platform: Literal["zenn", "note"]
     title: str = Field(min_length=1, max_length=500)
     url: str = Field(min_length=1, max_length=1000)
@@ -291,17 +289,20 @@ class BlogSummaryArticle(BaseModel):
 
 class BlogSummaryRequest(BaseModel):
     """ブログ記事 AI 分析リクエスト。"""
+
     articles: list[BlogSummaryArticle] = Field(min_length=1, max_length=50)
 
 
 class BlogSummaryResponse(BaseModel):
     """ブログ記事 AI 分析レスポンス。"""
+
     summary: str
     available: bool
 
 
 class MasterItem(BaseModel):
     """マスタデータ共通レスポンス（資格・都道府県）。"""
+
     id: UUID
     name: str
     sort_order: int
@@ -311,18 +312,21 @@ class MasterItem(BaseModel):
 
 class MasterItemCreate(BaseModel):
     """マスタデータ共通の作成リクエスト（資格・都道府県）。"""
+
     name: str = Field(min_length=1, max_length=200)
     sort_order: int = Field(default=0)
 
 
 class MasterItemUpdate(BaseModel):
     """マスタデータ共通の更新リクエスト（資格・都道府県）。"""
+
     name: str = Field(min_length=1, max_length=200)
     sort_order: int = Field(default=0)
 
 
 class TechStackMasterItem(BaseModel):
     """技術スタックマスタのレスポンス。"""
+
     id: UUID
     category: str
     name: str
@@ -333,6 +337,7 @@ class TechStackMasterItem(BaseModel):
 
 class TechStackMasterCreate(BaseModel):
     """技術スタックマスタの作成リクエスト。"""
+
     category: str = Field(min_length=1, max_length=60)
     name: str = Field(min_length=1, max_length=200)
     sort_order: int = Field(default=0)
@@ -340,6 +345,7 @@ class TechStackMasterCreate(BaseModel):
 
 class TechStackMasterUpdate(BaseModel):
     """技術スタックマスタの更新リクエスト。"""
+
     category: str = Field(min_length=1, max_length=60)
     name: str = Field(min_length=1, max_length=200)
     sort_order: int = Field(default=0)

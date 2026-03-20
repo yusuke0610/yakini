@@ -3,7 +3,12 @@ import secrets
 from urllib.parse import quote, urlencode
 
 from fastapi import (
-    APIRouter, Depends, HTTPException, Request, Response, status,
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    status,
 )
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -128,12 +133,14 @@ def _build_github_authorization_url(
     redirect_uri: str,
     state: str,
 ) -> str:
-    query = urlencode({
-        "client_id": client_id,
-        "redirect_uri": redirect_uri,
-        "scope": "read:user",
-        "state": state,
-    })
+    query = urlencode(
+        {
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "scope": "read:user",
+            "state": state,
+        }
+    )
     return f"https://github.com/login/oauth/authorize?{query}"
 
 

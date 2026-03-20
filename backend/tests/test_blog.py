@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
+from sqlalchemy.orm.session import Session
 
 from conftest import auth_header
 
@@ -12,10 +13,13 @@ def test_add_blog_account(client: TestClient) -> None:
     """POST でアカウント登録できること。"""
     auth_header(client)
     with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True):
-        resp = client.post("/api/blog/accounts", json={
-            "platform": "zenn",
-            "username": "testuser",
-        })
+        resp = client.post(
+            "/api/blog/accounts",
+            json={
+                "platform": "zenn",
+                "username": "testuser",
+            },
+        )
     assert resp.status_code == 201
     data = resp.json()
     assert data["platform"] == "zenn"
@@ -27,10 +31,13 @@ def test_add_account_user_not_found(client: TestClient) -> None:
     """存在しないユーザー名で登録すると 404。"""
     auth_header(client)
     with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=False):
-        resp = client.post("/api/blog/accounts", json={
-            "platform": "zenn",
-            "username": "nonexistent_user_xyz",
-        })
+        resp = client.post(
+            "/api/blog/accounts",
+            json={
+                "platform": "zenn",
+                "username": "nonexistent_user_xyz",
+            },
+        )
     assert resp.status_code == 404
     assert "見つかりません" in resp.json()["detail"]
 
@@ -39,14 +46,20 @@ def test_add_duplicate_account(client: TestClient) -> None:
     """同じ platform は重複登録できないこと。"""
     auth_header(client)
     with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True):
-        client.post("/api/blog/accounts", json={
-            "platform": "zenn",
-            "username": "testuser",
-        })
-        resp = client.post("/api/blog/accounts", json={
-            "platform": "zenn",
-            "username": "testuser2",
-        })
+        client.post(
+            "/api/blog/accounts",
+            json={
+                "platform": "zenn",
+                "username": "testuser",
+            },
+        )
+        resp = client.post(
+            "/api/blog/accounts",
+            json={
+                "platform": "zenn",
+                "username": "testuser2",
+            },
+        )
     assert resp.status_code == 409
 
 
@@ -54,14 +67,8 @@ def test_list_blog_accounts(client: TestClient) -> None:
     """GET でアカウント一覧取得。"""
     auth_header(client)
     with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True):
-        client.post(
-            "/api/blog/accounts",
-            json={"platform": "zenn", "username": "u1"}
-        )
-        client.post(
-            "/api/blog/accounts",
-            json={"platform": "note", "username": "u2"}
-        )
+        client.post("/api/blog/accounts", json={"platform": "zenn", "username": "u1"})
+        client.post("/api/blog/accounts", json={"platform": "note", "username": "u2"})
 
     resp = client.get("/api/blog/accounts")
     assert resp.status_code == 200
@@ -73,10 +80,13 @@ def test_delete_blog_account(client: TestClient) -> None:
     """DELETE でアカウント解除 + 記事も削除。"""
     auth_header(client)
     with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True):
-        resp = client.post("/api/blog/accounts", json={
-            "platform": "zenn",
-            "username": "testuser",
-        })
+        resp = client.post(
+            "/api/blog/accounts",
+            json={
+                "platform": "zenn",
+                "username": "testuser",
+            },
+        )
     account_id = resp.json()["id"]
 
     resp = client.delete(f"/api/blog/accounts/{account_id}")
@@ -108,20 +118,24 @@ def test_sync_requires_auth(client: TestClient) -> None:
     assert resp.status_code == 401
 
 
-def test_upsert_articles_no_duplicates(client: TestClient, db_session) -> None:
+def test_upsert_articles_no_duplicates(client: TestClient, db_session: Session) -> None:
     """同じ記事を2回 upsert しても重複しない。"""
     auth_header(client)
 
     # アカウント作成
     with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True):
-        resp = client.post("/api/blog/accounts", json={
-            "platform": "zenn",
-            "username": "testuser",
-        })
+        resp = client.post(
+            "/api/blog/accounts",
+            json={
+                "platform": "zenn",
+                "username": "testuser",
+            },
+        )
     account_id = resp.json()["id"]
 
     # ユーザーIDを取得
     from app.repositories import BlogArticleRepository, UserRepository
+
     user = UserRepository(db_session).get_by_username("testuser")
     repo = BlogArticleRepository(db_session, user.id)
 
@@ -151,31 +165,39 @@ def test_upsert_articles_no_duplicates(client: TestClient, db_session) -> None:
 
 
 def test_list_blog_articles_returns_platform_and_tags(
-    client: TestClient, db_session
+    client: TestClient, db_session: Session
 ) -> None:
     auth_header(client)
 
     with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True):
-        resp = client.post("/api/blog/accounts", json={
-            "platform": "zenn",
-            "username": "testuser",
-        })
+        resp = client.post(
+            "/api/blog/accounts",
+            json={
+                "platform": "zenn",
+                "username": "testuser",
+            },
+        )
     account_id = resp.json()["id"]
 
     from app.repositories import BlogArticleRepository, UserRepository
+
     user = UserRepository(db_session).get_by_username("testuser")
     repo = BlogArticleRepository(db_session, user.id)
-    repo.upsert_many([{
-        "account_id": account_id,
-        "platform": "zenn",
-        "external_id": "slug-2",
-        "title": "記事2",
-        "url": "https://zenn.dev/testuser/articles/slug-2",
-        "published_at": "2026-03-02",
-        "likes_count": 5,
-        "summary": "要約",
-        "tags": ["Python", "FastAPI"],
-    }])
+    repo.upsert_many(
+        [
+            {
+                "account_id": account_id,
+                "platform": "zenn",
+                "external_id": "slug-2",
+                "title": "記事2",
+                "url": "https://zenn.dev/testuser/articles/slug-2",
+                "published_at": "2026-03-02",
+                "likes_count": 5,
+                "summary": "要約",
+                "tags": ["Python", "FastAPI"],
+            }
+        ]
+    )
 
     resp = client.get("/api/blog/articles")
     assert resp.status_code == 200

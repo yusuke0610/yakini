@@ -7,17 +7,25 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.models import (  # noqa: F401 — ensure models registered
-    BasicInfo, BlogAccount, BlogArticle, MPrefecture, MQualification,
-    MTechnologyStack, Resume, Rirekisho, User,
+    BasicInfo,
+    BlogAccount,
+    BlogArticle,
+    MPrefecture,
+    MQualification,
+    MTechnologyStack,
+    Resume,
+    Rirekisho,
+    User,
 )
 from app.main import app, limiter
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("SQLITE_DB_PATH", ":memory:")
 os.environ.setdefault("APP_BOOTSTRAPPED", "1")
+os.environ.setdefault("GITHUB_CLIENT_ID", "test-github-client-id")
+os.environ.setdefault("GITHUB_CLIENT_SECRET", "test-github-client-secret")
 os.environ.setdefault(
-    "FIELD_ENCRYPTION_KEY",
-    "pVo6M_raAWEpAv25F4p4RziywsjfPENokI10DZbNO7E="
+    "FIELD_ENCRYPTION_KEY", "pVo6M_raAWEpAv25F4p4RziywsjfPENokI10DZbNO7E="
 )
 
 
@@ -55,13 +63,19 @@ def client(db_session):
 
 def auth_header(client, username: str = "testuser") -> dict:
     """テスト用の認証 Cookie をセットするヘルパー。空の dict を返す（Cookie は自動送信される）。"""
-    client.post("/auth/register", json={
-        "username": username,
-        "email": f"{username}@example.com",
-        "password": "SecurePass123",
-    })
-    client.post("/auth/login", json={
-        "email": f"{username}@example.com",
-        "password": "SecurePass123",
-    })
+    client.post(
+        "/auth/register",
+        json={
+            "username": username,
+            "email": f"{username}@example.com",
+            "password": "SecurePass123",
+        },
+    )
+    client.post(
+        "/auth/login",
+        json={
+            "email": f"{username}@example.com",
+            "password": "SecurePass123",
+        },
+    )
     return {}
