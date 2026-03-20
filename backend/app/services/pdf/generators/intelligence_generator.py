@@ -33,9 +33,12 @@ def _add_page_number(canvas_obj, doc):
 def build_intelligence_pdf(payload: dict) -> bytes:
     buffer = BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4,
-        leftMargin=MARGIN, rightMargin=MARGIN,
-        topMargin=MARGIN, bottomMargin=MARGIN,
+        buffer,
+        pagesize=A4,
+        leftMargin=MARGIN,
+        rightMargin=MARGIN,
+        topMargin=MARGIN,
+        bottomMargin=MARGIN,
     )
 
     s = styles()
@@ -53,25 +56,31 @@ def build_intelligence_pdf(payload: dict) -> bytes:
     analyzed_at = escape(payload.get("analyzed_at", ""))
 
     overview_data = [
-        [Paragraph("<b>ユーザー</b>", s["body"]),
-         Paragraph(username, s["body"])],
-        [Paragraph("<b>分析リポジトリ数</b>", s["body"]),
-         Paragraph(str(repos), s["body"])],
-        [Paragraph("<b>ユニークスキル数</b>", s["body"]),
-         Paragraph(str(skills_count), s["body"])],
-        [Paragraph("<b>分析日時</b>", s["body"]),
-         Paragraph(analyzed_at, s["body"])],
+        [Paragraph("<b>ユーザー</b>", s["body"]), Paragraph(username, s["body"])],
+        [
+            Paragraph("<b>分析リポジトリ数</b>", s["body"]),
+            Paragraph(str(repos), s["body"]),
+        ],
+        [
+            Paragraph("<b>ユニークスキル数</b>", s["body"]),
+            Paragraph(str(skills_count), s["body"]),
+        ],
+        [Paragraph("<b>分析日時</b>", s["body"]), Paragraph(analyzed_at, s["body"])],
     ]
     overview_table = Table(overview_data, colWidths=[40 * mm, content_width - 40 * mm])
-    overview_table.setStyle(TableStyle([
-        ("GRID", (0, 0), (-1, -1), 0.5, TABLE_BORDER),
-        ("BACKGROUND", (0, 0), (0, -1), HEADER_BG),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-    ]))
+    overview_table.setStyle(
+        TableStyle(
+            [
+                ("GRID", (0, 0), (-1, -1), 0.5, TABLE_BORDER),
+                ("BACKGROUND", (0, 0), (0, -1), HEADER_BG),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
     elements.append(overview_table)
     elements.append(Spacer(1, 4 * mm))
 
@@ -93,43 +102,57 @@ def build_intelligence_pdf(payload: dict) -> bytes:
             conf = current.get("confidence", 0)
             matching = ", ".join(current.get("matching_skills", []))
 
-            elements.append(Paragraph(
-                f"<b>現在のロール:</b> {role_name} (確信度: {conf:.0%})",
-                s["body"],
-            ))
+            elements.append(
+                Paragraph(
+                    f"<b>現在のロール:</b> {role_name} (確信度: {conf:.0%})",
+                    s["body"],
+                )
+            )
             if matching:
-                elements.append(Paragraph(
-                    f"<b>マッチするスキル:</b> {escape(matching)}",
-                    s["body_small"],
-                ))
+                elements.append(
+                    Paragraph(
+                        f"<b>マッチするスキル:</b> {escape(matching)}",
+                        s["body_small"],
+                    )
+                )
             elements.append(Spacer(1, 2 * mm))
 
         next_roles = prediction.get("next_roles", [])
         if next_roles:
             elements.append(Paragraph("<b>次のキャリアステップ</b>", s["body"]))
-            role_data = [[
-                Paragraph("<b>ロール</b>", s["body_small"]),
-                Paragraph("<b>確信度</b>", s["body_small"]),
-                Paragraph("<b>不足スキル</b>", s["body_small"]),
-            ]]
+            role_data = [
+                [
+                    Paragraph("<b>ロール</b>", s["body_small"]),
+                    Paragraph("<b>確信度</b>", s["body_small"]),
+                    Paragraph("<b>不足スキル</b>", s["body_small"]),
+                ]
+            ]
             for role in next_roles:
                 conf = role.get("confidence", 0)
                 missing = ", ".join(role.get("missing_skills", []))
-                role_data.append([
-                    Paragraph(escape(role.get("role_name", "")), s["body_small"]),
-                    Paragraph(f"{conf:.0%}", s["body_small"]),
-                    Paragraph(escape(missing) if missing else "-", s["body_small"]),
-                ])
-            role_table = Table(role_data, colWidths=[45 * mm, 20 * mm, content_width - 65 * mm])
-            role_table.setStyle(TableStyle([
-                ("GRID", (0, 0), (-1, -1), 0.5, TABLE_BORDER),
-                ("BACKGROUND", (0, 0), (-1, 0), HEADER_BG),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-            ]))
+                role_data.append(
+                    [
+                        Paragraph(escape(role.get("role_name", "")), s["body_small"]),
+                        Paragraph(f"{conf:.0%}", s["body_small"]),
+                        Paragraph(escape(missing) if missing else "-", s["body_small"]),
+                    ]
+                )
+            role_table = Table(
+                role_data, colWidths=[45 * mm, 20 * mm, content_width - 65 * mm]
+            )
+            role_table.setStyle(
+                TableStyle(
+                    [
+                        ("GRID", (0, 0), (-1, -1), 0.5, TABLE_BORDER),
+                        ("BACKGROUND", (0, 0), (-1, 0), HEADER_BG),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("TOPPADDING", (0, 0), (-1, -1), 3),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                    ]
+                )
+            )
             elements.append(role_table)
             elements.append(Spacer(1, 2 * mm))
 
@@ -138,24 +161,30 @@ def build_intelligence_pdf(payload: dict) -> bytes:
             elements.append(Paragraph("<b>長期キャリア候補</b>", s["body"]))
             for role in long_term:
                 conf = role.get("confidence", 0)
-                elements.append(Paragraph(
-                    f"・{escape(role.get('role_name', ''))} ({conf:.0%})",
-                    s["body_small"],
-                ))
+                elements.append(
+                    Paragraph(
+                        f"・{escape(role.get('role_name', ''))} ({conf:.0%})",
+                        s["body_small"],
+                    )
+                )
             elements.append(Spacer(1, 2 * mm))
 
     # Career Simulation
     simulation = payload.get("simulation", {})
     paths = simulation.get("paths", [])
     if paths:
-        elements.append(Paragraph("■ キャリアパスシミュレーション", s["section_header"]))
+        elements.append(
+            Paragraph("■ キャリアパスシミュレーション", s["section_header"])
+        )
         for i, p in enumerate(paths, 1):
             path_str = " → ".join(p.get("path", []))
             conf = p.get("confidence", 0)
-            elements.append(Paragraph(
-                f"{i}. {escape(path_str)} (確信度: {conf:.0%})",
-                s["body"],
-            ))
+            elements.append(
+                Paragraph(
+                    f"{i}. {escape(path_str)} (確信度: {conf:.0%})",
+                    s["body"],
+                )
+            )
             desc = p.get("description", "")
             if desc:
                 elements.append(Paragraph(f"　{escape(desc)}", s["body_small"]))
