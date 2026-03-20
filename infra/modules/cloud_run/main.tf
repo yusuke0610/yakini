@@ -35,7 +35,7 @@ resource "google_cloud_run_v2_service" "app" {
     service_account = var.service_account_email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.stack_name}:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.stack_name}:${var.container_image_tag}"
 
       resources {
         limits = {
@@ -107,6 +107,12 @@ resource "google_cloud_run_v2_service" "app" {
       max_instance_count = 1
       min_instance_count = 0
     }
+  }
+
+  lifecycle {
+    # CI deploys new revisions with gcloud run deploy, so Terraform should not
+    # try to force the service back to the bootstrap image tag on later applies.
+    ignore_changes = [template[0].containers[0].image]
   }
 }
 

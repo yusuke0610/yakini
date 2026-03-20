@@ -128,7 +128,8 @@
         "reportlab",
         "autopep",
         "weasyprint",
-        "pydyf"
+        "pydyf",
+        "secretmanager"
     ],
     "editor.linkedEditing": true,
     "html.autoClosingTags": true,

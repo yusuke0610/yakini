@@ -23,6 +23,12 @@ variable "artifact_registry_repository_id" {
   type        = string
 }
 
+variable "container_image_tag" {
+  description = "Container image tag used for the initial Cloud Run deployment."
+  type        = string
+  default     = "latest"
+}
+
 variable "db_backup_bucket_name" {
   description = "GCS bucket name for database backups."
   type        = string
