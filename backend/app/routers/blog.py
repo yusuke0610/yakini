@@ -124,8 +124,7 @@ async def sync_account(
         raw_articles = await fetch_articles(account.platform, account.username)
     except Exception:
         logger.exception(
-            "ブログ記事の取得に失敗しました: %s/%s",
-            account.platform, account.username
+            "ブログ記事の取得に失敗しました: %s/%s", account.platform, account.username
         )
         raise HTTPException(
             status_code=502,

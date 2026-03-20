@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 # ── リクエスト ─────────────────────────────────────────────────────────────
 
+
 class AnalyzeRequest(BaseModel):
     include_forks: bool = Field(
         False,
@@ -15,6 +16,7 @@ class AnalyzeRequest(BaseModel):
 
 
 # ── 全分析レスポンス ──────────────────────────────────────────────
+
 
 class AnalysisResponse(BaseModel):
     username: str
@@ -29,6 +31,7 @@ class AnalysisResponse(BaseModel):
 
 # ── 要約 (Ollama) ────────────────────────────────────────────────
 
+
 class SummarizeRequest(BaseModel):
     analysis: AnalysisResponse
 
@@ -42,6 +45,7 @@ class SummarizeResponse(BaseModel):
 
 
 # ── スキルアクティビティ ─────────────────────────────────────────────────────
+
 
 class SkillTimelinePoint(BaseModel):
     period: str
@@ -59,8 +63,10 @@ class SkillActivityResponse(BaseModel):
 
 # ── キャッシュ取得レスポンス ──────────────────────────────────────
 
+
 class CachedAnalysisResponse(BaseModel):
     """DB に保存された分析結果・AI要約・スキルアクティビティを返す。"""
+
     analysis_result: Optional[Dict[str, Any]] = None
     ai_summary: Optional[str] = None
     skill_activity_month: Optional[List[Dict[str, Any]]] = None

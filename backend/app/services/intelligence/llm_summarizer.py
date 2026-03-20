@@ -26,25 +26,15 @@ def _build_user_prompt(analysis: Dict[str, Any]) -> str:
     summary_parts = []
 
     summary_parts.append(f"ユーザー: {analysis.get('username', 'N/A')}")
-    summary_parts.append(
-        f"分析リポジトリ数: {analysis.get('repos_analyzed', 0)}"
-    )
-    summary_parts.append(
-        f"ユニークスキル数: {analysis.get('unique_skills', 0)}"
-    )
+    summary_parts.append(f"分析リポジトリ数: {analysis.get('repos_analyzed', 0)}")
+    summary_parts.append(f"ユニークスキル数: {analysis.get('unique_skills', 0)}")
 
     # 成長トレンド（データがある場合のみ）
     growth = analysis.get("growth", [])
     if growth:
-        emerging = [
-            g["skill_name"] for g in growth if g.get("trend") == "emerging"
-        ]
-        stable = [
-            g["skill_name"] for g in growth if g.get("trend") == "stable"
-        ]
-        declining = [
-            g["skill_name"] for g in growth if g.get("trend") == "declining"
-        ]
+        emerging = [g["skill_name"] for g in growth if g.get("trend") == "emerging"]
+        stable = [g["skill_name"] for g in growth if g.get("trend") == "stable"]
+        declining = [g["skill_name"] for g in growth if g.get("trend") == "declining"]
 
         if emerging:
             summary_parts.append(f"成長中のスキル: {', '.join(emerging[:5])}")

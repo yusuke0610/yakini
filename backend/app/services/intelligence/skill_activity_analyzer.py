@@ -40,11 +40,7 @@ async def get_skill_activity(
     )
 
     # pushed_at でソートして上位 N 件に制限、または最初の N 件を取得
-    repos_data = sorted(
-        repos_data,
-        key=lambda r: r.pushed_at,
-        reverse=True
-    )[:max_repos]
+    repos_data = sorted(repos_data, key=lambda r: r.pushed_at, reverse=True)[:max_repos]
 
     if not repos_data:
         return []
@@ -66,7 +62,8 @@ async def get_skill_activity(
             # 主要言語の重みを算出（フレームワークに継承させるため）
             max_lang_weight = (
                 max(repo_info.languages.values()) / total_bytes
-                if repo_info.languages else 0.1
+                if repo_info.languages
+                else 0.1
             )
             skill_weights: Dict[str, float] = {}
             for extracted in extracted_skills:
@@ -95,24 +92,29 @@ async def get_skill_activity(
                 commit_date = commit.commit.author.date
                 if commit_date:
                     for skill, weight in skill_weights.items():
-                        all_commit_data.append({
-                            "date": commit_date,
-                            "skill": skill,
-                            "weight": weight,
-                        })
+                        all_commit_data.append(
+                            {
+                                "date": commit_date,
+                                "skill": skill,
+                                "weight": weight,
+                            }
+                        )
 
                 count += 1
 
         except GithubException as e:
             logger.warning(
                 "%s/%s のコミット取得に失敗しました: %s",
-                repo_info.owner, repo_info.name, e
+                repo_info.owner,
+                repo_info.name,
+                e,
             )
             continue
         except Exception as e:
             logger.exception(
                 "%s のコミット取得中に予期せぬエラーが発生しました: %s",
-                repo_info.name, e
+                repo_info.name,
+                e,
             )
             continue
 
@@ -121,7 +123,7 @@ async def get_skill_activity(
 
     # 3. pandas を使用して集計
     df = pd.DataFrame(all_commit_data)
-    df['date'] = pd.to_datetime(df['date'])
+    df["date"] = pd.to_datetime(df["date"])
 
     # 頻度を設定
     freq = "ME" if interval == "month" else "YE"
@@ -130,30 +132,29 @@ async def get_skill_activity(
     # タイムシリーズを正しく扱うために resample を使用
     results = []
 
-    unique_skills = df['skill'].unique()
+    unique_skills = df["skill"].unique()
     for skill in unique_skills:
-        skill_df = df[df['skill'] == skill].copy()
+        skill_df = df[df["skill"] == skill].copy()
 
         # 期間でグループ化（重みの合計でアクティビティを算出）
         grouped = (
-            skill_df.set_index('date')['weight']
-            .resample(freq).sum().reset_index(name='activity')
+            skill_df.set_index("date")["weight"]
+            .resample(freq)
+            .sum()
+            .reset_index(name="activity")
         )
 
         # 期間文字列をフォーマット
         if interval == "month":
-            grouped['period'] = grouped['date'].dt.strftime('%Y-%m')
+            grouped["period"] = grouped["date"].dt.strftime("%Y-%m")
         else:
-            grouped['period'] = grouped['date'].dt.strftime('%Y')
+            grouped["period"] = grouped["date"].dt.strftime("%Y")
 
-        timeline = grouped[['period', 'activity']].to_dict('records')
+        timeline = grouped[["period", "activity"]].to_dict("records")
 
         # 折れ線グラフの場合、活動期間の間のゼロは維持するのが望ましい
         # 必要に応じて先頭・末尾のゼロを除去することも検討可能
 
-        results.append({
-            "skill": skill,
-            "timeline": timeline
-        })
+        results.append({"skill": skill, "timeline": timeline})
 
     return results

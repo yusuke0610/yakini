@@ -1,6 +1,10 @@
 import os
 
-from app.repositories import MPrefectureRepository, MQualificationRepository, MTechnologyStackRepository
+from app.repositories import (
+    MPrefectureRepository,
+    MQualificationRepository,
+    MTechnologyStackRepository,
+)
 from app.seed import seed_master_data
 
 

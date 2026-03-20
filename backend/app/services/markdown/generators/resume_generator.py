@@ -105,7 +105,8 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                         members = team.get("members", [])
                         member_strs = [
                             f"{m.get('role', '')}:{m.get('count', 0)}"
-                            for m in members if m.get("role")
+                            for m in members
+                            if m.get("role")
                         ]
                         team_text = f"{total}名" if total else ""
                         if member_strs:
@@ -120,9 +121,12 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                     stacks = proj.get("technology_stacks", [])
                     if stacks:
                         cat_labels = {
-                            "language": "言語", "framework": "FW",
-                            "os": "OS", "db": "DB",
-                            "cloud_resource": "NW", "dev_tool": "Tool",
+                            "language": "言語",
+                            "framework": "FW",
+                            "os": "OS",
+                            "db": "DB",
+                            "cloud_resource": "NW",
+                            "dev_tool": "Tool",
                         }
                         grouped: dict[str, list[str]] = {}
                         for st in stacks:
