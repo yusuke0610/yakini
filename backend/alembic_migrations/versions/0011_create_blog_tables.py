@@ -24,7 +24,9 @@ def upgrade() -> None:
         sa.Column("user_id", sa.String(length=36), nullable=False),
         sa.Column("platform", sa.String(length=20), nullable=False),
         sa.Column("username", sa.String(length=120), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.UniqueConstraint("user_id", "platform", name="uq_blog_accounts_user_platform"),
@@ -44,12 +46,18 @@ def upgrade() -> None:
         sa.Column("likes_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("summary", sa.Text(), nullable=True),
         sa.Column("tags", sa.JSON(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.ForeignKeyConstraint(["account_id"], ["blog_accounts.id"]),
-        sa.UniqueConstraint("user_id", "platform", "external_id", name="uq_blog_articles_user_platform_ext"),
+        sa.UniqueConstraint(
+            "user_id", "platform", "external_id", name="uq_blog_articles_user_platform_ext"
+        ),
     )
 
 

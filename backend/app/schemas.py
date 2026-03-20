@@ -204,9 +204,7 @@ class RirekishoBase(BaseModel):
     postal_code: str = Field(min_length=1, max_length=20)
     prefecture: str = Field(min_length=1, max_length=60)
     address: str = Field(min_length=1, max_length=400)
-    address_furigana: str = Field(
-        min_length=1, max_length=400, pattern=_HIRAGANA_PATTERN
-    )
+    address_furigana: str = Field(min_length=1, max_length=400, pattern=_HIRAGANA_PATTERN)
     email: str = Field(min_length=1, max_length=255)
     phone: str = Field(min_length=1, max_length=50)
     motivation: str = Field(max_length=2000, default="")

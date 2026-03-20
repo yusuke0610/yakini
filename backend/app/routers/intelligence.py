@@ -37,6 +37,7 @@ from ..services.intelligence.llm_summarizer import (
 from ..services.intelligence.pipeline import run_pipeline
 from ..services.intelligence.response_mapper import map_pipeline_result
 from ..services.intelligence.skill_activity_analyzer import get_skill_activity
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/intelligence", tags=["intelligence"])
@@ -95,11 +96,7 @@ async def analyze(
         result = await asyncio.wait_for(
             run_pipeline(
                 username=github_username,
-                token=(
-                    decrypt_field(user.github_token)
-                    if user.github_token
-                    else None
-                ),
+                token=(decrypt_field(user.github_token) if user.github_token else None),
                 include_forks=payload.include_forks,
             ),
             timeout=120.0,
@@ -125,10 +122,7 @@ async def analyze(
         )
         raise HTTPException(
             status_code=502,
-            detail=(
-                "GitHubプロフィールの分析に失敗しました。"
-                "しばらくしてから再度お試しください。"
-            ),
+            detail=("GitHubプロフィールの分析に失敗しました。" "しばらくしてから再度お試しください。"),
         )
 
     response = map_pipeline_result(result)
@@ -210,10 +204,7 @@ async def skill_activity(
 
     # スキルアクティビティをDBに保存
     cache = _get_or_create_cache(db, user.id)
-    activity_data = [
-        item.model_dump() if hasattr(item, "model_dump") else item
-        for item in results
-    ]
+    activity_data = [item.model_dump() if hasattr(item, "model_dump") else item for item in results]
     if interval == "year":
         cache.skill_activity_year = activity_data
     else:

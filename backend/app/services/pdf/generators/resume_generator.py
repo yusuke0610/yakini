@@ -6,8 +6,7 @@ import weasyprint
 
 _CSS_PATH = Path(__file__).resolve().parent.parent / "templates" / "resume.css"
 _FONT_PATH = (
-    Path(__file__).resolve().parent.parent.parent.parent / "fonts"
-    / "NotoSansJP-Regular.ttf"
+    Path(__file__).resolve().parent.parent.parent.parent / "fonts" / "NotoSansJP-Regular.ttf"
 )
 
 _CATEGORY_LABELS = {
@@ -31,17 +30,15 @@ def _md(text: str) -> str:
 
 
 def _format_period(
-    start: str, end: str | None, is_current: bool,
+    start: str,
+    end: str | None,
+    is_current: bool,
 ) -> str:
     """期間表示をフォーマットする"""
     s = start.replace("-", " 年 ") + " 月" if "-" in start else start
     if is_current:
         return f"{s}〜現在"
-    e = (
-        end.replace("-", " 年 ") + " 月"
-        if end and "-" in end
-        else (end or "")
-    )
+    e = end.replace("-", " 年 ") + " 月" if end and "-" in end else (end or "")
     return f"{s}〜{e}"
 
 
@@ -87,19 +84,14 @@ def _build_project_html(project: dict) -> str:
     header_lines = [ln for ln in [line1, line2, line3] if ln]
     header_html = ""
     if header_lines:
-        header_html = (
-            '<div class="project-header">'
-            + "<br/>".join(header_lines)
-            + "</div>"
-        )
+        header_html = '<div class="project-header">' + "<br/>".join(header_lines) + "</div>"
 
     # 左カラム: 業務内容
     left_parts: list[str] = []
     desc = project.get("description", "")
     if desc:
         left_parts.append(
-            f"<strong>【プロジェクト概要】</strong>"
-            f'<div class="desc-bold">{_md(desc)}</div>',
+            f"<strong>【プロジェクト概要】</strong>" f'<div class="desc-bold">{_md(desc)}</div>',
         )
     challenge = project.get("challenge", "")
     if challenge:
@@ -125,8 +117,7 @@ def _build_project_html(project: dict) -> str:
     for cat, names in grouped.items():
         label = _CATEGORY_LABELS.get(cat, cat)
         right_parts.append(
-            f"<strong>【{_esc(label)}】</strong><br/>"
-            f"{_esc(', '.join(names))}",
+            f"<strong>【{_esc(label)}】</strong><br/>" f"{_esc(', '.join(names))}",
         )
     right_content = "<br/>".join(right_parts) if right_parts else "-"
 
@@ -141,8 +132,7 @@ def _build_project_html(project: dict) -> str:
             team_parts.append(f"{_esc(total)}名")
         members = team.get("members", [])
         member_strs = [
-            f"{_esc(m.get('role', ''))}:{m.get('count', 0)}"
-            for m in members if m.get("role")
+            f"{_esc(m.get('role', ''))}:{m.get('count', 0)}" for m in members if m.get("role")
         ]
         if member_strs:
             team_parts.append(" / ".join(member_strs))
@@ -171,9 +161,7 @@ def _build_html(resume: dict) -> str:
     formatted_date = _format_record_date(record_date)
     full_name = resume.get("full_name") or ""
     parts.append(
-        f'<div class="meta">'
-        f"{_esc(formatted_date)}現在<br/>氏名　{_esc(full_name)}"
-        f"</div>",
+        f'<div class="meta">' f"{_esc(formatted_date)}現在<br/>氏名　{_esc(full_name)}" f"</div>",
     )
 
     # 職務要約
@@ -196,8 +184,7 @@ def _build_html(resume: dict) -> str:
             company = _esc(exp["company"])
 
             biz = _esc(
-                exp.get("business_description")
-                or exp.get("title", ""),
+                exp.get("business_description") or exp.get("title", ""),
             )
             capital_raw = exp.get("capital", "")
             emp_raw = exp.get("employee_count", "")
@@ -211,12 +198,10 @@ def _build_html(resume: dict) -> str:
 
             parts.append('<div class="company">')
             parts.append(
-                f'<div class="company-header">'
-                f"{period}　{company}</div>",
+                f'<div class="company-header">' f"{period}　{company}</div>",
             )
             parts.append(
-                f'<div class="company-info">'
-                f'{"　".join(info_parts)}</div>',
+                f'<div class="company-info">' f'{"　".join(info_parts)}</div>',
             )
             parts.append('<div class="company-body">')
 
@@ -228,8 +213,7 @@ def _build_html(resume: dict) -> str:
                 client_name = client.get("name", "")
                 if client_name:
                     parts.append(
-                        f'<div class="client-name">'
-                        f"取引先名：{_esc(client_name)}</div>",
+                        f'<div class="client-name">' f"取引先名：{_esc(client_name)}</div>",
                     )
                 projects = client.get("projects", [])
                 for proj in projects:
@@ -250,10 +234,7 @@ def _build_html(resume: dict) -> str:
             if raw_date and "-" in raw_date:
                 dp = raw_date.split("-")
                 if len(dp) == 3:
-                    ds = (
-                        f"{dp[0]}年{dp[1].lstrip('0')}月"
-                        f"{dp[2].lstrip('0')}日取得"
-                    )
+                    ds = f"{dp[0]}年{dp[1].lstrip('0')}月" f"{dp[2].lstrip('0')}日取得"
                 elif len(dp) == 2:
                     ds = f"{dp[0]}年{dp[1].lstrip('0')}月取得"
                 else:
@@ -278,7 +259,8 @@ def build_resume_pdf(resume: dict) -> bytes:
     # CSSテンプレートを読み込み、フォントパスを埋め込む
     css_text = _CSS_PATH.read_text(encoding="utf-8")
     css_text = css_text.replace(
-        "{{ font_path }}", _FONT_PATH.as_uri(),
+        "{{ font_path }}",
+        _FONT_PATH.as_uri(),
     )
 
     full_html = (

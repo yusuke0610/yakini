@@ -32,9 +32,7 @@ def upgrade() -> None:
         op.add_column(table, sa.Column("user_id", sa.String(36), nullable=True))
 
         # 既存行を埋める
-        op.execute(
-            sa.text(f"UPDATE {table} SET user_id = :uid").bindparams(uid=default_user_id)
-        )
+        op.execute(sa.text(f"UPDATE {table} SET user_id = :uid").bindparams(uid=default_user_id))
 
         # nullable=False に変更
         with op.batch_alter_table(table) as batch_op:

@@ -22,6 +22,7 @@ class VertexClient(LLMClient):
         if self._initialized:
             return
         import vertexai
+
         vertexai.init(project=self.project_id, location=self.location)
         self._initialized = True
 

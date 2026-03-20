@@ -44,46 +44,77 @@ def styles() -> dict:
 
     s = {}
     s["title"] = ParagraphStyle(
-        "title", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=18, leading=24,
-        alignment=TA_CENTER, spaceAfter=2 * mm,
+        "title",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=18,
+        leading=24,
+        alignment=TA_CENTER,
+        spaceAfter=2 * mm,
     )
     s["date"] = ParagraphStyle(
-        "date", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=10, alignment=TA_RIGHT,
+        "date",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=10,
+        alignment=TA_RIGHT,
     )
     s["name"] = ParagraphStyle(
-        "name", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=11, alignment=TA_RIGHT,
+        "name",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=11,
+        alignment=TA_RIGHT,
         spaceAfter=4 * mm,
     )
     s["section_header"] = ParagraphStyle(
-        "section_header", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=12, leading=16,
-        spaceBefore=4 * mm, spaceAfter=2 * mm,
+        "section_header",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=12,
+        leading=16,
+        spaceBefore=4 * mm,
+        spaceAfter=2 * mm,
     )
     s["body"] = ParagraphStyle(
-        "body", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=9, leading=14,
+        "body",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=9,
+        leading=14,
         spaceBefore=1 * mm,
     )
     s["body_small"] = ParagraphStyle(
-        "body_small", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=8, leading=12,
+        "body_small",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=8,
+        leading=12,
     )
     s["company_header"] = ParagraphStyle(
-        "company_header", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=10, leading=14,
-        spaceBefore=3 * mm, spaceAfter=1 * mm,
+        "company_header",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=10,
+        leading=14,
+        spaceBefore=3 * mm,
+        spaceAfter=1 * mm,
     )
     s["project_header"] = ParagraphStyle(
-        "project_header", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=9, leading=13,
-        spaceBefore=2 * mm, spaceAfter=1 * mm,
+        "project_header",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=9,
+        leading=13,
+        spaceBefore=2 * mm,
+        spaceAfter=1 * mm,
     )
     s["qual"] = ParagraphStyle(
-        "qual", parent=base["Normal"],
-        fontName=FONT_NAME, fontSize=9, leading=14,
+        "qual",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=9,
+        leading=14,
     )
     return s
 
