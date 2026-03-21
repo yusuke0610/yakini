@@ -167,6 +167,7 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 | `LLM_PROVIDER` | `ollama` または `vertex` |
 | `OLLAMA_BASE_URL` | Ollama エンドポイント（デフォルト: `http://localhost:11434`） |
 | `VERTEX_PROJECT_ID` / `VERTEX_LOCATION` | Vertex AI 利用時の設定 |
+| `VERTEX_MODEL` | Vertex AI 利用時のモデル名（デフォルト: `gemini-2.5-flash`） |
 | `VITE_API_BASE_URL` | フロントエンド→バックエンドURL（デフォルト: `http://localhost:8000`） |
 
 ## SQLite + GCSバックアップ/復元

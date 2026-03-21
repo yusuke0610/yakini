@@ -72,7 +72,7 @@ export function BasicInfoForm() {
   };
 
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={onSubmit} noValidate>
       <div className={shared.pageHeader}>
         <h1>基本情報</h1>
         <div className={shared.pageHeaderActions}>
