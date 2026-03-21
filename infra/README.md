@@ -43,6 +43,24 @@ terraform -chdir=infra/environments/dev validate
 GCS backend を使用しているため、`terraform init` 時にバックエンドの認証が必要です。
 ローカルで `plan` する場合は `gcloud auth application-default login` を実施してください。
 
+Cloud Run サービスを Terraform で初回作成する場合は、指定するコンテナイメージタグが Artifact Registry に既に存在している必要があります。デフォルトは `container_image_tag = "latest"` です。
+
+- 初回 bootstrap 前に `:latest` を push する
+- または `terraform.tfvars` で `container_image_tag` に既存タグを指定する
+
+GitHub Actions はその後 `gcloud run deploy` で新しいリビジョンを配備します。Terraform では Cloud Run の `image` 差分を無視するため、後続の `apply` で CI 配備済みイメージへ巻き戻しません。
+
+Secret Manager は secret 本体だけでなく secret version が必要です。Cloud Run 起動前に最低でも以下 3 つの version を追加してください。
+
+- `devforge-<env>-secret-key`
+- `devforge-<env>-field-encryption-key`
+- `devforge-<env>-admin-token`
+
+GitHub OAuth を使う場合だけ `enable_github_oauth = true` を設定し、さらに以下 2 つの version も追加してください。
+
+- `devforge-<env>-github-client-id`
+- `devforge-<env>-github-client-secret`
+
 ## 運用ルール
 
 - `dev` -> `stg` -> `prod` の順で `template_version` を更新
@@ -50,18 +68,6 @@ GCS backend を使用しているため、`terraform init` 時にバックエン
 
 ## State 移行 (resume_stack からの移行)
 
-既存環境で state 移行が必要な場合、以下のコマンドを実行してください:
+各 environment には `moved` ブロックを定義してあり、`module.resume_stack.*` から新しい module address への state 移行は `terraform plan/apply` 時に自動で処理されます。
 
-```bash
-# 各環境ディレクトリで実行
-terraform state mv 'module.resume_stack.google_service_account.app' 'module.service_account.google_service_account.app'
-terraform state mv 'module.resume_stack.google_artifact_registry_repository.app' 'module.artifact_registry.google_artifact_registry_repository.app'
-terraform state mv 'module.resume_stack.google_storage_bucket.db_backup' 'module.storage.google_storage_bucket.db_backup'
-terraform state mv 'module.resume_stack.google_storage_bucket_iam_member.app_db_backup' 'module.storage.google_storage_bucket_iam_member.app_db_backup'
-terraform state mv 'module.resume_stack.google_storage_bucket.frontend' 'module.storage.google_storage_bucket.frontend'
-terraform state mv 'module.resume_stack.google_storage_bucket_iam_member.frontend_public' 'module.storage.google_storage_bucket_iam_member.frontend_public'
-terraform state mv 'module.resume_stack.google_secret_manager_secret.app' 'module.cloud_run.google_secret_manager_secret.app'
-terraform state mv 'module.resume_stack.google_secret_manager_secret_iam_member.app' 'module.cloud_run.google_secret_manager_secret_iam_member.app'
-terraform state mv 'module.resume_stack.google_cloud_run_v2_service.app' 'module.cloud_run.google_cloud_run_v2_service.app'
-terraform state mv 'module.resume_stack.google_cloud_run_v2_service_iam_member.public_access' 'module.cloud_run.google_cloud_run_v2_service_iam_member.public_access'
-```
+既に旧構成に対して `apply` を途中まで実行してしまった場合は、最新の設定を反映してから再度 `plan` を実行してください。`resume_stack` 配下の既存 state が残っているリソースは自動で移動され、実際に削除済みのリソースだけが再作成対象として残ります。

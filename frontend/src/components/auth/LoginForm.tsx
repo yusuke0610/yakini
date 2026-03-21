@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 
-import { getGitHubOAuthUrl, login } from "../../api";
+import { getGitHubLoginUrl, login } from "../../api";
 import shared from "../../styles/shared.module.css";
 import { PasswordInput } from "./PasswordInput";
 import styles from "./LoginForm.module.css";
@@ -9,16 +9,15 @@ export function LoginForm({
   onLogin,
   onSwitchToRegister,
   githubError,
-  githubLoading,
 }: {
-  onLogin: (token: string) => void;
+  onLogin: (username: string, isGitHubUser: boolean) => void;
   onSwitchToRegister: () => void;
   githubError?: string | null;
-  githubLoading?: boolean;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [githubLoading, setGithubLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (event: FormEvent) => {
@@ -27,7 +26,7 @@ export function LoginForm({
     setError(null);
     try {
       const result = await login(email, password);
-      onLogin(result.access_token);
+      onLogin(result.username, result.is_github_user);
     } catch (err) {
       const message = err instanceof Error ? err.message : "ログインに失敗しました。";
       setError(message);
@@ -83,11 +82,21 @@ export function LoginForm({
             <button
               type="button"
               className={styles.githubLogin}
-              onClick={() => {
-                window.location.href = getGitHubOAuthUrl();
+              disabled={githubLoading}
+              onClick={async () => {
+                setGithubLoading(true);
+                setError(null);
+                try {
+                  const authorizationUrl = await getGitHubLoginUrl();
+                  window.location.assign(authorizationUrl);
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : "GitHub認証の開始に失敗しました。";
+                  setError(message);
+                  setGithubLoading(false);
+                }
               }}
             >
-              Login with GitHub
+              {githubLoading ? "GitHubへ接続中..." : "Login with GitHub"}
             </button>
           </div>
           {(error || githubError) && <p className={shared.error}>{error || githubError}</p>}

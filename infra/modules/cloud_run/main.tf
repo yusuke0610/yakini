@@ -6,6 +6,15 @@ locals {
     "github-client-id",
     "github-client-secret",
   ]
+  required_secret_env = {
+    SECRET_KEY           = "secret-key"
+    FIELD_ENCRYPTION_KEY = "field-encryption-key"
+    ADMIN_TOKEN          = "admin-token"
+  }
+  github_secret_env = var.enable_github_oauth ? {
+    GITHUB_CLIENT_ID     = "github-client-id"
+    GITHUB_CLIENT_SECRET = "github-client-secret"
+  } : {}
 }
 
 resource "google_secret_manager_secret" "app" {
@@ -35,7 +44,7 @@ resource "google_cloud_run_v2_service" "app" {
     service_account = var.service_account_email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.stack_name}:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.stack_name}:${var.container_image_tag}"
 
       resources {
         limits = {
@@ -64,14 +73,38 @@ resource "google_cloud_run_v2_service" "app" {
         value = var.cors_origins
       }
 
+      env {
+        name  = "LLM_PROVIDER"
+        value = var.llm_provider
+      }
+      env {
+        name  = "VERTEX_PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "VERTEX_LOCATION"
+        value = var.region
+      }
+      env {
+        name  = "VERTEX_MODEL"
+        value = var.vertex_model
+      }
+
       dynamic "env" {
-        for_each = {
-          SECRET_KEY           = "secret-key"
-          FIELD_ENCRYPTION_KEY = "field-encryption-key"
-          ADMIN_TOKEN          = "admin-token"
-          GITHUB_CLIENT_ID     = "github-client-id"
-          GITHUB_CLIENT_SECRET = "github-client-secret"
+        for_each = local.required_secret_env
+        content {
+          name = env.key
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.app[env.value].secret_id
+              version = "latest"
+            }
+          }
         }
+      }
+
+      dynamic "env" {
+        for_each = local.github_secret_env
         content {
           name = env.key
           value_source {
@@ -90,6 +123,12 @@ resource "google_cloud_run_v2_service" "app" {
       max_instance_count = 1
       min_instance_count = 0
     }
+  }
+
+  lifecycle {
+    # CI deploys new revisions with gcloud run deploy, so Terraform should not
+    # try to force the service back to the bootstrap image tag on later applies.
+    ignore_changes = [template[0].containers[0].image]
   }
 }
 
