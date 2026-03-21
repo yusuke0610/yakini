@@ -81,6 +81,8 @@ export function GitHubAnalysisPage() {
       .then((res) => {
         if (!cancelled && res.available) {
           setSummary(res.summary);
+        } else if (!cancelled) {
+          setError("AI要約を生成できませんでした。LLM 設定を確認してください。");
         }
       })
       .catch(() => {})

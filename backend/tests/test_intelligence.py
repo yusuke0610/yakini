@@ -4,6 +4,8 @@ Unit tests for the career intelligence services.
 Tests cover deterministic modules only (no GitHub API calls).
 """
 
+from unittest.mock import AsyncMock, patch
+
 from fastapi.testclient import TestClient
 
 from conftest import auth_header
@@ -753,6 +755,30 @@ def test_skill_activity_requires_github_user(client: TestClient) -> None:
         headers=headers,
     )
     assert resp.status_code == 403
+
+
+def test_summarize_returns_unavailable_when_generation_fails(client: TestClient) -> None:
+    """要約生成結果が空なら available=false を返す。"""
+    headers = auth_header(client, "summary_user")
+    with (
+        patch("app.routers.intelligence.check_llm_available", new_callable=AsyncMock, return_value=True),
+        patch("app.routers.intelligence.summarize_analysis", new_callable=AsyncMock, return_value=""),
+    ):
+        resp = client.post(
+            "/api/intelligence/summarize",
+            json={
+                "analysis": {
+                    "username": "test",
+                    "repos_analyzed": 1,
+                    "unique_skills": 2,
+                    "analyzed_at": "2026-03-21T00:00:00",
+                    "languages": {"Python": 1},
+                }
+            },
+            headers=headers,
+        )
+    assert resp.status_code == 200
+    assert resp.json() == {"summary": "", "available": False}
 
 
 # ── Response Mapper Tests ──────────────────────────────────────────────

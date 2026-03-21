@@ -55,5 +55,5 @@ variable "llm_provider" {
 variable "vertex_model" {
   description = "Vertex AI で使用するモデル名。"
   type        = string
-  default     = "gemini-2.0-flash"
+  default     = "gemini-2.5-flash-lite"
 }
