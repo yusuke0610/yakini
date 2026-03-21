@@ -1,5 +1,24 @@
 import os
 from pathlib import Path
+from urllib.parse import urlparse
+
+
+def _parse_bool_env(name: str) -> bool | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"{name} must be a boolean value")
+
+
+def _is_loopback_origin(origin: str) -> bool:
+    parsed = urlparse(origin)
+    return parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}
 
 
 def get_sqlite_db_path() -> Path:
@@ -13,11 +32,26 @@ def get_database_url() -> str:
 
 
 def get_cors_origins() -> list[str]:
-    return [
-        origin.strip()
-        for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
-        if origin.strip()
-    ]
+    cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+    return [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
+
+
+def get_cookie_secure() -> bool:
+    configured = _parse_bool_env("COOKIE_SECURE")
+    if configured is not None:
+        return configured
+
+    origins = get_cors_origins()
+    if origins and all(_is_loopback_origin(origin) for origin in origins):
+        return False
+    return True
+
+
+def get_cookie_samesite() -> str:
+    value = os.getenv("COOKIE_SAMESITE", "lax").strip().lower()
+    if value not in {"lax", "strict", "none"}:
+        raise RuntimeError("COOKIE_SAMESITE must be one of: lax, strict, none")
+    return value
 
 
 def get_gcs_bucket_name() -> str:
@@ -33,7 +67,10 @@ def get_admin_token() -> str:
 
 
 def get_secret_key() -> str:
-    return os.getenv("SECRET_KEY", "").strip()
+    key = os.getenv("SECRET_KEY", "").strip()
+    if not key:
+        raise RuntimeError("SECRET_KEY is not configured")
+    return key
 
 
 def get_github_client_id() -> str:
@@ -42,3 +79,15 @@ def get_github_client_id() -> str:
 
 def get_github_client_secret() -> str:
     return os.getenv("GITHUB_CLIENT_SECRET", "").strip()
+
+
+def get_llm_provider() -> str:
+    return os.environ.get("LLM_PROVIDER", "ollama")
+
+
+def get_vertex_project_id() -> str:
+    return os.environ.get("VERTEX_PROJECT_ID", "")
+
+
+def get_vertex_location() -> str:
+    return os.environ.get("VERTEX_LOCATION", "asia-northeast1")

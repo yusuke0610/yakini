@@ -1,41 +1,51 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent } from "react";
 
 import {
+  assertBasicInfoReady,
   createResume,
   downloadResumeMarkdown,
   downloadResumePdf,
-  getLatestBasicInfo,
   getLatestResume,
   getResumePdfBlobUrl,
   updateResume,
 } from "../../api";
+import { createInitialResumeForm, mapResumeToForm } from "../../formMappers";
+import { useDocumentForm } from "../../hooks/useDocumentForm";
 import { buildResumePayload } from "../../payloadBuilders";
-import type { ResumeFormState } from "../../payloadBuilders";
 import type { ResumeHistory } from "../../types";
 import { blankHistory } from "../../constants";
 import type { ResumeTextFieldKey } from "../../formTypes";
+import { usePrefectures } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
+import { Combobox } from "./Combobox";
+import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
 import styles from "./ResumeForm.module.css";
 
 export function ResumeForm() {
-  const [form, setForm] = useState<ResumeFormState>({
-    postal_code: "",
-    prefecture: "",
-    address: "",
-    email: "",
-    phone: "",
-    motivation: "",
-    personal_preferences: "",
-    educations: [{ ...blankHistory }],
-    work_histories: [{ ...blankHistory }],
-    photo: null,
+  const { items: prefectureOptions } = usePrefectures();
+  const {
+    form,
+    setForm,
+    documentId: resumeId,
+    saving,
+    error,
+    success,
+    setError,
+    setSuccess,
+    save,
+    saveButtonText,
+  } = useDocumentForm({
+    createInitialForm: createInitialResumeForm,
+    loadLatest: getLatestResume,
+    createDocument: createResume,
+    updateDocument: updateResume,
+    buildPayload: buildResumePayload,
+    mapResponseToForm: mapResumeToForm,
+    successMessage: "履歴書を保存しました。PDF出力できます。",
+    beforeSave: assertBasicInfoReady,
   });
-  const [ResumeId, setResumeId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const { downloading, previewUrl, closePreview, onDownloadPdf, onDownloadMarkdown, onPreviewPdf } =
     usePdfActions({
@@ -43,44 +53,6 @@ export function ResumeForm() {
       downloadMarkdown: downloadResumeMarkdown,
       getPdfBlobUrl: getResumePdfBlobUrl,
     });
-
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
-      try {
-        const latest = await getLatestResume();
-        if (!active) return;
-        setResumeId(latest.id);
-        setForm({
-          postal_code: latest.postal_code,
-          prefecture: latest.prefecture,
-          address: latest.address,
-          email: latest.email,
-          phone: latest.phone,
-          motivation: latest.motivation,
-          personal_preferences: latest.personal_preferences ?? "",
-          educations: latest.educations.length > 0 ? latest.educations : [{ ...blankHistory }],
-          work_histories:
-            latest.work_histories.length > 0 ? latest.work_histories : [{ ...blankHistory }],
-          photo: latest.photo ?? null,
-        });
-      } catch {
-        if (!active) return;
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const saveButtonText = useMemo(() => {
-    if (saving) {
-      return "保存中...";
-    }
-    return ResumeId ? "更新する" : "保存する";
-  }, [ResumeId, saving]);
 
   const onChangeField = (key: ResumeTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -91,7 +63,19 @@ export function ResumeForm() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setForm((prev) => ({ ...prev, photo: reader.result as string }));
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 450;
+        canvas.height = 600;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, 450, 600);
+          const resized = canvas.toDataURL("image/jpeg", 0.9);
+          setForm((prev) => ({ ...prev, photo: resized }));
+        }
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   };
@@ -151,36 +135,7 @@ export function ResumeForm() {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      try {
-        const basicInfo = await getLatestBasicInfo();
-        if (!basicInfo.full_name || !basicInfo.record_date) {
-          setError("基本情報の氏名と記載日を先に登録してください。");
-          setSaving(false);
-          return;
-        }
-      } catch {
-        setError("基本情報の氏名と記載日を先に登録してください。");
-        setSaving(false);
-        return;
-      }
-
-      const payload = buildResumePayload(form);
-      const saved = ResumeId ? await updateResume(ResumeId, payload) : await createResume(payload);
-
-      setResumeId(saved.id);
-      setSuccess("履歴書を保存しました。PDF出力できます。");
-    } catch (submitError) {
-      const message =
-        submitError instanceof Error ? submitError.message : "保存中に不明なエラーが発生しました。";
-      setError(message);
-    } finally {
-      setSaving(false);
-    }
+    await save();
   };
 
   return (
@@ -195,25 +150,25 @@ export function ResumeForm() {
             </button>
             <button
               type="button"
-              onClick={() => ResumeId && onPreviewPdf(ResumeId, setError)}
-              disabled={!ResumeId}
+              onClick={() => resumeId && onPreviewPdf(resumeId, setError)}
+              disabled={!resumeId}
             >
               プレビュー
             </button>
             <button
               type="button"
               onClick={() =>
-                ResumeId &&
-                onDownloadPdf(ResumeId, setError, setSuccess, "履歴書PDFをダウンロードしました。")
+                resumeId &&
+                onDownloadPdf(resumeId, setError, setSuccess, "履歴書PDFをダウンロードしました。")
               }
-              disabled={!ResumeId || downloading}
+              disabled={!resumeId || downloading}
             >
               {downloading ? "ダウンロード中..." : "PDF出力"}
             </button>
             <button
               type="button"
-              onClick={() => ResumeId && onDownloadMarkdown(ResumeId, setError)}
-              disabled={!ResumeId}
+              onClick={() => resumeId && onDownloadMarkdown(resumeId, setError)}
+              disabled={!resumeId}
             >
               Markdown出力
             </button>
@@ -252,26 +207,58 @@ export function ResumeForm() {
         <section className={shared.section}>
           <div className={shared.inline}>
             <label>
-              <span className={shared.labelText}>郵便番号<span className={shared.requiredBadge}>必須</span></span>
+              <span className={shared.labelText}>性別<span className={shared.requiredBadge}>必須</span></span>
+              <select
+                value={form.gender}
+                onChange={(e) => onChangeField("gender", e.target.value)}
+                required
+              >
+                <option value="">未選択</option>
+                <option value="male">男</option>
+                <option value="female">女</option>
+              </select>
+            </label>
+            <label>
+              <span className={shared.labelText}>生年月日<span className={shared.requiredBadge}>必須</span></span>
               <input
-                type="text"
-                value={form.postal_code}
-                onChange={(e) => onChangeField("postal_code", e.target.value)}
-                placeholder="例: 150-0001"
+                type="date"
+                value={form.birthday}
+                onChange={(e) => onChangeField("birthday", e.target.value)}
                 required
               />
             </label>
             <label>
               <span className={shared.labelText}>都道府県<span className={shared.requiredBadge}>必須</span></span>
+              <Combobox
+                value={form.prefecture}
+                onChange={(val) => onChangeField("prefecture", val)}
+                options={prefectureOptions.map((pref) => pref.name)}
+                placeholder="例: 東京都"
+              />
+            </label>
+            <label>
+              <span className={shared.labelText}>郵便番号<span className={shared.requiredBadge}>必須</span></span>
               <input
                 type="text"
-                value={form.prefecture}
-                onChange={(e) => onChangeField("prefecture", e.target.value)}
-                placeholder="例: 東京都"
+                value={form.postal_code}
+                onChange={(e) => onChangeField("postal_code", e.target.value)}
+                placeholder="例: 150-0041"
                 required
               />
             </label>
           </div>
+          <label>
+            <span className={shared.labelText}>住所ふりがな<span className={shared.requiredBadge}>必須</span></span>
+            <input
+              type="text"
+              value={form.address_furigana}
+              onChange={(e) => onChangeField("address_furigana", e.target.value)}
+              placeholder="例: しぶやく じんなん"
+              pattern="^[ぁ-ゖー\s　]+$"
+              title="ひらがなで入力してください"
+              required
+            />
+          </label>
           <label>
             <span className={shared.labelText}>住所<span className={shared.requiredBadge}>必須</span></span>
             <input
@@ -281,16 +268,8 @@ export function ResumeForm() {
               required
             />
           </label>
+          <h3>連絡先</h3>
           <div className={shared.inline}>
-            <label>
-              <span className={shared.labelText}>メールアドレス<span className={shared.requiredBadge}>必須</span></span>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => onChangeField("email", e.target.value)}
-                required
-              />
-            </label>
             <label>
               <span className={shared.labelText}>電話番号<span className={shared.requiredBadge}>必須</span></span>
               <input
@@ -300,24 +279,28 @@ export function ResumeForm() {
                 required
               />
             </label>
+            <label>
+              <span className={shared.labelText}>メールアドレス<span className={shared.requiredBadge}>必須</span></span>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => onChangeField("email", e.target.value)}
+                required
+              />
+            </label>
           </div>
-          <label>
-            <span className={shared.labelText}>志望動機<span className={shared.requiredBadge}>必須</span></span>
-            <textarea
-              rows={4}
-              value={form.motivation}
-              onChange={(e) => onChangeField("motivation", e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            本人希望記入欄
-            <textarea
-              rows={4}
-              value={form.personal_preferences}
-              onChange={(e) => onChangeField("personal_preferences", e.target.value)}
-            />
-          </label>
+          <MarkdownTextarea
+            label="志望動機"
+            value={form.motivation}
+            onChange={(v) => onChangeField("motivation", v)}
+            rows={4}
+          />
+          <MarkdownTextarea
+            label="本人希望記入欄"
+            value={form.personal_preferences}
+            onChange={(v) => onChangeField("personal_preferences", v)}
+            rows={4}
+          />
         </section>
 
         <section className={shared.section}>
@@ -384,7 +367,6 @@ export function ResumeForm() {
           </button>
         </section>
 
-            {ResumeId && <p className={shared.hint}>保存ID: {ResumeId}</p>}
           </div>
         </div>
       </form>
