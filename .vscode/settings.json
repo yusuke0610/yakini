@@ -129,7 +129,9 @@
         "autopep",
         "weasyprint",
         "pydyf",
-        "secretmanager"
+        "secretmanager",
+        "dorny",
+        "chdir"
     ],
     "editor.linkedEditing": true,
     "html.autoClosingTags": true,
