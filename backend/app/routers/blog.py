@@ -163,6 +163,8 @@ async def summarize_blog(
 
     articles_data = [art.model_dump() for art in body.articles]
     summary = await summarize_blog_articles(articles_data)
+    if not summary:
+        return BlogSummaryResponse(summary="", available=False)
 
     # DB にキャッシュ保存
     cache = db.query(BlogSummaryCache).filter_by(user_id=user.id).first()

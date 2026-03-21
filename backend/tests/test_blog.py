@@ -204,3 +204,29 @@ def test_list_blog_articles_returns_platform_and_tags(
     data = resp.json()
     assert data[0]["platform"] == "zenn"
     assert data[0]["tags"] == ["Python", "FastAPI"]
+
+
+def test_summarize_blog_returns_unavailable_when_generation_fails(client: TestClient) -> None:
+    """ブログ AI 要約が空なら available=false を返す。"""
+    auth_header(client)
+    with (
+        patch("app.routers.blog.check_llm_available", new_callable=AsyncMock, return_value=True),
+        patch("app.routers.blog.summarize_blog_articles", new_callable=AsyncMock, return_value=""),
+    ):
+        resp = client.post(
+            "/api/blog/summarize",
+            json={
+                "articles": [
+                    {
+                        "platform": "zenn",
+                        "title": "記事",
+                        "url": "https://zenn.dev/example/articles/test",
+                        "summary": "要約",
+                        "tags": ["Python"],
+                        "likes_count": 0,
+                    }
+                ]
+            },
+        )
+    assert resp.status_code == 200
+    assert resp.json() == {"summary": "", "available": False}

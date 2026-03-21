@@ -2,13 +2,12 @@
 
 import asyncio
 import os
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 
 from app.services.intelligence.llm.ollama_client import OllamaClient
-from app.services.intelligence.llm.vertex_client import VertexClient
+from app.services.intelligence.llm.vertex_client import DEFAULT_VERTEX_MODEL, VertexClient
 from app.services.intelligence.llm.factory import get_llm_client
 
 
@@ -92,37 +91,26 @@ def test_ollama_check_available_timeout():
 # ---------- VertexClient ----------
 
 
-def _setup_vertexai_mock(generative_model_mock):
-    """vertexai モジュールを sys.modules にモックとして登録する。"""
-    mock_vertexai = MagicMock()
-    mock_generative_models = MagicMock()
-    mock_generative_models.GenerativeModel = generative_model_mock
-    mock_vertexai.generative_models = mock_generative_models
-
-    return {
-        "vertexai": mock_vertexai,
-        "vertexai.generative_models": mock_generative_models,
-    }
-
-
 def test_vertex_generate_success():
-    """Vertex AI の正常系: GenerativeModel をモックしてテキスト取得。"""
+    """Vertex AI の正常系: google-genai Client をモックしてテキスト取得。"""
     with patch.dict(os.environ, {"VERTEX_PROJECT_ID": "test-project"}):
         client = VertexClient()
 
     mock_response = MagicMock()
     mock_response.text = " テスト要約 "
 
-    mock_model = MagicMock()
-    mock_model.generate_content_async = AsyncMock(return_value=mock_response)
+    mock_generate = AsyncMock(return_value=mock_response)
+    mock_models = MagicMock()
+    mock_models.generate_content = mock_generate
+    mock_aio = MagicMock()
+    mock_aio.models = mock_models
+    mock_genai_client = MagicMock()
+    mock_genai_client.aio = mock_aio
 
-    mock_cls = MagicMock(return_value=mock_model)
-    modules = _setup_vertexai_mock(mock_cls)
-
-    with patch.dict(sys.modules, modules):
-        client._initialized = False
-        result = _run(client.generate("system", "user"))
-        assert result == "テスト要約"
+    client._client = mock_genai_client
+    result = _run(client.generate("system", "user"))
+    assert result == "テスト要約"
+    mock_generate.assert_called_once()
 
 
 def test_vertex_generate_exception():
@@ -130,13 +118,17 @@ def test_vertex_generate_exception():
     with patch.dict(os.environ, {"VERTEX_PROJECT_ID": "test-project"}):
         client = VertexClient()
 
-    mock_cls = MagicMock(side_effect=Exception("API エラー"))
-    modules = _setup_vertexai_mock(mock_cls)
+    mock_generate = AsyncMock(side_effect=Exception("API エラー"))
+    mock_models = MagicMock()
+    mock_models.generate_content = mock_generate
+    mock_aio = MagicMock()
+    mock_aio.models = mock_models
+    mock_genai_client = MagicMock()
+    mock_genai_client.aio = mock_aio
 
-    with patch.dict(sys.modules, modules):
-        client._initialized = False
-        result = _run(client.generate("system", "user"))
-        assert result == ""
+    client._client = mock_genai_client
+    result = _run(client.generate("system", "user"))
+    assert result == ""
 
 
 def test_vertex_check_available_with_project():
@@ -153,6 +145,15 @@ def test_vertex_check_available_without_project():
     with patch.dict(os.environ, env, clear=True):
         client = VertexClient()
     assert _run(client.check_available()) is False
+
+
+def test_vertex_uses_supported_default_model():
+    """VERTEX_MODEL 未設定時はサポート中の既定モデルを使う。"""
+    env = os.environ.copy()
+    env.pop("VERTEX_MODEL", None)
+    with patch.dict(os.environ, env, clear=True):
+        client = VertexClient()
+    assert client.model_name == DEFAULT_VERTEX_MODEL
 
 
 # ---------- ファクトリ ----------

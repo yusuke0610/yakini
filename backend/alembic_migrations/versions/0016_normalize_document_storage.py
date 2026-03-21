@@ -87,10 +87,22 @@ def _create_normalized_tables() -> None:
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("user_id", sa.String(length=36), nullable=False),
         sa.Column("full_name", sa.String(length=120), nullable=False),
-        sa.Column("name_furigana", sa.String(length=200), nullable=False, server_default=""),
+        sa.Column(
+            "name_furigana", sa.String(length=200), nullable=False, server_default=""
+        ),
         sa.Column("record_date", sa.Date(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id", name="uq_basic_info_user"),
@@ -104,7 +116,9 @@ def _create_normalized_tables() -> None:
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("acquired_date", sa.Date(), nullable=False),
         sa.Column("name", sa.String(length=120), nullable=False),
-        sa.ForeignKeyConstraint(["basic_info_id"], ["basic_info.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["basic_info_id"], ["basic_info.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -119,8 +133,18 @@ def _create_normalized_tables() -> None:
         sa.Column("user_id", sa.String(length=36), nullable=False),
         sa.Column("career_summary", sa.Text(), nullable=False),
         sa.Column("self_pr", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id", name="uq_resumes_user"),
@@ -136,13 +160,19 @@ def _create_normalized_tables() -> None:
         sa.Column("business_description", sa.String(length=200), nullable=False),
         sa.Column("start_date", sa.Date(), nullable=False),
         sa.Column("end_date", sa.Date(), nullable=True),
-        sa.Column("is_current", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column("employee_count", sa.String(length=60), nullable=False, server_default=""),
+        sa.Column(
+            "is_current", sa.Boolean(), nullable=False, server_default=sa.false()
+        ),
+        sa.Column(
+            "employee_count", sa.String(length=60), nullable=False, server_default=""
+        ),
         sa.Column("capital", sa.String(length=120), nullable=False, server_default=""),
         sa.ForeignKeyConstraint(["resume_id"], ["resumes.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_resume_experiences_resume_id", "resume_experiences", ["resume_id"])
+    op.create_index(
+        "ix_resume_experiences_resume_id", "resume_experiences", ["resume_id"]
+    )
 
     op.create_table(
         "resume_clients",
@@ -151,10 +181,14 @@ def _create_normalized_tables() -> None:
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("name", sa.String(length=200), nullable=False, server_default=""),
         sa.Column("has_client", sa.Boolean(), nullable=False, server_default=sa.true()),
-        sa.ForeignKeyConstraint(["experience_id"], ["resume_experiences.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["experience_id"], ["resume_experiences.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_resume_clients_experience_id", "resume_clients", ["experience_id"])
+    op.create_index(
+        "ix_resume_clients_experience_id", "resume_clients", ["experience_id"]
+    )
 
     op.create_table(
         "resume_projects",
@@ -164,14 +198,20 @@ def _create_normalized_tables() -> None:
         sa.Column("name", sa.String(length=200), nullable=False, server_default=""),
         sa.Column("start_date", sa.Date(), nullable=False),
         sa.Column("end_date", sa.Date(), nullable=True),
-        sa.Column("is_current", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column(
+            "is_current", sa.Boolean(), nullable=False, server_default=sa.false()
+        ),
         sa.Column("role", sa.String(length=200), nullable=False, server_default=""),
         sa.Column("description", sa.Text(), nullable=False, server_default=""),
         sa.Column("challenge", sa.Text(), nullable=False, server_default=""),
         sa.Column("action", sa.Text(), nullable=False, server_default=""),
         sa.Column("result", sa.Text(), nullable=False, server_default=""),
-        sa.Column("team_total", sa.String(length=60), nullable=False, server_default=""),
-        sa.ForeignKeyConstraint(["client_id"], ["resume_clients.id"], ondelete="CASCADE"),
+        sa.Column(
+            "team_total", sa.String(length=60), nullable=False, server_default=""
+        ),
+        sa.ForeignKeyConstraint(
+            ["client_id"], ["resume_clients.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_resume_projects_client_id", "resume_projects", ["client_id"])
@@ -183,7 +223,9 @@ def _create_normalized_tables() -> None:
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("role", sa.String(length=60), nullable=False),
         sa.Column("count", sa.Integer(), nullable=False, server_default="0"),
-        sa.ForeignKeyConstraint(["project_id"], ["resume_projects.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["project_id"], ["resume_projects.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -199,7 +241,9 @@ def _create_normalized_tables() -> None:
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("category", sa.String(length=30), nullable=False),
         sa.Column("name", sa.String(length=120), nullable=False),
-        sa.ForeignKeyConstraint(["project_id"], ["resume_projects.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["project_id"], ["resume_projects.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -214,7 +258,9 @@ def _create_normalized_tables() -> None:
         sa.Column("project_id", sa.String(length=36), nullable=False),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("name", sa.String(length=120), nullable=False),
-        sa.ForeignKeyConstraint(["project_id"], ["resume_projects.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["project_id"], ["resume_projects.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -230,16 +276,30 @@ def _create_normalized_tables() -> None:
         sa.Column("gender", sa.String(length=10), nullable=False, server_default=""),
         sa.Column("birthday", sa.Date(), nullable=False),
         sa.Column("prefecture", sa.String(length=60), nullable=False),
-        sa.Column("postal_code", sa.String(length=255), nullable=False, server_default=""),
+        sa.Column(
+            "postal_code", sa.String(length=255), nullable=False, server_default=""
+        ),
         sa.Column("address", sa.Text(), nullable=False),
-        sa.Column("address_furigana", sa.String(length=400), nullable=False, server_default=""),
+        sa.Column(
+            "address_furigana", sa.String(length=400), nullable=False, server_default=""
+        ),
         sa.Column("email", sa.String(length=255), nullable=False),
         sa.Column("phone", sa.String(length=255), nullable=False),
         sa.Column("motivation", sa.Text(), nullable=False, server_default=""),
         sa.Column("personal_preferences", sa.Text(), nullable=False, server_default=""),
         sa.Column("photo", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id", name="uq_rirekisho_user"),
@@ -286,9 +346,21 @@ def _create_normalized_tables() -> None:
         sa.Column("published_at", sa.Date(), nullable=True),
         sa.Column("likes_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("summary", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["account_id"], ["blog_accounts.id"], ondelete="CASCADE"),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
+        sa.ForeignKeyConstraint(
+            ["account_id"], ["blog_accounts.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "account_id", "external_id", name="uq_blog_articles_account_external_id"
@@ -302,10 +374,14 @@ def _create_normalized_tables() -> None:
         sa.Column("article_id", sa.String(length=36), nullable=False),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("name", sa.String(length=120), nullable=False),
-        sa.ForeignKeyConstraint(["article_id"], ["blog_articles.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["article_id"], ["blog_articles.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_blog_article_tags_article_id", "blog_article_tags", ["article_id"])
+    op.create_index(
+        "ix_blog_article_tags_article_id", "blog_article_tags", ["article_id"]
+    )
 
 
 def upgrade() -> None:
@@ -454,8 +530,10 @@ def upgrade() -> None:
                             id, client_id, sort_order, name, start_date, end_date, is_current,
                             role, description, challenge, action, result, team_total
                         ) VALUES (
-                            :id, :client_id, :sort_order, :name, :start_date, :end_date, :is_current,
-                            :role, :description, :challenge, :action, :result, :team_total
+                            :id, :client_id, :sort_order, :name,
+                            :start_date, :end_date, :is_current,
+                            :role, :description, :challenge,
+                            :action, :result, :team_total
                         )
                         """
                         ),

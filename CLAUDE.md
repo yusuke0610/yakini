@@ -103,4 +103,5 @@ GITHUB_CLIENT_SECRET # GitHub OAuth Client Secret
 LLM_PROVIDER         # ollama / vertex
 VERTEX_PROJECT_ID    # Vertex AI 用
 VERTEX_LOCATION      # 例: asia-northeast1
+VERTEX_MODEL         # 例: gemini-2.5-flash-lite
 ```
