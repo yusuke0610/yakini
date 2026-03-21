@@ -5,7 +5,7 @@ from urllib.parse import parse_qs, urlparse
 
 from conftest import auth_header
 from app.auth import create_access_token, hash_password, verify_password
-from app.settings import get_cookie_secure
+from app.settings import get_cookie_samesite, get_cookie_secure
 
 
 def test_hash_and_verify_password() -> None:
@@ -61,6 +61,24 @@ def test_cookie_secure_defaults_true_when_non_local_origin_exists(
     )
 
     assert get_cookie_secure() is True
+
+
+def test_cookie_samesite_defaults_lax_for_localhost(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("COOKIE_SAMESITE", raising=False)
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173")
+
+    assert get_cookie_samesite() == "lax"
+
+
+def test_cookie_samesite_defaults_none_for_non_local_origin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("COOKIE_SAMESITE", raising=False)
+    monkeypatch.setenv("CORS_ORIGINS", "https://storage.googleapis.com")
+
+    assert get_cookie_samesite() == "none"
 
 
 def test_me_returns_current_user(client) -> None:
