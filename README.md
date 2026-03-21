@@ -239,6 +239,7 @@ cd backend
 - **自動デプロイ**（`dev` ブランチ push 時のみ）:
   - フロントエンド → GCSバケットへアップロード
   - バックエンド → Artifact Registry へイメージ push → Cloud Run デプロイ
+  - GitHub Actions 実行用サービスアカウントには、Cloud Run runtime SA に対する `roles/iam.serviceAccountUser` が必要
 - **低コスト運用**: Linuxランナー、依存キャッシュ、`concurrency` で古い実行を自動キャンセル
 
 ## インフラストラクチャ
