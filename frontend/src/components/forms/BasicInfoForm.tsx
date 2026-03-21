@@ -9,6 +9,7 @@ import { blankBasicQualification } from "../../constants";
 import type { BasicTextFieldKey } from "../../formTypes";
 import { useQualifications } from "../../hooks/useMasterData";
 import shared from "../../styles/shared.module.css";
+import { LoadingOverlay } from "../LoadingOverlay";
 import { Combobox } from "./Combobox";
 
 export function BasicInfoForm() {
@@ -17,6 +18,7 @@ export function BasicInfoForm() {
   const {
     form,
     setForm,
+    loading,
     saving,
     error,
     success,
@@ -70,6 +72,8 @@ export function BasicInfoForm() {
     event.preventDefault();
     await save();
   };
+
+  if (loading) return <LoadingOverlay />;
 
   return (
     <form onSubmit={onSubmit} noValidate>
