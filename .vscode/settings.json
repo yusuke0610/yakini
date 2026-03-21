@@ -131,7 +131,8 @@
         "pydyf",
         "secretmanager",
         "dorny",
-        "chdir"
+        "chdir",
+        "dedupe"
     ],
     "editor.linkedEditing": true,
     "html.autoClosingTags": true,

@@ -23,12 +23,14 @@ export function useDocumentForm<FormState, Payload, Response extends { id: strin
 }: UseDocumentFormOptions<FormState, Payload, Response>) {
   const [form, setForm] = useState<FormState>(() => createInitialForm());
   const [documentId, setDocumentId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
 
     (async () => {
       try {
@@ -41,6 +43,10 @@ export function useDocumentForm<FormState, Payload, Response extends { id: strin
       } catch {
         if (!active) {
           return;
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
         }
       }
     })();
@@ -86,6 +92,7 @@ export function useDocumentForm<FormState, Payload, Response extends { id: strin
     form,
     setForm,
     documentId,
+    loading,
     saving,
     error,
     success,
