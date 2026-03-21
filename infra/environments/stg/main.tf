@@ -6,8 +6,9 @@ locals {
 module "service_account" {
   source = "../../modules/service_account"
 
-  project_id = var.project_id
-  stack_name = local.stack_name
+  project_id                     = var.project_id
+  stack_name                     = local.stack_name
+  deployer_service_account_email = var.deployer_service_account_email
 }
 
 module "artifact_registry" {

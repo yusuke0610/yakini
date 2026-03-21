@@ -8,6 +8,12 @@ variable "app_name" {
   type        = string
 }
 
+variable "deployer_service_account_email" {
+  description = "Optional deployer service account email that needs actAs on the runtime service account."
+  type        = string
+  default     = ""
+}
+
 variable "template_version" {
   description = "Infrastructure template version."
   type        = string
