@@ -29,6 +29,12 @@ variable "container_image_tag" {
   default     = "latest"
 }
 
+variable "enable_github_oauth" {
+  description = "Whether to inject GitHub OAuth secrets into Cloud Run."
+  type        = bool
+  default     = false
+}
+
 variable "db_backup_bucket_name" {
   description = "GCS bucket name for database backups."
   type        = string
