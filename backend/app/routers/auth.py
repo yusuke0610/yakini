@@ -1,6 +1,6 @@
 import logging
 import secrets
-from urllib.parse import quote, urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from fastapi import (
     APIRouter,
@@ -81,25 +81,59 @@ def _get_default_frontend_origin() -> str:
     return origins[0]
 
 
-def _resolve_frontend_origin_from_request(request: Request) -> str:
+def _get_default_frontend_url() -> str:
+    return f"{_get_default_frontend_origin().rstrip('/')}/"
+
+
+def _normalize_frontend_url(frontend_url: str) -> str:
+    parsed = urlsplit(frontend_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="戻り先URLが不正です",
+        )
+
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    if origin not in get_cors_origins():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="許可されていないフロントエンドオリジンです",
+        )
+
+    path = parsed.path or "/"
+    return urlunsplit(
+        (parsed.scheme, parsed.netloc, path, parsed.query, parsed.fragment)
+    )
+
+
+def _resolve_frontend_url_from_request(
+    request: Request,
+    return_to: str | None = None,
+) -> str:
+    if return_to:
+        return _normalize_frontend_url(return_to)
+
+    referer = request.headers.get("referer")
+    if referer:
+        try:
+            return _normalize_frontend_url(referer)
+        except HTTPException:
+            pass
+
     request_origin = request.headers.get("origin")
-    allowed_origins = get_cors_origins()
-
     if request_origin:
-        if request_origin not in allowed_origins:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="許可されていないフロントエンドオリジンです",
-            )
-        return request_origin
-    return _get_default_frontend_origin()
+        return _normalize_frontend_url(request_origin)
+
+    return _get_default_frontend_url()
 
 
-def _resolve_frontend_origin_from_cookie(stored_origin: str | None) -> str:
-    allowed_origins = get_cors_origins()
-    if stored_origin and stored_origin in allowed_origins:
-        return stored_origin
-    return _get_default_frontend_origin()
+def _resolve_frontend_url_from_cookie(stored_url: str | None) -> str:
+    if stored_url:
+        try:
+            return _normalize_frontend_url(stored_url)
+        except HTTPException:
+            pass
+    return _get_default_frontend_url()
 
 
 def _build_external_base_url(request: Request) -> str:
@@ -113,13 +147,23 @@ def _build_external_base_url(request: Request) -> str:
 
 
 def _build_frontend_redirect_url(
-    frontend_origin: str,
+    frontend_url: str,
     error: str | None = None,
 ) -> str:
-    base_url = f"{frontend_origin.rstrip('/')}/"
     if not error:
-        return base_url
-    return f"{base_url}?github_error={quote(error)}"
+        return frontend_url
+
+    parsed = urlsplit(frontend_url)
+    query = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key != "github_error"
+    ]
+    query.append(("github_error", error))
+    path = parsed.path or "/"
+    return urlunsplit(
+        (parsed.scheme, parsed.netloc, path, urlencode(query), parsed.fragment)
+    )
 
 
 def _validate_github_oauth_state(
@@ -152,6 +196,41 @@ def _build_github_authorization_url(
         }
     )
     return f"https://github.com/login/oauth/authorize?{query}"
+
+
+def _begin_github_oauth(
+    request: Request,
+    response: Response,
+    frontend_url: str,
+) -> str:
+    client_id = get_github_client_id()
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="GitHub OAuth が設定されていません",
+        )
+
+    redirect_uri = f"{_build_external_base_url(request)}/auth/github/callback"
+    state = secrets.token_urlsafe(32)
+
+    _set_cookie(
+        response,
+        _GITHUB_OAUTH_STATE_COOKIE,
+        state,
+        _GITHUB_OAUTH_COOKIE_MAX_AGE,
+    )
+    _set_cookie(
+        response,
+        _GITHUB_OAUTH_REDIRECT_COOKIE,
+        frontend_url,
+        _GITHUB_OAUTH_COOKIE_MAX_AGE,
+    )
+
+    return _build_github_authorization_url(
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        state=state,
+    )
 
 
 async def _authenticate_github_user(db: Session, code: str) -> TokenResponse:
@@ -293,38 +372,25 @@ def me(current_user=Depends(get_current_user)) -> TokenResponse:
 def github_login_url(
     request: Request,
     response: Response,
+    return_to: str | None = None,
 ) -> dict[str, str]:
-    client_id = get_github_client_id()
-    if not client_id:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="GitHub OAuth が設定されていません",
-        )
+    frontend_url = _resolve_frontend_url_from_request(request, return_to)
+    authorization_url = _begin_github_oauth(request, response, frontend_url)
 
-    frontend_origin = _resolve_frontend_origin_from_request(request)
-    redirect_uri = f"{_build_external_base_url(request)}/auth/github/callback"
-    state = secrets.token_urlsafe(32)
+    return {"authorization_url": authorization_url}
 
-    _set_cookie(
-        response,
-        _GITHUB_OAUTH_STATE_COOKIE,
-        state,
-        _GITHUB_OAUTH_COOKIE_MAX_AGE,
-    )
-    _set_cookie(
-        response,
-        _GITHUB_OAUTH_REDIRECT_COOKIE,
-        frontend_origin,
-        _GITHUB_OAUTH_COOKIE_MAX_AGE,
-    )
 
-    return {
-        "authorization_url": _build_github_authorization_url(
-            client_id=client_id,
-            redirect_uri=redirect_uri,
-            state=state,
-        )
-    }
+@router.get("/github/login")
+@limiter.limit("10/minute")
+def github_login(
+    request: Request,
+    return_to: str | None = None,
+) -> RedirectResponse:
+    frontend_url = _resolve_frontend_url_from_request(request, return_to)
+    redirect = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    redirect_url = _begin_github_oauth(request, redirect, frontend_url)
+    redirect.headers["location"] = redirect_url
+    return redirect
 
 
 @router.get("/github/callback")
@@ -335,7 +401,7 @@ async def github_callback_redirect(
     state: str | None = None,
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
-    frontend_origin = _resolve_frontend_origin_from_cookie(
+    frontend_url = _resolve_frontend_url_from_cookie(
         request.cookies.get(_GITHUB_OAUTH_REDIRECT_COOKIE)
     )
 
@@ -352,14 +418,14 @@ async def github_callback_redirect(
         token_response = await _authenticate_github_user(db, code)
     except HTTPException as error:
         redirect = RedirectResponse(
-            url=_build_frontend_redirect_url(frontend_origin, error.detail),
+            url=_build_frontend_redirect_url(frontend_url, error.detail),
             status_code=status.HTTP_303_SEE_OTHER,
         )
         _clear_github_oauth_cookies(redirect)
         return redirect
 
     redirect = RedirectResponse(
-        url=_build_frontend_redirect_url(frontend_origin),
+        url=_build_frontend_redirect_url(frontend_url),
         status_code=status.HTTP_303_SEE_OTHER,
     )
     _set_auth_cookie(
