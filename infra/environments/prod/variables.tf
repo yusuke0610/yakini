@@ -24,3 +24,9 @@ variable "container_image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "enable_github_oauth" {
+  description = "Whether to inject GitHub OAuth secrets into Cloud Run."
+  type        = bool
+  default     = false
+}

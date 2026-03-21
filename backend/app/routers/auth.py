@@ -102,6 +102,16 @@ def _resolve_frontend_origin_from_cookie(stored_origin: str | None) -> str:
     return _get_default_frontend_origin()
 
 
+def _build_external_base_url(request: Request) -> str:
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
+    scheme = forwarded_proto if forwarded_proto in {"http", "https"} else request.url.scheme
+
+    forwarded_host = request.headers.get("x-forwarded-host", "").split(",")[0].strip()
+    host = forwarded_host or request.headers.get("host") or request.url.netloc
+
+    return f"{scheme}://{host}"
+
+
 def _build_frontend_redirect_url(
     frontend_origin: str,
     error: str | None = None,
@@ -292,7 +302,7 @@ def github_login_url(
         )
 
     frontend_origin = _resolve_frontend_origin_from_request(request)
-    redirect_uri = f"{str(request.base_url).rstrip('/')}/auth/github/callback"
+    redirect_uri = f"{_build_external_base_url(request)}/auth/github/callback"
     state = secrets.token_urlsafe(32)
 
     _set_cookie(
