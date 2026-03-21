@@ -83,17 +83,10 @@ export function LoginForm({
               type="button"
               className={styles.githubLogin}
               disabled={githubLoading}
-              onClick={async () => {
+              onClick={() => {
                 setGithubLoading(true);
                 setError(null);
-                try {
-                  const authorizationUrl = await getGitHubLoginUrl();
-                  window.location.assign(authorizationUrl);
-                } catch (err) {
-                  const message = err instanceof Error ? err.message : "GitHub認証の開始に失敗しました。";
-                  setError(message);
-                  setGithubLoading(false);
-                }
+                window.location.assign(getGitHubLoginUrl(window.location.href));
               }}
             >
               {githubLoading ? "GitHubへ接続中..." : "Login with GitHub"}

@@ -1,7 +1,6 @@
 import { request, API_BASE_URL } from "./client";
 
 type AuthResponse = { username: string; is_github_user: boolean };
-type GitHubLoginUrlResponse = { authorization_url: string };
 
 export function login(email: string, password: string): Promise<AuthResponse> {
   return request("/auth/login", {
@@ -41,22 +40,7 @@ export async function getCurrentUser(): Promise<AuthResponse | null> {
   return (await response.json()) as AuthResponse;
 }
 
-export async function getGitHubLoginUrl(): Promise<string> {
-  const response = await fetch(`${API_BASE_URL}/auth/github/login-url`, {
-    credentials: "include",
-  });
-  if (!response.ok) {
-    let message = "GitHub認証の開始に失敗しました。";
-    try {
-      const body = await response.json();
-      if (typeof body.detail === "string") {
-        message = body.detail;
-      }
-    } catch {
-      // ignore
-    }
-    throw new Error(message);
-  }
-  const result = (await response.json()) as GitHubLoginUrlResponse;
-  return result.authorization_url;
+export function getGitHubLoginUrl(returnTo: string): string {
+  const params = new URLSearchParams({ return_to: returnTo });
+  return `${API_BASE_URL}/auth/github/login?${params.toString()}`;
 }
