@@ -6,6 +6,15 @@ locals {
     "github-client-id",
     "github-client-secret",
   ]
+  required_secret_env = {
+    SECRET_KEY           = "secret-key"
+    FIELD_ENCRYPTION_KEY = "field-encryption-key"
+    ADMIN_TOKEN          = "admin-token"
+  }
+  github_secret_env = var.enable_github_oauth ? {
+    GITHUB_CLIENT_ID     = "github-client-id"
+    GITHUB_CLIENT_SECRET = "github-client-secret"
+  } : {}
 }
 
 resource "google_secret_manager_secret" "app" {
@@ -82,13 +91,20 @@ resource "google_cloud_run_v2_service" "app" {
       }
 
       dynamic "env" {
-        for_each = {
-          SECRET_KEY           = "secret-key"
-          FIELD_ENCRYPTION_KEY = "field-encryption-key"
-          ADMIN_TOKEN          = "admin-token"
-          GITHUB_CLIENT_ID     = "github-client-id"
-          GITHUB_CLIENT_SECRET = "github-client-secret"
+        for_each = local.required_secret_env
+        content {
+          name = env.key
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.app[env.value].secret_id
+              version = "latest"
+            }
+          }
         }
+      }
+
+      dynamic "env" {
+        for_each = local.github_secret_env
         content {
           name = env.key
           value_source {
