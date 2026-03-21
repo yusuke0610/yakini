@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User
 from .settings import get_secret_key
+
+_COOKIE_NAME = "access_token"
+_COOKIE_MAX_AGE = 8 * 60 * 60  # 8時間（秒）
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _ALGORITHM = "HS256"
@@ -23,28 +26,23 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(username: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(
-        hours=_TOKEN_EXPIRE_HOURS
-    )
+    expire = datetime.now(timezone.utc) + timedelta(hours=_TOKEN_EXPIRE_HOURS)
     payload = {"sub": username, "exp": expire}
     return jwt.encode(payload, get_secret_key(), algorithm=_ALGORITHM)
 
 
 def get_current_user(
-    authorization: str | None = Header(default=None),
+    request: Request,
     db: Session = Depends(get_db),
 ) -> User:
-    if not authorization or not authorization.startswith("Bearer "):
+    token = request.cookies.get(_COOKIE_NAME)
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="認証が必要です",
-            headers={"WWW-Authenticate": "Bearer"},
         )
-    token = authorization.removeprefix("Bearer ").strip()
     try:
-        payload = jwt.decode(
-            token, get_secret_key(), algorithms=[_ALGORITHM]
-        )
+        payload = jwt.decode(token, get_secret_key(), algorithms=[_ALGORITHM])
         username: str | None = payload.get("sub")
         if not username:
             raise HTTPException(

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { setAuthToken, setOnUnauthorized, githubCallback } from "./api";
-import { parseUsernameFromToken } from "./auth-utils";
+import { getCurrentUser, logout, setOnUnauthorized } from "./api";
 import type { PageKey } from "./formTypes";
 import { useTheme } from "./hooks/useTheme";
 import { LoginForm } from "./components/auth/LoginForm";
@@ -10,28 +9,37 @@ import { UserMenu } from "./components/UserMenu";
 import { BasicInfoForm } from "./components/forms/BasicInfoForm";
 import { CareerResumeForm } from "./components/forms/CareerResumeForm";
 import { ResumeForm } from "./components/forms/ResumeForm";
+import { GitHubAnalysisPage } from "./components/analysis/GitHubAnalysisPage";
+import { BlogPage } from "./components/blog/BlogPage";
 import shared from "./styles/shared.module.css";
 import styles from "./App.module.css";
 
+type AuthUser = { username: string; isGitHubUser: boolean };
+
+/**
+ * アプリケーションのメインエントリーポイントコンポーネント。
+ * 認証状態、テーマ、およびページルーティングを管理します。
+ */
 export default function App() {
   const { theme, toggleTheme } = useTheme();
-  const [token, setToken] = useState<string | null>(() => {
-    const saved = localStorage.getItem("auth_token");
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    const saved = sessionStorage.getItem("auth_user");
     if (saved) {
-      setAuthToken(saved);
+      try {
+        return JSON.parse(saved) as AuthUser;
+      } catch {
+        return null;
+      }
     }
-    return saved;
+    return null;
   });
-
-  const username = parseUsernameFromToken(token);
+  const [authLoading, setAuthLoading] = useState(user === null);
   const [githubError, setGithubError] = useState<string | null>(null);
-  const [githubLoading, setGithubLoading] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return !!params.get("code") && !localStorage.getItem("auth_token");
-  });
   const [page, setPage] = useState<PageKey>(() => {
     const saved = sessionStorage.getItem("current_page");
-    return saved === "career" || saved === "Resume" ? saved : "basic";
+    if (saved === "career" || saved === "Resume" || saved === "blog") return saved;
+    if (saved === "github" && user?.isGitHubUser) return saved;
+    return "basic";
   });
   const [authMode, setAuthMode] = useState<"login" | "register">(() => {
     return sessionStorage.getItem("auth_mode") === "register" ? "register" : "login";
@@ -45,53 +53,107 @@ export default function App() {
     sessionStorage.setItem("auth_mode", authMode);
   }, [authMode]);
 
-  const handleLogin = (newToken: string) => {
-    localStorage.setItem("auth_token", newToken);
-    setAuthToken(newToken);
-    setToken(newToken);
-    setPage("basic");
+  const clearAuthenticatedUser = () => {
+    sessionStorage.removeItem("auth_user");
+    sessionStorage.removeItem("current_page");
+    setUser(null);
   };
 
+  /**
+   * ログイン成功時の処理。
+   */
+  const setAuthenticatedUser = (
+    username: string,
+    isGitHubUser: boolean,
+    resetPage: boolean,
+  ) => {
+    const authUser: AuthUser = { username, isGitHubUser };
+    sessionStorage.setItem("auth_user", JSON.stringify(authUser));
+    setUser(authUser);
+    if (resetPage) {
+      setPage("basic");
+    }
+  };
+
+  const handleLogin = (username: string, isGitHubUser: boolean) => {
+    setAuthenticatedUser(username, isGitHubUser, true);
+  };
+
+  /**
+   * ログアウト処理。
+   */
   const handleLogout = () => {
-    localStorage.removeItem("auth_token");
-    sessionStorage.removeItem("current_page");
-    setAuthToken(null);
-    setToken(null);
+    logout();
+    clearAuthenticatedUser();
     setAuthMode("login");
   };
 
   useEffect(() => {
     setOnUnauthorized(() => {
-      localStorage.removeItem("auth_token");
-      setAuthToken(null);
-      setToken(null);
+      sessionStorage.removeItem("auth_user");
+      sessionStorage.removeItem("current_page");
+      setUser(null);
     });
+  }, []);
 
-    // Handle GitHub OAuth callback
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const saved = localStorage.getItem("auth_token");
-    if (code && !saved) {
+    const error = params.get("github_error");
+    if (error) {
       window.history.replaceState({}, "", window.location.pathname);
-      setGithubLoading(true);
-      githubCallback(code)
-        .then((result) => {
-          handleLogin(result.access_token);
-        })
-        .catch(() => {
-          setGithubError("GitHub認証に失敗しました。もう一度お試しください。");
-        })
-        .finally(() => {
-          setGithubLoading(false);
-        });
+      setGithubError(error);
     }
   }, []);
 
-  if (!token) {
+  useEffect(() => {
+    let active = true;
+
+    if (user) {
+      setAuthLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    (async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (!active || !currentUser) return;
+        const authUser: AuthUser = {
+          username: currentUser.username,
+          isGitHubUser: currentUser.is_github_user,
+        };
+        sessionStorage.setItem("auth_user", JSON.stringify(authUser));
+        setUser(authUser);
+      } catch {
+        if (!active) return;
+      } finally {
+        if (active) {
+          setAuthLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  if (authLoading) {
+    return (
+      <div className={shared.page}>
+        <main className={shared.container}>
+          <p>認証状態を確認中...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (!user) {
     if (authMode === "register") {
       return <RegisterForm onLogin={handleLogin} onSwitchToLogin={() => setAuthMode("login")} />;
     }
-    return <LoginForm onLogin={handleLogin} onSwitchToRegister={() => setAuthMode("register")} githubError={githubError} githubLoading={githubLoading} />;
+    return <LoginForm onLogin={handleLogin} onSwitchToRegister={() => setAuthMode("register")} githubError={githubError} />;
   }
 
   return (
@@ -121,10 +183,26 @@ export default function App() {
             >
               履歴書
             </button>
+            {user.isGitHubUser && (
+              <button
+                type="button"
+                className={`${styles.sidebarItem} ${page === "github" ? styles.active : ""}`}
+                onClick={() => setPage("github")}
+              >
+                GitHub分析
+              </button>
+            )}
+            <button
+              type="button"
+              className={`${styles.sidebarItem} ${page === "blog" ? styles.active : ""}`}
+              onClick={() => setPage("blog")}
+            >
+              ブログ連携
+            </button>
           </nav>
           <div className={styles.sidebarFooter}>
             <UserMenu
-              username={username}
+              username={user.username}
               theme={theme}
               onToggleTheme={toggleTheme}
               onLogout={handleLogout}
@@ -136,6 +214,8 @@ export default function App() {
           {page === "basic" && <BasicInfoForm />}
           {page === "career" && <CareerResumeForm />}
           {page === "Resume" && <ResumeForm />}
+          {page === "github" && <GitHubAnalysisPage />}
+          {page === "blog" && <BlogPage />}
         </main>
       </div>
     </div>

@@ -8,7 +8,7 @@ export function RegisterForm({
   onLogin,
   onSwitchToLogin,
 }: {
-  onLogin: (token: string) => void;
+  onLogin: (username: string, isGitHubUser: boolean) => void;
   onSwitchToLogin: () => void;
 }) {
   const [username, setUsername] = useState("");
@@ -28,7 +28,7 @@ export function RegisterForm({
     setError(null);
     try {
       const result = await register(username, email, password);
-      onLogin(result.access_token);
+      onLogin(result.username, result.is_github_user);
     } catch (err) {
       const message = err instanceof Error ? err.message : "登録に失敗しました。";
       setError(message);
@@ -66,7 +66,7 @@ export function RegisterForm({
               />
             </label>
             <label>
-              パスワード（8文字以上）
+              パスワード（8文字以上、英大文字・小文字・数字を含む）
               <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

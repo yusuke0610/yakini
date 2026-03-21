@@ -19,7 +19,10 @@ def create_basic_info(
     current_user: User = Depends(get_current_user),
 ) -> BasicInfoResponse:
     repository = BasicInfoRepository(db, current_user.id)
-    return repository.create(payload.model_dump())
+    try:
+        return repository.create(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/latest", response_model=BasicInfoResponse)
@@ -30,7 +33,7 @@ def get_latest_basic_info(
     repository = BasicInfoRepository(db, current_user.id)
     basic_info = repository.get_latest()
     if not basic_info:
-        raise HTTPException(status_code=404, detail="Basic info not found")
+        raise HTTPException(status_code=404, detail="基本情報が見つかりません")
     return basic_info
 
 
@@ -44,6 +47,6 @@ def update_basic_info(
     repository = BasicInfoRepository(db, current_user.id)
     basic_info = repository.get_by_id(str(basic_info_id))
     if not basic_info:
-        raise HTTPException(status_code=404, detail="Basic info not found")
+        raise HTTPException(status_code=404, detail="基本情報が見つかりません")
 
     return repository.update(basic_info, payload.model_dump())
