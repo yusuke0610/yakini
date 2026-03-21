@@ -86,6 +86,22 @@ def test_github_login_url_sets_state_cookie(client) -> None:
     assert "github_oauth_state=" in response.headers["set-cookie"]
 
 
+def test_github_login_url_uses_forwarded_https_scheme(client) -> None:
+    response = client.get(
+        "/auth/github/login-url",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+            "X-Forwarded-Proto": "https",
+        },
+    )
+
+    assert response.status_code == 200
+    parsed = urlparse(response.json()["authorization_url"])
+    redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
+    assert redirect_uri == "https://devforge-dev-nktebahhoq-an.a.run.app/auth/github/callback"
+
+
 def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
     client.cookies.set("github_oauth_state", "expected-state")
     client.cookies.set("github_oauth_redirect", "http://localhost:5173")
