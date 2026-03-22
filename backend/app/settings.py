@@ -48,7 +48,12 @@ def get_cookie_secure() -> bool:
 
 
 def get_cookie_samesite() -> str:
-    value = os.getenv("COOKIE_SAMESITE", "lax").strip().lower()
+    default = "lax"
+    origins = get_cors_origins()
+    if origins and not all(_is_loopback_origin(origin) for origin in origins):
+        default = "none"
+
+    value = os.getenv("COOKIE_SAMESITE", default).strip().lower()
     if value not in {"lax", "strict", "none"}:
         raise RuntimeError("COOKIE_SAMESITE must be one of: lax, strict, none")
     return value

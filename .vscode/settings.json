@@ -131,9 +131,20 @@
         "pydyf",
         "secretmanager",
         "dorny",
-        "chdir"
+        "chdir",
+        "dedupe"
     ],
     "editor.linkedEditing": true,
     "html.autoClosingTags": true,
     "js/ts.autoClosingTags.enabled": true,
+    "[terraform]": {
+        "editor.defaultFormatter": "hashicorp.terraform",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file"
+    },
+    "[terraform-vars]": {
+        "editor.defaultFormatter": "hashicorp.terraform",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file"
+    }
 }

@@ -1,5 +1,3 @@
-export type PageKey = "basic" | "career" | "Resume" | "github" | "blog";
-
 export type BasicTextFieldKey = "full_name" | "name_furigana" | "record_date";
 
 export type CareerTextFieldKey = "career_summary" | "self_pr";

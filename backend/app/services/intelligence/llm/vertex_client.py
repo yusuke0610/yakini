@@ -1,4 +1,4 @@
-"""Vertex AI Gemini バックエンドクライアント。"""
+"""Vertex AI Gemini バックエンドクライアント（google-genai SDK）。"""
 
 import logging
 import os
@@ -6,40 +6,50 @@ import os
 from .base import LLMClient
 
 logger = logging.getLogger(__name__)
+DEFAULT_VERTEX_MODEL = "gemini-2.5-flash-lite"
 
 
 class VertexClient(LLMClient):
-    """Vertex AI Gemini を使用した LLM クライアント。"""
+    """google-genai SDK を使用した Vertex AI Gemini クライアント。"""
 
     def __init__(self) -> None:
         self.project_id = os.environ.get("VERTEX_PROJECT_ID", "")
         self.location = os.environ.get("VERTEX_LOCATION", "asia-northeast1")
-        self.model_name = os.environ.get("VERTEX_MODEL", "gemini-2.0-flash")
-        self._initialized = False
+        self.model_name = os.environ.get(
+            "VERTEX_MODEL", DEFAULT_VERTEX_MODEL
+        )
+        self._client = None
 
-    def _ensure_init(self):
-        """Vertex AI SDK の初期化を遅延実行する。"""
-        if self._initialized:
-            return
-        import vertexai
+    def _get_client(self):
+        """genai.Client の遅延初期化。"""
+        if self._client is None:
+            from google import genai
 
-        vertexai.init(project=self.project_id, location=self.location)
-        self._initialized = True
+            self._client = genai.Client(
+                vertexai=True,
+                project=self.project_id,
+                location=self.location,
+            )
+        return self._client
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Vertex AI Gemini でテキスト生成を実行する。"""
         try:
-            self._ensure_init()
-            from vertexai.generative_models import GenerativeModel
+            from google.genai import types
 
-            model = GenerativeModel(
-                self.model_name,
-                system_instruction=system_prompt,
+            client = self._get_client()
+            response = await client.aio.models.generate_content(
+                model=self.model_name,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    max_output_tokens=1024,
+                    temperature=0.3,
+                ),
             )
-            response = await model.generate_content_async(user_prompt)
             return response.text.strip()
         except Exception:
-            logger.exception("Vertex AI による要約生成に失敗しました")
+            logger.exception("Vertex AI による生成に失敗しました")
             return ""
 
     async def check_available(self) -> bool:
