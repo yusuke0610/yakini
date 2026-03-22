@@ -1,0 +1,89 @@
+import { NavLink, Outlet } from "react-router-dom";
+
+import type { AuthUser } from "../router/guards";
+import type { Theme } from "../hooks/useTheme";
+import { UserMenu } from "./UserMenu";
+import shared from "../styles/shared.module.css";
+import styles from "../App.module.css";
+
+/**
+ * 認証済みユーザー向けのサイドバー付きレイアウト。
+ * PrivateRoute でガードされた後にのみレンダリングされるため、user は非 null。
+ */
+export function AuthenticatedLayout({
+  user,
+  theme,
+  onToggleTheme,
+  onLogout,
+}: {
+  user: AuthUser;
+  theme: Theme;
+  onToggleTheme: () => void;
+  onLogout: () => void;
+}) {
+  return (
+    <div className={shared.page}>
+      <div className={styles.appLayout}>
+        <aside className={styles.sidebar}>
+          <p className={styles.sidebarTitle}>DevForge</p>
+          <nav className={styles.sidebarNav}>
+            <NavLink
+              to="/basic_info"
+              className={({ isActive }) =>
+                `${styles.sidebarItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              基本情報
+            </NavLink>
+            <NavLink
+              to="/career"
+              className={({ isActive }) =>
+                `${styles.sidebarItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              職務経歴書
+            </NavLink>
+            <NavLink
+              to="/resume"
+              className={({ isActive }) =>
+                `${styles.sidebarItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              履歴書
+            </NavLink>
+            {user.isGitHubUser && (
+              <NavLink
+                to="/github_intelligence"
+                className={({ isActive }) =>
+                  `${styles.sidebarItem} ${isActive ? styles.active : ""}`
+                }
+              >
+                GitHub分析
+              </NavLink>
+            )}
+            <NavLink
+              to="/blog"
+              className={({ isActive }) =>
+                `${styles.sidebarItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              ブログ連携
+            </NavLink>
+          </nav>
+          <div className={styles.sidebarFooter}>
+            <UserMenu
+              username={user.username}
+              theme={theme}
+              onToggleTheme={onToggleTheme}
+              onLogout={onLogout}
+            />
+          </div>
+        </aside>
+
+        <main className={styles.mainContent}>
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+}
