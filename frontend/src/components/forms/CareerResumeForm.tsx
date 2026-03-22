@@ -27,6 +27,7 @@ import type {
 import { useTechnologyStacks } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
+import { LoadingOverlay } from "../LoadingOverlay";
 import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
 import { ProjectModal } from "./ProjectModal";
@@ -46,6 +47,7 @@ export function CareerResumeForm() {
     form,
     setForm,
     documentId: resumeId,
+    loading,
     saving,
     error,
     success,
@@ -253,6 +255,8 @@ export function CareerResumeForm() {
       .join(" 〜 ");
     return period || "";
   };
+
+  if (loading) return <LoadingOverlay />;
 
   return (
     <>

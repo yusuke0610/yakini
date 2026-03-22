@@ -1,0 +1,69 @@
+# DevForge - Claude Code ガイドライン
+
+## コーディング規約
+
+### 共通ルール
+- **コメント・ドキュメント**: コード内のコメント、docstring、JSDoc はすべて**日本語**で記述すること。
+- **エラーメッセージ**: HTTPException の `detail` 等、ユーザーに返すエラーメッセージはすべて**日本語**で記述すること。
+
+### Python (backend)
+- flake8 に準拠すること
+- PEP8を守るな、PEP8を理解した上で抽象化しろ
+- flake8 の設定は `backend/setup.cfg` に定義済み
+- コード変更後は `cd backend && .venv/bin/python -m flake8` を実行し、違反がないことを確認すること
+- 未使用の import を残さないこと（F401）
+
+### TypeScript/React (frontend)
+- ESLint / Prettier の設定に従うこと
+- `cd frontend && npm run lint` でリントチェック
+
+## CI 確認ルール
+
+アプリケーションの改修を行った場合、以下のコマンドで CI 相当のチェックをローカルで実行し、パスすることを確認すること:
+
+```bash
+# backend
+cd backend && .venv/bin/python -m flake8 && .venv/bin/python -m pytest -q tests
+
+# frontend
+cd frontend && npm run lint && npm test && npm run build
+```
+
+CI 定義: `.github/workflows/ci.yml`
+
+## 命名規約
+
+| 種別 | 名前 |
+|---|---|
+| 職務経歴書（career history） | `Resume` / `resumes` テーブル |
+| 履歴書（personal CV） | `Rirekisho` / `rirekisho` テーブル |
+
+> `rirekisho` は日本語ローマ字のため cSpell の警告が出るが無視してよい。
+
+## 環境変数（必須）
+
+```
+SQLITE_DB_PATH       # Cloud Run: /tmp/devforge.sqlite
+SECRET_KEY           # JWT署名キー
+FIELD_ENCRYPTION_KEY # Fernet鍵
+GCS_BUCKET_NAME      # バックアップ用 GCS バケット名
+GCS_DB_OBJECT        # 例: devforge/dev/db.sqlite
+ADMIN_TOKEN          # /admin/backup エンドポイント用
+CORS_ORIGINS         # 例: https://devforge-dev.example.com
+COOKIE_SECURE        # 例: true
+COOKIE_SAMESITE      # lax / strict / none
+```
+
+### オプション
+```
+GITHUB_CLIENT_ID     # GitHub OAuth Client ID
+GITHUB_CLIENT_SECRET # GitHub OAuth Client Secret
+LLM_PROVIDER         # ollama / vertex
+VERTEX_PROJECT_ID    # Vertex AI 用
+VERTEX_LOCATION      # 例: asia-northeast1
+VERTEX_MODEL         # 例: gemini-2.5-flash-lite
+```
+
+## スコープ別ルール
+
+バックエンド・フロントエンド・インフラ固有のルール（アーキテクチャ、DB設計、認証、LLM統合等）は `.claude/rules/` に分割済み。対象パスのファイルを編集する際に自動でロードされる。

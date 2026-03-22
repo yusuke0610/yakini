@@ -5,7 +5,7 @@ from urllib.parse import parse_qs, urlparse
 
 from conftest import auth_header
 from app.auth import create_access_token, hash_password, verify_password
-from app.settings import get_cookie_secure
+from app.settings import get_cookie_samesite, get_cookie_secure
 
 
 def test_hash_and_verify_password() -> None:
@@ -63,6 +63,24 @@ def test_cookie_secure_defaults_true_when_non_local_origin_exists(
     assert get_cookie_secure() is True
 
 
+def test_cookie_samesite_defaults_lax_for_localhost(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("COOKIE_SAMESITE", raising=False)
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173")
+
+    assert get_cookie_samesite() == "lax"
+
+
+def test_cookie_samesite_defaults_none_for_non_local_origin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("COOKIE_SAMESITE", raising=False)
+    monkeypatch.setenv("CORS_ORIGINS", "https://storage.googleapis.com")
+
+    assert get_cookie_samesite() == "none"
+
+
 def test_me_returns_current_user(client) -> None:
     auth_header(client, "alice")
 
@@ -102,9 +120,28 @@ def test_github_login_url_uses_forwarded_https_scheme(client) -> None:
     assert redirect_uri == "https://devforge-dev-nktebahhoq-an.a.run.app/auth/github/callback"
 
 
+def test_github_login_redirect_sets_cookies_and_redirects(client) -> None:
+    response = client.get(
+        "/auth/github/login",
+        params={"return_to": "http://localhost:5173/index.html"},
+        headers={
+            "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+            "X-Forwarded-Proto": "https",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert "https://github.com/login/oauth/authorize" in response.headers["location"]
+    assert "github_oauth_state=" in response.headers["set-cookie"]
+    parsed = urlparse(response.headers["location"])
+    redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
+    assert redirect_uri == "https://devforge-dev-nktebahhoq-an.a.run.app/auth/github/callback"
+
+
 def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
     client.cookies.set("github_oauth_state", "expected-state")
-    client.cookies.set("github_oauth_redirect", "http://localhost:5173")
+    client.cookies.set("github_oauth_redirect", "http://localhost:5173/index.html")
 
     with patch("httpx.AsyncClient") as mock_async_client:
         response = client.get(
@@ -117,12 +154,13 @@ def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
     parsed = urlparse(response.headers["location"])
     assert parsed.scheme == "http"
     assert parsed.netloc == "localhost:5173"
+    assert parsed.path == "/index.html"
     assert parse_qs(parsed.query)["github_error"] == ["OAuth state の検証に失敗しました"]
 
 
 def test_github_callback_redirect_sets_auth_cookie(client) -> None:
     client.cookies.set("github_oauth_state", "expected-state")
-    client.cookies.set("github_oauth_redirect", "http://localhost:5173")
+    client.cookies.set("github_oauth_redirect", "http://localhost:5173/index.html")
 
     token_response = MagicMock()
     token_response.json.return_value = {"access_token": "github-access-token"}
@@ -143,5 +181,5 @@ def test_github_callback_redirect_sets_auth_cookie(client) -> None:
         )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "http://localhost:5173/"
+    assert response.headers["location"] == "http://localhost:5173/index.html"
     assert "access_token=" in response.headers["set-cookie"]

@@ -56,10 +56,14 @@ class BasicInfo(Base):
         order_by="BasicInfoQualification.sort_order",
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=func.now(),
+        server_default=func.now(),
+        nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        default=func.now(),
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
@@ -110,10 +114,14 @@ class Resume(Base):
         order_by="ResumeExperience.sort_order",
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=func.now(),
+        server_default=func.now(),
+        nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        default=func.now(),
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
@@ -326,10 +334,14 @@ class Rirekisho(Base):
         order_by="RirekishoWorkHistory.sort_order",
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=func.now(),
+        server_default=func.now(),
+        nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        default=func.now(),
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
@@ -440,10 +452,14 @@ class BlogArticle(Base):
     )
     account: Mapped["BlogAccount"] = relationship(back_populates="article_rows")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=func.now(),
+        server_default=func.now(),
+        nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        default=func.now(),
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
@@ -491,10 +507,14 @@ class GitHubAnalysisCache(Base):
     skill_activity_month: Mapped[list | None] = mapped_column(JSON, nullable=True)
     skill_activity_year: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=func.now(),
+        server_default=func.now(),
+        nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        default=func.now(),
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
@@ -512,10 +532,14 @@ class BlogSummaryCache(Base):
     )
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=func.now(),
+        server_default=func.now(),
+        nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        default=func.now(),
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,

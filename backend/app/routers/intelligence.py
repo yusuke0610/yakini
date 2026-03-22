@@ -158,6 +158,8 @@ async def summarize(
 
     analysis_dict = payload.analysis.model_dump()
     summary = await summarize_analysis(analysis_dict)
+    if not summary:
+        return SummarizeResponse(summary="", available=False)
 
     # AI要約をDBに保存
     cache = _get_or_create_cache(db, user.id)

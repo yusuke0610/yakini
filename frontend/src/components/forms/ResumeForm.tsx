@@ -18,6 +18,7 @@ import type { ResumeTextFieldKey } from "../../formTypes";
 import { usePrefectures } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
+import { LoadingOverlay } from "../LoadingOverlay";
 import { Combobox } from "./Combobox";
 import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
@@ -29,6 +30,7 @@ export function ResumeForm() {
     form,
     setForm,
     documentId: resumeId,
+    loading,
     saving,
     error,
     success,
@@ -137,6 +139,8 @@ export function ResumeForm() {
     event.preventDefault();
     await save();
   };
+
+  if (loading) return <LoadingOverlay />;
 
   return (
     <>
