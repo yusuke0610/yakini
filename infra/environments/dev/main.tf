@@ -1,3 +1,8 @@
+provider "google-beta" {
+  project = var.project_id
+  region  = local.region
+}
+
 locals {
   stack_name = "${var.app_name}-dev"
   region     = "asia-northeast1"
@@ -42,6 +47,17 @@ module "cloud_run" {
   cors_origins                    = var.cors_origins
 }
 
+module "firebase" {
+  source = "../../modules/firebase"
+
+  providers = {
+    google-beta = google-beta
+  }
+
+  project_id                     = var.project_id
+  deployer_service_account_email = var.deployer_service_account_email
+}
+
 output "stack_name" {
   value = local.stack_name
 }
@@ -52,4 +68,12 @@ output "template_version" {
 
 output "artifact_registry_url" {
   value = module.artifact_registry.url
+}
+
+output "firebase_site_id" {
+  value = module.firebase.site_id
+}
+
+output "firebase_default_url" {
+  value = module.firebase.default_url
 }
