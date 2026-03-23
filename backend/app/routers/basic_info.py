@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..database import get_db
+from ..messages import get_error
 from ..models import User
 from ..repositories import BasicInfoRepository
 from ..schemas import BasicInfoCreate, BasicInfoResponse, BasicInfoUpdate
@@ -22,7 +23,10 @@ def create_basic_info(
     try:
         return repository.create(payload.model_dump())
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=409,
+            detail=get_error(str(exc), document="基本情報"),
+        ) from exc
 
 
 @router.get("/latest", response_model=BasicInfoResponse)
@@ -33,7 +37,10 @@ def get_latest_basic_info(
     repository = BasicInfoRepository(db, current_user.id)
     basic_info = repository.get_latest()
     if not basic_info:
-        raise HTTPException(status_code=404, detail="基本情報が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="基本情報"),
+        )
     return basic_info
 
 
@@ -47,6 +54,9 @@ def update_basic_info(
     repository = BasicInfoRepository(db, current_user.id)
     basic_info = repository.get_by_id(str(basic_info_id))
     if not basic_info:
-        raise HTTPException(status_code=404, detail="基本情報が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="基本情報"),
+        )
 
     return repository.update(basic_info, payload.model_dump())

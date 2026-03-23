@@ -18,6 +18,7 @@ from ..auth import get_current_user
 from ..database import get_db
 from ..dependencies import limiter
 from ..encryption import decrypt_field
+from ..messages import get_error
 from ..models import GitHubAnalysisCache, User
 from ..schemas_intelligence import (
     AnalysisResponse,
@@ -87,7 +88,7 @@ async def analyze(
     if not user.username.startswith("github:"):
         raise HTTPException(
             status_code=403,
-            detail="GitHub分析にはGitHubアカウントでのログインが必要です",
+            detail=get_error("intelligence.github_login_required"),
         )
 
     github_username = user.username.removeprefix("github:")
@@ -104,7 +105,7 @@ async def analyze(
     except GitHubUserNotFoundError:
         raise HTTPException(
             status_code=404,
-            detail=f"GitHubユーザーが見つかりません: {github_username}",
+            detail=get_error("intelligence.github_user_not_found", username=github_username),
         )
     except asyncio.TimeoutError:
         logger.warning(
@@ -113,7 +114,7 @@ async def analyze(
         )
         raise HTTPException(
             status_code=504,
-            detail="分析がタイムアウトしました。しばらくしてから再度お試しください。",
+            detail=get_error("intelligence.analysis_timeout"),
         )
     except Exception:
         logger.exception(
@@ -122,7 +123,7 @@ async def analyze(
         )
         raise HTTPException(
             status_code=502,
-            detail=("GitHubプロフィールの分析に失敗しました。" "しばらくしてから再度お試しください。"),
+            detail=get_error("intelligence.profile_analysis_failed"),
         )
 
     response = map_pipeline_result(result)
@@ -185,7 +186,7 @@ async def skill_activity(
     if not user.username.startswith("github:"):
         raise HTTPException(
             status_code=403,
-            detail="GitHub分析にはGitHubアカウントでのログインが必要です",
+            detail=get_error("intelligence.github_login_required"),
         )
 
     github_username = user.username.removeprefix("github:")
@@ -201,7 +202,7 @@ async def skill_activity(
         logger.exception("%s のスキルアクティビティ分析に失敗しました", github_username)
         raise HTTPException(
             status_code=502,
-            detail="GitHubアクティビティの分析に失敗しました。",
+            detail=get_error("intelligence.activity_analysis_failed"),
         )
 
     # スキルアクティビティをDBに保存

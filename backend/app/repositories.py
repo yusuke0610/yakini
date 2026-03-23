@@ -93,7 +93,7 @@ class SingleUserDocumentRepository:
 
     def create(self, payload: dict[str, Any]) -> Any:
         if self.get_current():
-            raise ValueError("このドキュメントは既に存在します")
+            raise ValueError("document.already_exists")
         entity = self._model(user_id=self.user_id)
         self._apply_payload(entity, payload)
         self.db.add(entity)

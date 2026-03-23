@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from ..auth import get_current_user
 from ..database import get_db
 from ..dependencies import limiter
+from ..messages import get_error
 from ..models import BlogSummaryCache, User
 from ..repositories import BlogAccountRepository, BlogArticleRepository
 from ..schemas import (
@@ -28,7 +29,12 @@ from ..schemas import (
     BlogSummaryResponse,
     BlogSyncResponse,
 )
-from ..services.blog_collector import fetch_articles, verify_user_exists
+from ..services.blog_collector import (
+    BlogPlatformRequestError,
+    UnsupportedBlogPlatformError,
+    fetch_articles,
+    verify_user_exists,
+)
 from ..services.intelligence.llm_summarizer import (
     check_llm_available,
     summarize_blog_articles,
@@ -65,15 +71,27 @@ async def add_account(
     if existing:
         raise HTTPException(
             status_code=409,
-            detail=f"{body.platform} のアカウントは既に登録されています",
+            detail=get_error("blog.account_already_registered"),
         )
 
     # 外部プラットフォーム上にユーザーが存在するか検証
-    user_exists = await verify_user_exists(body.platform, body.username)
+    try:
+        user_exists = await verify_user_exists(body.platform, body.username)
+    except UnsupportedBlogPlatformError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=get_error("blog.platform_not_supported"),
+        ) from exc
+    except BlogPlatformRequestError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=get_error("blog.account_check_failed"),
+        ) from exc
+
     if not user_exists:
         raise HTTPException(
             status_code=404,
-            detail=(f"{body.platform} にユーザー「{body.username}」が" "見つかりません。ユーザー名を確認してください。"),
+            detail=get_error("blog.account_not_found"),
         )
 
     account = repo.upsert(body.platform, body.username)
@@ -89,7 +107,7 @@ def delete_account(
     """連携アカウントを解除する。紐づく記事も削除される。"""
     account_repo = BlogAccountRepository(db, user.id)
     if not account_repo.delete(account_id):
-        raise HTTPException(status_code=404, detail="アカウントが見つかりません")
+        raise HTTPException(status_code=404, detail=get_error("blog.account_link_not_found"))
 
 
 @router.get("/articles", response_model=list[BlogArticleResponse])
@@ -115,15 +133,20 @@ async def sync_account(
     account_repo = BlogAccountRepository(db, user.id)
     account = account_repo.get_by_id(account_id)
     if not account:
-        raise HTTPException(status_code=404, detail="アカウントが見つかりません")
+        raise HTTPException(status_code=404, detail=get_error("blog.account_link_not_found"))
 
     try:
         raw_articles = await fetch_articles(account.platform, account.username)
+    except UnsupportedBlogPlatformError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=get_error("blog.platform_not_supported"),
+        ) from exc
     except Exception:
         logger.exception("ブログ記事の取得に失敗しました: %s/%s", account.platform, account.username)
         raise HTTPException(
             status_code=502,
-            detail=(f"{account.platform} からの記事取得に失敗しました。" "ユーザー名を確認してください。"),
+            detail=get_error("blog.sync_failed"),
         )
 
     for art in raw_articles:

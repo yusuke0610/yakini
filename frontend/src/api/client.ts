@@ -25,19 +25,29 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
 
   if (response.status === 401) {
     _onUnauthorized?.();
-    throw new Error("認証が必要です。再度ログインしてください。");
+  }
+
+  if (response.status >= 500) {
+    const messages: Record<number, string> = {
+      502: "サーバーとの通信に失敗しました。しばらくしてから再度お試しください。",
+      503: "サーバーが一時的に利用できません。しばらくしてから再度お試しください。",
+      504: "サーバーからの応答がタイムアウトしました。しばらくしてから再度お試しください。",
+    };
+    throw new Error(
+      messages[response.status] ??
+        "サーバーエラーが発生しました。しばらくしてから再度お試しください。",
+    );
   }
 
   if (!response.ok) {
-    let message = "API request failed";
+    let message = "リクエストの処理に失敗しました。";
     try {
       const body = await response.json();
       if (body.detail) {
         message = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
       }
     } catch {
-      const text = await response.text();
-      if (text) message = text;
+      // JSONパース失敗時はデフォルトメッセージを使う
     }
     throw new Error(message);
   }
