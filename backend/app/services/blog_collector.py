@@ -8,6 +8,14 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
+class UnsupportedBlogPlatformError(ValueError):
+    """未対応プラットフォームが指定された場合の例外。"""
+
+
+class BlogPlatformRequestError(RuntimeError):
+    """外部プラットフォームへの接続失敗を表す例外。"""
+
+
 async def fetch_zenn_articles(username: str) -> list[dict]:
     """Zenn API から記事を取得する。全ページ分をフェッチ。"""
     articles: list[dict] = []
@@ -122,17 +130,16 @@ async def verify_user_exists(platform: str, username: str) -> bool:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(f"https://note.com/{username}/rss")
                 return resp.status_code == 200
-        return False
+        raise UnsupportedBlogPlatformError(platform)
     except (httpx.ConnectError, httpx.TimeoutException):
         logger.warning("プラットフォーム %s への接続に失敗しました", platform)
-        return False
+        raise BlogPlatformRequestError(platform) from None
 
 
 async def fetch_articles(platform: str, username: str) -> list[dict]:
     """プラットフォームに応じて適切なフェッチャーを呼ぶ。"""
     if platform == "zenn":
         return await fetch_zenn_articles(username)
-    elif platform == "note":
+    if platform == "note":
         return await fetch_note_articles(username)
-    else:
-        raise ValueError(f"未対応のプラットフォーム: {platform}")
+    raise UnsupportedBlogPlatformError(platform)

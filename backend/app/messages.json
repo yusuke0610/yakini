@@ -1,0 +1,84 @@
+{
+  "error": {
+    "auth": {
+      "login_required": "ログインが必要です。",
+      "invalid_credentials": "メールアドレスまたはパスワードが正しくありません。",
+      "invalid_token": "無効なトークンです。",
+      "user_not_found": "ユーザーが見つかりません。",
+      "forbidden": "この操作を行う権限がありません。",
+      "username_already_exists": "このユーザー名は既に使用されています。",
+      "email_already_exists": "このメールアドレスは既に使用されています。",
+      "github_oauth_failed": "GitHub認証に失敗しました。もう一度お試しください。",
+      "github_oauth_not_configured": "GitHub OAuth が設定されていません。",
+      "github_user_info_failed": "GitHubユーザー情報の取得に失敗しました。",
+      "github_code_missing": "GitHub認証コードが取得できませんでした。",
+      "oauth_state_invalid": "OAuth state の検証に失敗しました。",
+      "cors_origins_not_configured": "CORS_ORIGINS が設定されていません。",
+      "invalid_return_to": "戻り先URLが不正です。",
+      "frontend_origin_not_allowed": "許可されていないフロントエンドオリジンです。"
+    },
+    "blog": {
+      "account_not_found": "指定されたアカウントが見つかりません。ユーザー名を確認してください。",
+      "account_link_not_found": "アカウントが見つかりません。",
+      "account_check_failed": "アカウントの確認に失敗しました。しばらくしてから再度お試しください。",
+      "sync_failed": "記事の同期に失敗しました。しばらくしてから再度お試しください。",
+      "platform_not_supported": "サポートされていないプラットフォームです。",
+      "account_already_registered": "このアカウントは既に登録されています。"
+    },
+    "document": {
+      "not_found": "{document}が見つかりません。",
+      "already_exists": "{document}は既に存在します。",
+      "save_failed": "保存に失敗しました。入力内容を確認してください。",
+      "delete_failed": "削除に失敗しました。"
+    },
+    "intelligence": {
+      "analysis_failed": "分析に失敗しました。しばらくしてから再度お試しください。",
+      "analysis_timeout": "分析がタイムアウトしました。しばらくしてから再度お試しください。",
+      "github_token_required": "GitHub分析にはGitHubトークンの設定が必要です。",
+      "github_login_required": "GitHub分析にはGitHubアカウントでのログインが必要です。",
+      "github_user_not_found": "GitHubユーザーが見つかりません: {username}",
+      "profile_analysis_failed": "GitHubプロフィールの分析に失敗しました。しばらくしてから再度お試しください。",
+      "activity_analysis_failed": "GitHubアクティビティの分析に失敗しました。",
+      "llm_unavailable": "AI要約サービスが一時的に利用できません。"
+    },
+    "validation": {
+      "required_field": "{field}は必須です。",
+      "invalid_format": "{field}の形式が正しくありません。",
+      "date_range_invalid": "開始日は終了日より前に設定してください。"
+    },
+    "server": {
+      "internal_error": "サーバーエラーが発生しました。しばらくしてから再度お試しください。",
+      "backup_failed": "バックアップに失敗しました。",
+      "admin_token_not_configured": "ADMIN_TOKENが設定されていません。",
+      "bearer_token_missing": "Bearerトークンがありません。",
+      "rate_limited": "リクエストが多すぎます。しばらくしてからお試しください。",
+      "backup_service_unavailable": "バックアップサービスが利用できません。"
+    },
+    "master_data": {
+      "not_found": "{item}が見つかりません。"
+    }
+  },
+  "success": {
+    "auth": {
+      "login": "ログインしました。",
+      "logout": "ログアウトしました。",
+      "register": "アカウントを作成しました。"
+    },
+    "document": {
+      "saved": "{document}を保存しました。",
+      "deleted": "{document}を削除しました。"
+    },
+    "blog": {
+      "account_added": "ブログアカウントを連携しました。",
+      "account_removed": "ブログアカウントの連携を解除しました。",
+      "sync_complete": "記事の同期が完了しました。{count}件の記事を取得しました。"
+    },
+    "intelligence": {
+      "analysis_complete": "分析が完了しました。",
+      "cache_cleared": "キャッシュをクリアしました。"
+    },
+    "backup": {
+      "complete": "バックアップが完了しました。"
+    }
+  }
+}
