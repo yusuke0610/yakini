@@ -50,10 +50,6 @@ output "template_version" {
   value = var.template_version
 }
 
-output "frontend_url" {
-  value = module.storage.frontend_url
-}
-
 output "artifact_registry_url" {
   value = module.artifact_registry.url
 }
