@@ -15,7 +15,10 @@
       "oauth_state_invalid": "OAuth state の検証に失敗しました。",
       "cors_origins_not_configured": "CORS_ORIGINS が設定されていません。",
       "invalid_return_to": "戻り先URLが不正です。",
-      "frontend_origin_not_allowed": "許可されていないフロントエンドオリジンです。"
+      "frontend_origin_not_allowed": "許可されていないフロントエンドオリジンです。",
+      "csrf_token_missing": "CSRFトークンがありません。",
+      "csrf_token_invalid": "CSRFトークンが無効です。",
+      "rate_limited": "ログイン試行回数の上限に達しました。15分後に再度お試しください。"
     },
     "blog": {
       "account_not_found": "指定されたアカウントが見つかりません。ユーザー名を確認してください。",
