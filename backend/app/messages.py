@@ -38,5 +38,9 @@ def get_error(key: str, **kwargs: str) -> str:
 
 
 def get_success(key: str, **kwargs: str) -> str:
-    """正常系メッセージを取得する。"""
+    """正常系メッセージを取得する。
+
+    現在はバックエンドのレスポンスに成功メッセージを含めていないため
+    未使用だが、将来 API レスポンスに成功メッセージを含める際に使用する。
+    """
     return _get_message("success", key, **kwargs)

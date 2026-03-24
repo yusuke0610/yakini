@@ -44,7 +44,11 @@
     "validation": {
       "required_field": "{field}は必須です。",
       "invalid_format": "{field}の形式が正しくありません。",
-      "date_range_invalid": "開始日は終了日より前に設定してください。"
+      "date_range_invalid": "開始日は終了日より前に設定してください。",
+      "end_date_required": "在職中でない場合は終了年月を入力してください。",
+      "password_uppercase": "パスワードには英大文字を1文字以上含めてください。",
+      "password_lowercase": "パスワードには英小文字を1文字以上含めてください。",
+      "password_digit": "パスワードには数字を1文字以上含めてください。"
     },
     "server": {
       "internal_error": "サーバーエラーが発生しました。しばらくしてから再度お試しください。",
