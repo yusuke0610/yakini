@@ -17,6 +17,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
 from .date_utils import format_iso_date, format_year_month
+from .services.sort_utils import sort_by_period_desc
 
 
 class User(Base):
@@ -129,7 +130,8 @@ class Resume(Base):
 
     @property
     def experiences(self) -> list["ResumeExperience"]:
-        return list(self.experience_rows)
+        """経歴を在籍期間の降順でソートして返す。"""
+        return sort_by_period_desc(list(self.experience_rows))
 
 
 class ResumeExperience(Base):
