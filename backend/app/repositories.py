@@ -7,7 +7,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 
 from .date_utils import parse_iso_date, parse_year_month
 from .encryption import decrypt_field, encrypt_field
-from .services.sort_utils import sort_by_period_desc
+from .services.sort_utils import sort_by_date_asc, sort_by_date_desc, sort_by_period_desc
 from .models import (
     BasicInfo,
     BasicInfoQualification,
@@ -118,13 +118,18 @@ class BasicInfoRepository(SingleUserDocumentRepository):
         entity.full_name = payload["full_name"]
         entity.name_furigana = payload["name_furigana"]
         entity.record_date_value = parse_iso_date(payload["record_date"])
+        # 資格を取得日の降順でソートしてから sort_order を振る
+        sorted_qualifications = sort_by_date_desc(
+            payload.get("qualifications", []),
+            date_key="acquired_date",
+        )
         entity.qualification_rows = [
             BasicInfoQualification(
                 sort_order=index,
                 acquired_date_value=parse_iso_date(item["acquired_date"]),
                 name=item["name"],
             )
-            for index, item in enumerate(payload.get("qualifications", []))
+            for index, item in enumerate(sorted_qualifications)
         ]
 
 
@@ -179,13 +184,19 @@ class ResumeRepository(SingleUserDocumentRepository):
         )
 
     def _build_client_row(self, index: int, payload: dict[str, Any]) -> ResumeClient:
+        # プロジェクトを期間の降順でソートしてから sort_order を振る
+        sorted_projects = sort_by_period_desc(
+            payload.get("projects", []),
+            start_key="start_date",
+            end_key="end_date",
+        )
         return ResumeClient(
             sort_order=index,
             name=payload.get("name", ""),
             has_client=payload.get("has_client", True),
             project_rows=[
                 self._build_project_row(project_index, project)
-                for project_index, project in enumerate(payload.get("projects", []))
+                for project_index, project in enumerate(sorted_projects)
             ],
         )
 
@@ -267,21 +278,29 @@ class RirekishoRepository(SingleUserDocumentRepository):
         entity.motivation = payload.get("motivation", "")
         entity.personal_preferences = payload.get("personal_preferences", "")
         entity.photo = payload.get("photo")
+        # 学歴を日付の昇順でソートしてから sort_order を振る
+        sorted_educations = sort_by_date_asc(
+            payload.get("educations", []), date_key="date",
+        )
         entity.education_rows = [
             RirekishoEducation(
                 sort_order=index,
                 occurred_on_value=parse_year_month(item["date"]),
                 name=item["name"],
             )
-            for index, item in enumerate(payload.get("educations", []))
+            for index, item in enumerate(sorted_educations)
         ]
+        # 職歴を日付の昇順でソートしてから sort_order を振る
+        sorted_work_histories = sort_by_date_asc(
+            payload.get("work_histories", []), date_key="date",
+        )
         entity.work_history_rows = [
             RirekishoWorkHistory(
                 sort_order=index,
                 occurred_on_value=parse_year_month(item["date"]),
                 name=item["name"],
             )
-            for index, item in enumerate(payload.get("work_histories", []))
+            for index, item in enumerate(sorted_work_histories)
         ]
 
     def create(self, payload: dict[str, Any]) -> Rirekisho:

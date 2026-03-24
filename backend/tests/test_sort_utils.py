@@ -1,6 +1,6 @@
 from datetime import date
 
-from app.services.sort_utils import sort_by_period_desc
+from app.services.sort_utils import sort_by_date_asc, sort_by_date_desc, sort_by_period_desc
 
 
 def _exp(start: str, end: str | None = None) -> dict:
@@ -105,3 +105,127 @@ def test_mixed_scenario():
     assert result[2]["end_date_value"] == date(2022, 3, 1)
     assert result[3]["end_date_value"] == date(2020, 12, 1)
     assert result[4]["end_date_value"] == date(2018, 6, 1)
+
+
+# ===== sort_by_date_desc テスト =====
+
+
+def _qual(acquired: str | None) -> dict:
+    """テスト用の資格 dict を生成する。"""
+    return {
+        "acquired_date_value": date.fromisoformat(acquired) if acquired else None,
+        "name": f"資格_{acquired}",
+    }
+
+
+def test_date_desc_sorted():
+    """日付降順でソートされること。"""
+    items = [_qual("2020-01-15"), _qual("2023-06-01"), _qual("2021-03-10")]
+    result = sort_by_date_desc(items)
+    dates = [item["acquired_date_value"] for item in result]
+    assert dates == sorted(dates, reverse=True)
+
+
+def test_date_desc_none_last():
+    """日付が None の項目が最下位に来ること。"""
+    items = [_qual(None), _qual("2023-06-01"), _qual("2020-01-15")]
+    result = sort_by_date_desc(items)
+    assert result[-1]["acquired_date_value"] is None
+    assert result[0]["acquired_date_value"] == date(2023, 6, 1)
+
+
+def test_date_desc_stable():
+    """日付が同一の項目の順序が維持されること（安定ソート）。"""
+    items = [
+        {"acquired_date_value": date(2023, 1, 1), "name": "A"},
+        {"acquired_date_value": date(2023, 1, 1), "name": "B"},
+        {"acquired_date_value": date(2023, 1, 1), "name": "C"},
+    ]
+    result = sort_by_date_desc(items)
+    names = [item["name"] for item in result]
+    assert names == ["A", "B", "C"]
+
+
+def test_date_desc_empty():
+    """空リストでエラーにならないこと。"""
+    assert sort_by_date_desc([]) == []
+
+
+def test_date_desc_with_string_dates():
+    """文字列日付にも対応すること。"""
+    items = [
+        {"date": "2020-03-15", "name": "A"},
+        {"date": "2023-06-01", "name": "B"},
+    ]
+    result = sort_by_date_desc(items, date_key="date")
+    assert result[0]["name"] == "B"
+    assert result[1]["name"] == "A"
+
+
+# ===== sort_by_date_asc テスト =====
+
+
+def _history(occurred: str | None) -> dict:
+    """テスト用の学歴/職歴 dict を生成する。"""
+    return {
+        "occurred_on_value": date.fromisoformat(f"{occurred}-01") if occurred else None,
+        "name": f"項目_{occurred}",
+    }
+
+
+def test_date_asc_sorted():
+    """日付昇順でソートされること。"""
+    items = [_history("2020-03"), _history("2015-04"), _history("2018-03")]
+    result = sort_by_date_asc(items)
+    dates = [item["occurred_on_value"] for item in result]
+    assert dates == sorted(dates)
+
+
+def test_date_asc_none_last():
+    """日付が None の項目が最下位に来ること。"""
+    items = [_history(None), _history("2020-03"), _history("2015-04")]
+    result = sort_by_date_asc(items)
+    assert result[-1]["occurred_on_value"] is None
+    assert result[0]["occurred_on_value"] == date(2015, 4, 1)
+
+
+def test_date_asc_multiple_none_stable():
+    """None が複数ある場合、元の順序が維持されること。"""
+    items = [
+        {"occurred_on_value": None, "name": "A"},
+        {"occurred_on_value": date(2020, 1, 1), "name": "B"},
+        {"occurred_on_value": None, "name": "C"},
+    ]
+    result = sort_by_date_asc(items)
+    assert result[0]["name"] == "B"
+    # None 同士は元の順序を維持
+    assert result[1]["name"] == "A"
+    assert result[2]["name"] == "C"
+
+
+def test_date_asc_stable():
+    """日付が同一の項目の順序が維持されること（安定ソート）。"""
+    items = [
+        {"occurred_on_value": date(2020, 4, 1), "name": "A"},
+        {"occurred_on_value": date(2020, 4, 1), "name": "B"},
+        {"occurred_on_value": date(2020, 4, 1), "name": "C"},
+    ]
+    result = sort_by_date_asc(items)
+    names = [item["name"] for item in result]
+    assert names == ["A", "B", "C"]
+
+
+def test_date_asc_empty():
+    """空リストでエラーにならないこと。"""
+    assert sort_by_date_asc([]) == []
+
+
+def test_date_asc_with_string_dates():
+    """文字列日付にも対応すること。"""
+    items = [
+        {"date": "2020-03", "name": "A"},
+        {"date": "2015-04", "name": "B"},
+    ]
+    result = sort_by_date_asc(items, date_key="date")
+    assert result[0]["name"] == "B"
+    assert result[1]["name"] == "A"
