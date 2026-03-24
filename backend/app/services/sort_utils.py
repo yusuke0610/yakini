@@ -16,6 +16,13 @@ def _to_date(value: Any) -> date | None:
     return None
 
 
+def _get(item: Any, key: str) -> Any:
+    """dict または ORM オブジェクトから値を取得する。"""
+    if isinstance(item, dict):
+        return item.get(key)
+    return getattr(item, key, None)
+
+
 def sort_by_period_desc(
     items: list[Any],
     start_key: str = "start_date_value",
@@ -29,18 +36,45 @@ def sort_by_period_desc(
     items は dict または ORM オブジェクト（属性アクセス）に対応する。
     日付フィールドは date 型・str 型（YYYY-MM / YYYY-MM-DD）のいずれにも対応。
     """
-    def _get(item: Any, key: str) -> Any:
-        if isinstance(item, dict):
-            return item.get(key)
-        return getattr(item, key, None)
-
     def sort_key(item: Any) -> tuple:
         end = _to_date(_get(item, end_key))
         start = _to_date(_get(item, start_key)) or date.min
         if end is None:
-            # end_date が None → 最上位（0）、start_date 降順
             return (0, date.max - start)
-        # end_date あり → (1, end_date 降順, start_date 降順)
         return (1, date.max - end, date.max - start)
+
+    return sorted(items, key=sort_key)
+
+
+def sort_by_date_desc(
+    items: list[Any],
+    date_key: str = "acquired_date_value",
+) -> list[Any]:
+    """
+    単一日付キーの降順でソートする（資格の取得日など）。
+    日付が None の項目は最下位。安定ソート。
+    """
+    def sort_key(item: Any) -> tuple:
+        d = _to_date(_get(item, date_key))
+        if d is None:
+            return (1,)
+        return (0, date.max - d)
+
+    return sorted(items, key=sort_key)
+
+
+def sort_by_date_asc(
+    items: list[Any],
+    date_key: str = "occurred_on_value",
+) -> list[Any]:
+    """
+    単一日付キーの昇順でソートする（履歴書の学歴・職歴など）。
+    日付が None の項目は最下位。安定ソート。
+    """
+    def sort_key(item: Any) -> tuple:
+        d = _to_date(_get(item, date_key))
+        if d is None:
+            return (1,)
+        return (0, d)
 
     return sorted(items, key=sort_key)
