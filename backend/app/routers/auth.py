@@ -16,11 +16,16 @@ from sqlalchemy.orm import Session
 from ..auth import (
     _COOKIE_MAX_AGE,
     _COOKIE_NAME,
+    _REFRESH_COOKIE_MAX_AGE,
+    _REFRESH_COOKIE_NAME,
     create_access_token,
+    create_refresh_token,
     get_current_user,
     hash_password,
     verify_password,
+    verify_refresh_token,
 )
+from ..csrf import CSRF_COOKIE_NAME, set_csrf_cookie
 from ..database import get_db
 from ..dependencies import limiter
 from ..encryption import encrypt_field
@@ -58,8 +63,8 @@ def _set_cookie(response: Response, key: str, value: str, max_age: int) -> None:
     )
 
 
-def _delete_cookie(response: Response, key: str) -> None:
-    response.delete_cookie(key=key, path="/")
+def _delete_cookie(response: Response, key: str, path: str = "/") -> None:
+    response.delete_cookie(key=key, path=path)
 
 
 def _clear_github_oauth_cookies(response: Response) -> None:
@@ -67,9 +72,35 @@ def _clear_github_oauth_cookies(response: Response) -> None:
     _delete_cookie(response, _GITHUB_OAUTH_REDIRECT_COOKIE)
 
 
-def _set_auth_cookie(response: Response, token: str) -> None:
-    """認証トークンを HttpOnly Cookie にセットする。"""
-    _set_cookie(response, _COOKIE_NAME, token, _COOKIE_MAX_AGE)
+def _set_auth_cookies(response: Response, username: str) -> None:
+    """アクセストークン・リフレッシュトークン・CSRF トークンを Cookie にセットする。"""
+    access_token = create_access_token(username)
+    refresh_token = create_refresh_token(username)
+    csrf_token = secrets.token_urlsafe(32)
+
+    # アクセストークン（15分, path="/"）
+    _set_cookie(response, _COOKIE_NAME, access_token, _COOKIE_MAX_AGE)
+
+    # リフレッシュトークン（7日, path="/auth/refresh" に限定）
+    response.set_cookie(
+        key=_REFRESH_COOKIE_NAME,
+        value=refresh_token,
+        httponly=True,
+        secure=get_cookie_secure(),
+        samesite=get_cookie_samesite(),
+        max_age=_REFRESH_COOKIE_MAX_AGE,
+        path="/auth/refresh",
+    )
+
+    # CSRF トークン（httpOnly=False: JS から読み取れる）
+    set_csrf_cookie(response, csrf_token)
+
+
+def _clear_auth_cookies(response: Response) -> None:
+    """認証関連の Cookie をすべて削除する。"""
+    _delete_cookie(response, _COOKIE_NAME, path="/")
+    _delete_cookie(response, _REFRESH_COOKIE_NAME, path="/auth/refresh")
+    _delete_cookie(response, CSRF_COOKIE_NAME, path="/")
 
 
 def _get_default_frontend_origin() -> str:
@@ -327,13 +358,12 @@ def register(
         hash_password(payload.password),
         email=payload.email,
     )
-    token = create_access_token(user.username)
-    _set_auth_cookie(response, token)
+    _set_auth_cookies(response, user.username)
     return TokenResponse(username=user.username)
 
 
 @router.post("/login", response_model=TokenResponse)
-@limiter.limit("5/minute")
+@limiter.limit("5/15minutes")
 def login(
     request: Request,
     response: Response,
@@ -355,9 +385,39 @@ def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=get_error("auth.invalid_credentials"),
         )
-    token = create_access_token(user.username)
-    _set_auth_cookie(response, token)
+    _set_auth_cookies(response, user.username)
     return TokenResponse(username=user.username)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> TokenResponse:
+    """リフレッシュトークンで新しいアクセストークンを発行する。"""
+    token = request.cookies.get(_REFRESH_COOKIE_NAME)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=get_error("auth.login_required"),
+        )
+    username = verify_refresh_token(token)
+
+    from ..repositories import UserRepository as _UserRepo
+
+    user = _UserRepo(db).get_by_username(username)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=get_error("auth.user_not_found"),
+        )
+
+    _set_auth_cookies(response, user.username)
+    return TokenResponse(
+        username=user.username,
+        is_github_user=user.username.startswith("github:"),
+    )
 
 
 @router.get("/me", response_model=TokenResponse)
@@ -429,10 +489,7 @@ async def github_callback_redirect(
         url=_build_frontend_redirect_url(frontend_url),
         status_code=status.HTTP_303_SEE_OTHER,
     )
-    _set_auth_cookie(
-        redirect,
-        create_access_token(token_response.username),
-    )
+    _set_auth_cookies(redirect, token_response.username)
     _clear_github_oauth_cookies(redirect)
     return redirect
 
@@ -450,16 +507,13 @@ async def github_callback(
         payload.state,
     )
     token_response = await _authenticate_github_user(db, payload.code)
-    _set_auth_cookie(
-        response,
-        create_access_token(token_response.username),
-    )
+    _set_auth_cookies(response, token_response.username)
     _clear_github_oauth_cookies(response)
     return token_response
 
 
 @router.post("/logout", status_code=204)
 def logout(response: Response) -> None:
-    """認証 Cookie を削除してログアウトする。"""
-    _delete_cookie(response, _COOKIE_NAME)
+    """認証 Cookie をすべて削除してログアウトする。"""
+    _clear_auth_cookies(response)
     _clear_github_oauth_cookies(response)
