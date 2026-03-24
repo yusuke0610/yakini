@@ -25,6 +25,7 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
 
   if (response.status === 401) {
     _onUnauthorized?.();
+    throw new Error("認証が必要です。再度ログインしてください。");
   }
 
   if (response.status >= 500) {
