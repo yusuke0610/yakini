@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..database import get_db
+from ..messages import get_error
 from ..models import User
 from ..repositories import BasicInfoRepository, ResumeRepository
 from ..schemas import ResumeCreate, ResumeResponse, ResumeUpdate
@@ -28,7 +29,10 @@ def create_resume(
     try:
         return repository.create(payload.model_dump())
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=409,
+            detail=get_error(str(exc), document="職務経歴書"),
+        ) from exc
 
 
 @router.get("/latest", response_model=ResumeResponse)
@@ -39,7 +43,10 @@ def get_latest_resume(
     repository = ResumeRepository(db, current_user.id)
     resume = repository.get_latest()
     if not resume:
-        raise HTTPException(status_code=404, detail="職務経歴書が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
     return resume
 
 
@@ -52,7 +59,10 @@ def get_resume(
     repository = ResumeRepository(db, current_user.id)
     resume = repository.get_by_id(str(resume_id))
     if not resume:
-        raise HTTPException(status_code=404, detail="職務経歴書が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
     return resume
 
 
@@ -66,7 +76,10 @@ def update_resume(
     repository = ResumeRepository(db, current_user.id)
     resume = repository.get_by_id(str(resume_id))
     if not resume:
-        raise HTTPException(status_code=404, detail="職務経歴書が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
 
     return repository.update(resume, payload.model_dump())
 
@@ -82,7 +95,10 @@ def download_resume_pdf(
 
     resume = resume_repository.get_by_id(str(resume_id))
     if not resume:
-        raise HTTPException(status_code=404, detail="職務経歴書が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
 
     basic_info = basic_info_repository.get_latest()
 
@@ -109,7 +125,10 @@ def download_resume_markdown(
 
     resume = resume_repository.get_by_id(str(resume_id))
     if not resume:
-        raise HTTPException(status_code=404, detail="職務経歴書が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
 
     basic_info = basic_info_repository.get_latest()
 

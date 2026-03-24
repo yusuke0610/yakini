@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+from .messages import get_error
+
 _HIRAGANA_PATTERN = r"^[ぁ-ゖー\s　]+$"
 
 
@@ -22,11 +24,11 @@ class RegisterRequest(BaseModel):
         """パスワードに英大文字・英小文字・数字をそれぞれ1文字以上含むことを検証する。"""
         p = self.password
         if not any(c.isupper() for c in p):
-            raise ValueError("パスワードには英大文字を1文字以上含めてください")
+            raise ValueError(get_error("validation.password_uppercase"))
         if not any(c.islower() for c in p):
-            raise ValueError("パスワードには英小文字を1文字以上含めてください")
+            raise ValueError(get_error("validation.password_lowercase"))
         if not any(c.isdigit() for c in p):
-            raise ValueError("パスワードには数字を1文字以上含めてください")
+            raise ValueError(get_error("validation.password_digit"))
         return self
 
 
@@ -165,7 +167,7 @@ class Experience(BaseModel):
             self.end_date = None
             return self
         if not self.end_date or not self.end_date.strip():
-            raise ValueError("end_date is required when is_current is false")
+            raise ValueError(get_error("validation.end_date_required"))
         return self
 
 

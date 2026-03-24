@@ -39,7 +39,7 @@ def test_add_account_user_not_found(client: TestClient) -> None:
             },
         )
     assert resp.status_code == 404
-    assert "見つかりません" in resp.json()["detail"]
+    assert resp.json()["detail"] == "指定されたアカウントが見つかりません。ユーザー名を確認してください。"
 
 
 def test_add_duplicate_account(client: TestClient) -> None:

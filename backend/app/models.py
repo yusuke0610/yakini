@@ -17,6 +17,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
 from .date_utils import format_iso_date, format_year_month
+from .services.sort_utils import sort_by_date_asc, sort_by_date_desc, sort_by_period_desc
 
 
 class User(Base):
@@ -75,7 +76,8 @@ class BasicInfo(Base):
 
     @property
     def qualifications(self) -> list["BasicInfoQualification"]:
-        return list(self.qualification_rows)
+        """資格を取得日の降順でソートして返す。"""
+        return sort_by_date_desc(list(self.qualification_rows))
 
 
 class BasicInfoQualification(Base):
@@ -129,7 +131,8 @@ class Resume(Base):
 
     @property
     def experiences(self) -> list["ResumeExperience"]:
-        return list(self.experience_rows)
+        """経歴を在籍期間の降順でソートして返す。"""
+        return sort_by_period_desc(list(self.experience_rows))
 
 
 class ResumeExperience(Base):
@@ -192,7 +195,8 @@ class ResumeClient(Base):
 
     @property
     def projects(self) -> list["ResumeProject"]:
-        return list(self.project_rows)
+        """プロジェクトを期間の降順でソートして返す。"""
+        return sort_by_period_desc(list(self.project_rows))
 
 
 class ResumeProject(Base):
@@ -353,11 +357,13 @@ class Rirekisho(Base):
 
     @property
     def educations(self) -> list["RirekishoEducation"]:
-        return list(self.education_rows)
+        """学歴を日付の昇順でソートして返す。"""
+        return sort_by_date_asc(list(self.education_rows))
 
     @property
     def work_histories(self) -> list["RirekishoWorkHistory"]:
-        return list(self.work_history_rows)
+        """職歴を日付の昇順でソートして返す。"""
+        return sort_by_date_asc(list(self.work_history_rows))
 
 
 class RirekishoEducation(Base):

@@ -25,6 +25,7 @@ from ..database import get_db
 from ..dependencies import limiter
 from ..encryption import encrypt_field
 from ..logging_utils import log_event
+from ..messages import get_error
 from ..repositories import UserRepository
 from ..schemas import (
     GitHubCallbackRequest,
@@ -76,7 +77,7 @@ def _get_default_frontend_origin() -> str:
     if not origins:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="CORS_ORIGINS が設定されていません",
+            detail=get_error("auth.cors_origins_not_configured"),
         )
     return origins[0]
 
@@ -90,14 +91,14 @@ def _normalize_frontend_url(frontend_url: str) -> str:
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="戻り先URLが不正です",
+            detail=get_error("auth.invalid_return_to"),
         )
 
     origin = f"{parsed.scheme}://{parsed.netloc}"
     if origin not in get_cors_origins():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="許可されていないフロントエンドオリジンです",
+            detail=get_error("auth.frontend_origin_not_allowed"),
         )
 
     path = parsed.path or "/"
@@ -173,12 +174,12 @@ def _validate_github_oauth_state(
     if not stored_state or not provided_state:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="OAuth state の検証に失敗しました",
+            detail=get_error("auth.oauth_state_invalid"),
         )
     if not secrets.compare_digest(stored_state, provided_state):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="OAuth state の検証に失敗しました",
+            detail=get_error("auth.oauth_state_invalid"),
         )
 
 
@@ -207,7 +208,7 @@ def _begin_github_oauth(
     if not client_id:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="GitHub OAuth が設定されていません",
+            detail=get_error("auth.github_oauth_not_configured"),
         )
 
     redirect_uri = f"{_build_external_base_url(request)}/auth/github/callback"
@@ -239,7 +240,7 @@ async def _authenticate_github_user(db: Session, code: str) -> TokenResponse:
     if not client_id or not client_secret:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="GitHub OAuth が設定されていません",
+            detail=get_error("auth.github_oauth_not_configured"),
         )
 
     import httpx
@@ -264,7 +265,7 @@ async def _authenticate_github_user(db: Session, code: str) -> TokenResponse:
             )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="GitHub認証に失敗しました",
+                detail=get_error("auth.github_oauth_failed"),
             )
 
         user_resp = await client.get(
@@ -281,7 +282,7 @@ async def _authenticate_github_user(db: Session, code: str) -> TokenResponse:
     if not github_id or not github_login:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="GitHubユーザー情報の取得に失敗しました",
+            detail=get_error("auth.github_user_info_failed"),
         )
 
     repo = UserRepository(db)
@@ -314,12 +315,12 @@ def register(
     if repo.get_by_username(payload.username):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="このユーザー名は既に使用されています",
+            detail=get_error("auth.username_already_exists"),
         )
     if repo.get_by_email(payload.email):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="このメールアドレスは既に使用されています",
+            detail=get_error("auth.email_already_exists"),
         )
     user = repo.create(
         payload.username,
@@ -352,7 +353,7 @@ def login(
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="メールアドレスまたはパスワードが正しくありません",
+            detail=get_error("auth.invalid_credentials"),
         )
     token = create_access_token(user.username)
     _set_auth_cookie(response, token)
@@ -409,7 +410,7 @@ async def github_callback_redirect(
         if not code:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="GitHub認証コードが取得できませんでした",
+                detail=get_error("auth.github_code_missing"),
             )
         _validate_github_oauth_state(
             request.cookies.get(_GITHUB_OAUTH_STATE_COOKIE),

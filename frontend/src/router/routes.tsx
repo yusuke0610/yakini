@@ -9,6 +9,7 @@ import ResumePage from "../pages/ResumePage";
 import GitHubIntelligencePage from "../pages/GitHubIntelligencePage";
 import BlogPage from "../pages/BlogPage";
 import LoginPage from "../pages/LoginPage";
+import NotFoundPage from "../pages/NotFoundPage";
 import SignInPage from "../pages/SignInPage";
 
 type AppRoutesProps = {
@@ -63,7 +64,7 @@ export default function AppRoutes({
       </Route>
 
       <Route path="/" element={<Navigate to="/basic_info" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

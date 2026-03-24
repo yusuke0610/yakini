@@ -13,6 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
 from .bootstrap import bootstrap  # noqa: E402
 from .dependencies import limiter  # noqa: E402
+from .messages import get_error, load_messages  # noqa: E402
 from .routers import (  # noqa: E402
     admin_router,
     auth_router,
@@ -29,6 +30,7 @@ from .settings import get_cors_origins  # noqa: E402
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    load_messages()
     if os.getenv("APP_BOOTSTRAPPED", "0") != "1":
         bootstrap()
     yield
@@ -42,7 +44,7 @@ app.state.limiter = limiter
 async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
         status_code=429,
-        content={"detail": "リクエストが多すぎます。しばらくしてからお試しください。"},
+        content={"detail": get_error("server.rate_limited")},
     )
 
 

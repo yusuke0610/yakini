@@ -6,6 +6,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from .database import get_db
+from .messages import get_error
 from .models import User
 from .settings import get_secret_key
 
@@ -39,7 +40,7 @@ def get_current_user(
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="認証が必要です",
+            detail=get_error("auth.login_required"),
         )
     try:
         payload = jwt.decode(token, get_secret_key(), algorithms=[_ALGORITHM])
@@ -47,12 +48,12 @@ def get_current_user(
         if not username:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="無効なトークンです",
+                detail=get_error("auth.invalid_token"),
             )
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="無効なトークンです",
+            detail=get_error("auth.invalid_token"),
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -62,6 +63,6 @@ def get_current_user(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="ユーザーが見つかりません",
+            detail=get_error("auth.user_not_found"),
         )
     return user

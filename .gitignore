@@ -32,5 +32,8 @@ backend/local.sqlite
 frontend/.env
 backend/.env
 
+# Firebase
+.firebase/
+
 # OS
 .DS_Store
