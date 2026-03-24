@@ -7,6 +7,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 
 from .date_utils import parse_iso_date, parse_year_month
 from .encryption import decrypt_field, encrypt_field
+from .services.sort_utils import sort_by_period_desc
 from .models import (
     BasicInfo,
     BasicInfoQualification,
@@ -93,7 +94,7 @@ class SingleUserDocumentRepository:
 
     def create(self, payload: dict[str, Any]) -> Any:
         if self.get_current():
-            raise ValueError("このドキュメントは既に存在します")
+            raise ValueError("document.already_exists")
         entity = self._model(user_id=self.user_id)
         self._apply_payload(entity, payload)
         self.db.add(entity)
@@ -148,9 +149,15 @@ class ResumeRepository(SingleUserDocumentRepository):
     def _apply_payload(self, entity: Resume, payload: dict[str, Any]) -> None:
         entity.career_summary = payload["career_summary"]
         entity.self_pr = payload["self_pr"]
+        # 経歴を在籍期間の降順でソートしてから sort_order を振る
+        sorted_experiences = sort_by_period_desc(
+            payload.get("experiences", []),
+            start_key="start_date",
+            end_key="end_date",
+        )
         entity.experience_rows = [
             self._build_experience_row(index, experience)
-            for index, experience in enumerate(payload.get("experiences", []))
+            for index, experience in enumerate(sorted_experiences)
         ]
 
     def _build_experience_row(self, index: int, payload: dict[str, Any]) -> ResumeExperience:

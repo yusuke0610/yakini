@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..dependencies import verify_admin_token
+from ..messages import get_error
 from ..repositories import (
     BaseMasterRepository,
     MPrefectureRepository,
@@ -55,7 +56,10 @@ def _register_master_crud(
     ):
         updated = repo_factory(db).update(item_id, body.name, body.sort_order)
         if not updated:
-            raise HTTPException(status_code=404, detail=f"{label}が見つかりません")
+            raise HTTPException(
+                status_code=404,
+                detail=get_error("master_data.not_found", item=label),
+            )
         return updated
 
     @router.delete(f"/{path}/{{item_id}}", status_code=status.HTTP_204_NO_CONTENT)
@@ -65,7 +69,10 @@ def _register_master_crud(
         _: None = Depends(verify_admin_token),
     ):
         if not repo_factory(db).delete(item_id):
-            raise HTTPException(status_code=404, detail=f"{label}が見つかりません")
+            raise HTTPException(
+                status_code=404,
+                detail=get_error("master_data.not_found", item=label),
+            )
 
     # FastAPI の OpenAPI ドキュメント用にユニークな関数名を設定
     list_items.__name__ = f"list_{path}s"
@@ -113,7 +120,10 @@ def update_technology_stack(
         item_id, body.category, body.name, body.sort_order
     )
     if not updated:
-        raise HTTPException(status_code=404, detail="技術スタックマスタが見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("master_data.not_found", item="技術スタックマスタ"),
+        )
     return updated
 
 
@@ -125,4 +135,7 @@ def delete_technology_stack(
 ):
     """技術スタックマスタを削除する（admin認証必須）。"""
     if not MTechnologyStackRepository(db).delete(item_id):
-        raise HTTPException(status_code=404, detail="技術スタックマスタが見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("master_data.not_found", item="技術スタックマスタ"),
+        )

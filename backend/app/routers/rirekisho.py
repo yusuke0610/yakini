@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..database import get_db
+from ..messages import get_error
 from ..models import User
 from ..repositories import BasicInfoRepository, RirekishoRepository
 from ..schemas import RirekishoCreate, RirekishoResponse, RirekishoUpdate
@@ -28,7 +29,10 @@ def create_rirekisho(
     try:
         return repository.create(payload.model_dump())
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=409,
+            detail=get_error(str(exc), document="履歴書"),
+        ) from exc
 
 
 @router.get("/latest", response_model=RirekishoResponse)
@@ -39,7 +43,10 @@ def get_latest_rirekisho(
     repository = RirekishoRepository(db, current_user.id)
     rirekisho = repository.get_latest()
     if not rirekisho:
-        raise HTTPException(status_code=404, detail="履歴書が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="履歴書"),
+        )
     return rirekisho
 
 
@@ -52,7 +59,10 @@ def get_rirekisho(
     repository = RirekishoRepository(db, current_user.id)
     rirekisho = repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
-        raise HTTPException(status_code=404, detail="履歴書が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="履歴書"),
+        )
     return rirekisho
 
 
@@ -66,7 +76,10 @@ def update_rirekisho(
     repository = RirekishoRepository(db, current_user.id)
     rirekisho = repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
-        raise HTTPException(status_code=404, detail="履歴書が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="履歴書"),
+        )
 
     return repository.update(rirekisho, payload.model_dump())
 
@@ -82,7 +95,10 @@ def download_rirekisho_pdf(
 
     rirekisho = rirekisho_repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
-        raise HTTPException(status_code=404, detail="履歴書が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="履歴書"),
+        )
 
     basic_info = basic_info_repository.get_latest()
 
@@ -120,7 +136,10 @@ def download_rirekisho_markdown(
 
     rirekisho = rirekisho_repository.get_by_id(str(rirekisho_id))
     if not rirekisho:
-        raise HTTPException(status_code=404, detail="履歴書が見つかりません")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="履歴書"),
+        )
 
     basic_info = basic_info_repository.get_latest()
 
