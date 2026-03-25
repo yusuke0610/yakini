@@ -155,7 +155,8 @@ def test_login_nonexistent_user(client: TestClient) -> None:
 )
 def test_endpoints_require_auth(client: TestClient, method: str, path: str) -> None:
     resp = getattr(client, method)(path)
-    assert resp.status_code == 401
+    # POST は CSRF チェックが先行して 403、GET は認証チェックで 401 が返る
+    assert resp.status_code in (401, 403)
 
 
 # ── CRUD: Basic Info ────────────────────────────────────────────
