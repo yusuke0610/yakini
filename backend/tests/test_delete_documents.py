@@ -73,30 +73,21 @@ def test_delete_resume_not_found(client: TestClient) -> None:
     assert resp.status_code == 404
 
 
-def _login(client: TestClient, username: str) -> dict:
-    """Cookie認証を切り替えるヘルパー。"""
-    client.post(
-        "/auth/login",
-        json={"email": f"{username}@example.com", "password": "SecurePass123"},
-    )
-    return {}
-
-
 def test_delete_resume_other_user_unaffected(client: TestClient) -> None:
     """他ユーザーのデータが削除されないこと。"""
-    auth_header(client, "del-resume-a")
-    client.post("/api/resumes", json=_RESUME_PAYLOAD)
+    headers_a = auth_header(client, "del-resume-a")
+    client.post("/api/resumes", json=_RESUME_PAYLOAD, headers=headers_a)
 
-    auth_header(client, "del-resume-b")
-    client.post("/api/resumes", json=_RESUME_PAYLOAD)
+    headers_b = auth_header(client, "del-resume-b")
+    client.post("/api/resumes", json=_RESUME_PAYLOAD, headers=headers_b)
 
     # ユーザーAに切り替えてデータを削除
-    _login(client, "del-resume-a")
-    client.delete("/api/resumes")
+    headers_a = auth_header(client, "del-resume-a")
+    client.delete("/api/resumes", headers=headers_a)
 
     # ユーザーBに切り替えてデータが残っていることを確認
-    _login(client, "del-resume-b")
-    resp = client.get("/api/resumes/latest")
+    headers_b = auth_header(client, "del-resume-b")
+    resp = client.get("/api/resumes/latest", headers=headers_b)
     assert resp.status_code == 200
 
 
@@ -150,19 +141,23 @@ def test_delete_rirekisho_not_found(client: TestClient) -> None:
 
 def test_delete_rirekisho_other_user_unaffected(client: TestClient) -> None:
     """他ユーザーのデータが削除されないこと。"""
-    auth_header(client, "del-rirekisho-a")
-    client.post("/api/rirekisho", json=_RIREKISHO_PAYLOAD)
+    headers_a = auth_header(client, "del-rirekisho-a")
+    client.post(
+        "/api/rirekisho", json=_RIREKISHO_PAYLOAD, headers=headers_a,
+    )
 
-    auth_header(client, "del-rirekisho-b")
-    client.post("/api/rirekisho", json=_RIREKISHO_PAYLOAD)
+    headers_b = auth_header(client, "del-rirekisho-b")
+    client.post(
+        "/api/rirekisho", json=_RIREKISHO_PAYLOAD, headers=headers_b,
+    )
 
     # ユーザーAに切り替えてデータを削除
-    _login(client, "del-rirekisho-a")
-    client.delete("/api/rirekisho")
+    headers_a = auth_header(client, "del-rirekisho-a")
+    client.delete("/api/rirekisho", headers=headers_a)
 
     # ユーザーBに切り替えてデータが残っていることを確認
-    _login(client, "del-rirekisho-b")
-    resp = client.get("/api/rirekisho/latest")
+    headers_b = auth_header(client, "del-rirekisho-b")
+    resp = client.get("/api/rirekisho/latest", headers=headers_b)
     assert resp.status_code == 200
 
 
