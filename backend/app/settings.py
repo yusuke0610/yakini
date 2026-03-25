@@ -78,6 +78,22 @@ def get_secret_key() -> str:
     return key
 
 
+def get_jwt_private_key() -> str:
+    """RS256署名用秘密鍵（PEM形式）を取得する。"""
+    key = os.getenv("JWT_PRIVATE_KEY", "").replace("\\n", "\n").strip()
+    if not key:
+        raise RuntimeError("JWT_PRIVATE_KEY is not configured")
+    return key
+
+
+def get_jwt_public_key() -> str:
+    """RS256検証用公開鍵（PEM形式）を取得する。"""
+    key = os.getenv("JWT_PUBLIC_KEY", "").replace("\\n", "\n").strip()
+    if not key:
+        raise RuntimeError("JWT_PUBLIC_KEY is not configured")
+    return key
+
+
 def get_github_client_id() -> str:
     return os.getenv("GITHUB_CLIENT_ID", "").strip()
 
