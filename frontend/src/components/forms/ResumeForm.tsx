@@ -1,8 +1,9 @@
-import { FormEvent } from "react";
+import { FormEvent, useState } from "react";
 
 import {
   assertBasicInfoReady,
   createResume,
+  deleteResume,
   downloadResumeMarkdown,
   downloadResumePdf,
   getLatestResume,
@@ -18,6 +19,7 @@ import type { ResumeTextFieldKey } from "../../formTypes";
 import { usePrefectures } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { LoadingOverlay } from "../LoadingOverlay";
 import { Combobox } from "./Combobox";
 import { MarkdownTextarea } from "./MarkdownTextarea";
@@ -26,23 +28,27 @@ import styles from "./ResumeForm.module.css";
 
 export function ResumeForm() {
   const { items: prefectureOptions } = usePrefectures();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
     form,
     setForm,
     documentId: resumeId,
     loading,
     saving,
+    deleting,
     error,
     success,
     setError,
     setSuccess,
     save,
+    deleteDoc,
     saveButtonText,
   } = useDocumentForm({
     createInitialForm: createInitialResumeForm,
     loadLatest: getLatestResume,
     createDocument: createResume,
     updateDocument: updateResume,
+    deleteDocument: deleteResume,
     buildPayload: buildResumePayload,
     mapResponseToForm: mapResumeToForm,
     successMessage: "履歴書を保存しました。PDF出力できます。",
@@ -140,10 +146,24 @@ export function ResumeForm() {
     await save();
   };
 
+  const handleDelete = async () => {
+    await deleteDoc();
+    setShowDeleteConfirm(false);
+  };
+
   if (loading) return <LoadingOverlay />;
 
   return (
     <>
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          message="履歴書のデータを全て削除します。この操作は取り消せません。本当に削除しますか？"
+          confirmLabel="削除する"
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+          confirming={deleting}
+        />
+      )}
       {previewUrl && <PdfPreviewModal previewUrl={previewUrl} onClose={closePreview} />}
       <form onSubmit={onSubmit}>
         <div className={shared.pageHeader}>
@@ -175,6 +195,14 @@ export function ResumeForm() {
               disabled={!resumeId}
             >
               Markdown出力
+            </button>
+            <button
+              type="button"
+              className="danger"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={!resumeId}
+            >
+              データを削除
             </button>
           </div>
         </div>

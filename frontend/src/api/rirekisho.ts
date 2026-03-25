@@ -20,6 +20,10 @@ export function updateResume(id: string, payload: ResumePayload): Promise<Resume
   });
 }
 
+export function deleteResume(): Promise<{ message: string }> {
+  return request<{ message: string }>("/api/rirekisho", { method: "DELETE" });
+}
+
 export function downloadResumePdf(id: string): Promise<void> {
   return downloadBlob(`/api/rirekisho/${id}/pdf`, `Resume-${id}.pdf`);
 }

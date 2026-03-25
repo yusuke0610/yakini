@@ -9,6 +9,14 @@ _FONT_PATH = (
     Path(__file__).resolve().parent.parent.parent.parent / "fonts" / "NotoSansJP-Regular.ttf"
 )
 
+
+def _a(obj, key, default=""):
+    """dict / ORM オブジェクト両対応の属性アクセス"""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 _CATEGORY_LABELS = {
     "language": "言語",
     "framework": "FW",
@@ -55,15 +63,15 @@ def _format_record_date(record_date: str) -> str:
     return record_date
 
 
-def _build_project_html(project: dict) -> str:
+def _build_project_html(project) -> str:
     """プロジェクト1件分のHTMLを組み立てる"""
     # ヘッダー（3行構成: 期間/プロジェクト名、役割、工程）
-    name = project.get("name", "")
-    start = project.get("start_date", "")
-    end = project.get("end_date", "")
-    is_current = project.get("is_current", False)
-    role = project.get("role", "")
-    phases = project.get("phases", [])
+    name = _a(project, "name")
+    start = _a(project, "start_date")
+    end = _a(project, "end_date")
+    is_current = _a(project, "is_current", False)
+    role = _a(project, "role")
+    phases = _a(project, "phases", [])
 
     # 1行目: 期間 ／ プロジェクト名
     line1_parts: list[str] = []
@@ -88,28 +96,28 @@ def _build_project_html(project: dict) -> str:
 
     # 左カラム: 業務内容
     left_parts: list[str] = []
-    desc = project.get("description", "")
+    desc = _a(project, "description")
     if desc:
         left_parts.append(
             f"<strong>【プロジェクト概要】</strong>" f'<div class="desc-bold">{_md(desc)}</div>',
         )
-    challenge = project.get("challenge", "")
+    challenge = _a(project, "challenge")
     if challenge:
         left_parts.append(f"<strong>【課題】</strong>{_md(challenge)}")
-    action = project.get("action", "")
+    action = _a(project, "action")
     if action:
         left_parts.append(f"<strong>【行動】</strong>{_md(action)}")
-    result = project.get("result", "")
+    result = _a(project, "result")
     if result:
         left_parts.append(f"<strong>【成果】</strong>{_md(result)}")
     left_content = "".join(left_parts) if left_parts else "-"
 
     # 右カラム: 開発環境（技術スタック）
-    stacks = project.get("technology_stacks", [])
+    stacks = _a(project, "technology_stacks", [])
     grouped: dict[str, list[str]] = {}
     for st in stacks:
-        cat = st.get("category", "")
-        n = st.get("name", "")
+        cat = _a(st, "category")
+        n = _a(st, "name")
         if cat not in grouped:
             grouped[cat] = []
         grouped[cat].append(n)
@@ -122,17 +130,17 @@ def _build_project_html(project: dict) -> str:
     right_content = "<br/>".join(right_parts) if right_parts else "-"
 
     # 体制（後方互換: 旧 scale → team）
-    team = project.get("team")
-    if not team and project.get("scale"):
-        team = {"total": project["scale"], "members": []}
+    team = _a(project, "team", None)
+    if not team and _a(project, "scale", None):
+        team = {"total": _a(project, "scale"), "members": []}
     team_parts: list[str] = []
     if team:
-        total = team.get("total", "")
+        total = _a(team, "total")
         if total:
             team_parts.append(f"{_esc(total)}名")
-        members = team.get("members", [])
+        members = _a(team, "members", [])
         member_strs = [
-            f"{_esc(m.get('role', ''))}:{m.get('count', 0)}" for m in members if m.get("role")
+            f"{_esc(_a(m, 'role'))}:{_a(m, 'count', 0)}" for m in members if _a(m, "role")
         ]
         if member_strs:
             team_parts.append(" / ".join(member_strs))
@@ -177,17 +185,17 @@ def _build_html(resume: dict) -> str:
     else:
         for exp in experiences:
             period = _format_period(
-                exp["start_date"],
-                exp.get("end_date"),
-                exp.get("is_current", False),
+                _a(exp, "start_date"),
+                _a(exp, "end_date", None),
+                _a(exp, "is_current", False),
             )
-            company = _esc(exp["company"])
+            company = _esc(_a(exp, "company"))
 
             biz = _esc(
-                exp.get("business_description") or exp.get("title", ""),
+                _a(exp, "business_description") or _a(exp, "title"),
             )
-            capital_raw = exp.get("capital", "")
-            emp_raw = exp.get("employee_count", "")
+            capital_raw = _a(exp, "capital")
+            emp_raw = _a(exp, "employee_count")
             capital = f"{_esc(capital_raw)}千万円" if capital_raw else ""
             emp = f"{_esc(emp_raw)}名" if emp_raw else ""
             info_parts = [f"事業内容：{biz}"]
@@ -206,16 +214,16 @@ def _build_html(resume: dict) -> str:
             parts.append('<div class="company-body">')
 
             # 取引先 → プロジェクト
-            clients = exp.get("clients", [])
-            if not clients and exp.get("projects"):
-                clients = [{"name": "", "projects": exp["projects"]}]
+            clients = _a(exp, "clients", [])
+            if not clients and _a(exp, "projects", None):
+                clients = [{"name": "", "projects": _a(exp, "projects", [])}]
             for client in clients:
-                client_name = client.get("name", "")
+                client_name = _a(client, "name")
                 if client_name:
                     parts.append(
                         f'<div class="client-name">' f"取引先名：{_esc(client_name)}</div>",
                     )
-                projects = client.get("projects", [])
+                projects = _a(client, "projects", [])
                 for proj in projects:
                     parts.append(_build_project_html(proj))
 
@@ -229,8 +237,8 @@ def _build_html(resume: dict) -> str:
     else:
         parts.append('<table class="qual-table">')
         for q in qualifications:
-            name = _esc(q.get("name", ""))
-            raw_date = q.get("acquired_date", "")
+            name = _esc(_a(q, "name"))
+            raw_date = _a(q, "acquired_date")
             if raw_date and "-" in raw_date:
                 dp = raw_date.split("-")
                 if len(dp) == 3:

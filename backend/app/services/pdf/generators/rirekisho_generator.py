@@ -14,6 +14,13 @@ _MAX_HISTORY_ROWS_PAGE1 = 23
 _QUAL_MAX_ROWS = 10
 
 
+def _a(obj, key, default=""):
+    """dict / ORM オブジェクト両対応の属性アクセス"""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 def _esc(text: str) -> str:
     """HTMLエスケープのショートカット"""
     return _html_escape(str(text))
@@ -67,15 +74,15 @@ def _build_history_rows(data: dict) -> list[tuple[str, str, str]]:
     educations = data.get("educations", [])
     rows.append(("", "", "学　歴"))
     for edu in educations:
-        yr, mo = _parse_date_ym(edu.get("date", ""))
-        rows.append((yr, mo, edu.get("name", "")))
+        yr, mo = _parse_date_ym(_a(edu, "date"))
+        rows.append((yr, mo, _a(edu, "name")))
 
     # 職歴セクション
     work_histories = data.get("work_histories", [])
     rows.append(("", "", "職　歴"))
     for wh in work_histories:
-        yr, mo = _parse_date_ym(wh.get("date", ""))
-        rows.append((yr, mo, wh.get("name", "")))
+        yr, mo = _parse_date_ym(_a(wh, "date"))
+        rows.append((yr, mo, _a(wh, "name")))
 
     return rows
 
@@ -140,8 +147,8 @@ def _build_qual_table_html(data: dict) -> str:
     for q in qualifications:
         if drawn >= _QUAL_MAX_ROWS:
             break
-        yr, mo = _parse_date_ym(q.get("acquired_date", ""))
-        name = _esc(q.get("name", ""))
+        yr, mo = _parse_date_ym(_a(q, "acquired_date"))
+        name = _esc(_a(q, "name"))
         parts.append(
             f"<tr>"
             f'<td class="year">{yr}</td>'
