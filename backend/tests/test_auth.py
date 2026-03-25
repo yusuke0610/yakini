@@ -155,7 +155,7 @@ def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
     assert parsed.scheme == "http"
     assert parsed.netloc == "localhost:5173"
     assert parsed.path == "/index.html"
-    assert parse_qs(parsed.query)["github_error"] == ["OAuth state の検証に失敗しました"]
+    assert parse_qs(parsed.query)["github_error"] == ["OAuth state の検証に失敗しました。"]
 
 
 def test_github_callback_redirect_sets_auth_cookie(client) -> None:
