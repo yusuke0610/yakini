@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..database import get_db
-from ..messages import get_error
+from ..messages import get_error, get_success
 from ..models import User
 from ..repositories import BasicInfoRepository, RirekishoRepository
 from ..schemas import RirekishoCreate, RirekishoResponse, RirekishoUpdate
@@ -48,6 +48,20 @@ def get_latest_rirekisho(
             detail=get_error("document.not_found", document="履歴書"),
         )
     return rirekisho
+
+
+@router.delete("")
+def delete_rirekisho(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    repository = RirekishoRepository(db, current_user.id)
+    if not repository.delete():
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="履歴書"),
+        )
+    return {"message": get_success("document.deleted", document="履歴書")}
 
 
 @router.get("/{rirekisho_id}", response_model=RirekishoResponse)

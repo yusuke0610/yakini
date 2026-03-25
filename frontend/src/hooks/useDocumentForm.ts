@@ -5,6 +5,7 @@ type UseDocumentFormOptions<FormState, Payload, Response extends { id: string }>
   loadLatest: () => Promise<Response>;
   createDocument: (payload: Payload) => Promise<Response>;
   updateDocument: (id: string, payload: Payload) => Promise<Response>;
+  deleteDocument?: () => Promise<{ message: string }>;
   buildPayload: (form: FormState) => Payload;
   mapResponseToForm: (response: Response) => FormState;
   successMessage: string;
@@ -16,6 +17,7 @@ export function useDocumentForm<FormState, Payload, Response extends { id: strin
   loadLatest,
   createDocument,
   updateDocument,
+  deleteDocument,
   buildPayload,
   mapResponseToForm,
   successMessage,
@@ -25,6 +27,7 @@ export function useDocumentForm<FormState, Payload, Response extends { id: strin
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -88,17 +91,38 @@ export function useDocumentForm<FormState, Payload, Response extends { id: strin
     }
   };
 
+  const deleteDoc = async () => {
+    if (!deleteDocument || !documentId) return;
+    setDeleting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const result = await deleteDocument();
+      setDocumentId(null);
+      setForm(createInitialForm());
+      setSuccess(result.message);
+    } catch (deleteError) {
+      const message =
+        deleteError instanceof Error ? deleteError.message : "削除中に不明なエラーが発生しました。";
+      setError(message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return {
     form,
     setForm,
     documentId,
     loading,
     saving,
+    deleting,
     error,
     success,
     setError,
     setSuccess,
     save,
+    deleteDoc,
     saveButtonText,
   };
 }

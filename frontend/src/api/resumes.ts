@@ -23,6 +23,10 @@ export function updateCareerResume(
   });
 }
 
+export function deleteCareerResume(): Promise<{ message: string }> {
+  return request<{ message: string }>("/api/resumes", { method: "DELETE" });
+}
+
 export function downloadCareerResumePdf(id: string): Promise<void> {
   return downloadBlob(`/api/resumes/${id}/pdf`, `career-resume-${id}.pdf`);
 }
