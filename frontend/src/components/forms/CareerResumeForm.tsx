@@ -3,6 +3,7 @@ import { FormEvent, useMemo, useState } from "react";
 import {
   assertBasicInfoReady,
   createCareerResume,
+  deleteCareerResume,
   downloadCareerResumeMarkdown,
   downloadCareerResumePdf,
   getCareerResumePdfBlobUrl,
@@ -27,6 +28,7 @@ import type {
 import { useTechnologyStacks } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
 import shared from "../../styles/shared.module.css";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { LoadingOverlay } from "../LoadingOverlay";
 import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
@@ -43,23 +45,27 @@ type ProjectModalTarget = {
 
 export function CareerResumeForm() {
   const [modalTarget, setModalTarget] = useState<ProjectModalTarget | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
     form,
     setForm,
     documentId: resumeId,
     loading,
     saving,
+    deleting,
     error,
     success,
     setError,
     setSuccess,
     save,
+    deleteDoc,
     saveButtonText,
   } = useDocumentForm({
     createInitialForm: createInitialCareerForm,
     loadLatest: getLatestCareerResume,
     createDocument: createCareerResume,
     updateDocument: updateCareerResume,
+    deleteDocument: deleteCareerResume,
     buildPayload: buildCareerPayload,
     mapResponseToForm: mapCareerResumeToForm,
     successMessage: "職務経歴書を保存しました。PDF出力できます。",
@@ -256,10 +262,24 @@ export function CareerResumeForm() {
     return period || "";
   };
 
+  const handleDelete = async () => {
+    await deleteDoc();
+    setShowDeleteConfirm(false);
+  };
+
   if (loading) return <LoadingOverlay />;
 
   return (
     <>
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          message="職務経歴書のデータを全て削除します。この操作は取り消せません。本当に削除しますか？"
+          confirmLabel="削除する"
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+          confirming={deleting}
+        />
+      )}
       {previewUrl && <PdfPreviewModal previewUrl={previewUrl} onClose={closePreview} />}
       {modalTarget && (
         <ProjectModal
@@ -299,6 +319,14 @@ export function CareerResumeForm() {
               disabled={!resumeId}
             >
               Markdown出力
+            </button>
+            <button
+              type="button"
+              className="danger"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={!resumeId}
+            >
+              データを削除
             </button>
           </div>
         </div>

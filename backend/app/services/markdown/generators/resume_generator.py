@@ -4,6 +4,13 @@ from ..templates import resume_template as tpl
 from ..utils.markdown_utils import field_line, format_period
 
 
+def _a(obj, key, default=""):
+    """dict / ORM オブジェクト両対応の属性アクセス"""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 def build_resume_markdown(payload: dict[str, Any]) -> str:
     lines: list[str] = []
     lines.append(tpl.TITLE)
@@ -22,8 +29,8 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
         lines.append(tpl.SECTION_QUALIFICATIONS)
         lines.append("")
         for q in qualifications:
-            name = q.get("name", "")
-            date = q.get("acquired_date", "")
+            name = _a(q, "name")
+            date = _a(q, "acquired_date")
             lines.append(f"- {name} ({date}取得)")
         lines.append("")
 
@@ -39,72 +46,72 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
         lines.append(tpl.SECTION_EXPERIENCES)
         lines.append("")
         for exp in experiences:
-            company = exp.get("company", "")
-            start = exp.get("start_date", "")
-            end = exp.get("end_date", "")
-            is_current = exp.get("is_current", False)
+            company = _a(exp, "company")
+            start = _a(exp, "start_date")
+            end = _a(exp, "end_date")
+            is_current = _a(exp, "is_current", False)
             period = format_period(start, end, is_current)
             lines.append(f"### {company}")
             lines.append("")
             lines.append(field_line("期間", period))
-            biz = exp.get("business_description", "")
+            biz = _a(exp, "business_description")
             if biz:
                 lines.append(field_line("事業内容", biz))
-            emp = exp.get("employee_count", "")
+            emp = _a(exp, "employee_count")
             if emp:
                 lines.append(field_line("従業員数", f"{emp}名"))
-            cap = exp.get("capital", "")
+            cap = _a(exp, "capital")
             if cap:
                 lines.append(field_line("資本金", f"{cap}千万円"))
             lines.append("")
 
             # clients → projects（後方互換: clients がなく projects がある場合）
-            clients = exp.get("clients", [])
-            if not clients and exp.get("projects"):
-                clients = [{"name": "", "projects": exp["projects"]}]
+            clients = _a(exp, "clients", [])
+            if not clients and _a(exp, "projects", None):
+                clients = [{"name": "", "projects": _a(exp, "projects", [])}]
             for client in clients:
-                client_name = client.get("name", "")
+                client_name = _a(client, "name")
                 if client_name:
                     lines.append(f"#### {client_name}")
                     lines.append("")
-                projects = client.get("projects", [])
+                projects = _a(client, "projects", [])
                 for proj in projects:
-                    name = proj.get("name", "")
+                    name = _a(proj, "name")
                     if name:
                         lines.append(f"##### {name}")
                         lines.append("")
-                    proj_start = proj.get("start_date", "")
-                    proj_end = proj.get("end_date", "")
-                    proj_is_current = proj.get("is_current", False)
+                    proj_start = _a(proj, "start_date")
+                    proj_end = _a(proj, "end_date")
+                    proj_is_current = _a(proj, "is_current", False)
                     if proj_start:
                         proj_period = format_period(proj_start, proj_end, proj_is_current)
                         lines.append(field_line("期間", proj_period))
-                    role = proj.get("role", "")
+                    role = _a(proj, "role")
                     if role:
                         lines.append(field_line("担当", role))
-                    desc = proj.get("description", "")
+                    desc = _a(proj, "description")
                     if desc:
                         lines.append(field_line("業務内容", desc))
-                    challenge = proj.get("challenge", "")
+                    challenge = _a(proj, "challenge")
                     if challenge:
                         lines.append(field_line("課題", challenge))
-                    action = proj.get("action", "")
+                    action = _a(proj, "action")
                     if action:
                         lines.append(field_line("行動", action))
-                    result = proj.get("result", "")
+                    result = _a(proj, "result")
                     if result:
                         lines.append(field_line("成果", result))
                     # 体制（後方互換: 旧 scale → team に変換）
-                    team = proj.get("team")
-                    if not team and proj.get("scale"):
-                        team = {"total": proj["scale"], "members": []}
+                    team = _a(proj, "team", None)
+                    if not team and _a(proj, "scale", None):
+                        team = {"total": _a(proj, "scale"), "members": []}
                     if team:
-                        total = team.get("total", "")
-                        members = team.get("members", [])
+                        total = _a(team, "total")
+                        members = _a(team, "members", [])
                         member_strs = [
-                            f"{m.get('role', '')}:{m.get('count', 0)}"
+                            f"{_a(m, 'role')}:{_a(m, 'count', 0)}"
                             for m in members
-                            if m.get("role")
+                            if _a(m, "role")
                         ]
                         team_text = f"{total}名" if total else ""
                         if member_strs:
@@ -113,10 +120,10 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                             team_text += f"{sep}{' / '.join(member_strs)}{end}"
                         if team_text:
                             lines.append(field_line("体制", team_text))
-                    phases = proj.get("phases", [])
+                    phases = _a(proj, "phases", [])
                     if phases:
                         lines.append(field_line("工程", ", ".join(phases)))
-                    stacks = proj.get("technology_stacks", [])
+                    stacks = _a(proj, "technology_stacks", [])
                     if stacks:
                         cat_labels = {
                             "language": "言語",
@@ -128,10 +135,10 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                         }
                         grouped: dict[str, list[str]] = {}
                         for st in stacks:
-                            cat = st.get("category", "")
+                            cat = _a(st, "category")
                             if cat not in grouped:
                                 grouped[cat] = []
-                            grouped[cat].append(st.get("name", ""))
+                            grouped[cat].append(_a(st, "name"))
                         parts = [
                             f"{cat_labels.get(c, c)}: {', '.join(ns)}" for c, ns in grouped.items()
                         ]

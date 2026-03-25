@@ -4,6 +4,13 @@ from ..templates import rirekisho_template as tpl
 from ..utils.markdown_utils import field_line
 
 
+def _a(obj, key, default=""):
+    """dict / ORM オブジェクト両対応の属性アクセス"""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 def build_rirekisho_markdown(payload: dict[str, Any]) -> str:
     lines: list[str] = []
     lines.append(tpl.TITLE)
@@ -49,7 +56,7 @@ def build_rirekisho_markdown(payload: dict[str, Any]) -> str:
         lines.append(tpl.SECTION_EDUCATION)
         lines.append("")
         for edu in educations:
-            lines.append(f"- {edu.get('date', '')} {edu.get('name', '')}")
+            lines.append(f"- {_a(edu, 'date')} {_a(edu, 'name')}")
         lines.append("")
 
     work_histories = payload.get("work_histories", [])
@@ -57,7 +64,7 @@ def build_rirekisho_markdown(payload: dict[str, Any]) -> str:
         lines.append(tpl.SECTION_WORK_HISTORY)
         lines.append("")
         for wh in work_histories:
-            lines.append(f"- {wh.get('date', '')} {wh.get('name', '')}")
+            lines.append(f"- {_a(wh, 'date')} {_a(wh, 'name')}")
         lines.append("")
 
     qualifications = payload.get("qualifications", [])
@@ -65,8 +72,8 @@ def build_rirekisho_markdown(payload: dict[str, Any]) -> str:
         lines.append(tpl.SECTION_QUALIFICATIONS)
         lines.append("")
         for q in qualifications:
-            name = q.get("name", "")
-            date = q.get("acquired_date", "")
+            name = _a(q, "name")
+            date = _a(q, "acquired_date")
             lines.append(f"- {name} ({date}取得)")
         lines.append("")
 

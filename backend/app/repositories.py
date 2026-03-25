@@ -106,6 +106,15 @@ class SingleUserDocumentRepository:
         self.db.commit()
         return self.get_by_id(entity.id)
 
+    def delete(self) -> bool:
+        """ドキュメントを削除する。CASCADE により子テーブルも削除される。"""
+        entity = self.get_current()
+        if not entity:
+            return False
+        self.db.delete(entity)
+        self.db.commit()
+        return True
+
     def _apply_payload(self, entity: Any, payload: dict[str, Any]) -> None:
         raise NotImplementedError
 
