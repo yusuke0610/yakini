@@ -129,6 +129,14 @@ class Project(BaseModel):
             data["team"] = {"total": str(scale) if scale else "", "members": []}
         return data
 
+    @model_validator(mode="after")
+    def validate_date_range(self) -> "Project":
+        """終了日が開始日より前でないことを検証する。"""
+        if self.start_date and self.end_date and not self.is_current:
+            if self.end_date < self.start_date:
+                raise ValueError(get_error("validation.date_range_invalid"))
+        return self
+
 
 class Client(BaseModel):
     """ユーザ（常駐先/クライアント企業）。"""
@@ -163,11 +171,14 @@ class Experience(BaseModel):
 
     @model_validator(mode="after")
     def validate_end_date(self) -> "Experience":
+        """終了日の必須チェックと日付範囲の検証を行う。"""
         if self.is_current:
             self.end_date = None
             return self
         if not self.end_date or not self.end_date.strip():
             raise ValueError(get_error("validation.end_date_required"))
+        if self.start_date and self.end_date < self.start_date:
+            raise ValueError(get_error("validation.date_range_invalid"))
         return self
 
 

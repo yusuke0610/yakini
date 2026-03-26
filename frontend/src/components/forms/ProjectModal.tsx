@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { CareerProjectForm } from "../../payloadBuilders";
+import { validateDateRange } from "../../payloadBuilders";
 import type { CareerTechnologyStack, CareerTechnologyStackCategory } from "../../types";
 import type { CareerProjectFieldKey } from "../../formTypes";
 import {
@@ -141,13 +142,15 @@ export function ProjectModal({
     });
   };
 
+  const dateError = validateDateRange(local.start_date, local.end_date, local.is_current);
+
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <span>{project ? "プロジェクト編集" : "プロジェクト追加"}</span>
           <div className={styles.headerActions}>
-            <button type="button" className="primary" onClick={() => onSave(local)}>
+            <button type="button" className="primary" onClick={() => onSave(local)} disabled={!!dateError}>
               保存
             </button>
             <button type="button" onClick={onClose}>
@@ -197,6 +200,11 @@ export function ProjectModal({
               </label>
             )}
           </div>
+          {dateError && (
+            <p style={{ margin: 0, color: "var(--error)", fontSize: "0.85rem" }}>
+              {dateError}
+            </p>
+          )}
 
           <label>
             役割
