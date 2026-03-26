@@ -12,6 +12,7 @@ from slowapi.errors import RateLimitExceeded  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
 from .bootstrap import bootstrap  # noqa: E402
+from .csrf import CSRFMiddleware  # noqa: E402
 from .dependencies import limiter  # noqa: E402
 from .messages import get_error, load_messages  # noqa: E402
 from .routers import (  # noqa: E402
@@ -71,12 +72,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(CSRFMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
 
 app.include_router(health_router)

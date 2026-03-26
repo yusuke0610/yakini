@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..database import get_db
-from ..messages import get_error
+from ..messages import get_error, get_success
 from ..models import User
 from ..repositories import BasicInfoRepository, ResumeRepository
 from ..schemas import ResumeCreate, ResumeResponse, ResumeUpdate
@@ -82,6 +82,20 @@ def update_resume(
         )
 
     return repository.update(resume, payload.model_dump())
+
+
+@router.delete("")
+def delete_resume(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    repository = ResumeRepository(db, current_user.id)
+    if not repository.delete():
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
+    return {"message": get_success("document.deleted", document="職務経歴書")}
 
 
 @router.get("/{resume_id}/pdf")
