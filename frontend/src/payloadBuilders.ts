@@ -85,6 +85,13 @@ export function hasAnyText(values: Array<string | null | undefined>): boolean {
   return values.some((value) => Boolean(value?.trim()));
 }
 
+/** 終了日が開始日より前の場合にエラーメッセージを返す */
+export function validateDateRange(startDate: string, endDate: string, isCurrent: boolean): string | null {
+  if (isCurrent || !startDate || !endDate) return null;
+  if (endDate < startDate) return "開始日は終了日より前に設定してください。";
+  return null;
+}
+
 const HIRAGANA_RE = /^[ぁ-ゖー\s\u3000]+$/;
 
 export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
@@ -193,6 +200,16 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
     }
     if (!exp.is_current && !exp.end_date) {
       throw new Error("職務経歴の離職年月を入力するか、在職を選択してください。");
+    }
+    if (!exp.is_current && exp.start_date && exp.end_date && exp.end_date < exp.start_date) {
+      throw new Error("開始日は終了日より前に設定してください。");
+    }
+    for (const client of exp.clients) {
+      for (const proj of client.projects) {
+        if (!proj.is_current && proj.start_date && proj.end_date && proj.end_date < proj.start_date) {
+          throw new Error("開始日は終了日より前に設定してください。");
+        }
+      }
     }
   }
 

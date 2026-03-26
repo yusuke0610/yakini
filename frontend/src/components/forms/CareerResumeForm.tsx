@@ -12,7 +12,7 @@ import {
 } from "../../api";
 import { createInitialCareerForm, mapCareerResumeToForm } from "../../formMappers";
 import { useDocumentForm } from "../../hooks/useDocumentForm";
-import { buildCareerPayload } from "../../payloadBuilders";
+import { buildCareerPayload, validateDateRange } from "../../payloadBuilders";
 import type { CareerProjectForm } from "../../payloadBuilders";
 import {
   blankCareerClient,
@@ -411,6 +411,11 @@ export function CareerResumeForm() {
                       </label>
                     )}
                   </div>
+                  {validateDateRange(exp.start_date, exp.end_date, exp.is_current) && (
+                    <p className={shared.error} style={{ fontSize: "0.85rem" }}>
+                      {validateDateRange(exp.start_date, exp.end_date, exp.is_current)}
+                    </p>
+                  )}
 
                   <div className={shared.inline}>
                     <label>
