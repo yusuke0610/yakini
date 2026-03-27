@@ -8,27 +8,46 @@ paths:
 ```
 backend/app/
 ├── main.py              # FastAPI アプリ（lifespan で DB bootstrap）
+├── core/                # 設定・メッセージ・認証・暗号化などの横断基盤
+│   ├── settings.py
+│   ├── messages.py
+│   ├── logging_utils.py
+│   ├── date_utils.py
+│   ├── encryption.py
+│   └── security/
+│       ├── auth.py
+│       ├── csrf.py
+│       └── dependencies.py
+├── db/                  # DB接続・bootstrap・backup・seed・migration 補助
+│   ├── database.py
+│   ├── bootstrap.py
+│   ├── backup.py
+│   ├── migrations.py
+│   ├── seed.py
+│   └── sqlite_backup.py
 ├── routers/             # エンドポイント（auth, basic_info, resumes, rirekisho, blog, intelligence, admin, health, master_data）
-├── models.py            # SQLAlchemy 2.0 宣言的マッピング
-├── schemas.py           # Pydantic リクエスト/レスポンススキーマ
-├── repositories.py      # データアクセス層（UserRepository 等）
-├── database.py          # DB接続設定
-├── auth.py              # JWT + bcrypt + Cookie認証
-├── encryption.py        # Fernet フィールド暗号化
+├── models/              # SQLAlchemy 2.0 宣言的マッピング
+├── schemas/             # Pydantic リクエスト/レスポンススキーマ
+├── repositories/        # データアクセス層（UserRepository 等）
 ├── services/
-│   └── intelligence/
-│       ├── pipeline.py          # GitHub 分析パイプライン（オーケストレーター）
-│       ├── github_collector.py  # GitHub API からリポジトリ取得
-│       ├── skill_extractor.py   # 言語/トピックからスキル抽出
-│       ├── blog_collector.py    # Zenn/note 記事収集
-│       ├── llm_summarizer.py    # LLM による AI 要約
-│       ├── llm/
-│       │   ├── base.py          # LLMClient 抽象基底クラス（generate, check_available）
-│       │   ├── factory.py       # LLM_PROVIDER 環境変数でクライアント切替
-│       │   ├── ollama_client.py # ローカル LLM
-│       │   └── vertex_client.py # google-genai SDK（Vertex AI）
-│       ├── pdf/                 # WeasyPrint による PDF 生成
-│       └── markdown/            # Markdown テンプレート生成
-├── bootstrap.py         # 起動時 GCS → SQLite 復元
-└── backup.py            # SQLite → GCS バックアップ
+│   ├── blog/                    # ブログ収集・技術記事判定・スコア算出
+│   │   ├── collector.py
+│   │   ├── scorer.py
+│   │   └── tech_keywords.json
+│   ├── intelligence/           # GitHub 分析パイプラインと LLM 連携
+│   │   ├── pipeline.py
+│   │   ├── github_collector.py
+│   │   ├── llm_summarizer.py
+│   │   ├── response_mapper.py
+│   │   ├── position_scorer.py
+│   │   ├── skill_*.py
+│   │   └── llm/
+│   │       ├── base.py
+│   │       ├── factory.py
+│   │       ├── ollama_client.py
+│   │       └── vertex_client.py
+│   ├── markdown/                # Markdown テンプレート生成
+│   ├── pdf/                     # WeasyPrint による PDF 生成
+│   └── shared/                  # ドメイン横断の service util
+│       └── sort_utils.py
 ```

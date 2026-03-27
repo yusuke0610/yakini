@@ -9,7 +9,6 @@ def _to_date(value: Any) -> date | None:
     if isinstance(value, date):
         return value
     if isinstance(value, str) and value:
-        # "YYYY-MM" → "YYYY-MM-01"
         if len(value) == 7 and value[4] == "-":
             return date.fromisoformat(f"{value}-01")
         return date.fromisoformat(value)
@@ -36,6 +35,7 @@ def sort_by_period_desc(
     items は dict または ORM オブジェクト（属性アクセス）に対応する。
     日付フィールドは date 型・str 型（YYYY-MM / YYYY-MM-DD）のいずれにも対応。
     """
+
     def sort_key(item: Any) -> tuple:
         end = _to_date(_get(item, end_key))
         start = _to_date(_get(item, start_key)) or date.min
@@ -54,11 +54,12 @@ def sort_by_date_desc(
     単一日付キーの降順でソートする（資格の取得日など）。
     日付が None の項目は最下位。安定ソート。
     """
+
     def sort_key(item: Any) -> tuple:
-        d = _to_date(_get(item, date_key))
-        if d is None:
+        item_date = _to_date(_get(item, date_key))
+        if item_date is None:
             return (1,)
-        return (0, date.max - d)
+        return (0, date.max - item_date)
 
     return sorted(items, key=sort_key)
 
@@ -71,10 +72,11 @@ def sort_by_date_asc(
     単一日付キーの昇順でソートする（履歴書の学歴・職歴など）。
     日付が None の項目は最下位。安定ソート。
     """
+
     def sort_key(item: Any) -> tuple:
-        d = _to_date(_get(item, date_key))
-        if d is None:
+        item_date = _to_date(_get(item, date_key))
+        if item_date is None:
             return (1,)
-        return (0, d)
+        return (0, item_date)
 
     return sorted(items, key=sort_key)

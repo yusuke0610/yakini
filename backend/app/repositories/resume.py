@@ -7,10 +7,10 @@ from ..models import (
     ResumeExperience,
     ResumeProject,
     ResumeProjectPhase,
-    ResumeProjectTechnologyStack,
     ResumeProjectTeamMember,
+    ResumeProjectTechnologyStack,
 )
-from ..services.sort_utils import sort_by_period_desc
+from ..services.shared.sort_utils import sort_by_period_desc
 from .base import SingleUserDocumentRepository
 
 

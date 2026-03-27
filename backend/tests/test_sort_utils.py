@@ -1,6 +1,6 @@
 from datetime import date
 
-from app.services.sort_utils import sort_by_date_asc, sort_by_date_desc, sort_by_period_desc
+from app.services.shared.sort_utils import sort_by_date_asc, sort_by_date_desc, sort_by_period_desc
 
 
 def _exp(start: str, end: str | None = None) -> dict:

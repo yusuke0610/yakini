@@ -3,7 +3,6 @@ from fastapi.testclient import TestClient
 
 from conftest import auth_header
 
-
 # ── Auth: Register ──────────────────────────────────────────────
 
 

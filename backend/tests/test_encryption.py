@@ -1,7 +1,6 @@
 """暗号化ユーティリティのユニットテスト。"""
 
 import pytest
-
 from app.core.encryption import decrypt_field, encrypt_field
 
 

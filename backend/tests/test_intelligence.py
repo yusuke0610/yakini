@@ -4,28 +4,27 @@ Unit tests for the career intelligence services.
 Tests cover deterministic modules only (no GitHub API calls).
 """
 
-from fastapi.testclient import TestClient
-
-from conftest import auth_header
-from app.services.intelligence.github_collector import RepoData
-from app.services.intelligence.pipeline import IntelligenceResult
-from app.services.intelligence.response_mapper import map_pipeline_result
-from app.services.intelligence.skill_extractor import extract_skills
-from app.services.intelligence.skill_timeline_builder import (
-    build_timeline,
-    build_year_snapshots,
-)
-from app.services.intelligence.skill_growth_analyzer import (
-    GrowthTrend,
-    analyze_growth,
-)
 from app.services.intelligence.career_paths import (
     match_skills_to_roles,
 )
 from app.services.intelligence.career_predictor import predict_career
 from app.services.intelligence.career_simulator import simulate_careers
 from app.services.intelligence.confidence_scorer import score_path
+from app.services.intelligence.github_collector import RepoData
+from app.services.intelligence.pipeline import IntelligenceResult
+from app.services.intelligence.response_mapper import map_pipeline_result
+from app.services.intelligence.skill_extractor import extract_skills
+from app.services.intelligence.skill_growth_analyzer import (
+    GrowthTrend,
+    analyze_growth,
+)
+from app.services.intelligence.skill_timeline_builder import (
+    build_timeline,
+    build_year_snapshots,
+)
+from fastapi.testclient import TestClient
 
+from conftest import auth_header
 
 # ── Test Fixtures ───────────────────────────────────────────────────────
 

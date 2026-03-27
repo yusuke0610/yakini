@@ -5,10 +5,9 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-
+from app.services.intelligence.llm.factory import get_llm_client
 from app.services.intelligence.llm.ollama_client import OllamaClient
 from app.services.intelligence.llm.vertex_client import DEFAULT_VERTEX_MODEL, VertexClient
-from app.services.intelligence.llm.factory import get_llm_client
 
 
 def _run(coro):

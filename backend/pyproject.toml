@@ -1,0 +1,8 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["app", "tests", "alembic_migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]

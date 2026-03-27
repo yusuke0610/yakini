@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.date_utils import format_iso_date
 from ..db import Base
-from ..services.sort_utils import sort_by_date_desc
+from ..services.shared.sort_utils import sort_by_date_desc
 
 
 class BasicInfo(Base):
