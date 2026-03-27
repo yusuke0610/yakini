@@ -98,7 +98,7 @@ jobs:
       - name: Lint backend
         if: needs.detect-changes.outputs.app == 'true'
         working-directory: backend
-        run: flake8
+        run: python -m ruff check app tests alembic_migrations
 
       - name: Run backend tests
         if: needs.detect-changes.outputs.app == 'true'

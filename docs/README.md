@@ -166,14 +166,16 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth（任意） |
 | `LLM_PROVIDER` | `ollama` または `vertex` |
 | `OLLAMA_BASE_URL` | Ollama エンドポイント（デフォルト: `http://localhost:11434`） |
+| `OLLAMA_MODEL` | Ollama 利用時のモデル名（デフォルト: `qwen2.5:3b`） |
+| `OLLAMA_TIMEOUT` | Ollama 生成タイムアウト秒数（デフォルト: `600`） |
 | `VERTEX_PROJECT_ID` / `VERTEX_LOCATION` | Vertex AI 利用時の設定 |
-| `VERTEX_MODEL` | Vertex AI 利用時のモデル名（デフォルト: `gemini-2.5-flash`） |
+| `VERTEX_MODEL` | Vertex AI 利用時のモデル名（デフォルト: `gemini-2.5-flash-lite`） |
 | `VITE_API_BASE_URL` | フロントエンド→バックエンドURL（デフォルト: `http://localhost:8000`） |
 
 ## SQLite + GCSバックアップ/復元
 
 - **起動時**: GCS→ローカル復元 → Alembic `upgrade head` → アプリ起動（復元失敗時は空DBで起動）
-- **バックアップ**: `POST /admin/backup` または `python -m app.backup` を明示実行した時のみ
+- **バックアップ**: `POST /admin/backup` または `python -m app.db.backup` を明示実行した時のみ
 - **Cloud Run IAM**: `storage.objects.{get,create,list}`
 - **ローカルDB**: `backend/local.sqlite` はコミットしない。必要時に自動生成/再作成する
 
@@ -212,8 +214,8 @@ npm run build
 ### バックエンド
 ```bash
 cd backend
-.venv/bin/python -m flake8
-.venv/bin/python -m pytest -q
+.venv/bin/python -m ruff check app tests alembic_migrations
+.venv/bin/python -m pytest -q tests
 ```
 
 ## CI (GitHub Actions)
@@ -221,10 +223,10 @@ cd backend
 - 実行タイミング:
   - `pull_request` (target: `dev` / `stg` / `main`)
   - `push` (`dev` / `stg` / `main`)
-- 実行内容:
+  - 実行内容:
   - `frontend/**` / `backend/**` / `.github/workflows/ci.yml` に変更がある場合:
     - frontend: `npm run lint`, `npm run test`, `npm run build`
-    - backend: `flake8`, `python -m pytest -q tests` (working-directory: `backend`)
+    - backend: `ruff check app tests alembic_migrations`, `python -m pytest -q tests` (working-directory: `backend`)
   - 上記以外の変更のみの場合:
     - `test` ジョブは軽量な no-op で成功を返す
 - 低コスト運用の工夫:
@@ -236,7 +238,7 @@ cd backend
 
 ### アプリケーションCI（`.github/workflows/ci.yml`）
 - **実行タイミング**: `pull_request` / `push`（target: `main` / `dev`、`frontend/**` or `backend/**` 変更時）
-- **テスト**: frontend（lint, test, build）+ backend（flake8, pytest）
+- **テスト**: frontend（lint, test, build）+ backend（ruff, pytest）
 - **自動デプロイ**（`dev` ブランチ push 時のみ）:
   - フロントエンド → GCSバケットへアップロード
   - バックエンド → Artifact Registry へイメージ push → Cloud Run デプロイ

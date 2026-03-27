@@ -21,11 +21,11 @@ brew install ollama
 ## Qwen2.5 モデルのダウンロード
 
 ```bash
-# 7B パラメータモデル（推奨、約4.7GB）
-ollama pull qwen2.5:7b
-
-# 軽量版（3B、メモリが少ない場合）
+# 軽量版（既定、CPU 環境向け）
 ollama pull qwen2.5:3b
+
+# 7B パラメータモデル（品質優先、メモリに余裕がある場合）
+ollama pull qwen2.5:7b
 ```
 
 ## Ollama サーバーの起動
@@ -44,7 +44,7 @@ curl http://localhost:11434/api/tags
 
 # モデルの動作確認
 curl -s http://localhost:11434/api/generate -d '{
-  "model": "qwen2.5:7b",
+  "model": "qwen2.5:3b",
   "prompt": "Hello",
   "stream": false
 }' | python3 -m json.tool
@@ -57,7 +57,8 @@ curl -s http://localhost:11434/api/generate -d '{
 | 環境変数 | デフォルト値 | 説明 |
 |---|---|---|
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama サーバーの URL |
-| `OLLAMA_MODEL` | `qwen2.5:7b` | 使用するモデル名 |
+| `OLLAMA_MODEL` | `qwen2.5:3b` | 使用するモデル名 |
+| `OLLAMA_TIMEOUT` | `600` | 生成リクエストのタイムアウト秒数 |
 
 ## トラブルシューティング
 
@@ -73,11 +74,11 @@ ollama serve 2>&1
 
 ### モデルのダウンロードが遅い
 
-Qwen2.5:7b は約 4.7GB です。ネットワーク環境によっては時間がかかります。
+Qwen2.5:3b は比較的軽量ですが、ネットワーク環境によっては時間がかかります。7B はさらに時間とメモリが必要です。
 
 ### メモリ不足
 
-7B モデルには約 8GB の RAM が必要です。メモリが不足する場合は 3B モデルを使用してください:
+7B モデルには約 8GB の RAM が必要です。CPU 環境では初回生成が遅くなりやすいため、通常は 3B を推奨します:
 
 ```bash
 ollama pull qwen2.5:3b
@@ -87,6 +88,7 @@ ollama pull qwen2.5:3b
 
 ```bash
 export OLLAMA_MODEL=qwen2.5:3b
+export OLLAMA_TIMEOUT=600
 ```
 
 ### DevForge で AI 要約が表示されない
@@ -94,6 +96,7 @@ export OLLAMA_MODEL=qwen2.5:3b
 1. `ollama serve` が起動しているか確認
 2. `curl http://localhost:11434/api/tags` で応答があるか確認
 3. 指定したモデルがダウンロード済みか確認
-4. バックエンドのログに `Ollama is not available` と出ていないか確認
+4. 初回生成だけ遅い場合は、軽量な `qwen2.5:3b` を使うか `OLLAMA_TIMEOUT` を増やす
+5. バックエンドのログにタイムアウトや接続失敗が出ていないか確認
 
 AI 要約は Ollama が利用できない場合、自動的にスキップされます（エラーにはなりません）。

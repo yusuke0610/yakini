@@ -1,6 +1,28 @@
 import { request } from "./client";
 import type { BlogAccount, BlogArticle } from "../types";
 
+export interface BlogScoreArticle {
+  id: string;
+  title: string;
+  url: string;
+  published_at: string | null;
+  likes_count: number;
+  tags: string[];
+  is_tech: boolean;
+}
+
+export interface BlogScoreResponse {
+  frequency_rank: string;
+  reaction_rank: string;
+  count_rank: string;
+  overall_rank: string;
+  tech_article_count: number;
+  total_article_count: number;
+  avg_monthly_posts: number;
+  avg_likes: number;
+  articles: BlogScoreArticle[];
+}
+
 /**
  * 連携アカウント一覧を取得する。
  */
@@ -70,4 +92,11 @@ export function summarizeBlogArticles(
  */
 export function getBlogSummaryCache(): Promise<{ summary: string; available: boolean }> {
   return request<{ summary: string; available: boolean }>("/api/blog/summary-cache");
+}
+
+/**
+ * ブログスコアリング結果を取得する。
+ */
+export function getBlogScore(): Promise<BlogScoreResponse> {
+  return request<BlogScoreResponse>("/api/blog/score");
 }

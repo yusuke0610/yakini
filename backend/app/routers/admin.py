@@ -2,9 +2,9 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from ..dependencies import verify_admin_token
-from ..messages import get_error
-from ..services.sqlite_backup import backup_sqlite_to_gcs
+from ..core.messages import get_error
+from ..core.security.dependencies import verify_admin_token
+from ..db.sqlite_backup import backup_sqlite_to_gcs
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

@@ -1,19 +1,18 @@
 import os
-
-import pytest
-from jose import jwt
 from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
-from conftest import auth_header, _test_public_key
-from app.auth import (
+import pytest
+from app.core.security.auth import (
     create_access_token,
     create_refresh_token,
     hash_password,
     verify_password,
 )
-from app.settings import get_cookie_samesite, get_cookie_secure
+from app.core.settings import get_cookie_samesite, get_cookie_secure
+from jose import jwt
 
+from conftest import _test_public_key, auth_header
 
 # ── パスワードハッシュ ────────────────────────────────────────────
 
@@ -407,5 +406,5 @@ def test_logout_clears_cookies(client) -> None:
     assert response.status_code == 401
 
 
-# 使用しない環境変数を参照するだけのプレースホルダー（flake8 対策）
+# 使用しない環境変数を参照するだけのプレースホルダー（lint 対策）
 _ = os.environ

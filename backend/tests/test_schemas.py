@@ -1,6 +1,4 @@
 import pytest
-from pydantic import ValidationError
-
 from app.schemas import (
     BlogSummaryRequest,
     Experience,
@@ -8,6 +6,7 @@ from app.schemas import (
     ResumeCreate,
     RirekishoCreate,
 )
+from pydantic import ValidationError
 
 
 def experience_payload() -> dict:
@@ -146,6 +145,98 @@ def test_rirekisho_allows_empty_motivation() -> None:
 
     rirekisho = RirekishoCreate(**payload)
     assert rirekisho.motivation == ""
+
+
+def test_experience_end_date_before_start_date_is_rejected() -> None:
+    """経歴: 終了日が開始日より前の場合は422エラーとなること。"""
+    payload = experience_payload()
+    payload["start_date"] = "2024-04"
+    payload["end_date"] = "2021-03"
+    payload["is_current"] = False
+
+    with pytest.raises(ValidationError, match="開始日は終了日より前"):
+        Experience(**payload)
+
+
+def test_experience_end_date_equals_start_date_is_accepted() -> None:
+    """経歴: 終了日 = 開始日は正常に保存されること。"""
+    payload = experience_payload()
+    payload["start_date"] = "2024-04"
+    payload["end_date"] = "2024-04"
+    payload["is_current"] = False
+
+    exp = Experience(**payload)
+    assert exp.start_date == "2024-04"
+    assert exp.end_date == "2024-04"
+
+
+def test_experience_end_date_after_start_date_is_accepted() -> None:
+    """経歴: 終了日 > 開始日は正常に保存されること。"""
+    payload = experience_payload()
+    payload["start_date"] = "2021-04"
+    payload["end_date"] = "2024-03"
+    payload["is_current"] = False
+
+    exp = Experience(**payload)
+    assert exp.start_date == "2021-04"
+    assert exp.end_date == "2024-03"
+
+
+def test_experience_null_end_date_is_accepted() -> None:
+    """経歴: 終了日がNULL（在職中）は正常に保存されること。"""
+    payload = experience_payload()
+    payload["is_current"] = True
+    payload["end_date"] = "2024-03"
+
+    exp = Experience(**payload)
+    assert exp.end_date is None
+
+
+def test_project_end_date_before_start_date_is_rejected() -> None:
+    """プロジェクト: 終了日が開始日より前の場合はエラーとなること。"""
+    with pytest.raises(ValidationError, match="開始日は終了日より前"):
+        Project(
+            name="テスト",
+            start_date="2024-04",
+            end_date="2021-03",
+            is_current=False,
+            technology_stacks=[],
+        )
+
+
+def test_project_end_date_equals_start_date_is_accepted() -> None:
+    """プロジェクト: 終了日 = 開始日は正常に保存されること。"""
+    proj = Project(
+        name="テスト",
+        start_date="2024-04",
+        end_date="2024-04",
+        is_current=False,
+        technology_stacks=[],
+    )
+    assert proj.end_date == "2024-04"
+
+
+def test_project_end_date_after_start_date_is_accepted() -> None:
+    """プロジェクト: 終了日 > 開始日は正常に保存されること。"""
+    proj = Project(
+        name="テスト",
+        start_date="2021-04",
+        end_date="2024-03",
+        is_current=False,
+        technology_stacks=[],
+    )
+    assert proj.end_date == "2024-03"
+
+
+def test_project_null_end_date_is_accepted() -> None:
+    """プロジェクト: 終了日が空（参画中）は正常に保存されること。"""
+    proj = Project(
+        name="テスト",
+        start_date="2021-04",
+        is_current=True,
+        technology_stacks=[],
+    )
+    assert proj.end_date == ""
 
 
 def test_blog_summary_request_limits_article_count() -> None:

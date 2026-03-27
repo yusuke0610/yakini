@@ -11,6 +11,7 @@ import {
 import type { BlogAccount, BlogArticle } from "../../types";
 import { ZennIcon } from "../icons/ZennIcon";
 import { NoteIcon } from "../icons/NoteIcon";
+import { BlogScoreCard } from "./BlogScoreCard";
 import shared from "../../styles/shared.module.css";
 import styles from "./BlogPage.module.css";
 
@@ -298,6 +299,9 @@ export function BlogPage() {
             })}
           </div>
         </div>
+
+        {/* ブログスコア */}
+        {articles.length > 0 && <BlogScoreCard />}
 
         {/* 記事一覧 */}
         {accounts.length > 0 && (
