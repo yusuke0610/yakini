@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import {
   analyzeGitHub,
   getAnalysisCache,
-  summarizeAnalysis,
   type AnalysisResponse,
 } from "../../api";
 import { SkillTimelineChart } from "../SkillTimelineChart";
 import { LanguageBar } from "./LanguageBar";
+import { PositionRadarChart } from "./PositionRadarChart";
 import shared from "../../styles/shared.module.css";
 import styles from "./GitHubAnalysisPage.module.css";
 
@@ -15,7 +15,7 @@ type Phase = "loading-cache" | "input" | "loading" | "result";
 /**
  * GitHub 分析結果を表示するダッシュボードコンポーネント。
  * 初回表示時にDBキャッシュを読み込み、保存済みの結果があればそのまま表示する。
- * 「再分析」ボタン押下時のみ LLM を再起動する。
+ * 「再分析」ボタン押下時のみパイプラインを再実行する。
  */
 export function GitHubAnalysisPage() {
   const [phase, setPhase] = useState<Phase>("loading-cache");
@@ -24,9 +24,8 @@ export function GitHubAnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResponse | null>(null);
 
-  // AI 要約
-  const [summary, setSummary] = useState<string | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(false);
+  // ポジションアドバイス（現状分析+学習アドバイス）
+  const [positionAdvice, setPositionAdvice] = useState<string | null>(null);
 
   /**
    * 初回マウント時にDBキャッシュを読み込む。
@@ -38,7 +37,7 @@ export function GitHubAnalysisPage() {
         if (cancelled) return;
         if (cache.analysis_result) {
           setResult(cache.analysis_result);
-          setSummary(cache.ai_summary ?? null);
+          setPositionAdvice(cache.position_advice ?? null);
           setPhase("result");
         } else {
           setPhase("input");
@@ -56,13 +55,12 @@ export function GitHubAnalysisPage() {
   const handleAnalyze = async () => {
     setError(null);
     setPhase("loading");
-    setSummary(null);
+    setPositionAdvice(null);
     try {
       const data = await analyzeGitHub({
         include_forks: includeForks,
       });
       setResult(data);
-      setSummaryLoading(true);
       setPhase("result");
     } catch (e) {
       setError(e instanceof Error ? e.message : "分析に失敗しました");
@@ -71,36 +69,12 @@ export function GitHubAnalysisPage() {
   };
 
   /**
-   * 再分析後、AI 要約がまだない場合に取得する。
-   */
-  useEffect(() => {
-    if (!result || summary) return;
-    if (!summaryLoading) return;
-    let cancelled = false;
-    summarizeAnalysis(result)
-      .then((res) => {
-        if (!cancelled && res.available) {
-          setSummary(res.summary);
-        } else if (!cancelled) {
-          setError("AI要約を生成できませんでした。LLM 設定を確認してください。");
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setSummaryLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [result, summary, summaryLoading]);
-
-  /**
    * 入力画面に戻ります（再分析用）。
    */
   const handleBack = () => {
     setPhase("input");
     setResult(null);
-    setSummary(null);
+    setPositionAdvice(null);
   };
 
   // ── フェーズ: キャッシュ読み込み中 ──────────────────────────────
@@ -212,15 +186,14 @@ export function GitHubAnalysisPage() {
           </div>
         )}
 
-        {/* AI 要約 */}
-        {(summaryLoading || summary) && (
+        {/* ポジションスコア */}
+        {result.position_scores && (
           <div className={styles.section}>
-            <h2>AI要約</h2>
-            {summaryLoading ? (
-              <p className={styles.summaryLoading}>要約を生成中...</p>
-            ) : (
-              <p className={styles.summaryText}>{summary}</p>
-            )}
+            <h2>Position Score</h2>
+            <PositionRadarChart
+              scores={result.position_scores}
+              cachedAdvice={positionAdvice}
+            />
           </div>
         )}
 

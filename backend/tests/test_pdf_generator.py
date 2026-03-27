@@ -4,7 +4,11 @@ from app.services.pdf.generators.resume_generator import build_resume_pdf
 from app.services.pdf.generators.rirekisho_generator import build_rirekisho_pdf
 from app.services.pdf.utils.pdf_utils import (
     decode_photo as _decode_photo,
+)
+from app.services.pdf.utils.pdf_utils import (
     format_period as _format_period,
+)
+from app.services.pdf.utils.pdf_utils import (
     parse_date_ym as _parse_date_ym,
 )
 

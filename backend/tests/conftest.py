@@ -1,14 +1,7 @@
 import os
 
 import pytest
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.database import Base, get_db
+from app.db import Base, get_db
 from app.models import (  # noqa: F401 — ensure models registered
     BasicInfo,
     BlogAccount,
@@ -20,6 +13,12 @@ from app.models import (  # noqa: F401 — ensure models registered
     Rirekisho,
     User,
 )
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 
 def _generate_test_rsa_keys() -> tuple[str, str]:

@@ -5,10 +5,9 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-
+from app.services.intelligence.llm.factory import get_llm_client
 from app.services.intelligence.llm.ollama_client import OllamaClient
 from app.services.intelligence.llm.vertex_client import DEFAULT_VERTEX_MODEL, VertexClient
-from app.services.intelligence.llm.factory import get_llm_client
 
 
 def _run(coro):
@@ -86,6 +85,19 @@ def test_ollama_check_available_timeout():
         mock_cls.return_value = mock_http
 
         assert _run(client.check_available()) is False
+
+
+def test_ollama_uses_lightweight_defaults():
+    """既定では軽量モデルと長めのタイムアウトを使う。"""
+    env = os.environ.copy()
+    env.pop("OLLAMA_MODEL", None)
+    env.pop("OLLAMA_TIMEOUT", None)
+
+    with patch.dict(os.environ, env, clear=True):
+        client = OllamaClient()
+
+    assert client.model == "qwen2.5:3b"
+    assert client.timeout == 600.0
 
 
 # ---------- VertexClient ----------

@@ -3,9 +3,9 @@ from typing import Callable
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ..database import get_db
-from ..dependencies import verify_admin_token
-from ..messages import get_error
+from ..core.messages import get_error
+from ..core.security.dependencies import verify_admin_token
+from ..db import get_db
 from ..repositories import (
     BaseMasterRepository,
     MPrefectureRepository,
