@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from ..auth import get_current_user
-from ..database import get_db
-from ..messages import get_error, get_success
+from ..core.messages import get_error, get_success
+from ..core.security.auth import get_current_user
+from ..db import get_db
 from ..models import User
 from ..repositories import BasicInfoRepository, ResumeRepository
 from ..schemas import ResumeCreate, ResumeResponse, ResumeUpdate

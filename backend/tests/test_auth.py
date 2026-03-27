@@ -6,13 +6,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
 from conftest import auth_header, _test_public_key
-from app.auth import (
+from app.core.security.auth import (
     create_access_token,
     create_refresh_token,
     hash_password,
     verify_password,
 )
-from app.settings import get_cookie_samesite, get_cookie_secure
+from app.core.settings import get_cookie_samesite, get_cookie_secure
 
 
 # ── パスワードハッシュ ────────────────────────────────────────────

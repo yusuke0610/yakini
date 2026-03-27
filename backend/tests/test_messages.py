@@ -1,4 +1,4 @@
-from app.messages import get_error, get_success, load_messages
+from app.core.messages import get_error, get_success, load_messages
 
 
 def test_get_error_returns_message_by_key() -> None:

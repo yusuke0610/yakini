@@ -4,8 +4,8 @@ from fastapi import Header, HTTPException, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from .messages import get_error
-from .settings import get_admin_token
+from ..messages import get_error
+from ..settings import get_admin_token
 
 limiter = Limiter(key_func=get_remote_address)
 

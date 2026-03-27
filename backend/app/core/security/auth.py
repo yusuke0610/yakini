@@ -5,10 +5,10 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from .database import get_db
-from .messages import get_error
-from .models import User
-from .settings import get_jwt_private_key, get_jwt_public_key
+from ...db import get_db
+from ...models import User
+from ..messages import get_error
+from ..settings import get_jwt_private_key, get_jwt_public_key
 
 # アクセストークン Cookie 名（後方互換性のため公開）
 _COOKIE_NAME = "access_token"
@@ -101,7 +101,7 @@ def get_current_user(
             detail=get_error("auth.invalid_token"),
         )
 
-    from .repositories import UserRepository
+    from ...repositories import UserRepository
 
     user = UserRepository(db).get_by_username(username)
     if not user:

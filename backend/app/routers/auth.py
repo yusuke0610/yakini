@@ -13,7 +13,10 @@ from fastapi import (
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from ..auth import (
+from ..core.encryption import encrypt_field
+from ..core.logging_utils import log_event
+from ..core.messages import get_error
+from ..core.security.auth import (
     _COOKIE_MAX_AGE,
     _COOKIE_NAME,
     _REFRESH_COOKIE_MAX_AGE,
@@ -25,25 +28,22 @@ from ..auth import (
     verify_password,
     verify_refresh_token,
 )
-from ..csrf import CSRF_COOKIE_NAME, set_csrf_cookie
-from ..database import get_db
-from ..dependencies import limiter
-from ..encryption import encrypt_field
-from ..logging_utils import log_event
-from ..messages import get_error
+from ..core.security.csrf import CSRF_COOKIE_NAME, set_csrf_cookie
+from ..core.security.dependencies import limiter
+from ..core.settings import (
+    get_cookie_samesite,
+    get_cookie_secure,
+    get_cors_origins,
+    get_github_client_id,
+    get_github_client_secret,
+)
+from ..db import get_db
 from ..repositories import UserRepository
 from ..schemas import (
     GitHubCallbackRequest,
     LoginRequest,
     RegisterRequest,
     TokenResponse,
-)
-from ..settings import (
-    get_cookie_samesite,
-    get_cookie_secure,
-    get_cors_origins,
-    get_github_client_id,
-    get_github_client_secret,
 )
 
 _GITHUB_OAUTH_STATE_COOKIE = "github_oauth_state"

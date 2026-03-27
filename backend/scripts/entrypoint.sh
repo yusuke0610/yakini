@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-python -m app.bootstrap
+python -m app.db.bootstrap
 export APP_BOOTSTRAPPED=1
 
 # Pull Ollama model in background if OLLAMA_BASE_URL is set

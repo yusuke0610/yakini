@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.encryption import decrypt_field, encrypt_field
+from app.core.encryption import decrypt_field, encrypt_field
 
 
 def test_encrypt_decrypt_roundtrip() -> None:
