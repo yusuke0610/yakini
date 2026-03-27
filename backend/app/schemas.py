@@ -311,6 +311,32 @@ class BlogSummaryResponse(BaseModel):
     available: bool
 
 
+class BlogScoreArticleResponse(BaseModel):
+    """技術記事判定結果付きの記事情報。"""
+
+    id: str
+    title: str
+    url: str
+    published_at: str | None = None
+    likes_count: int = 0
+    tags: list[str] = Field(default_factory=list)
+    is_tech: bool = False
+
+
+class BlogScoreResponse(BaseModel):
+    """ブログスコアリング結果のレスポンス。"""
+
+    frequency_rank: str = Field("E", description="投稿頻度ランク (S-E)")
+    reaction_rank: str = Field("E", description="反応ランク (S-E)")
+    count_rank: str = Field("E", description="記事数ランク (S-E)")
+    overall_rank: str = Field("E", description="総合ランク (S-E)")
+    tech_article_count: int = 0
+    total_article_count: int = 0
+    avg_monthly_posts: float = 0.0
+    avg_likes: float = 0.0
+    articles: list[BlogScoreArticleResponse] = Field(default_factory=list)
+
+
 class MasterItem(BaseModel):
     """マスタデータ共通レスポンス（資格・都道府県）。"""
 

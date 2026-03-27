@@ -32,6 +32,13 @@ async def fetch_zenn_articles(username: str) -> list[dict]:
 
             for item in data.get("articles", []):
                 slug = item.get("slug", "")
+                # トピック名を抽出（Zenn API の topics フィールド）
+                topics = item.get("topics", [])
+                tag_names = [
+                    t.get("display_name") or t.get("name", "")
+                    for t in topics
+                    if isinstance(t, dict)
+                ]
                 articles.append(
                     {
                         "platform": "zenn",
@@ -43,7 +50,7 @@ async def fetch_zenn_articles(username: str) -> list[dict]:
                         ),
                         "likes_count": item.get("liked_count", 0),
                         "summary": "",
-                        "tags": [],
+                        "tags": tag_names,
                     }
                 )
 
@@ -80,6 +87,9 @@ async def fetch_note_articles(username: str) -> list[dict]:
         # URLからexternal_idを抽出
         external_id = link.rstrip("/").split("/")[-1] if link else ""
 
+        # RSS の category 要素からタグを抽出
+        tags = [cat.text for cat in item.findall("category") if cat.text]
+
         articles.append(
             {
                 "platform": "note",
@@ -89,7 +99,7 @@ async def fetch_note_articles(username: str) -> list[dict]:
                 "published_at": published_at,
                 "likes_count": 0,
                 "summary": _strip_html(description)[:500] if description else "",
-                "tags": [],
+                "tags": tags,
             }
         )
 
