@@ -6,24 +6,21 @@
 
 import json
 import logging
-import os
 from dataclasses import dataclass, field
 from datetime import date
-from typing import List
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_KEYWORDS_PATH = os.path.join(os.path.dirname(__file__), "blog_tech_keywords.json")
+_KEYWORDS_PATH = Path(__file__).with_name("tech_keywords.json")
 
-with open(_KEYWORDS_PATH, encoding="utf-8") as _f:
-    _TECH_KEYWORDS: List[str] = json.load(_f)["keywords"]
+with _KEYWORDS_PATH.open(encoding="utf-8") as keywords_file:
+    _TECH_KEYWORDS: list[str] = json.load(keywords_file)["keywords"]
 
-# 大文字小文字を無視した比較用
-_TECH_KEYWORDS_LOWER = [k.lower() for k in _TECH_KEYWORDS]
+_TECH_KEYWORDS_LOWER = [keyword.lower() for keyword in _TECH_KEYWORDS]
 
-# ランク定義
 RANKS = ["E", "D", "C", "B", "A", "S"]
-RANK_VALUES = {r: i for i, r in enumerate(RANKS)}
+RANK_VALUES = {rank: i for i, rank in enumerate(RANKS)}
 
 
 @dataclass
@@ -35,7 +32,7 @@ class ArticleWithTechFlag:
     url: str
     published_at: str | None
     likes_count: int
-    tags: List[str]
+    tags: list[str]
     is_tech: bool
 
 
@@ -51,10 +48,10 @@ class BlogScore:
     total_article_count: int = 0
     avg_monthly_posts: float = 0.0
     avg_likes: float = 0.0
-    articles: List[ArticleWithTechFlag] = field(default_factory=list)
+    articles: list[ArticleWithTechFlag] = field(default_factory=list)
 
 
-def is_tech_article(tags: List[str]) -> bool:
+def is_tech_article(tags: list[str]) -> bool:
     """タグに技術系キーワードが含まれるか判定する。"""
     for tag in tags:
         tag_lower = tag.lower()
@@ -126,29 +123,26 @@ def _calc_overall_rank(freq: str, react: str, count: str) -> str:
 
 
 def calculate_blog_score(articles: list[dict]) -> BlogScore:
-    """
-    ブログ記事一覧からスコアリング結果を算出する。
+    """ブログ記事一覧からスコアリング結果を算出する。"""
+    scored_articles: list[ArticleWithTechFlag] = []
+    tech_articles: list[dict] = []
 
-    articles: BlogArticle のシリアライズ済みリスト
-              各要素に id, title, url, published_at, likes_count, tags が必要。
-    """
-    scored_articles: List[ArticleWithTechFlag] = []
-    tech_articles: List[dict] = []
-
-    for art in articles:
-        tags = art.get("tags", [])
+    for article in articles:
+        tags = article.get("tags", [])
         tech = is_tech_article(tags)
-        scored_articles.append(ArticleWithTechFlag(
-            id=art.get("id", ""),
-            title=art.get("title", ""),
-            url=art.get("url", ""),
-            published_at=art.get("published_at"),
-            likes_count=art.get("likes_count", 0),
-            tags=tags,
-            is_tech=tech,
-        ))
+        scored_articles.append(
+            ArticleWithTechFlag(
+                id=article.get("id", ""),
+                title=article.get("title", ""),
+                url=article.get("url", ""),
+                published_at=article.get("published_at"),
+                likes_count=article.get("likes_count", 0),
+                tags=tags,
+                is_tech=tech,
+            )
+        )
         if tech:
-            tech_articles.append(art)
+            tech_articles.append(article)
 
     total = len(articles)
     tech_count = len(tech_articles)
@@ -160,27 +154,22 @@ def calculate_blog_score(articles: list[dict]) -> BlogScore:
             articles=scored_articles,
         )
 
-    # 平均いいね数
-    total_likes = sum(a.get("likes_count", 0) for a in tech_articles)
+    total_likes = sum(article.get("likes_count", 0) for article in tech_articles)
     avg_likes = total_likes / tech_count
 
-    # 月間平均投稿数
     dates = []
-    for a in tech_articles:
-        pub = a.get("published_at")
-        if pub:
+    for article in tech_articles:
+        published_at = article.get("published_at")
+        if published_at:
             try:
-                dates.append(date.fromisoformat(pub))
-            except (ValueError, TypeError):
+                dates.append(date.fromisoformat(published_at))
+            except (TypeError, ValueError):
                 pass
 
     if dates:
         earliest = min(dates)
         today = date.today()
-        months = max(
-            (today.year - earliest.year) * 12 + (today.month - earliest.month),
-            1,
-        )
+        months = max((today.year - earliest.year) * 12 + (today.month - earliest.month), 1)
         avg_monthly = tech_count / months
     else:
         avg_monthly = 0.0
@@ -188,13 +177,12 @@ def calculate_blog_score(articles: list[dict]) -> BlogScore:
     freq_rank = _calc_frequency_rank(avg_monthly)
     react_rank = _calc_reaction_rank(avg_likes)
     count_rank = _calc_count_rank(tech_count)
-    overall = _calc_overall_rank(freq_rank, react_rank, count_rank)
 
     return BlogScore(
         frequency_rank=freq_rank,
         reaction_rank=react_rank,
         count_rank=count_rank,
-        overall_rank=overall,
+        overall_rank=_calc_overall_rank(freq_rank, react_rank, count_rank),
         tech_article_count=tech_count,
         total_article_count=total,
         avg_monthly_posts=round(avg_monthly, 2),

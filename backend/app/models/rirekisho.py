@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.date_utils import format_iso_date, format_year_month
 from ..db import Base
-from ..services.sort_utils import sort_by_date_asc
+from ..services.shared.sort_utils import sort_by_date_asc
 
 
 class Rirekisho(Base):

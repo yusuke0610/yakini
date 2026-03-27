@@ -1,6 +1,4 @@
 import pytest
-from pydantic import ValidationError
-
 from app.schemas import (
     BlogSummaryRequest,
     Experience,
@@ -8,6 +6,7 @@ from app.schemas import (
     ResumeCreate,
     RirekishoCreate,
 )
+from pydantic import ValidationError
 
 
 def experience_payload() -> dict:

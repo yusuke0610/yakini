@@ -32,7 +32,6 @@ async def fetch_zenn_articles(username: str) -> list[dict]:
 
             for item in data.get("articles", []):
                 slug = item.get("slug", "")
-                # トピック名を抽出（Zenn API の topics フィールド）
                 topics = item.get("topics", [])
                 tag_names = [
                     t.get("display_name") or t.get("name", "")
@@ -81,13 +80,8 @@ async def fetch_note_articles(username: str) -> list[dict]:
         pub_date = item.findtext("pubDate", "")
         description = item.findtext("description", "")
 
-        # pubDate を YYYY-MM-DD 形式に変換（例: "Sat, 01 Mar 2026 00:00:00 +0900"）
         published_at = _parse_rss_date(pub_date)
-
-        # URLからexternal_idを抽出
         external_id = link.rstrip("/").split("/")[-1] if link else ""
-
-        # RSS の category 要素からタグを抽出
         tags = [cat.text for cat in item.findall("category") if cat.text]
 
         articles.append(
@@ -131,12 +125,9 @@ async def verify_user_exists(platform: str, username: str) -> bool:
     try:
         if platform == "zenn":
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # ユーザー API で存在チェック
-                resp = await client.get(
-                    f"https://zenn.dev/api/users/{username}",
-                )
+                resp = await client.get(f"https://zenn.dev/api/users/{username}")
                 return resp.status_code == 200
-        elif platform == "note":
+        if platform == "note":
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(f"https://note.com/{username}/rss")
                 return resp.status_code == 200

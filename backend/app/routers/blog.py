@@ -12,7 +12,6 @@ POST   /api/blog/summarize         — AI サマリ生成
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from sqlalchemy.orm import Session
 
 from ..core.messages import get_error
@@ -30,13 +29,13 @@ from ..schemas import (
     BlogSummaryResponse,
     BlogSyncResponse,
 )
-from ..services.blog_collector import (
+from ..services.blog.collector import (
     BlogPlatformRequestError,
     UnsupportedBlogPlatformError,
     fetch_articles,
     verify_user_exists,
 )
-from ..services.blog_scorer import calculate_blog_score
+from ..services.blog.scorer import calculate_blog_score
 from ..services.intelligence.llm_summarizer import (
     check_llm_available,
     summarize_blog_articles,

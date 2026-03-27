@@ -2,7 +2,7 @@ from sqlalchemy.orm import selectinload
 
 from ..core.date_utils import parse_iso_date
 from ..models import BasicInfo, BasicInfoQualification
-from ..services.sort_utils import sort_by_date_desc
+from ..services.shared.sort_utils import sort_by_date_desc
 from .base import SingleUserDocumentRepository
 
 

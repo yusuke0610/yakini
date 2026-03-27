@@ -2,7 +2,6 @@ from fastapi.testclient import TestClient
 
 from conftest import auth_header
 
-
 # ── 職務経歴書の削除 ──────────────────────────────────────────
 
 

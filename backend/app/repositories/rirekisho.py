@@ -7,7 +7,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 from ..core.date_utils import parse_iso_date, parse_year_month
 from ..core.encryption import decrypt_field, encrypt_field
 from ..models import Rirekisho, RirekishoEducation, RirekishoWorkHistory
-from ..services.sort_utils import sort_by_date_asc
+from ..services.shared.sort_utils import sort_by_date_asc
 from .base import SingleUserDocumentRepository
 
 _ENCRYPTED_RIREKISHO_FIELDS = {"email", "phone", "postal_code", "address"}

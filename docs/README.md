@@ -214,8 +214,8 @@ npm run build
 ### バックエンド
 ```bash
 cd backend
-.venv/bin/python -m flake8
-.venv/bin/python -m pytest -q
+.venv/bin/python -m ruff check app tests alembic_migrations
+.venv/bin/python -m pytest -q tests
 ```
 
 ## CI (GitHub Actions)
@@ -223,10 +223,10 @@ cd backend
 - 実行タイミング:
   - `pull_request` (target: `dev` / `stg` / `main`)
   - `push` (`dev` / `stg` / `main`)
-- 実行内容:
+  - 実行内容:
   - `frontend/**` / `backend/**` / `.github/workflows/ci.yml` に変更がある場合:
     - frontend: `npm run lint`, `npm run test`, `npm run build`
-    - backend: `flake8`, `python -m pytest -q tests` (working-directory: `backend`)
+    - backend: `ruff check app tests alembic_migrations`, `python -m pytest -q tests` (working-directory: `backend`)
   - 上記以外の変更のみの場合:
     - `test` ジョブは軽量な no-op で成功を返す
 - 低コスト運用の工夫:
@@ -238,7 +238,7 @@ cd backend
 
 ### アプリケーションCI（`.github/workflows/ci.yml`）
 - **実行タイミング**: `pull_request` / `push`（target: `main` / `dev`、`frontend/**` or `backend/**` 変更時）
-- **テスト**: frontend（lint, test, build）+ backend（flake8, pytest）
+- **テスト**: frontend（lint, test, build）+ backend（ruff, pytest）
 - **自動デプロイ**（`dev` ブランチ push 時のみ）:
   - フロントエンド → GCSバケットへアップロード
   - バックエンド → Artifact Registry へイメージ push → Cloud Run デプロイ

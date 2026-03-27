@@ -16,7 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.date_utils import format_year_month
 from ..db import Base
-from ..services.sort_utils import sort_by_period_desc
+from ..services.shared.sort_utils import sort_by_period_desc
 
 
 class Resume(Base):

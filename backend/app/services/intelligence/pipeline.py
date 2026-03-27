@@ -13,10 +13,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from .github_collector import collect_repos, RepoData
+from .github_collector import RepoData, collect_repos
 from .position_scorer import PositionScores, calculate_position_scores
 from .skill_extractor import ExtractionResult, extract_skills
-
 
 logger = logging.getLogger(__name__)
 

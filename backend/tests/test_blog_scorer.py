@@ -1,6 +1,6 @@
 """ブログスコアリングのユニットテスト。"""
 
-from app.services.blog_scorer import (
+from app.services.blog.scorer import (
     calculate_blog_score,
     is_tech_article,
 )

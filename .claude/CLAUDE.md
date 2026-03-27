@@ -7,10 +7,10 @@
 - **エラーメッセージ**: HTTPException の `detail` 等、ユーザーに返すエラーメッセージはすべて**日本語**で記述すること。
 
 ### Python (backend)
-- flake8 に準拠すること
+- ruff に準拠すること
 - PEP8を守るな、PEP8を理解した上で抽象化しろ
-- flake8 の設定は `backend/setup.cfg` に定義済み
-- コード変更後は `cd backend && .venv/bin/python -m flake8` を実行し、違反がないことを確認すること
+- ruff の設定は `backend/pyproject.toml` に定義済み
+- コード変更後は `cd backend && .venv/bin/python -m ruff check app tests alembic_migrations` を実行し、違反がないことを確認すること
 - 未使用の import を残さないこと（F401）
 
 ### TypeScript/React (frontend)
@@ -23,7 +23,7 @@
 
 ```bash
 # backend
-cd backend && .venv/bin/python -m flake8 && .venv/bin/python -m pytest -q tests
+cd backend && .venv/bin/python -m ruff check app tests alembic_migrations && .venv/bin/python -m pytest -q tests
 
 # frontend
 cd frontend && npm run lint && npm test && npm run build

@@ -162,7 +162,7 @@ backend/app/
 
 ## 最低限の検証コマンド
 
-- `cd backend && PYTHONPATH=. .venv/bin/python -m flake8`
+- `cd backend && PYTHONPATH=. .venv/bin/python -m ruff check app tests alembic_migrations`
 - `cd backend && PYTHONPATH=. .venv/bin/python -m pytest -q tests`
 
 コード変更を含む場合は、少なくとも影響範囲のテストを回し、必要なら全件を回してください。
