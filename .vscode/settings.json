@@ -132,7 +132,10 @@
         "secretmanager",
         "dorny",
         "chdir",
-        "dedupe"
+        "dedupe",
+        "Qwen",
+        "genai",
+        "referer"
     ],
     "editor.linkedEditing": true,
     "html.autoClosingTags": true,

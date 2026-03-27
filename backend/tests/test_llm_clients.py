@@ -88,6 +88,19 @@ def test_ollama_check_available_timeout():
         assert _run(client.check_available()) is False
 
 
+def test_ollama_uses_lightweight_defaults():
+    """既定では軽量モデルと長めのタイムアウトを使う。"""
+    env = os.environ.copy()
+    env.pop("OLLAMA_MODEL", None)
+    env.pop("OLLAMA_TIMEOUT", None)
+
+    with patch.dict(os.environ, env, clear=True):
+        client = OllamaClient()
+
+    assert client.model == "qwen2.5:3b"
+    assert client.timeout == 600.0
+
+
 # ---------- VertexClient ----------
 
 
