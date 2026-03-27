@@ -137,6 +137,7 @@
         "genai",
         "referer"
     ],
+    "flake8.args": ["--max-line-length=100"],
     "editor.linkedEditing": true,
     "html.autoClosingTags": true,
     "js/ts.autoClosingTags.enabled": true,
