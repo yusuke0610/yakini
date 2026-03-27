@@ -3,7 +3,7 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from .settings import get_database_url
+from ..core.settings import get_database_url
 
 DATABASE_URL = get_database_url()
 

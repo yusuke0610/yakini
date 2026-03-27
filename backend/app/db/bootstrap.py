@@ -1,8 +1,8 @@
 import logging
 
-from .logging_utils import log_event
+from ..core.logging_utils import log_event
 from .migrations import run_migrations
-from .services.sqlite_backup import restore_sqlite_from_gcs_if_configured
+from .sqlite_backup import restore_sqlite_from_gcs_if_configured
 
 
 def bootstrap() -> None:

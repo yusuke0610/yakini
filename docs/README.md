@@ -175,7 +175,7 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 ## SQLite + GCSバックアップ/復元
 
 - **起動時**: GCS→ローカル復元 → Alembic `upgrade head` → アプリ起動（復元失敗時は空DBで起動）
-- **バックアップ**: `POST /admin/backup` または `python -m app.backup` を明示実行した時のみ
+- **バックアップ**: `POST /admin/backup` または `python -m app.db.backup` を明示実行した時のみ
 - **Cloud Run IAM**: `storage.objects.{get,create,list}`
 - **ローカルDB**: `backend/local.sqlite` はコミットしない。必要時に自動生成/再作成する
 

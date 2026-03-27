@@ -3,13 +3,13 @@ from pathlib import Path
 from typing import Any
 
 _messages: dict[str, Any] = {}
+_MESSAGES_PATH = Path(__file__).resolve().parents[1] / "messages.json"
 
 
 def load_messages() -> None:
     """起動時にメッセージ定義を読み込む。"""
     global _messages
-    path = Path(__file__).parent / "messages.json"
-    with path.open(encoding="utf-8") as file:
+    with _MESSAGES_PATH.open(encoding="utf-8") as file:
         _messages = json.load(file)
 
 
@@ -38,9 +38,5 @@ def get_error(key: str, **kwargs: str) -> str:
 
 
 def get_success(key: str, **kwargs: str) -> str:
-    """正常系メッセージを取得する。
-
-    現在はバックエンドのレスポンスに成功メッセージを含めていないため
-    未使用だが、将来 API レスポンスに成功メッセージを含める際に使用する。
-    """
+    """正常系メッセージを取得する。"""
     return _get_message("success", key, **kwargs)

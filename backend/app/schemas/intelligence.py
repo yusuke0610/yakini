@@ -5,17 +5,11 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
-# ── リクエスト ─────────────────────────────────────────────────────────────
-
-
 class AnalyzeRequest(BaseModel):
     include_forks: bool = Field(
         False,
         description="分析にフォークしたリポジトリを含めるかどうか",
     )
-
-
-# ── 全分析レスポンス ──────────────────────────────────────────────
 
 
 class PositionScoresResponse(BaseModel):
@@ -47,9 +41,6 @@ class AnalysisResponse(BaseModel):
     )
 
 
-# ── スキルアクティビティ ─────────────────────────────────────────────────────
-
-
 class SkillTimelinePoint(BaseModel):
     period: str
     activity: float
@@ -64,17 +55,11 @@ class SkillActivityResponse(BaseModel):
     skills: List[SkillActivityItem]
 
 
-# ── 学習アドバイス ──────────────────────────────────────────────
-
-
 class PositionAdviceResponse(BaseModel):
     """現状分析+学習アドバイス。"""
 
     advice: str = Field("", description="LLM による現状分析と学習アドバイス")
     available: bool = Field(True, description="LLM サービスが利用可能かどうか")
-
-
-# ── キャッシュ取得レスポンス ──────────────────────────────────────
 
 
 class CachedAnalysisResponse(BaseModel):

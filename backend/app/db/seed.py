@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import Session
 
-from .repositories import (
+from ..repositories import (
     MPrefectureRepository,
     MQualificationRepository,
     MTechnologyStackRepository,
@@ -39,7 +39,6 @@ _QUALIFICATIONS = [
 
 # 技術スタックマスタ（カテゴリ付き）
 _TECHNOLOGY_STACKS = [
-    # 言語
     {"category": "language", "name": "Python", "sort_order": 1},
     {"category": "language", "name": "JavaScript", "sort_order": 2},
     {"category": "language", "name": "TypeScript", "sort_order": 3},
@@ -59,7 +58,6 @@ _TECHNOLOGY_STACKS = [
     {"category": "language", "name": "HTML", "sort_order": 17},
     {"category": "language", "name": "CSS", "sort_order": 18},
     {"category": "language", "name": "Bash", "sort_order": 19},
-    # フレームワーク
     {"category": "framework", "name": "React", "sort_order": 20},
     {"category": "framework", "name": "Vue.js", "sort_order": 21},
     {"category": "framework", "name": "Angular", "sort_order": 22},
@@ -74,11 +72,9 @@ _TECHNOLOGY_STACKS = [
     {"category": "framework", "name": "Ruby on Rails", "sort_order": 31},
     {"category": "framework", "name": "Laravel", "sort_order": 32},
     {"category": "framework", "name": ".NET", "sort_order": 33},
-    # OS
     {"category": "os", "name": "Linux", "sort_order": 34},
     {"category": "os", "name": "Windows Server", "sort_order": 35},
     {"category": "os", "name": "macOS", "sort_order": 36},
-    # DB
     {"category": "db", "name": "PostgreSQL", "sort_order": 37},
     {"category": "db", "name": "MySQL", "sort_order": 38},
     {"category": "db", "name": "SQLite", "sort_order": 39},
@@ -87,7 +83,6 @@ _TECHNOLOGY_STACKS = [
     {"category": "db", "name": "DynamoDB", "sort_order": 42},
     {"category": "db", "name": "Oracle Database", "sort_order": 43},
     {"category": "db", "name": "SQL Server", "sort_order": 44},
-    # クラウドリソース
     {"category": "cloud_resource", "name": "AWS", "sort_order": 45},
     {"category": "cloud_resource", "name": "Google Cloud", "sort_order": 46},
     {"category": "cloud_resource", "name": "Azure", "sort_order": 47},
@@ -95,7 +90,6 @@ _TECHNOLOGY_STACKS = [
     {"category": "cloud_resource", "name": "Kubernetes", "sort_order": 49},
     {"category": "cloud_resource", "name": "Terraform", "sort_order": 50},
     {"category": "cloud_resource", "name": "Ansible", "sort_order": 51},
-    # 開発支援ツール
     {"category": "dev_tool", "name": "Git", "sort_order": 52},
     {"category": "dev_tool", "name": "GitHub", "sort_order": 53},
     {"category": "dev_tool", "name": "GitLab", "sort_order": 54},

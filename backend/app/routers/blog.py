@@ -15,10 +15,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from sqlalchemy.orm import Session
 
-from ..auth import get_current_user
-from ..database import get_db
-from ..dependencies import limiter
-from ..messages import get_error
+from ..core.messages import get_error
+from ..core.security.auth import get_current_user
+from ..core.security.dependencies import limiter
+from ..db import get_db
 from ..models import BlogSummaryCache, User
 from ..repositories import BlogAccountRepository, BlogArticleRepository
 from ..schemas import (

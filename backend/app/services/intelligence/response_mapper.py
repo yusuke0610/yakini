@@ -1,4 +1,4 @@
-from ...schemas_intelligence import AnalysisResponse, PositionScoresResponse
+from ...schemas.intelligence import AnalysisResponse, PositionScoresResponse
 from .pipeline import IntelligenceResult
 
 

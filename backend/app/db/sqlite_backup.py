@@ -7,8 +7,8 @@ from pathlib import Path
 from google.cloud import storage
 from google.cloud.exceptions import GoogleCloudError
 
-from ..logging_utils import log_event
-from ..settings import get_gcs_bucket_name, get_gcs_db_object, get_sqlite_db_path
+from ..core.logging_utils import log_event
+from ..core.settings import get_gcs_bucket_name, get_gcs_db_object, get_sqlite_db_path
 
 
 def _get_storage_client() -> storage.Client:

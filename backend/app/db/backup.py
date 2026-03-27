@@ -1,4 +1,4 @@
-from .services.sqlite_backup import backup_sqlite_to_gcs
+from .sqlite_backup import backup_sqlite_to_gcs
 
 
 def main() -> None:

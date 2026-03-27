@@ -3,9 +3,9 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ..auth import get_current_user
-from ..database import get_db
-from ..messages import get_error
+from ..core.messages import get_error
+from ..core.security.auth import get_current_user
+from ..db import get_db
 from ..models import User
 from ..repositories import BasicInfoRepository
 from ..schemas import BasicInfoCreate, BasicInfoResponse, BasicInfoUpdate

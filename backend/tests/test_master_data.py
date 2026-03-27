@@ -5,7 +5,7 @@ from app.repositories import (
     MQualificationRepository,
     MTechnologyStackRepository,
 )
-from app.seed import seed_master_data
+from app.db.seed import seed_master_data
 
 
 def test_list_qualifications(client, db_session):

@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from .settings import get_database_url
+from ..core.settings import get_database_url
 
 
 def _alembic_config():
     from alembic.config import Config
 
-    backend_root = Path(__file__).resolve().parents[1]
+    backend_root = Path(__file__).resolve().parents[2]
     alembic_ini = backend_root / "alembic.ini"
     script_location = backend_root / "alembic_migrations"
 

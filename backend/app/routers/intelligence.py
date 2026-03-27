@@ -14,13 +14,13 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from ..auth import get_current_user
-from ..database import get_db
-from ..dependencies import limiter
-from ..encryption import decrypt_field
-from ..messages import get_error
+from ..core.encryption import decrypt_field
+from ..core.messages import get_error
+from ..core.security.auth import get_current_user
+from ..core.security.dependencies import limiter
+from ..db import get_db
 from ..models import GitHubAnalysisCache, User
-from ..schemas_intelligence import (
+from ..schemas.intelligence import (
     AnalysisResponse,
     AnalyzeRequest,
     CachedAnalysisResponse,
