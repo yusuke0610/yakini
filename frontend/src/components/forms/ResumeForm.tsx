@@ -18,6 +18,7 @@ import { blankHistory } from "../../constants";
 import type { ResumeTextFieldKey } from "../../formTypes";
 import { usePrefectures } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
+import { usePhotoUpload } from "../../hooks/usePhotoUpload";
 import shared from "../../styles/shared.module.css";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { LoadingOverlay } from "../LoadingOverlay";
@@ -36,10 +37,8 @@ export function ResumeForm() {
     loading,
     saving,
     deleting,
-    error,
-    success,
-    setError,
-    setSuccess,
+    error: formError,
+    success: formSuccess,
     save,
     deleteDoc,
     saveButtonText,
@@ -55,37 +54,32 @@ export function ResumeForm() {
     beforeSave: assertBasicInfoReady,
   });
 
-  const { downloading, previewUrl, closePreview, onDownloadPdf, onDownloadMarkdown, onPreviewPdf } =
-    usePdfActions({
-      downloadPdf: downloadResumePdf,
-      downloadMarkdown: downloadResumeMarkdown,
-      getPdfBlobUrl: getResumePdfBlobUrl,
-    });
+  const {
+    downloading,
+    previewUrl,
+    closePreview,
+    onDownloadPdf,
+    onDownloadMarkdown,
+    onPreviewPdf,
+    error: pdfError,
+    success: pdfSuccess,
+  } = usePdfActions({
+    downloadPdf: downloadResumePdf,
+    downloadMarkdown: downloadResumeMarkdown,
+    getPdfBlobUrl: getResumePdfBlobUrl,
+  });
+
+  /** 写真アップロードフック。フォームの photo フィールドを更新する。 */
+  const { handleFileChange: onPhotoChange } = usePhotoUpload((photo) => {
+    setForm((prev) => ({ ...prev, photo }));
+  });
+
+  /** PDF アクションまたはフォーム保存のエラー・成功メッセージを統合して表示する */
+  const error = pdfError ?? formError;
+  const success = pdfSuccess ?? formSuccess;
 
   const onChangeField = (key: ResumeTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const onPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = 450;
-        canvas.height = 600;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, 450, 600);
-          const resized = canvas.toDataURL("image/jpeg", 0.9);
-          setForm((prev) => ({ ...prev, photo: resized }));
-        }
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
   };
 
   const removePhoto = () => {
@@ -174,7 +168,7 @@ export function ResumeForm() {
             </button>
             <button
               type="button"
-              onClick={() => resumeId && onPreviewPdf(resumeId, setError)}
+              onClick={() => resumeId && onPreviewPdf(resumeId)}
               disabled={!resumeId}
             >
               プレビュー
@@ -183,7 +177,7 @@ export function ResumeForm() {
               type="button"
               onClick={() =>
                 resumeId &&
-                onDownloadPdf(resumeId, setError, setSuccess, "履歴書PDFをダウンロードしました。")
+                onDownloadPdf(resumeId, "履歴書PDFをダウンロードしました。")
               }
               disabled={!resumeId || downloading}
             >
@@ -191,7 +185,7 @@ export function ResumeForm() {
             </button>
             <button
               type="button"
-              onClick={() => resumeId && onDownloadMarkdown(resumeId, setError)}
+              onClick={() => resumeId && onDownloadMarkdown(resumeId)}
               disabled={!resumeId}
             >
               Markdown出力

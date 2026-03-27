@@ -12,7 +12,7 @@ import {
 } from "../../api";
 import { createInitialCareerForm, mapCareerResumeToForm } from "../../formMappers";
 import { useDocumentForm } from "../../hooks/useDocumentForm";
-import { buildCareerPayload, validateDateRange } from "../../payloadBuilders";
+import { buildCareerPayload } from "../../payloadBuilders";
 import type { CareerProjectForm } from "../../payloadBuilders";
 import {
   blankCareerClient,
@@ -27,24 +27,16 @@ import type {
 } from "../../formTypes";
 import { useTechnologyStacks } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
+import { useProjectModalState } from "../../hooks/useProjectModalState";
 import shared from "../../styles/shared.module.css";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { LoadingOverlay } from "../LoadingOverlay";
 import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
 import { ProjectModal } from "./ProjectModal";
-import styles from "./CareerResumeForm.module.css";
-
-/** プロジェクトモーダルの対象を表す型 */
-type ProjectModalTarget = {
-  expIndex: number;
-  clientIndex: number;
-  /** nullの場合は新規追加 */
-  projIndex: number | null;
-};
+import { CareerExperienceEditor } from "./CareerFormEditors/CareerExperienceEditor";
 
 export function CareerResumeForm() {
-  const [modalTarget, setModalTarget] = useState<ProjectModalTarget | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
     form,
@@ -53,10 +45,8 @@ export function CareerResumeForm() {
     loading,
     saving,
     deleting,
-    error,
-    success,
-    setError,
-    setSuccess,
+    error: formError,
+    success: formSuccess,
     save,
     deleteDoc,
     saveButtonText,
@@ -84,12 +74,75 @@ export function CareerResumeForm() {
     return map;
   }, [techStackOptions]);
 
-  const { downloading, previewUrl, closePreview, onDownloadPdf, onDownloadMarkdown, onPreviewPdf } =
-    usePdfActions({
-      downloadPdf: downloadCareerResumePdf,
-      downloadMarkdown: downloadCareerResumeMarkdown,
-      getPdfBlobUrl: getCareerResumePdfBlobUrl,
-    });
+  const {
+    downloading,
+    previewUrl,
+    closePreview,
+    onDownloadPdf,
+    onDownloadMarkdown,
+    onPreviewPdf,
+    error: pdfError,
+    success: pdfSuccess,
+  } = usePdfActions({
+    downloadPdf: downloadCareerResumePdf,
+    downloadMarkdown: downloadCareerResumeMarkdown,
+    getPdfBlobUrl: getCareerResumePdfBlobUrl,
+  });
+
+  /** PDF アクションまたはフォーム保存のエラー・成功メッセージを統合して表示する */
+  const error = pdfError ?? formError;
+  const success = pdfSuccess ?? formSuccess;
+
+  /**
+   * form の experiences からプロジェクトを取得するコールバック。
+   * useProjectModalState に渡す。
+   */
+  const getProject = (
+    expIndex: number,
+    clientIndex: number,
+    projIndex: number,
+  ): CareerProjectForm | null => {
+    return form.experiences[expIndex]?.clients[clientIndex]?.projects[projIndex] ?? null;
+  };
+
+  /**
+   * モーダルで保存されたプロジェクトをフォームに反映するコールバック。
+   * useProjectModalState に渡す。
+   */
+  const onProjectSave = (
+    expIndex: number,
+    clientIndex: number,
+    projIndex: number | null,
+    project: CareerProjectForm,
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp, ei) => {
+        if (ei !== expIndex) return exp;
+        return {
+          ...exp,
+          clients: exp.clients.map((c, ci) => {
+            if (ci !== clientIndex) return c;
+            if (projIndex === null) {
+              return { ...c, projects: [...c.projects, project] };
+            }
+            return {
+              ...c,
+              projects: c.projects.map((p, pi) => (pi === projIndex ? project : p)),
+            };
+          }),
+        };
+      }),
+    }));
+  };
+
+  const {
+    modalTarget,
+    setModalTarget,
+    modalProject,
+    handleProjectSave,
+    closeModal,
+  } = useProjectModalState(getProject, onProjectSave);
 
   const onChangeField = (key: CareerTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -197,32 +250,6 @@ export function CareerResumeForm() {
     }));
   };
 
-  /** モーダルからプロジェクトを保存するコールバック */
-  const handleProjectSave = (project: CareerProjectForm) => {
-    if (!modalTarget) return;
-    const { expIndex, clientIndex, projIndex } = modalTarget;
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) => {
-            if (ci !== clientIndex) return c;
-            if (projIndex === null) {
-              return { ...c, projects: [...c.projects, project] };
-            }
-            return {
-              ...c,
-              projects: c.projects.map((p, pi) => (pi === projIndex ? project : p)),
-            };
-          }),
-        };
-      }),
-    }));
-    setModalTarget(null);
-  };
-
   const addExperience = () => {
     setForm((prev) => ({
       ...prev,
@@ -245,21 +272,21 @@ export function CareerResumeForm() {
     await save();
   };
 
-  /** モーダルに渡すプロジェクトデータを取得する */
-  const modalProject = modalTarget
-    ? modalTarget.projIndex !== null
-      ? form.experiences[modalTarget.expIndex]?.clients[modalTarget.clientIndex]?.projects[
-      modalTarget.projIndex
-      ] ?? null
-      : null
-    : null;
-
   /** プロジェクトのサマリーテキストを生成する */
   const projectSummary = (proj: CareerProjectForm) => {
     const period = [proj.start_date, proj.is_current ? "現在" : proj.end_date]
       .filter(Boolean)
       .join(" 〜 ");
     return period || "";
+  };
+
+  /** モーダルを開くハンドラ。setModalTarget のラッパー。 */
+  const handleOpenProjectModal = (
+    expIndex: number,
+    clientIndex: number,
+    projIndex: number | null,
+  ) => {
+    setModalTarget({ expIndex, clientIndex, projIndex });
   };
 
   const handleDelete = async () => {
@@ -285,7 +312,7 @@ export function CareerResumeForm() {
         <ProjectModal
           project={modalProject}
           onSave={handleProjectSave}
-          onClose={() => setModalTarget(null)}
+          onClose={closeModal}
           techStackNamesByCategory={techStackNamesByCategory}
         />
       )}
@@ -298,7 +325,7 @@ export function CareerResumeForm() {
             </button>
             <button
               type="button"
-              onClick={() => resumeId && onPreviewPdf(resumeId, setError)}
+              onClick={() => resumeId && onPreviewPdf(resumeId)}
               disabled={!resumeId}
             >
               プレビュー
@@ -307,7 +334,7 @@ export function CareerResumeForm() {
               type="button"
               onClick={() =>
                 resumeId &&
-                onDownloadPdf(resumeId, setError, setSuccess, "職務経歴書PDFをダウンロードしました。")
+                onDownloadPdf(resumeId, "職務経歴書PDFをダウンロードしました。")
               }
               disabled={!resumeId || downloading}
             >
@@ -315,7 +342,7 @@ export function CareerResumeForm() {
             </button>
             <button
               type="button"
-              onClick={() => resumeId && onDownloadMarkdown(resumeId, setError)}
+              onClick={() => resumeId && onDownloadMarkdown(resumeId)}
               disabled={!resumeId}
             >
               Markdown出力
@@ -356,188 +383,20 @@ export function CareerResumeForm() {
             <section className={shared.section}>
               <h2>職務経歴</h2>
               {form.experiences.map((exp, expIndex) => (
-                <div key={`exp-${expIndex}`} className={shared.entry}>
-                  <div className={shared.inline}>
-                    <label>
-                      会社名
-                      <input
-                        type="text"
-                        value={exp.company}
-                        onChange={(e) => updateExperienceField(expIndex, "company", e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      事業内容
-                      <input
-                        type="text"
-                        value={exp.business_description}
-                        onChange={(e) =>
-                          updateExperienceField(expIndex, "business_description", e.target.value)
-                        }
-                        placeholder="例: SES事業、受託開発"
-                      />
-                    </label>
-                  </div>
-
-                  <div className={shared.inline}>
-                    <label>
-                      開始
-                      <input
-                        type="month"
-                        value={exp.start_date}
-                        onChange={(e) => updateExperienceField(expIndex, "start_date", e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      在職の有無
-                      <select
-                        value={exp.is_current ? "current" : "ended"}
-                        onChange={(e) =>
-                          updateExperienceField(expIndex, "is_current", e.target.value === "current")
-                        }
-                      >
-                        <option value="ended">離職</option>
-                        <option value="current">在職</option>
-                      </select>
-                    </label>
-                    {!exp.is_current && (
-                      <label>
-                        離職年月
-                        <input
-                          type="month"
-                          value={exp.end_date}
-                          onChange={(e) => updateExperienceField(expIndex, "end_date", e.target.value)}
-                        />
-                      </label>
-                    )}
-                  </div>
-                  {validateDateRange(exp.start_date, exp.end_date, exp.is_current) && (
-                    <p className={shared.error} style={{ fontSize: "0.85rem" }}>
-                      {validateDateRange(exp.start_date, exp.end_date, exp.is_current)}
-                    </p>
-                  )}
-
-                  <div className={shared.inline}>
-                    <label>
-                      従業員数
-                      <div className={styles.inputWithUnit}>
-                        <input
-                          type="number"
-                          value={exp.employee_count}
-                          onChange={(e) =>
-                            updateExperienceField(expIndex, "employee_count", e.target.value)
-                          }
-                          placeholder="例: 300"
-                        />
-                        <span className={styles.unit}>名</span>
-                      </div>
-                    </label>
-                    <label>
-                      資本金
-                      <div className={styles.inputWithUnit}>
-                        <input
-                          type="number"
-                          value={exp.capital}
-                          onChange={(e) => updateExperienceField(expIndex, "capital", e.target.value)}
-                          placeholder="例: 5"
-                        />
-                        <span className={styles.unit}>千万円</span>
-                      </div>
-                    </label>
-                  </div>
-
-                  {/* 取引先 */}
-                  <div className={styles.stackSection}>
-                    <h3>取引先</h3>
-                    {exp.clients.map((client, clientIndex) => (
-                      <div key={`client-${expIndex}-${clientIndex}`} className={shared.entry}>
-                        <div className={styles.clientHeader}>
-                          {client.has_client && (
-                            <label className={styles.clientNameLabel}>
-                              取引先名（呼称）
-                              <input
-                                type="text"
-                                value={client.name}
-                                onChange={(e) =>
-                                  updateClientField(expIndex, clientIndex, "name", e.target.value)
-                                }
-                                placeholder="例: 〇〇社（略称）"
-                              />
-                            </label>
-                          )}
-                          <label className={styles.clientCheckbox}>
-                            <input
-                              type="checkbox"
-                              checked={!client.has_client}
-                              onChange={(e) =>
-                                updateClientHasClient(expIndex, clientIndex, !e.target.checked)
-                              }
-                            />
-                            取引先なし
-                          </label>
-                        </div>
-                        {/* プロジェクト一覧（サマリー表示） */}
-                        <div className={styles.stackSection}>
-                          <h3>プロジェクト</h3>
-                          {client.projects.map((proj, projIndex) => (
-                            <div
-                              key={`proj-${expIndex}-${clientIndex}-${projIndex}`}
-                              className={styles.projectSummaryRow}
-                            >
-                              <span className={styles.projectName}>
-                                {proj.name || "(未入力)"}
-                              </span>
-                              <span className={styles.projectPeriod}>
-                                {projectSummary(proj)}
-                              </span>
-                              <div className={styles.projectActions}>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setModalTarget({ expIndex, clientIndex, projIndex })
-                                  }
-                                >
-                                  編集
-                                </button>
-                                <button
-                                  type="button"
-                                  className="danger"
-                                  onClick={() => removeProject(expIndex, clientIndex, projIndex)}
-                                >
-                                  削除
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                          <button
-                            type="button"
-                            className="ghost"
-                            onClick={() =>
-                              setModalTarget({ expIndex, clientIndex, projIndex: null })
-                            }
-                          >
-                            プロジェクトを追加
-                          </button>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="danger"
-                          onClick={() => removeClient(expIndex, clientIndex)}
-                        >
-                          取引先を削除
-                        </button>
-                      </div>
-                    ))}
-                    <button type="button" className="ghost" onClick={() => addClient(expIndex)}>
-                      取引先を追加
-                    </button>
-                  </div>
-
-                  <button type="button" className="danger" onClick={() => removeExperience(expIndex)}>
-                    職務経歴を削除
-                  </button>
-                </div>
+                <CareerExperienceEditor
+                  key={`exp-${expIndex}`}
+                  exp={exp}
+                  expIndex={expIndex}
+                  onUpdateExperienceField={updateExperienceField}
+                  onUpdateClientField={updateClientField}
+                  onUpdateClientHasClient={updateClientHasClient}
+                  onAddClient={addClient}
+                  onRemoveClient={removeClient}
+                  onRemoveProject={removeProject}
+                  onOpenProjectModal={handleOpenProjectModal}
+                  onRemoveExperience={removeExperience}
+                  projectSummary={projectSummary}
+                />
               ))}
 
               <button type="button" className="ghost" onClick={addExperience}>
