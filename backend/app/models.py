@@ -510,6 +510,7 @@ class GitHubAnalysisCache(Base):
     )
     analysis_result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    position_advice: Mapped[str | None] = mapped_column(Text, nullable=True)
     skill_activity_month: Mapped[list | None] = mapped_column(JSON, nullable=True)
     skill_activity_year: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

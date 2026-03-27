@@ -18,6 +18,20 @@ class AnalyzeRequest(BaseModel):
 # ── 全分析レスポンス ──────────────────────────────────────────────
 
 
+class PositionScoresResponse(BaseModel):
+    """5軸のエンジニアポジションスコア。"""
+
+    backend: int = Field(0, description="バックエンド適性スコア (0-100)")
+    frontend: int = Field(0, description="フロントエンド適性スコア (0-100)")
+    fullstack: int = Field(0, description="フルスタック適性スコア (0-100)")
+    sre: int = Field(0, description="SRE適性スコア (0-100)")
+    cloud: int = Field(0, description="クラウド適性スコア (0-100)")
+    missing_skills: List[str] = Field(
+        default_factory=list,
+        description="フルスタックエンジニアに不足しているスキル",
+    )
+
+
 class AnalysisResponse(BaseModel):
     username: str
     repos_analyzed: int
@@ -27,20 +41,9 @@ class AnalysisResponse(BaseModel):
         default_factory=dict,
         description="言語ごとのバイト数（GitHub linguist ベース）",
     )
-
-
-# ── 要約 (Ollama) ────────────────────────────────────────────────
-
-
-class SummarizeRequest(BaseModel):
-    analysis: AnalysisResponse
-
-
-class SummarizeResponse(BaseModel):
-    summary: str = Field("", description="LLM による自然言語の要約")
-    available: bool = Field(
-        True,
-        description="LLM サービスが利用可能かどうか",
+    position_scores: Optional[PositionScoresResponse] = Field(
+        None,
+        description="エンジニアポジションスコア（5軸）",
     )
 
 
@@ -61,13 +64,23 @@ class SkillActivityResponse(BaseModel):
     skills: List[SkillActivityItem]
 
 
+# ── 学習アドバイス ──────────────────────────────────────────────
+
+
+class PositionAdviceResponse(BaseModel):
+    """現状分析+学習アドバイス。"""
+
+    advice: str = Field("", description="LLM による現状分析と学習アドバイス")
+    available: bool = Field(True, description="LLM サービスが利用可能かどうか")
+
+
 # ── キャッシュ取得レスポンス ──────────────────────────────────────
 
 
 class CachedAnalysisResponse(BaseModel):
-    """DB に保存された分析結果・AI要約・スキルアクティビティを返す。"""
+    """DB に保存された分析結果・学習アドバイス・スキルアクティビティを返す。"""
 
     analysis_result: Optional[Dict[str, Any]] = None
-    ai_summary: Optional[str] = None
+    position_advice: Optional[str] = None
     skill_activity_month: Optional[List[Dict[str, Any]]] = None
     skill_activity_year: Optional[List[Dict[str, Any]]] = None

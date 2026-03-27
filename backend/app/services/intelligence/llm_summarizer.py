@@ -9,48 +9,15 @@ logger = logging.getLogger(__name__)
 
 _client = get_llm_client()
 
-SYSTEM_PROMPT = (
-    "あなたはキャリア分析の専門家です。"
-    "GitHubの活動データから得られた分析結果を基に、"
-    "エンジニアのキャリアについて簡潔で洞察に満ちた日本語の要約を作成してください。"
-    "要約は3〜5文程度で、以下の点に触れてください：\n"
-    "1. 主要なスキルと技術的な強み\n"
-    "2. スキルの成長傾向\n"
-    "3. 現在のキャリアポジションと将来性\n"
+LEARNING_ADVICE_SYSTEM_PROMPT = (
+    "あなたはエンジニアのキャリアアドバイザーです。"
+    "GitHubの活動データから得られた分析結果を基に、日本語で以下の2つのセクションを作成してください。\n\n"
+    "## 現状分析\n"
+    "主要なスキルと技術的な強み、スキルの成長傾向、現在のキャリアポジションについて3〜5文で記述してください。\n\n"
+    "## 学習アドバイス\n"
+    "フルスタックエンジニアを目指すために、具体的に何をどの順番で学ぶべきか優先度をつけて3〜5文で記述してください。\n\n"
     "箇条書きではなく自然な文章で書いてください。"
 )
-
-
-def _build_user_prompt(analysis: Dict[str, Any]) -> str:
-    """分析データから簡潔なプロンプトを構築します。"""
-    summary_parts = []
-
-    summary_parts.append(f"ユーザー: {analysis.get('username', 'N/A')}")
-    summary_parts.append(f"分析リポジトリ数: {analysis.get('repos_analyzed', 0)}")
-    summary_parts.append(f"ユニークスキル数: {analysis.get('unique_skills', 0)}")
-
-    # 成長トレンド（データがある場合のみ）
-    growth = analysis.get("growth", [])
-    if growth:
-        emerging = [g["skill_name"] for g in growth if g.get("trend") == "emerging"]
-        stable = [g["skill_name"] for g in growth if g.get("trend") == "stable"]
-        declining = [g["skill_name"] for g in growth if g.get("trend") == "declining"]
-
-        if emerging:
-            summary_parts.append(f"成長中のスキル: {', '.join(emerging[:5])}")
-        if stable:
-            summary_parts.append(f"安定スキル: {', '.join(stable[:5])}")
-        if declining:
-            summary_parts.append(f"低下傾向: {', '.join(declining[:5])}")
-
-    # 活動期間（データがある場合のみ）
-    snapshots = analysis.get("year_snapshots", [])
-    if snapshots:
-        years = [s["year"] for s in snapshots]
-        if years:
-            summary_parts.append(f"活動期間: {min(years)} 〜 {max(years)}")
-
-    return "\n".join(summary_parts)
 
 
 async def check_llm_available() -> bool:
@@ -95,10 +62,54 @@ async def summarize_blog_articles(articles: List[Dict[str, Any]]) -> str:
     return await _client.generate(BLOG_SYSTEM_PROMPT, prompt)
 
 
-async def summarize_analysis(analysis: Dict[str, Any]) -> str:
-    """LLM を使用して分析結果の自然言語要約を生成する。
+def _build_learning_advice_prompt(
+    analysis: Dict[str, Any],
+    scores: Dict[str, Any],
+) -> str:
+    """分析データとポジションスコアから統合プロンプトを構築する。"""
+    parts = []
+
+    # 基本情報
+    parts.append(f"ユーザー: {analysis.get('username', 'N/A')}")
+    parts.append(f"分析リポジトリ数: {analysis.get('repos_analyzed', 0)}")
+    parts.append(f"ユニークスキル数: {analysis.get('unique_skills', 0)}")
+
+    # 言語情報
+    languages = analysis.get("languages", {})
+    if languages:
+        total = sum(languages.values()) or 1
+        sorted_langs = sorted(languages.items(), key=lambda x: x[1], reverse=True)[:10]
+        lang_strs = [f"{name}: {b * 100 // total}%" for name, b in sorted_langs]
+        parts.append(f"主要言語: {', '.join(lang_strs)}")
+
+    # ポジションスコア
+    parts.append("")
+    parts.append("## 現在のポジションスコア")
+    parts.append(f"Backend: {scores.get('backend', 0)}/100")
+    parts.append(f"Frontend: {scores.get('frontend', 0)}/100")
+    parts.append(f"Fullstack: {scores.get('fullstack', 0)}/100")
+    parts.append(f"SRE: {scores.get('sre', 0)}/100")
+    parts.append(f"Cloud: {scores.get('cloud', 0)}/100")
+
+    # 不足スキル
+    missing = scores.get("missing_skills", [])
+    if missing:
+        parts.append("\n## 不足しているスキル")
+        for skill in missing:
+            parts.append(f"- {skill}")
+    else:
+        parts.append("\n## 不足スキルなし（全要件を満たしています）")
+
+    return "\n".join(parts)
+
+
+async def generate_learning_advice(
+    analysis: Dict[str, Any],
+    scores: Dict[str, Any],
+) -> str:
+    """分析結果とポジションスコアから現状分析+学習アドバイスを LLM で生成する。
 
     LLM に接続できない場合は空文字列を返す。
     """
-    user_prompt = _build_user_prompt(analysis)
-    return await _client.generate(SYSTEM_PROMPT, user_prompt)
+    prompt = _build_learning_advice_prompt(analysis, scores)
+    return await _client.generate(LEARNING_ADVICE_SYSTEM_PROMPT, prompt)
