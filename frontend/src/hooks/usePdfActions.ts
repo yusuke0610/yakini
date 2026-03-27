@@ -1,5 +1,9 @@
 import { useState } from "react";
 
+/**
+ * PDF・Markdown のダウンロードおよびプレビュー操作を提供するカスタムフック。
+ * error / success はフック内部で管理し、呼び出し元で setError / setSuccess を渡す必要はない。
+ */
 export function usePdfActions({
   downloadPdf,
   downloadMarkdown,
@@ -11,7 +15,10 @@ export function usePdfActions({
 }) {
   const [downloading, setDownloading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
+  /** プレビューを閉じ、Blob URL を解放する。 */
   const closePreview = () => {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -19,12 +26,18 @@ export function usePdfActions({
     setPreviewUrl(null);
   };
 
-  const onDownloadPdf = async (
-    id: string,
-    setError: (msg: string | null) => void,
-    setSuccess: (msg: string | null) => void,
-    successMessage: string,
-  ) => {
+  /** error / success メッセージをリセットする。 */
+  const clearMessages = () => {
+    setError(null);
+    setSuccess(null);
+  };
+
+  /**
+   * PDF をダウンロードする。
+   * @param id ドキュメント ID
+   * @param successMessage 成功時に表示するメッセージ
+   */
+  const onDownloadPdf = async (id: string, successMessage: string) => {
     setDownloading(true);
     setError(null);
     setSuccess(null);
@@ -38,7 +51,11 @@ export function usePdfActions({
     }
   };
 
-  const onDownloadMarkdown = async (id: string, setError: (msg: string | null) => void) => {
+  /**
+   * Markdown をダウンロードする。
+   * @param id ドキュメント ID
+   */
+  const onDownloadMarkdown = async (id: string) => {
     setError(null);
     try {
       await downloadMarkdown(id);
@@ -47,7 +64,11 @@ export function usePdfActions({
     }
   };
 
-  const onPreviewPdf = async (id: string, setError: (msg: string | null) => void) => {
+  /**
+   * PDF プレビューを開く。
+   * @param id ドキュメント ID
+   */
+  const onPreviewPdf = async (id: string) => {
     setError(null);
     try {
       const url = await getPdfBlobUrl(id);
@@ -57,5 +78,15 @@ export function usePdfActions({
     }
   };
 
-  return { downloading, previewUrl, closePreview, onDownloadPdf, onDownloadMarkdown, onPreviewPdf };
+  return {
+    downloading,
+    previewUrl,
+    closePreview,
+    onDownloadPdf,
+    onDownloadMarkdown,
+    onPreviewPdf,
+    error,
+    success,
+    clearMessages,
+  };
 }
