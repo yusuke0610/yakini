@@ -15,8 +15,8 @@ class OllamaClient(LLMClient):
 
     def __init__(self) -> None:
         self.base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-        self.model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
-        self.timeout = float(os.environ.get("OLLAMA_TIMEOUT", "180"))
+        self.model = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
+        self.timeout = float(os.environ.get("OLLAMA_TIMEOUT", "600"))
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Ollama API でテキスト生成を実行する。"""
@@ -34,8 +34,15 @@ class OllamaClient(LLMClient):
                 resp.raise_for_status()
                 data = resp.json()
                 return data.get("response", "").strip()
-        except (httpx.ConnectError, httpx.TimeoutException):
+        except httpx.ConnectError:
             logger.info("Ollama が %s で利用できません", self.base_url)
+            return ""
+        except httpx.TimeoutException:
+            logger.warning(
+                "Ollama generation timed out after %.1f seconds (model=%s)",
+                self.timeout,
+                self.model,
+            )
             return ""
         except Exception:
             logger.exception("Ollama による要約生成に失敗しました")

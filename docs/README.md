@@ -166,8 +166,10 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth（任意） |
 | `LLM_PROVIDER` | `ollama` または `vertex` |
 | `OLLAMA_BASE_URL` | Ollama エンドポイント（デフォルト: `http://localhost:11434`） |
+| `OLLAMA_MODEL` | Ollama 利用時のモデル名（デフォルト: `qwen2.5:3b`） |
+| `OLLAMA_TIMEOUT` | Ollama 生成タイムアウト秒数（デフォルト: `600`） |
 | `VERTEX_PROJECT_ID` / `VERTEX_LOCATION` | Vertex AI 利用時の設定 |
-| `VERTEX_MODEL` | Vertex AI 利用時のモデル名（デフォルト: `gemini-2.5-flash`） |
+| `VERTEX_MODEL` | Vertex AI 利用時のモデル名（デフォルト: `gemini-2.5-flash-lite`） |
 | `VITE_API_BASE_URL` | フロントエンド→バックエンドURL（デフォルト: `http://localhost:8000`） |
 
 ## SQLite + GCSバックアップ/復元
