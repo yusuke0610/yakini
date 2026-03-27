@@ -13,9 +13,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from .github_collector import collect_repos, RepoData
+from .github_collector import RepoData, collect_repos
+from .position_scorer import PositionScores, calculate_position_scores
 from .skill_extractor import ExtractionResult, extract_skills
-
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ class IntelligenceResult:
     unique_skills: int
     analyzed_at: str
     languages: Dict[str, int] = field(default_factory=dict)
+    position_scores: Optional[PositionScores] = None
 
 
 async def run_pipeline(
@@ -63,9 +64,8 @@ async def run_pipeline(
     # ステージ 2: スキルを抽出
     extraction: ExtractionResult = extract_skills(repos)
 
-    # ステージ 3: タイムラインを構築
-    # (注意: 現在 build_timeline は skill_growth_analyzer 等からインポートされています)
-    # ここでは IntelligenceResult に含める最低限の処理のみ実行
+    # ステージ 3: ポジションスコアを算出
+    scores: PositionScores = calculate_position_scores(repos)
 
     logger.info(
         "パイプライン完了 (%s): 分析リポジトリ数=%d, ユニークスキル数=%d",
@@ -80,4 +80,5 @@ async def run_pipeline(
         unique_skills=len(extraction.unique_skills),
         analyzed_at=datetime.now().isoformat(),
         languages=dict(lang_totals),
+        position_scores=scores,
     )

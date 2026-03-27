@@ -42,7 +42,9 @@
       "github_user_not_found": "GitHubユーザーが見つかりません: {username}",
       "profile_analysis_failed": "GitHubプロフィールの分析に失敗しました。しばらくしてから再度お試しください。",
       "activity_analysis_failed": "GitHubアクティビティの分析に失敗しました。",
-      "llm_unavailable": "AI要約サービスが一時的に利用できません。"
+      "llm_unavailable": "AI要約サービスが一時的に利用できません。",
+      "no_analysis_cache": "分析結果がありません。先にGitHub分析を実行してください。",
+      "no_position_scores": "ポジションスコアが算出されていません。再度GitHub分析を実行してください。"
     },
     "validation": {
       "required_field": "{field}は必須です。",

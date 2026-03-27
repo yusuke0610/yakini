@@ -2,7 +2,7 @@
 キャリアインテリジェンス API エンドポイント。
 
 POST /api/intelligence/analyze — 全分析パイプラインを実行（結果をDBに保存）。
-POST /api/intelligence/summarize — AI要約を生成（結果をDBに保存）。
+POST /api/intelligence/position-advice — 現状分析+学習アドバイスを生成。
 POST /api/intelligence/skill-activity — スキルアクティビティを集計（結果をDBに保存）。
 GET  /api/intelligence/cache — 保存済みの分析結果を取得。
 """
@@ -14,26 +14,25 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from ..auth import get_current_user
-from ..database import get_db
-from ..dependencies import limiter
-from ..encryption import decrypt_field
-from ..messages import get_error
+from ..core.encryption import decrypt_field
+from ..core.messages import get_error
+from ..core.security.auth import get_current_user
+from ..core.security.dependencies import limiter
+from ..db import get_db
 from ..models import GitHubAnalysisCache, User
-from ..schemas_intelligence import (
+from ..schemas.intelligence import (
     AnalysisResponse,
     AnalyzeRequest,
     CachedAnalysisResponse,
+    PositionAdviceResponse,
     SkillActivityResponse,
-    SummarizeRequest,
-    SummarizeResponse,
 )
 from ..services.intelligence.github_collector import (
     GitHubUserNotFoundError,
 )
 from ..services.intelligence.llm_summarizer import (
     check_llm_available,
-    summarize_analysis,
+    generate_learning_advice,
 )
 from ..services.intelligence.pipeline import run_pipeline
 from ..services.intelligence.response_mapper import map_pipeline_result
@@ -59,13 +58,13 @@ def get_cache(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """保存済みの分析結果・AI要約を取得する。"""
+    """保存済みの分析結果・学習アドバイスを取得する。"""
     cache = db.query(GitHubAnalysisCache).filter_by(user_id=user.id).first()
     if not cache:
         return CachedAnalysisResponse()
     return CachedAnalysisResponse(
         analysis_result=cache.analysis_result,
-        ai_summary=cache.ai_summary,
+        position_advice=cache.position_advice,
         skill_activity_month=cache.skill_activity_month,
         skill_activity_year=cache.skill_activity_year,
     )
@@ -128,46 +127,15 @@ async def analyze(
 
     response = map_pipeline_result(result)
 
-    # 分析結果をDBに保存（AI要約はクリアして再生成を促す）
+    # 分析結果をDBに保存（学習アドバイスはクリアして再生成を促す）
     cache = _get_or_create_cache(db, user.id)
     cache.analysis_result = response.model_dump()
-    cache.ai_summary = None
+    cache.position_advice = None
     cache.skill_activity_month = None
     cache.skill_activity_year = None
     db.commit()
 
     return response
-
-
-@router.post("/summarize", response_model=SummarizeResponse)
-@limiter.limit("10/minute")
-async def summarize(
-    request: Request,
-    payload: SummarizeRequest,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    Ollama を使用して分析結果の自然言語要約を生成します。
-    結果はDBに保存され、次回以降はキャッシュから取得可能です。
-
-    Ollama サーバーに接続できない場合は available: false を返します。
-    """
-    available = await check_llm_available()
-    if not available:
-        return SummarizeResponse(summary="", available=False)
-
-    analysis_dict = payload.analysis.model_dump()
-    summary = await summarize_analysis(analysis_dict)
-    if not summary:
-        return SummarizeResponse(summary="", available=False)
-
-    # AI要約をDBに保存
-    cache = _get_or_create_cache(db, user.id)
-    cache.ai_summary = summary
-    db.commit()
-
-    return SummarizeResponse(summary=summary, available=True)
 
 
 @router.post("/skill-activity", response_model=SkillActivityResponse)
@@ -215,3 +183,44 @@ async def skill_activity(
     db.commit()
 
     return SkillActivityResponse(skills=results)
+
+
+@router.post("/position-advice", response_model=PositionAdviceResponse)
+@limiter.limit("10/minute")
+async def position_advice(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    分析結果とポジションスコアに基づく現状分析+学習アドバイスを LLM で生成します。
+    キャッシュ済みの分析結果からデータを取得し、統合プロンプトで生成します。
+    """
+    cache = db.query(GitHubAnalysisCache).filter_by(user_id=user.id).first()
+    if not cache or not cache.analysis_result:
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("intelligence.no_analysis_cache"),
+        )
+
+    analysis = cache.analysis_result
+    scores = analysis.get("position_scores")
+    if not scores:
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("intelligence.no_position_scores"),
+        )
+
+    available = await check_llm_available()
+    if not available:
+        return PositionAdviceResponse(advice="", available=False)
+
+    advice = await generate_learning_advice(analysis, scores)
+    if not advice:
+        return PositionAdviceResponse(advice="", available=False)
+
+    # 学習アドバイスをDBに保存
+    cache.position_advice = advice
+    db.commit()
+
+    return PositionAdviceResponse(advice=advice, available=True)

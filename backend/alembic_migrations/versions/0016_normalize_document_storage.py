@@ -5,8 +5,8 @@ Revises: 0015_add_birthday_to_rirekisho
 Create Date: 2026-03-19 00:00:00.000000
 """
 
-from datetime import date
 import json
+from datetime import date
 from typing import Sequence, Union
 
 import sqlalchemy as sa

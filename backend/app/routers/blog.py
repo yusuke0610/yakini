@@ -12,29 +12,30 @@ POST   /api/blog/summarize         — AI サマリ生成
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-
 from sqlalchemy.orm import Session
 
-from ..auth import get_current_user
-from ..database import get_db
-from ..dependencies import limiter
-from ..messages import get_error
+from ..core.messages import get_error
+from ..core.security.auth import get_current_user
+from ..core.security.dependencies import limiter
+from ..db import get_db
 from ..models import BlogSummaryCache, User
 from ..repositories import BlogAccountRepository, BlogArticleRepository
 from ..schemas import (
     BlogAccountCreate,
     BlogAccountResponse,
     BlogArticleResponse,
+    BlogScoreResponse,
     BlogSummaryRequest,
     BlogSummaryResponse,
     BlogSyncResponse,
 )
-from ..services.blog_collector import (
+from ..services.blog.collector import (
     BlogPlatformRequestError,
     UnsupportedBlogPlatformError,
     fetch_articles,
     verify_user_exists,
 )
+from ..services.blog.scorer import calculate_blog_score
 from ..services.intelligence.llm_summarizer import (
     check_llm_available,
     summarize_blog_articles,
@@ -198,3 +199,50 @@ async def summarize_blog(
     db.commit()
 
     return BlogSummaryResponse(summary=summary, available=True)
+
+
+@router.get("/score", response_model=BlogScoreResponse)
+def get_blog_score(
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """保存済みの記事に対してスコアリングを実行する。"""
+    repo = BlogArticleRepository(db, user.id)
+    articles = repo.list_by_user()
+
+    # BlogArticle モデルを dict に変換
+    articles_data = [
+        {
+            "id": str(art.id),
+            "title": art.title,
+            "url": art.url,
+            "published_at": art.published_at,
+            "likes_count": art.likes_count,
+            "tags": art.tags,
+        }
+        for art in articles
+    ]
+
+    score = calculate_blog_score(articles_data)
+    return BlogScoreResponse(
+        frequency_rank=score.frequency_rank,
+        reaction_rank=score.reaction_rank,
+        count_rank=score.count_rank,
+        overall_rank=score.overall_rank,
+        tech_article_count=score.tech_article_count,
+        total_article_count=score.total_article_count,
+        avg_monthly_posts=score.avg_monthly_posts,
+        avg_likes=score.avg_likes,
+        articles=[
+            {
+                "id": a.id,
+                "title": a.title,
+                "url": a.url,
+                "published_at": a.published_at,
+                "likes_count": a.likes_count,
+                "tags": a.tags,
+                "is_tech": a.is_tech,
+            }
+            for a in score.articles
+        ],
+    )

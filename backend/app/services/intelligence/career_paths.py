@@ -10,8 +10,8 @@
 LLMは使用しません — 純粋なルールベースです。
 """
 
-from typing import Dict, List, Set
 from dataclasses import dataclass
+from typing import Dict, List, Set
 
 
 @dataclass

@@ -4,17 +4,22 @@ export interface AnalyzeGitHubPayload {
   include_forks?: boolean;
 }
 
+export interface PositionScores {
+  backend: number;
+  frontend: number;
+  fullstack: number;
+  sre: number;
+  cloud: number;
+  missing_skills: string[];
+}
+
 export interface AnalysisResponse {
   username: string;
   repos_analyzed: number;
   unique_skills: number;
   analyzed_at: string;
   languages: Record<string, number>;
-}
-
-export interface SummarizeResponse {
-  summary: string;
-  available: boolean;
+  position_scores: PositionScores | null;
 }
 
 export interface SkillTimelinePoint {
@@ -31,9 +36,14 @@ export interface SkillActivityResponse {
   skills: SkillActivityItem[];
 }
 
+export interface PositionAdviceResponse {
+  advice: string;
+  available: boolean;
+}
+
 export interface CachedAnalysisResponse {
   analysis_result: AnalysisResponse | null;
-  ai_summary: string | null;
+  position_advice: string | null;
   skill_activity_month: SkillActivityItem[] | null;
   skill_activity_year: SkillActivityItem[] | null;
 }
@@ -49,20 +59,19 @@ export function analyzeGitHub(payload: AnalyzeGitHubPayload): Promise<AnalysisRe
 }
 
 /**
- * 分析結果から AI 要約を生成します。
- */
-export function summarizeAnalysis(analysis: AnalysisResponse): Promise<SummarizeResponse> {
-  return request<SummarizeResponse>("/api/intelligence/summarize", {
-    method: "POST",
-    body: JSON.stringify({ analysis }),
-  });
-}
-
-/**
  * スキルアクティビティ（時系列集計）を取得します。
  */
 export function getSkillActivity(interval: "month" | "year" = "month"): Promise<SkillActivityResponse> {
   return request<SkillActivityResponse>(`/api/intelligence/skill-activity?interval=${interval}`, {
+    method: "POST",
+  });
+}
+
+/**
+ * ポジションスコアに基づく現状分析+学習アドバイスを取得します。
+ */
+export function getPositionAdvice(): Promise<PositionAdviceResponse> {
+  return request<PositionAdviceResponse>("/api/intelligence/position-advice", {
     method: "POST",
   });
 }
