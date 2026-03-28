@@ -19,16 +19,6 @@ moved {
 }
 
 moved {
-  from = module.resume_stack.google_storage_bucket.frontend
-  to   = module.storage.google_storage_bucket.frontend
-}
-
-moved {
-  from = module.resume_stack.google_storage_bucket_iam_member.frontend_public
-  to   = module.storage.google_storage_bucket_iam_member.frontend_public
-}
-
-moved {
   from = module.resume_stack.google_secret_manager_secret.app
   to   = module.cloud_run.google_secret_manager_secret.app
 }

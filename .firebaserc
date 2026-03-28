@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "devforge-dev-20260311"
+    "default": "devforge-dev-20260311",
+    "stg": "devforge-stg",
+    "prod": "devforge-prod"
   }
 }
