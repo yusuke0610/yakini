@@ -1,0 +1,226 @@
+"""
+OAuth state生成・検証・GitHub authorization URL構築・frontend URL解決を担うモジュール。
+"""
+
+import secrets
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+from fastapi import HTTPException, Request, Response, status
+
+from ...core.messages import get_error
+from ...core.settings import get_cors_origins, get_github_client_id
+from .token_manager import (
+    GITHUB_OAUTH_COOKIE_MAX_AGE,
+    GITHUB_OAUTH_REDIRECT_COOKIE,
+    GITHUB_OAUTH_STATE_COOKIE,
+    set_cookie,
+)
+
+# 他モジュールが oauth_flow 経由でインポートできるよう再エクスポート
+__all__ = [
+    "GITHUB_OAUTH_STATE_COOKIE",
+    "GITHUB_OAUTH_REDIRECT_COOKIE",
+    "get_default_frontend_origin",
+    "get_default_frontend_url",
+    "normalize_frontend_url",
+    "resolve_frontend_url_from_request",
+    "resolve_frontend_url_from_cookie",
+    "build_external_base_url",
+    "build_frontend_redirect_url",
+    "validate_github_oauth_state",
+    "build_github_authorization_url",
+    "begin_github_oauth",
+]
+
+
+def get_default_frontend_origin() -> str:
+    """CORS_ORIGINS の先頭を返す。未設定の場合は503を発生させる。"""
+    origins = get_cors_origins()
+    if not origins:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=get_error("auth.cors_origins_not_configured"),
+        )
+    return origins[0]
+
+
+def get_default_frontend_url() -> str:
+    """デフォルトのフロントエンド URL を返す。"""
+    return f"{get_default_frontend_origin().rstrip('/')}/"
+
+
+def normalize_frontend_url(frontend_url: str) -> str:
+    """
+    フロントエンド URL を正規化する。
+
+    scheme が http/https 以外、または CORS_ORIGINS に含まれないオリジンの場合は400を発生させる。
+    """
+    parsed = urlsplit(frontend_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=get_error("auth.invalid_return_to"),
+        )
+
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    if origin not in get_cors_origins():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=get_error("auth.frontend_origin_not_allowed"),
+        )
+
+    path = parsed.path or "/"
+    return urlunsplit(
+        (parsed.scheme, parsed.netloc, path, parsed.query, parsed.fragment)
+    )
+
+
+def resolve_frontend_url_from_request(
+    request: Request,
+    return_to: str | None = None,
+) -> str:
+    """
+    リクエストからフロントエンド URL を解決する。
+
+    優先順位: return_to クエリパラメータ → Referer ヘッダー → Origin ヘッダー → デフォルト
+    """
+    if return_to:
+        return normalize_frontend_url(return_to)
+
+    referer = request.headers.get("referer")
+    if referer:
+        try:
+            return normalize_frontend_url(referer)
+        except HTTPException:
+            pass
+
+    request_origin = request.headers.get("origin")
+    if request_origin:
+        return normalize_frontend_url(request_origin)
+
+    return get_default_frontend_url()
+
+
+def resolve_frontend_url_from_cookie(stored_url: str | None) -> str:
+    """Cookie に保存された URL を解決する。無効な場合はデフォルト URL を返す。"""
+    if stored_url:
+        try:
+            return normalize_frontend_url(stored_url)
+        except HTTPException:
+            pass
+    return get_default_frontend_url()
+
+
+def build_external_base_url(request: Request) -> str:
+    """リクエストヘッダーからリバースプロキシ考慮済みの外部 URL を構築する。"""
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
+    scheme = forwarded_proto if forwarded_proto in {"http", "https"} else request.url.scheme
+
+    forwarded_host = request.headers.get("x-forwarded-host", "").split(",")[0].strip()
+    host = forwarded_host or request.headers.get("host") or request.url.netloc
+
+    return f"{scheme}://{host}"
+
+
+def build_frontend_redirect_url(
+    frontend_url: str,
+    error: str | None = None,
+) -> str:
+    """
+    フロントエンドへのリダイレクト URL を構築する。
+
+    エラーがある場合は github_error クエリパラメータを付与する。
+    """
+    if not error:
+        return frontend_url
+
+    parsed = urlsplit(frontend_url)
+    query = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key != "github_error"
+    ]
+    query.append(("github_error", error))
+    path = parsed.path or "/"
+    return urlunsplit(
+        (parsed.scheme, parsed.netloc, path, urlencode(query), parsed.fragment)
+    )
+
+
+def validate_github_oauth_state(
+    stored_state: str | None,
+    provided_state: str | None,
+) -> None:
+    """
+    GitHub OAuth の state を検証する。
+
+    state が一致しない場合は401を発生させる。
+    """
+    if not stored_state or not provided_state:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=get_error("auth.oauth_state_invalid"),
+        )
+    if not secrets.compare_digest(stored_state, provided_state):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=get_error("auth.oauth_state_invalid"),
+        )
+
+
+def build_github_authorization_url(
+    client_id: str,
+    redirect_uri: str,
+    state: str,
+) -> str:
+    """GitHub OAuth 認可 URL を構築する。"""
+    query = urlencode(
+        {
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "scope": "read:user",
+            "state": state,
+        }
+    )
+    return f"https://github.com/login/oauth/authorize?{query}"
+
+
+def begin_github_oauth(
+    request: Request,
+    response: Response,
+    frontend_url: str,
+) -> str:
+    """
+    GitHub OAuth フローを開始する。
+
+    state と redirect URL を Cookie に保存し、GitHub 認可 URL を返す。
+    GITHUB_CLIENT_ID が未設定の場合は503を発生させる。
+    """
+    client_id = get_github_client_id()
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=get_error("auth.github_oauth_not_configured"),
+        )
+
+    redirect_uri = f"{build_external_base_url(request)}/auth/github/callback"
+    state = secrets.token_urlsafe(32)
+
+    set_cookie(
+        response,
+        GITHUB_OAUTH_STATE_COOKIE,
+        state,
+        GITHUB_OAUTH_COOKIE_MAX_AGE,
+    )
+    set_cookie(
+        response,
+        GITHUB_OAUTH_REDIRECT_COOKIE,
+        frontend_url,
+        GITHUB_OAUTH_COOKIE_MAX_AGE,
+    )
+
+    return build_github_authorization_url(
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        state=state,
+    )
