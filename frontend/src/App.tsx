@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-import { getCurrentUser, logout, setOnUnauthorized } from "./api";
+import { getCurrentUser, setOnUnauthorized } from "./api";
 import { useTheme } from "./hooks/useTheme";
 import { AppRoutes, type AuthUser } from "./router";
 
@@ -26,13 +26,6 @@ export default function App() {
   });
   const [authLoading, setAuthLoading] = useState(user === null);
   const [githubError, setGithubError] = useState<string | null>(null);
-
-  const handleLogout = async () => {
-    await logout();
-    sessionStorage.removeItem("auth_user");
-    setUser(null);
-    navigate("/logout", { replace: true });
-  };
 
   useEffect(() => {
     setOnUnauthorized(() => {
@@ -90,7 +83,6 @@ export default function App() {
       authLoading={authLoading}
       theme={theme}
       onToggleTheme={toggleTheme}
-      onLogout={handleLogout}
       githubError={githubError}
     />
   );

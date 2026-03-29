@@ -29,7 +29,6 @@ from .oauth_flow import (
     validate_github_oauth_state,
 )
 from .token_manager import (
-    clear_auth_cookies,
     clear_github_oauth_cookies,
     set_auth_cookies,
 )
@@ -160,10 +159,3 @@ async def github_callback(
     set_auth_cookies(response, token_response.username)
     clear_github_oauth_cookies(response)
     return token_response
-
-
-@router.post("/logout", status_code=204)
-def logout(response: Response) -> None:
-    """認証 Cookie をすべて削除してログアウトする。"""
-    clear_auth_cookies(response)
-    clear_github_oauth_cookies(response)

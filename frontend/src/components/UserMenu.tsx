@@ -7,12 +7,10 @@ export function UserMenu({
   username,
   theme,
   onToggleTheme,
-  onLogout,
 }: {
   username: string | null;
   theme: Theme;
   onToggleTheme: () => void;
-  onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -42,16 +40,6 @@ export function UserMenu({
             </span>
           </button>
           <div className={styles.separator} />
-          <button
-            type="button"
-            className={styles.menuItem}
-            onClick={() => {
-              setOpen(false);
-              onLogout();
-            }}
-          >
-            ログアウト
-          </button>
         </div>
       )}
       <button

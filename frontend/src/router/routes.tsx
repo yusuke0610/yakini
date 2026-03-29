@@ -10,7 +10,6 @@ import ResumePage from "../pages/ResumePage";
 import GitHubIntelligencePage from "../pages/GitHubIntelligencePage";
 import BlogPage from "../pages/BlogPage";
 import LoginPage from "../pages/LoginPage";
-import LogoutPage from "../pages/LogoutPage";
 import NotFoundPage from "../pages/NotFoundPage";
 
 type AppRoutesProps = {
@@ -18,7 +17,6 @@ type AppRoutesProps = {
   authLoading: boolean;
   theme: Theme;
   onToggleTheme: () => void;
-  onLogout: () => void;
   githubError: string | null;
 };
 
@@ -31,7 +29,6 @@ export default function AppRoutes({
   authLoading,
   theme,
   onToggleTheme,
-  onLogout,
   githubError,
 }: AppRoutesProps) {
   return (
@@ -39,7 +36,6 @@ export default function AppRoutes({
       {/* 未認証ルート */}
       <Route element={<PublicRoute user={user} authLoading={authLoading} />}>
         <Route path="/login" element={<LoginPage githubError={githubError} />} />
-        <Route path="/logout" element={<LogoutPage />} />
       </Route>
 
       {/* 認証済みルート */}
@@ -50,7 +46,6 @@ export default function AppRoutes({
               user={user!}
               theme={theme}
               onToggleTheme={onToggleTheme}
-              onLogout={onLogout}
             />
           }
         >
