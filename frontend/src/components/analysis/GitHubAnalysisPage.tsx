@@ -96,27 +96,18 @@ export function GitHubAnalysisPage() {
           <h2>GitHub分析</h2>
           <p>あなたのGitHubアクティビティからスキルとキャリアを分析します</p>
 
-          <button
-            type="button"
-            className={styles.advancedToggle}
-            onClick={() => setShowAdvanced(!showAdvanced)}
-          >
-            {showAdvanced ? "▼" : "▶"} 詳細オプション
-          </button>
-
-          {showAdvanced && (
-            <div className={styles.advancedOptions}>
-              <div className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  id="includeForks"
-                  checked={includeForks}
-                  onChange={(e) => setIncludeForks(e.target.checked)}
-                />
-                <label htmlFor="includeForks">フォークしたリポジトリを含む</label>
-              </div>
+          <div className={styles.advancedOptions}>
+            <div className={styles.checkbox}>
+              <input
+                type="checkbox"
+                id="includeForks"
+                checked={includeForks}
+                onChange={(e) => setIncludeForks(e.target.checked)}
+              />
+              <label htmlFor="includeForks">フォークしたリポジトリを含む</label>
             </div>
-          )}
+          </div>
+
 
           <button
             type="button"
