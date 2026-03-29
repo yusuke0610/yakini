@@ -19,7 +19,6 @@ type Phase = "loading-cache" | "input" | "loading" | "result";
 export function GitHubAnalysisPage() {
   const [phase, setPhase] = useState<Phase>("loading-cache");
   const [includeForks, setIncludeForks] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResponse | null>(null);
 

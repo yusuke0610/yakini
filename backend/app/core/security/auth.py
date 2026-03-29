@@ -2,7 +2,6 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, Request, status
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from ...db import get_db
@@ -23,16 +22,6 @@ _REFRESH_TOKEN_EXPIRE_DAYS = 7
 _REFRESH_COOKIE_MAX_AGE = _REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60  # 604800秒
 
 _ALGORITHM = "RS256"
-
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def hash_password(plain: str) -> str:
-    return _pwd_context.hash(plain)
-
-
-def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_context.verify(plain, hashed)
 
 
 def create_access_token(username: str) -> str:

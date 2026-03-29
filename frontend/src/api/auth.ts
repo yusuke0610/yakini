@@ -1,24 +1,6 @@
-import { request, API_BASE_URL } from "./client";
+import { API_BASE_URL } from "./client";
 
 type AuthResponse = { username: string; is_github_user: boolean };
-
-export function login(email: string, password: string): Promise<AuthResponse> {
-  return request("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-}
-
-export function register(
-  username: string,
-  email: string,
-  password: string,
-): Promise<AuthResponse> {
-  return request("/auth/register", {
-    method: "POST",
-    body: JSON.stringify({ username, email, password }),
-  });
-}
 
 export async function logout(): Promise<void> {
   await fetch(`${API_BASE_URL}/auth/logout`, {

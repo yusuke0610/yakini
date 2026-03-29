@@ -4,7 +4,7 @@ from app.core.messages import get_error, get_success, load_messages
 def test_get_error_returns_message_by_key() -> None:
     load_messages()
 
-    assert get_error("auth.invalid_credentials") == "メールアドレスまたはパスワードが正しくありません。"
+    assert get_error("auth.login_required") == "ログインが必要です。"
 
 
 def test_get_error_formats_placeholders() -> None:
@@ -23,14 +23,6 @@ def test_missing_message_key_falls_back_to_key() -> None:
     load_messages()
 
     assert get_error("unknown.category.key") == "unknown.category.key"
-
-
-def test_validation_password_messages() -> None:
-    load_messages()
-
-    assert get_error("validation.password_uppercase") == "パスワードには英大文字を1文字以上含めてください。"
-    assert get_error("validation.password_lowercase") == "パスワードには英小文字を1文字以上含めてください。"
-    assert get_error("validation.password_digit") == "パスワードには数字を1文字以上含めてください。"
 
 
 def test_validation_end_date_required() -> None:
