@@ -2,13 +2,6 @@ import { API_BASE_URL } from "./client";
 
 type AuthResponse = { username: string; is_github_user: boolean };
 
-export async function logout(): Promise<void> {
-  await fetch(`${API_BASE_URL}/auth/logout`, {
-    method: "POST",
-    credentials: "include",
-  });
-}
-
 export async function getCurrentUser(): Promise<AuthResponse | null> {
   const response = await fetch(`${API_BASE_URL}/auth/me`, {
     credentials: "include",
