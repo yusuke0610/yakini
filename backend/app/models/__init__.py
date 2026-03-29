@@ -3,6 +3,7 @@
 from .basic_info import BasicInfo, BasicInfoQualification
 from .blog import BlogAccount, BlogArticle, BlogArticleTag
 from .cache import BlogSummaryCache, GitHubAnalysisCache
+from .career_analysis import CareerAnalysis
 from .master_data import MPrefecture, MQualification, MTechnologyStack
 from .resume import (
     Resume,
@@ -17,6 +18,7 @@ from .rirekisho import Rirekisho, RirekishoEducation, RirekishoWorkHistory
 from .user import User
 
 __all__ = [
+    "CareerAnalysis",
     "BasicInfo",
     "BasicInfoQualification",
     "BlogAccount",
