@@ -29,9 +29,6 @@ from .intelligence import (
     CachedAnalysisResponse,
     PositionAdviceResponse,
     PositionScoresResponse,
-    SkillActivityItem,
-    SkillActivityResponse,
-    SkillTimelinePoint,
 )
 from .master_data import (
     MasterItem,
@@ -101,9 +98,6 @@ __all__ = [
     "RirekishoResponse",
     "RirekishoUpdate",
     "StrengthItem",
-    "SkillActivityItem",
-    "SkillActivityResponse",
-    "SkillTimelinePoint",
     "TeamMember",
     "TechStackItem",
     "TechStackMasterCreate",

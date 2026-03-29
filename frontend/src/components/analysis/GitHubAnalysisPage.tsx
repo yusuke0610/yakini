@@ -4,7 +4,6 @@ import {
   getAnalysisCache,
   type AnalysisResponse,
 } from "../../api";
-import { SkillTimelineChart } from "../SkillTimelineChart";
 import { LanguageBar } from "./LanguageBar";
 import { PositionRadarChart } from "./PositionRadarChart";
 import shared from "../../styles/shared.module.css";
@@ -196,11 +195,6 @@ export function GitHubAnalysisPage() {
             />
           </div>
         )}
-
-        {/* スキル成熟度グラフ */}
-        <div className={styles.section}>
-          <SkillTimelineChart />
-        </div>
       </div>
     </div>
   );

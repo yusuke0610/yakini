@@ -3,13 +3,11 @@
 
 POST /api/intelligence/analyze — 全分析パイプラインを実行（結果をDBに保存）。
 POST /api/intelligence/position-advice — 現状分析+学習アドバイスを生成。
-POST /api/intelligence/skill-activity — スキルアクティビティを集計（結果をDBに保存）。
 GET  /api/intelligence/cache — 保存済みの分析結果を取得。
 """
 
 import asyncio
 import logging
-from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -25,7 +23,6 @@ from ..schemas.intelligence import (
     AnalyzeRequest,
     CachedAnalysisResponse,
     PositionAdviceResponse,
-    SkillActivityResponse,
 )
 from ..services.intelligence.github_collector import (
     GitHubUserNotFoundError,
@@ -36,7 +33,6 @@ from ..services.intelligence.llm_summarizer import (
 )
 from ..services.intelligence.pipeline import run_pipeline
 from ..services.intelligence.response_mapper import map_pipeline_result
-from ..services.intelligence.skill_activity_analyzer import get_skill_activity
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +61,6 @@ def get_cache(
     return CachedAnalysisResponse(
         analysis_result=cache.analysis_result,
         position_advice=cache.position_advice,
-        skill_activity_month=cache.skill_activity_month,
-        skill_activity_year=cache.skill_activity_year,
     )
 
 
@@ -131,58 +125,9 @@ async def analyze(
     cache = _get_or_create_cache(db, user.id)
     cache.analysis_result = response.model_dump()
     cache.position_advice = None
-    cache.skill_activity_month = None
-    cache.skill_activity_year = None
     db.commit()
 
     return response
-
-
-@router.post("/skill-activity", response_model=SkillActivityResponse)
-@limiter.limit("10/minute")
-async def skill_activity(
-    request: Request,
-    interval: Literal["month", "year"] = "month",
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    スキルアクティビティ（コミット数）を取得し、時系列で集計します。
-    結果はDBに保存され、次回以降はキャッシュから取得可能です。
-    GitHub OAuth ログインが必要です。
-    """
-    if not user.username.startswith("github:"):
-        raise HTTPException(
-            status_code=403,
-            detail=get_error("intelligence.github_login_required"),
-        )
-
-    github_username = user.username.removeprefix("github:")
-    token = decrypt_field(user.github_token) if user.github_token else None
-
-    try:
-        results = await get_skill_activity(
-            username=github_username,
-            token=token,
-            interval=interval,  # type: ignore
-        )
-    except Exception:
-        logger.exception("%s のスキルアクティビティ分析に失敗しました", github_username)
-        raise HTTPException(
-            status_code=502,
-            detail=get_error("intelligence.activity_analysis_failed"),
-        )
-
-    # スキルアクティビティをDBに保存
-    cache = _get_or_create_cache(db, user.id)
-    activity_data = [item.model_dump() if hasattr(item, "model_dump") else item for item in results]
-    if interval == "year":
-        cache.skill_activity_year = activity_data
-    else:
-        cache.skill_activity_month = activity_data
-    db.commit()
-
-    return SkillActivityResponse(skills=results)
 
 
 @router.post("/position-advice", response_model=PositionAdviceResponse)

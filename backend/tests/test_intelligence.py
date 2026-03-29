@@ -734,17 +734,6 @@ def test_analyze_requires_github_user(client: TestClient) -> None:
     )
     assert resp.status_code == 403
 
-
-def test_skill_activity_requires_github_user(client: TestClient) -> None:
-    """通常ユーザーで skill-activity を呼ぶと 403 になること。"""
-    headers = auth_header(client, "normal_skill")
-    resp = client.post(
-        "/api/intelligence/skill-activity",
-        headers=headers,
-    )
-    assert resp.status_code == 403
-
-
 # ── Response Mapper Tests ──────────────────────────────────────────────
 
 
