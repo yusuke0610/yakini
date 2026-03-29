@@ -2,12 +2,9 @@
   "error": {
     "auth": {
       "login_required": "ログインが必要です。",
-      "invalid_credentials": "メールアドレスまたはパスワードが正しくありません。",
       "invalid_token": "無効なトークンです。",
       "user_not_found": "ユーザーが見つかりません。",
       "forbidden": "この操作を行う権限がありません。",
-      "username_already_exists": "このユーザー名は既に使用されています。",
-      "email_already_exists": "このメールアドレスは既に使用されています。",
       "github_oauth_failed": "GitHub認証に失敗しました。もう一度お試しください。",
       "github_oauth_not_configured": "GitHub OAuth が設定されていません。",
       "github_user_info_failed": "GitHubユーザー情報の取得に失敗しました。",
@@ -41,7 +38,6 @@
       "github_login_required": "GitHub分析にはGitHubアカウントでのログインが必要です。",
       "github_user_not_found": "GitHubユーザーが見つかりません: {username}",
       "profile_analysis_failed": "GitHubプロフィールの分析に失敗しました。しばらくしてから再度お試しください。",
-      "activity_analysis_failed": "GitHubアクティビティの分析に失敗しました。",
       "llm_unavailable": "AI要約サービスが一時的に利用できません。",
       "no_analysis_cache": "分析結果がありません。先にGitHub分析を実行してください。",
       "no_position_scores": "ポジションスコアが算出されていません。再度GitHub分析を実行してください。"
@@ -50,10 +46,7 @@
       "required_field": "{field}は必須です。",
       "invalid_format": "{field}の形式が正しくありません。",
       "date_range_invalid": "開始日は終了日より前に設定してください。",
-      "end_date_required": "在職中でない場合は終了年月を入力してください。",
-      "password_uppercase": "パスワードには英大文字を1文字以上含めてください。",
-      "password_lowercase": "パスワードには英小文字を1文字以上含めてください。",
-      "password_digit": "パスワードには数字を1文字以上含めてください。"
+      "end_date_required": "在職中でない場合は終了年月を入力してください。"
     },
     "server": {
       "internal_error": "サーバーエラーが発生しました。しばらくしてから再度お試しください。",
@@ -65,13 +58,17 @@
     },
     "master_data": {
       "not_found": "{item}が見つかりません。"
+    },
+    "career_analysis": {
+      "generate_failed": "AI 分析に失敗しました。しばらく時間をおいて再試行してください",
+      "llm_unavailable": "AI キャリアパス分析サービスが利用できません。LLM の設定または接続状態を確認してください。",
+      "no_resume_data": "職務経歴書データが見つかりません。先に職務経歴書を入力してください",
+      "not_found": "指定の分析結果が見つかりません"
     }
   },
   "success": {
     "auth": {
-      "login": "ログインしました。",
-      "logout": "ログアウトしました。",
-      "register": "アカウントを作成しました。"
+      "logout": "ログアウトしました。"
     },
     "document": {
       "saved": "{document}を保存しました。",
@@ -88,6 +85,10 @@
     },
     "backup": {
       "complete": "バックアップが完了しました。"
+    },
+    "career_analysis": {
+      "generate_success": "キャリアパス分析が完了しました",
+      "delete_success": "分析結果を削除しました"
     }
   }
 }

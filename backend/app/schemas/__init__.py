@@ -1,6 +1,6 @@
 """Pydantic スキーマ。"""
 
-from .auth import GitHubCallbackRequest, LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from .auth import GitHubCallbackRequest, TokenResponse, UserResponse
 from .basic_info import BasicInfoCreate, BasicInfoResponse, BasicInfoUpdate, BasicQualification
 from .blog import (
     BlogAccountCreate,
@@ -13,15 +13,22 @@ from .blog import (
     BlogSummaryResponse,
     BlogSyncResponse,
 )
+from .career_analysis import (
+    ActionItem,
+    CareerAnalysisGenerateRequest,
+    CareerAnalysisResponse,
+    CareerAnalysisResult,
+    CareerPathItem,
+    StrengthItem,
+    TechStackItem,
+    TechStackSection,
+)
 from .intelligence import (
     AnalysisResponse,
     AnalyzeRequest,
     CachedAnalysisResponse,
     PositionAdviceResponse,
     PositionScoresResponse,
-    SkillActivityItem,
-    SkillActivityResponse,
-    SkillTimelinePoint,
 )
 from .master_data import (
     MasterItem,
@@ -50,6 +57,7 @@ from .rirekisho import (
 )
 
 __all__ = [
+    "ActionItem",
     "AnalysisResponse",
     "AnalyzeRequest",
     "BasicInfoCreate",
@@ -66,10 +74,13 @@ __all__ = [
     "BlogSummaryResponse",
     "BlogSyncResponse",
     "CachedAnalysisResponse",
+    "CareerAnalysisGenerateRequest",
+    "CareerAnalysisResponse",
+    "CareerAnalysisResult",
+    "CareerPathItem",
     "Client",
     "Experience",
     "GitHubCallbackRequest",
-    "LoginRequest",
     "MasterItem",
     "MasterItemCreate",
     "MasterItemUpdate",
@@ -77,7 +88,6 @@ __all__ = [
     "PositionScoresResponse",
     "Project",
     "ProjectTeam",
-    "RegisterRequest",
     "ResumeCreate",
     "ResumeResponse",
     "ResumeUpdate",
@@ -85,13 +95,13 @@ __all__ = [
     "RirekishoHistory",
     "RirekishoResponse",
     "RirekishoUpdate",
-    "SkillActivityItem",
-    "SkillActivityResponse",
-    "SkillTimelinePoint",
+    "StrengthItem",
     "TeamMember",
+    "TechStackItem",
     "TechStackMasterCreate",
     "TechStackMasterItem",
     "TechStackMasterUpdate",
+    "TechStackSection",
     "TechnologyStackItem",
     "TokenResponse",
     "UserResponse",

@@ -69,6 +69,14 @@ export function AuthenticatedLayout({
             >
               ブログ連携
             </NavLink>
+            <NavLink
+              to="/career_analysis"
+              className={({ isActive }) =>
+                `${styles.sidebarItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              キャリア分析
+            </NavLink>
           </nav>
           <div className={styles.sidebarFooter}>
             <UserMenu

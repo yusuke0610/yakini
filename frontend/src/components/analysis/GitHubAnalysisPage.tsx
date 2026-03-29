@@ -4,7 +4,6 @@ import {
   getAnalysisCache,
   type AnalysisResponse,
 } from "../../api";
-import { SkillTimelineChart } from "../SkillTimelineChart";
 import { LanguageBar } from "./LanguageBar";
 import { PositionRadarChart } from "./PositionRadarChart";
 import shared from "../../styles/shared.module.css";
@@ -20,7 +19,6 @@ type Phase = "loading-cache" | "input" | "loading" | "result";
 export function GitHubAnalysisPage() {
   const [phase, setPhase] = useState<Phase>("loading-cache");
   const [includeForks, setIncludeForks] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResponse | null>(null);
 
@@ -97,27 +95,18 @@ export function GitHubAnalysisPage() {
           <h2>GitHub分析</h2>
           <p>あなたのGitHubアクティビティからスキルとキャリアを分析します</p>
 
-          <button
-            type="button"
-            className={styles.advancedToggle}
-            onClick={() => setShowAdvanced(!showAdvanced)}
-          >
-            {showAdvanced ? "▼" : "▶"} 詳細オプション
-          </button>
-
-          {showAdvanced && (
-            <div className={styles.advancedOptions}>
-              <div className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  id="includeForks"
-                  checked={includeForks}
-                  onChange={(e) => setIncludeForks(e.target.checked)}
-                />
-                <label htmlFor="includeForks">フォークしたリポジトリを含む</label>
-              </div>
+          <div className={styles.advancedOptions}>
+            <div className={styles.checkbox}>
+              <input
+                type="checkbox"
+                id="includeForks"
+                checked={includeForks}
+                onChange={(e) => setIncludeForks(e.target.checked)}
+              />
+              <label htmlFor="includeForks">フォークしたリポジトリを含む</label>
             </div>
-          )}
+          </div>
+
 
           <button
             type="button"
@@ -196,11 +185,6 @@ export function GitHubAnalysisPage() {
             />
           </div>
         )}
-
-        {/* スキル成熟度グラフ */}
-        <div className={styles.section}>
-          <SkillTimelineChart />
-        </div>
       </div>
     </div>
   );
