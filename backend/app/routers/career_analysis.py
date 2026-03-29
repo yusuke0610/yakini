@@ -63,6 +63,12 @@ async def generate(
             detail=get_error("career_analysis.no_resume_data"),
         )
 
+    if not await _llm_client.check_available():
+        raise HTTPException(
+            status_code=503,
+            detail=get_error("career_analysis.llm_unavailable"),
+        )
+
     try:
         result = await build_career_analysis(
             db=db,
@@ -70,11 +76,14 @@ async def generate(
             target_position=payload.target_position,
             llm_client=_llm_client,
         )
-    except ValueError:
+    except ValueError as exc:
         logger.exception("キャリアパス分析に失敗しました (user_id=%s)", current_user.id)
+        detail = get_error("career_analysis.generate_failed")
+        if str(exc) == "LLM からの応答が空です":
+            detail = get_error("career_analysis.llm_unavailable")
         raise HTTPException(
             status_code=503,
-            detail=get_error("career_analysis.generate_failed"),
+            detail=detail,
         )
 
     repo = CareerAnalysisRepository(db, current_user.id)
