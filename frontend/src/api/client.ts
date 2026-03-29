@@ -32,6 +32,17 @@ async function _tryRefresh(): Promise<boolean> {
   }
 }
 
+/** エラーレスポンスの detail を取得する。 */
+async function getErrorDetail(response: Response): Promise<string | null> {
+  try {
+    const body = await response.json();
+    if (!body?.detail) return null;
+    return typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+  } catch {
+    return null;
+  }
+}
+
 export async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -75,6 +86,10 @@ export async function request<T>(
   }
 
   if (response.status >= 500) {
+    const detail = await getErrorDetail(response);
+    if (detail) {
+      throw new Error(detail);
+    }
     const messages: Record<number, string> = {
       502: "サーバーとの通信に失敗しました。しばらくしてから再度お試しください。",
       503: "サーバーが一時的に利用できません。しばらくしてから再度お試しください。",
@@ -87,15 +102,7 @@ export async function request<T>(
   }
 
   if (!response.ok) {
-    let message = "リクエストの処理に失敗しました。";
-    try {
-      const body = await response.json();
-      if (body.detail) {
-        message = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
-      }
-    } catch {
-      // JSONパース失敗時はデフォルトメッセージを使う
-    }
+    const message = (await getErrorDetail(response)) ?? "リクエストの処理に失敗しました。";
     throw new Error(message);
   }
 

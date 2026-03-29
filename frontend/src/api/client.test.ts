@@ -113,6 +113,22 @@ describe("api/client request", () => {
     await expect(request("/api/test")).rejects.toThrow("サーバーエラー");
   });
 
+  /** 503 の detail があれば汎用文言ではなく detail を返すこと */
+  it("503 レスポンスで detail があれば detail が優先される", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        makeResponse(503, {
+          detail: "AI キャリアパス分析サービスが利用できません。LLM の設定または接続状態を確認してください。",
+        }),
+      ),
+    );
+
+    await expect(request("/api/test")).rejects.toThrow(
+      "AI キャリアパス分析サービスが利用できません。LLM の設定または接続状態を確認してください。",
+    );
+  });
+
   /** ネットワークエラーの場合、接続エラーメッセージがスローされること */
   it("ネットワークエラーの場合接続エラーがスローされる", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
