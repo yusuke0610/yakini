@@ -4,25 +4,20 @@
 各関数は薄いラッパーとして実装し、ロジックはサブモジュールに委譲する。
 """
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from ...core.logging_utils import log_event
 from ...core.messages import get_error
 from ...core.security.auth import (
     _REFRESH_COOKIE_NAME,
     get_current_user,
-    hash_password,
-    verify_password,
     verify_refresh_token,
 )
 from ...core.security.dependencies import limiter
 from ...db import get_db
 from ...repositories import UserRepository
-from ...schemas import GitHubCallbackRequest, LoginRequest, RegisterRequest, TokenResponse
+from ...schemas import GitHubCallbackRequest, TokenResponse
 from .github_auth import authenticate_github_user
 from .oauth_flow import (
     GITHUB_OAUTH_REDIRECT_COOKIE,
@@ -40,63 +35,6 @@ from .token_manager import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-@router.post("/register", response_model=TokenResponse, status_code=201)
-@limiter.limit("5/minute")
-def register(
-    request: Request,
-    response: Response,
-    payload: RegisterRequest,
-    db: Session = Depends(get_db),
-) -> TokenResponse:
-    """新規ユーザーを登録し、認証 Cookie を発行する。"""
-    repo = UserRepository(db)
-    if repo.get_by_username(payload.username):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=get_error("auth.username_already_exists"),
-        )
-    if repo.get_by_email(payload.email):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=get_error("auth.email_already_exists"),
-        )
-    user = repo.create(
-        payload.username,
-        hash_password(payload.password),
-        email=payload.email,
-    )
-    set_auth_cookies(response, user.username)
-    return TokenResponse(username=user.username)
-
-
-@router.post("/login", response_model=TokenResponse)
-@limiter.limit("5/15minutes")
-def login(
-    request: Request,
-    response: Response,
-    payload: LoginRequest,
-    db: Session = Depends(get_db),
-) -> TokenResponse:
-    """メールアドレスとパスワードでログインし、認証 Cookie を発行する。"""
-    user = UserRepository(db).get_by_email(payload.email)
-    if not user or not verify_password(
-        payload.password,
-        user.hashed_password,
-    ):
-        log_event(
-            logging.WARNING,
-            "login_failed",
-            email=payload.email,
-            reason="invalid email or password",
-        )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.invalid_credentials"),
-        )
-    set_auth_cookies(response, user.username)
-    return TokenResponse(username=user.username)
 
 
 @router.post("/refresh", response_model=TokenResponse)

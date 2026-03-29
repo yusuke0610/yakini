@@ -27,28 +27,11 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(user === null);
   const [githubError, setGithubError] = useState<string | null>(null);
 
-  const clearAuthenticatedUser = () => {
+  const handleLogout = async () => {
+    await logout();
     sessionStorage.removeItem("auth_user");
     setUser(null);
-  };
-
-  /**
-   * ログイン成功時の処理。
-   */
-  const handleLogin = (username: string, isGitHubUser: boolean) => {
-    const authUser: AuthUser = { username, isGitHubUser };
-    sessionStorage.setItem("auth_user", JSON.stringify(authUser));
-    setUser(authUser);
-    navigate("/basic_info", { replace: true });
-  };
-
-  /**
-   * ログアウト処理。
-   */
-  const handleLogout = () => {
-    logout();
-    clearAuthenticatedUser();
-    navigate("/login", { replace: true });
+    navigate("/logout", { replace: true });
   };
 
   useEffect(() => {
@@ -107,7 +90,6 @@ export default function App() {
       authLoading={authLoading}
       theme={theme}
       onToggleTheme={toggleTheme}
-      onLogin={handleLogin}
       onLogout={handleLogout}
       githubError={githubError}
     />

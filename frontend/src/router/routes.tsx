@@ -10,15 +10,14 @@ import ResumePage from "../pages/ResumePage";
 import GitHubIntelligencePage from "../pages/GitHubIntelligencePage";
 import BlogPage from "../pages/BlogPage";
 import LoginPage from "../pages/LoginPage";
+import LogoutPage from "../pages/LogoutPage";
 import NotFoundPage from "../pages/NotFoundPage";
-import SignInPage from "../pages/SignInPage";
 
 type AppRoutesProps = {
   user: AuthUser | null;
   authLoading: boolean;
   theme: Theme;
   onToggleTheme: () => void;
-  onLogin: (username: string, isGitHubUser: boolean) => void;
   onLogout: () => void;
   githubError: string | null;
 };
@@ -32,7 +31,6 @@ export default function AppRoutes({
   authLoading,
   theme,
   onToggleTheme,
-  onLogin,
   onLogout,
   githubError,
 }: AppRoutesProps) {
@@ -40,8 +38,8 @@ export default function AppRoutes({
     <Routes>
       {/* 未認証ルート */}
       <Route element={<PublicRoute user={user} authLoading={authLoading} />}>
-        <Route path="/login" element={<LoginPage onLogin={onLogin} githubError={githubError} />} />
-        <Route path="/signin" element={<SignInPage onLogin={onLogin} />} />
+        <Route path="/login" element={<LoginPage githubError={githubError} />} />
+        <Route path="/logout" element={<LogoutPage />} />
       </Route>
 
       {/* 認証済みルート */}

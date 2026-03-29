@@ -1,6 +1,8 @@
 import os
+import secrets
 
 import pytest
+from app.core.security.auth import create_access_token, create_refresh_token
 from app.db import Base, get_db
 from app.models import (  # noqa: F401 — ensure models registered
     BasicInfo,
@@ -13,6 +15,7 @@ from app.models import (  # noqa: F401 — ensure models registered
     Rirekisho,
     User,
 )
+from app.repositories import UserRepository
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
@@ -79,26 +82,28 @@ def client(db_session):
     app.dependency_overrides[get_db] = _override_get_db
     limiter.reset()
     with TestClient(app) as c:
+        c._db_session = db_session  # auth_header から参照するためセッションを保持
         yield c
     app.dependency_overrides.clear()
 
 
 def auth_header(client, username: str = "testuser") -> dict:
-    """テスト用の認証 Cookie をセットするヘルパー。CSRF トークンをヘッダーに含む dict を返す。"""
-    client.post(
-        "/auth/register",
-        json={
-            "username": username,
-            "email": f"{username}@example.com",
-            "password": "SecurePass123",
-        },
-    )
-    client.post(
-        "/auth/login",
-        json={
-            "email": f"{username}@example.com",
-            "password": "SecurePass123",
-        },
-    )
-    csrf_token = client.cookies.get("csrf_token", "")
+    """テスト用の認証 Cookie をセットするヘルパー。CSRF トークンをヘッダーに含む dict を返す。
+
+    DB にユーザーを直接作成し、JWT Cookie をセットする。
+    /auth/register や /auth/login エンドポイントには依存しない。
+    """
+    db = client._db_session
+    repo = UserRepository(db)
+    if not repo.get_by_username(username):
+        repo.create(username, hashed_password=None, email=f"{username}@example.com")
+
+    access_token = create_access_token(username)
+    refresh_token = create_refresh_token(username)
+    csrf_token = secrets.token_urlsafe(32)
+
+    client.cookies.set("access_token", access_token)
+    client.cookies.set("refresh_token", refresh_token)
+    client.cookies.set("csrf_token", csrf_token)
+
     return {"X-CSRF-Token": csrf_token}
