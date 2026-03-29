@@ -41,20 +41,6 @@ class AnalysisResponse(BaseModel):
     )
 
 
-class SkillTimelinePoint(BaseModel):
-    period: str
-    activity: float
-
-
-class SkillActivityItem(BaseModel):
-    skill: str
-    timeline: List[SkillTimelinePoint]
-
-
-class SkillActivityResponse(BaseModel):
-    skills: List[SkillActivityItem]
-
-
 class PositionAdviceResponse(BaseModel):
     """現状分析+学習アドバイス。"""
 
@@ -63,9 +49,7 @@ class PositionAdviceResponse(BaseModel):
 
 
 class CachedAnalysisResponse(BaseModel):
-    """DB に保存された分析結果・学習アドバイス・スキルアクティビティを返す。"""
+    """DB に保存された分析結果・学習アドバイスを返す。"""
 
     analysis_result: Optional[Dict[str, Any]] = None
     position_advice: Optional[str] = None
-    skill_activity_month: Optional[List[Dict[str, Any]]] = None
-    skill_activity_year: Optional[List[Dict[str, Any]]] = None

@@ -195,6 +195,40 @@
   gap: 0.6rem;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.paginationButton {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+  background: var(--ghost-bg);
+  color: var(--ghost-text);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.paginationButton:hover {
+  background: var(--ghost-hover);
+}
+
+.paginationButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pageIndicator {
+  min-width: 3.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
 .articleItem {
   display: block;
   padding: 0.8rem;
