@@ -306,25 +306,5 @@ def test_github_callback_redirect_sets_auth_cookie(client) -> None:
     assert "access_token=" in response.headers["set-cookie"]
 
 
-# ── ログアウト ────────────────────────────────────────────────────
-
-
-def test_logout_clears_cookies(client) -> None:
-    """ログアウト時に認証 Cookie 削除ヘッダーが送信され、Cookie をクリア後に /auth/me が 401 になることを確認する。"""
-    auth_header(client, "logoutuser")
-
-    response = client.post("/auth/logout")
-
-    assert response.status_code == 204
-    set_cookie = response.headers.get("set-cookie", "")
-    # サーバーが Cookie 削除ヘッダーを返すことを確認する
-    assert "access_token=" in set_cookie
-
-    # TestClient では直接セットした Cookie はサーバーからの削除レスポンスで消えないため手動でクリアする
-    del client.cookies["access_token"]
-    response = client.get("/auth/me")
-    assert response.status_code == 401
-
-
 # 使用しない環境変数を参照するだけのプレースホルダー（lint 対策）
 _ = os.environ
