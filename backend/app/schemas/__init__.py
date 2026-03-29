@@ -13,6 +13,16 @@ from .blog import (
     BlogSummaryResponse,
     BlogSyncResponse,
 )
+from .career_analysis import (
+    ActionItem,
+    CareerAnalysisGenerateRequest,
+    CareerAnalysisResponse,
+    CareerAnalysisResult,
+    CareerPathItem,
+    StrengthItem,
+    TechStackItem,
+    TechStackSection,
+)
 from .intelligence import (
     AnalysisResponse,
     AnalyzeRequest,
@@ -50,6 +60,7 @@ from .rirekisho import (
 )
 
 __all__ = [
+    "ActionItem",
     "AnalysisResponse",
     "AnalyzeRequest",
     "BasicInfoCreate",
@@ -66,6 +77,10 @@ __all__ = [
     "BlogSummaryResponse",
     "BlogSyncResponse",
     "CachedAnalysisResponse",
+    "CareerAnalysisGenerateRequest",
+    "CareerAnalysisResponse",
+    "CareerAnalysisResult",
+    "CareerPathItem",
     "Client",
     "Experience",
     "GitHubCallbackRequest",
@@ -85,13 +100,16 @@ __all__ = [
     "RirekishoHistory",
     "RirekishoResponse",
     "RirekishoUpdate",
+    "StrengthItem",
     "SkillActivityItem",
     "SkillActivityResponse",
     "SkillTimelinePoint",
     "TeamMember",
+    "TechStackItem",
     "TechStackMasterCreate",
     "TechStackMasterItem",
     "TechStackMasterUpdate",
+    "TechStackSection",
     "TechnologyStackItem",
     "TokenResponse",
     "UserResponse",

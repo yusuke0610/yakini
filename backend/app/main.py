@@ -21,6 +21,7 @@ from .routers import (  # noqa: E402
     auth_router,
     basic_info_router,
     blog_router,
+    career_analysis_router,
     health_router,
     intelligence_router,
     master_data_router,
@@ -77,11 +78,12 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
 
 app.include_router(health_router)
+app.include_router(career_analysis_router)
 app.include_router(auth_router)
 app.include_router(basic_info_router)
 app.include_router(resumes_router)

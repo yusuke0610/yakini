@@ -65,6 +65,11 @@
     },
     "master_data": {
       "not_found": "{item}が見つかりません。"
+    },
+    "career_analysis": {
+      "generate_failed": "AI 分析に失敗しました。しばらく時間をおいて再試行してください",
+      "no_resume_data": "職務経歴書データが見つかりません。先に職務経歴書を入力してください",
+      "not_found": "指定の分析結果が見つかりません"
     }
   },
   "success": {
@@ -88,6 +93,10 @@
     },
     "backup": {
       "complete": "バックアップが完了しました。"
+    },
+    "career_analysis": {
+      "generate_success": "キャリアパス分析が完了しました",
+      "delete_success": "分析結果を削除しました"
     }
   }
 }
