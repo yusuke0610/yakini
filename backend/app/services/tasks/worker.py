@@ -48,7 +48,7 @@ def _now() -> datetime:
 
 
 async def _run_github_analysis(db: Session, payload: dict) -> None:
-    """GitHub 分析パイプラインを実行し、結果をキャッシュに保存する。"""
+    """GitHub 分析パイプラインを実行し、AI 学習アドバイスまで一括生成してキャッシュに保存する。"""
     from ...core.encryption import decrypt_field
     from ...services.intelligence.github_collector import GitHubUserNotFoundError
     from ...services.intelligence.pipeline import run_pipeline
@@ -78,12 +78,38 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
         raise exc
 
     response = map_pipeline_result(result)
-    cache.analysis_result = response.model_dump()
-    cache.position_advice = None
+    analysis_dict = response.model_dump()
+    cache.analysis_result = analysis_dict
+
+    # LLM が利用可能なら学習アドバイスも自動生成する
+    advice = await _generate_advice_if_available(analysis_dict)
+    cache.position_advice = advice
+
     cache.status = "completed"
     cache.error_message = None
     cache.completed_at = _now()
     db.commit()
+
+
+async def _generate_advice_if_available(analysis: dict) -> str | None:
+    """LLM が利用可能であれば学習アドバイスを生成する。失敗時は None を返す。"""
+    from ...services.intelligence.llm_summarizer import generate_learning_advice
+
+    try:
+        llm_client = get_llm_client()
+        if not await llm_client.check_available():
+            logger.info("LLM が利用できないため学習アドバイスの生成をスキップしました")
+            return None
+
+        scores = analysis.get("position_scores")
+        if not scores:
+            return None
+
+        advice = await generate_learning_advice(analysis, scores)
+        return advice if advice else None
+    except Exception:
+        logger.warning("学習アドバイスの生成に失敗しましたが、分析結果は保存します", exc_info=True)
+        return None
 
 
 # ---------- ブログ AI サマリ ----------

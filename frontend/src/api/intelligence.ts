@@ -23,11 +23,6 @@ export interface AnalysisResponse {
   position_scores: PositionScores | null;
 }
 
-export interface PositionAdviceResponse {
-  advice: string;
-  available: boolean;
-}
-
 export interface CachedAnalysisResponse {
   analysis_result: AnalysisResponse | null;
   position_advice: string | null;
@@ -42,15 +37,6 @@ export function analyzeGitHub(payload: AnalyzeGitHubPayload): Promise<{ status: 
   return request<{ status: string }>("/api/intelligence/analyze", {
     method: "POST",
     body: JSON.stringify(payload),
-  });
-}
-
-/**
- * ポジションスコアに基づく現状分析+学習アドバイスを取得します。
- */
-export function getPositionAdvice(): Promise<PositionAdviceResponse> {
-  return request<PositionAdviceResponse>("/api/intelligence/position-advice", {
-    method: "POST",
   });
 }
 
