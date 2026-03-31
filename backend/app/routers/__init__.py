@@ -5,6 +5,7 @@ from .blog import router as blog_router
 from .career_analysis import router as career_analysis_router
 from .health import router as health_router
 from .intelligence import router as intelligence_router
+from .internal import router as internal_router
 from .master_data import router as master_data_router
 from .resumes import router as resumes_router
 from .rirekisho import router as rirekisho_router
@@ -17,6 +18,7 @@ __all__ = [
     "blog_router",
     "health_router",
     "intelligence_router",
+    "internal_router",
     "master_data_router",
     "resumes_router",
     "rirekisho_router",

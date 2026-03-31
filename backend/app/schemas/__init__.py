@@ -20,6 +20,7 @@ from .career_analysis import (
     CareerAnalysisResult,
     CareerPathItem,
     StrengthItem,
+    TaskStatusResponse,
     TechStackItem,
     TechStackSection,
 )
@@ -96,6 +97,7 @@ __all__ = [
     "RirekishoResponse",
     "RirekishoUpdate",
     "StrengthItem",
+    "TaskStatusResponse",
     "TeamMember",
     "TechStackItem",
     "TechStackMasterCreate",

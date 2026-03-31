@@ -39,19 +39,14 @@ def test_generate_returns_specific_error_when_llm_is_unavailable(client: TestCli
     )
 
 
-def test_generate_returns_specific_error_when_llm_response_is_empty(client: TestClient) -> None:
+def test_generate_returns_202_when_llm_is_available(client: TestClient) -> None:
+    """LLM が利用可能なら 202 で pending レコードを返す。"""
     headers = auth_header(client, "career-llm-empty")
     _create_resume(client, headers)
 
-    with (
-        patch(
-            "app.routers.career_analysis._llm_client.check_available",
-            new=AsyncMock(return_value=True),
-        ),
-        patch(
-            "app.routers.career_analysis.build_career_analysis",
-            new=AsyncMock(side_effect=ValueError("LLM からの応答が空です")),
-        ),
+    with patch(
+        "app.routers.career_analysis._llm_client.check_available",
+        new=AsyncMock(return_value=True),
     ):
         resp = client.post(
             "/api/career-analysis/generate",
@@ -59,8 +54,7 @@ def test_generate_returns_specific_error_when_llm_response_is_empty(client: Test
             headers=headers,
         )
 
-    assert resp.status_code == 503
-    assert (
-        resp.json()["detail"]
-        == "AI キャリアパス分析サービスが利用できません。LLM の設定または接続状態を確認してください。"
-    )
+    assert resp.status_code == 202
+    data = resp.json()
+    assert data["status"] == "pending"
+    assert data["result"] is None

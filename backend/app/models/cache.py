@@ -19,6 +19,10 @@ class GitHubAnalysisCache(Base):
     analysis_result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     position_advice: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="completed", server_default="completed")
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=func.now(),
@@ -44,6 +48,10 @@ class BlogSummaryCache(Base):
         String(36), ForeignKey("users.id"), unique=True, nullable=False
     )
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="completed", server_default="completed")
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=func.now(),

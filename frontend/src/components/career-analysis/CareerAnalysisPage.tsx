@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   generateAnalysis,
   listAnalyses,
   deleteAnalysis,
+  getAnalysisStatus,
   type CareerAnalysisResponse,
   type CareerAnalysisResult,
   type EvidenceSource,
 } from "../../api";
+import { useTaskPolling } from "../../hooks/useTaskPolling";
 import styles from "./CareerAnalysisPage.module.css";
 
-type Phase = "loading" | "input" | "generating" | "list" | "detail";
+type Phase = "loading" | "input" | "polling" | "list" | "detail";
 
 /**
  * AI キャリアパス分析ページ。
@@ -21,6 +23,31 @@ export function CareerAnalysisPage() {
   const [analyses, setAnalyses] = useState<CareerAnalysisResponse[]>([]);
   const [selected, setSelected] = useState<CareerAnalysisResponse | null>(null);
   const [targetPosition, setTargetPosition] = useState("");
+  const [pollingId, setPollingId] = useState<number | null>(null);
+
+  const reloadAnalyses = useCallback(async () => {
+    try {
+      const data = await listAnalyses();
+      setAnalyses(data);
+      return data;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const { startPolling, isPolling } = useTaskPolling({
+    checkStatus: () => getAnalysisStatus(pollingId!),
+    onCompleted: async () => {
+      const data = await reloadAnalyses();
+      setPhase(data.length > 0 ? "list" : "input");
+    },
+    onFailed: (err) => {
+      setError(err);
+      reloadAnalyses().then((data) => {
+        setPhase(data.length > 0 ? "list" : "input");
+      });
+    },
+  });
 
   useEffect(() => {
     let active = true;
@@ -30,7 +57,17 @@ export function CareerAnalysisPage() {
         const data = await listAnalyses();
         if (!active) return;
         setAnalyses(data);
-        setPhase(data.length > 0 ? "list" : "input");
+
+        // pending/processing のレコードがあればポーリング再開
+        const pending = data.find(
+          (a) => a.status === "pending" || a.status === "processing",
+        );
+        if (pending) {
+          setPollingId(pending.id);
+          setPhase("polling");
+        } else {
+          setPhase(data.length > 0 ? "list" : "input");
+        }
       } catch {
         if (!active) return;
         setPhase("input");
@@ -42,15 +79,20 @@ export function CareerAnalysisPage() {
     };
   }, []);
 
+  // pollingId がセットされたらポーリング開始
+  useEffect(() => {
+    if (pollingId !== null && phase === "polling" && !isPolling) {
+      startPolling();
+    }
+  }, [pollingId, phase, isPolling, startPolling]);
+
   const handleGenerate = async () => {
     if (!targetPosition.trim()) return;
     setError(null);
-    setPhase("generating");
     try {
       const result = await generateAnalysis(targetPosition.trim());
-      setAnalyses((prev) => [result, ...prev]);
-      setSelected(result);
-      setPhase("detail");
+      setPollingId(result.id);
+      setPhase("polling");
     } catch (e) {
       setError(e instanceof Error ? e.message : "分析に失敗しました");
       setPhase("input");
@@ -87,11 +129,14 @@ export function CareerAnalysisPage() {
     );
   }
 
-  if (phase === "generating") {
+  if (phase === "polling") {
     return (
       <div className={styles.loading}>
         <div className={styles.spinner} />
         <p>AI がキャリアを分析中です...</p>
+        <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+          他の画面に移動しても処理は継続されます
+        </p>
       </div>
     );
   }
@@ -135,9 +180,14 @@ export function CareerAnalysisPage() {
                     <span className={styles.versionDate}>
                       {new Date(a.created_at).toLocaleDateString("ja-JP")}
                     </span>
+                    {a.status === "failed" && (
+                      <span style={{ color: "var(--error)", fontSize: "0.8rem" }}>失敗</span>
+                    )}
                   </div>
                   <div className={styles.versionActions}>
-                    <button onClick={() => handleSelect(a)}>表示</button>
+                    {a.status === "completed" && a.result && (
+                      <button onClick={() => handleSelect(a)}>表示</button>
+                    )}
                     <button className={styles.deleteButton} onClick={() => handleDelete(a.id)}>
                       削除
                     </button>
@@ -153,7 +203,7 @@ export function CareerAnalysisPage() {
 
   // ── 分析結果表示 ────────────────────────────────────────
 
-  if (phase === "detail" && selected) {
+  if (phase === "detail" && selected?.result) {
     const r = selected.result;
     return (
       <div className={styles.dashboard}>
@@ -195,7 +245,7 @@ function TechStackSection({ result }: { result: CareerAnalysisResult }) {
     2: result.tech_stack.top.filter((t) => t.priority === 2),
     3: result.tech_stack.top.filter((t) => t.priority === 3),
   };
-  const labels = { 1: "案件実績", 2: "個人開��", 3: "資格" } as const;
+  const labels = { 1: "案件実績", 2: "個人開発", 3: "資格" } as const;
   const stars = { 1: "★★★", 2: "★★☆", 3: "★☆☆" } as const;
   const priorityStyle = {
     1: styles.priority1,

@@ -36,6 +36,29 @@ class CareerAnalysisRepository:
         self.db.refresh(analysis)
         return analysis
 
+    def create_pending(self, target_position: str) -> CareerAnalysis:
+        """pending 状態の分析レコードを作成する。"""
+        version = self.get_next_version()
+        analysis = CareerAnalysis(
+            user_id=self.user_id,
+            version=version,
+            target_position=target_position,
+            result_json=None,
+            status="pending",
+        )
+        self.db.add(analysis)
+        self.db.commit()
+        self.db.refresh(analysis)
+        return analysis
+
+    def get_pending(self) -> CareerAnalysis | None:
+        """pending または processing 状態のレコードを返す。"""
+        statement = select(CareerAnalysis).where(
+            CareerAnalysis.user_id == self.user_id,
+            CareerAnalysis.status.in_(["pending", "processing"]),
+        )
+        return self.db.scalar(statement)
+
     def get_all(self) -> list[CareerAnalysis]:
         """ユーザーの全分析結果を version 降順で返す。"""
         statement = (
