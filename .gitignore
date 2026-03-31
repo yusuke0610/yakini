@@ -26,6 +26,8 @@ terraform.tfvars
 # SQLite data
 data/
 backend/local.sqlite
+backend/local.sqlite-shm
+backend/local.sqlite-wal
 
 # Env files
 .env
