@@ -1,7 +1,7 @@
 """Zenn / note からブログ記事を取得するサービス。"""
 
+import asyncio
 import logging
-import xml.etree.ElementTree as ET
 
 import httpx
 
@@ -62,62 +62,58 @@ async def fetch_zenn_articles(username: str) -> list[dict]:
 
 
 async def fetch_note_articles(username: str) -> list[dict]:
-    """note の RSS フィードから記事を取得する。"""
+    """note API v2 から記事を取得する。全ページ分をフェッチ。"""
     articles: list[dict] = []
+    page = 1
+    headers = {"User-Agent": "DevForge/1.0"}
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(f"https://note.com/{username}/rss")
-        resp.raise_for_status()
+    async with httpx.AsyncClient(timeout=30.0, headers=headers) as client:
+        while True:
+            resp = await client.get(
+                f"https://note.com/api/v2/creators/{username}/contents",
+                params={"kind": "note", "page": page},
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
-    root = ET.fromstring(resp.text)
-    channel = root.find("channel")
-    if channel is None:
-        return articles
+            notes = data.get("data", {}).get("contents", [])
+            if not notes:
+                break
 
-    for item in channel.findall("item"):
-        title = item.findtext("title", "")
-        link = item.findtext("link", "")
-        pub_date = item.findtext("pubDate", "")
-        description = item.findtext("description", "")
+            for item in notes:
+                note_url = item.get("noteUrl", "")
+                external_id = str(item.get("id", ""))
+                published_at = (
+                    item.get("publishAt", "")[:10] if item.get("publishAt") else None
+                )
+                hashtags = item.get("hashtags", [])
+                tag_names = [
+                    h.get("hashtag", {}).get("name", "")
+                    for h in hashtags
+                    if isinstance(h, dict)
+                ]
+                body = item.get("body") or ""
 
-        published_at = _parse_rss_date(pub_date)
-        external_id = link.rstrip("/").split("/")[-1] if link else ""
-        tags = [cat.text for cat in item.findall("category") if cat.text]
+                articles.append(
+                    {
+                        "platform": "note",
+                        "external_id": external_id,
+                        "title": item.get("name", ""),
+                        "url": note_url,
+                        "published_at": published_at,
+                        "likes_count": item.get("likeCount", 0),
+                        "summary": body[:500],
+                        "tags": [t for t in tag_names if t],
+                    }
+                )
 
-        articles.append(
-            {
-                "platform": "note",
-                "external_id": external_id,
-                "title": title,
-                "url": link,
-                "published_at": published_at,
-                "likes_count": 0,
-                "summary": _strip_html(description)[:500] if description else "",
-                "tags": tags,
-            }
-        )
+            is_last_page = data.get("data", {}).get("isLastPage", True)
+            if is_last_page:
+                break
+            page += 1
+            await asyncio.sleep(0.5)
 
     return articles
-
-
-def _parse_rss_date(date_str: str) -> str | None:
-    """RSS の日付文字列を YYYY-MM-DD 形式に変換する。"""
-    if not date_str:
-        return None
-    try:
-        from email.utils import parsedate_to_datetime
-
-        dt = parsedate_to_datetime(date_str)
-        return dt.strftime("%Y-%m-%d")
-    except Exception:
-        return date_str[:10] if len(date_str) >= 10 else None
-
-
-def _strip_html(text: str) -> str:
-    """HTMLタグを除去する。"""
-    import re
-
-    return re.sub(r"<[^>]+>", "", text).strip()
 
 
 async def verify_user_exists(platform: str, username: str) -> bool:
@@ -129,7 +125,10 @@ async def verify_user_exists(platform: str, username: str) -> bool:
                 return resp.status_code == 200
         if platform == "note":
             async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(f"https://note.com/{username}/rss")
+                resp = await client.get(
+                    f"https://note.com/api/v2/creators/{username}/contents",
+                    params={"kind": "note", "page": 1},
+                )
                 return resp.status_code == 200
         raise UnsupportedBlogPlatformError(platform)
     except (httpx.ConnectError, httpx.TimeoutException):
