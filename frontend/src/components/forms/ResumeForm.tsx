@@ -52,6 +52,7 @@ export function ResumeForm() {
     mapResponseToForm: mapResumeToForm,
     successMessage: "履歴書を保存しました。PDF出力できます。",
     beforeSave: assertBasicInfoReady,
+    cacheKey: "resume",
   });
 
   const {
