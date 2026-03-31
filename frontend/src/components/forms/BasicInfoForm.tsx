@@ -32,6 +32,7 @@ export function BasicInfoForm() {
     buildPayload: buildBasicPayload,
     mapResponseToForm: mapBasicInfoToForm,
     successMessage: "基本情報を保存しました。",
+    cacheKey: "basicInfo",
   });
 
   const onChangeField = (key: BasicTextFieldKey, value: string) => {
