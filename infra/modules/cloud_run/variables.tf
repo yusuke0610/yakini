@@ -57,3 +57,27 @@ variable "vertex_model" {
   type        = string
   default     = "gemini-2.5-flash-lite"
 }
+
+variable "task_runner" {
+  description = "バックグラウンドタスク実行方式 (local / cloud_tasks)。"
+  type        = string
+  default     = "cloud_tasks"
+}
+
+variable "cloud_tasks_queue" {
+  description = "Cloud Tasks キュー名。"
+  type        = string
+  default     = ""
+}
+
+variable "cloud_tasks_location" {
+  description = "Cloud Tasks キューのロケーション。"
+  type        = string
+  default     = "asia-northeast1"
+}
+
+variable "cloud_tasks_service_account" {
+  description = "Cloud Tasks OIDC 認証用サービスアカウントメール。"
+  type        = string
+  default     = ""
+}

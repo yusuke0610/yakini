@@ -1,4 +1,5 @@
 import { request } from "./client";
+import type { TaskStatusResponse } from "./career-analysis";
 
 export interface AnalyzeGitHubPayload {
   include_forks?: boolean;
@@ -22,32 +23,20 @@ export interface AnalysisResponse {
   position_scores: PositionScores | null;
 }
 
-export interface PositionAdviceResponse {
-  advice: string;
-  available: boolean;
-}
-
 export interface CachedAnalysisResponse {
   analysis_result: AnalysisResponse | null;
   position_advice: string | null;
+  status?: string;
+  error_message?: string;
 }
 
 /**
- * GitHub プロフィールの分析を開始します。
+ * GitHub プロフィールの分析を開始します（202 非同期）。
  */
-export function analyzeGitHub(payload: AnalyzeGitHubPayload): Promise<AnalysisResponse> {
-  return request<AnalysisResponse>("/api/intelligence/analyze", {
+export function analyzeGitHub(payload: AnalyzeGitHubPayload): Promise<{ status: string }> {
+  return request<{ status: string }>("/api/intelligence/analyze", {
     method: "POST",
     body: JSON.stringify(payload),
-  });
-}
-
-/**
- * ポジションスコアに基づく現状分析+学習アドバイスを取得します。
- */
-export function getPositionAdvice(): Promise<PositionAdviceResponse> {
-  return request<PositionAdviceResponse>("/api/intelligence/position-advice", {
-    method: "POST",
   });
 }
 
@@ -56,4 +45,11 @@ export function getPositionAdvice(): Promise<PositionAdviceResponse> {
  */
 export function getAnalysisCache(): Promise<CachedAnalysisResponse> {
   return request<CachedAnalysisResponse>("/api/intelligence/cache");
+}
+
+/**
+ * 分析ステータスを取得します（ポーリング用）。
+ */
+export function getAnalysisCacheStatus(): Promise<TaskStatusResponse> {
+  return request<TaskStatusResponse>("/api/intelligence/cache/status");
 }

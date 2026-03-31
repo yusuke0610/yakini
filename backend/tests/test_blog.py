@@ -217,13 +217,10 @@ def test_list_blog_articles_returns_platform_and_tags(
     assert data[0]["tags"] == ["Python", "FastAPI"]
 
 
-def test_summarize_blog_returns_unavailable_when_generation_fails(client: TestClient) -> None:
-    """ブログ AI 要約が空なら available=false を返す。"""
+def test_summarize_blog_returns_202_when_llm_available(client: TestClient) -> None:
+    """LLM 利用可能時は 202 で pending を返す。"""
     headers = auth_header(client)
-    with (
-        patch("app.routers.blog.check_llm_available", new_callable=AsyncMock, return_value=True),
-        patch("app.routers.blog.summarize_blog_articles", new_callable=AsyncMock, return_value=""),
-    ):
+    with patch("app.routers.blog.check_llm_available", new_callable=AsyncMock, return_value=True):
         resp = client.post(
             "/api/blog/summarize",
             json={
@@ -240,5 +237,31 @@ def test_summarize_blog_returns_unavailable_when_generation_fails(client: TestCl
             },
             headers=headers,
         )
-    assert resp.status_code == 200
-    assert resp.json() == {"summary": "", "available": False}
+    assert resp.status_code == 202
+    data = resp.json()
+    assert data["status"] == "pending"
+    assert data["available"] is False
+
+
+def test_summarize_blog_returns_unavailable_when_llm_not_available(client: TestClient) -> None:
+    """LLM 利用不可なら available=false を返す。"""
+    headers = auth_header(client)
+    with patch("app.routers.blog.check_llm_available", new_callable=AsyncMock, return_value=False):
+        resp = client.post(
+            "/api/blog/summarize",
+            json={
+                "articles": [
+                    {
+                        "platform": "zenn",
+                        "title": "記事",
+                        "url": "https://zenn.dev/example/articles/test",
+                        "summary": "要約",
+                        "tags": ["Python"],
+                        "likes_count": 0,
+                    }
+                ]
+            },
+            headers=headers,
+        )
+    assert resp.status_code == 202
+    assert resp.json()["available"] is False

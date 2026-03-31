@@ -46,13 +46,20 @@ export interface CareerAnalysisResponse {
   id: number;
   version: number;
   target_position: string;
-  result: CareerAnalysisResult;
+  result: CareerAnalysisResult | null;
+  status: string;
+  error_message?: string;
   created_at: string;
+}
+
+export interface TaskStatusResponse {
+  status: string;
+  error_message?: string;
 }
 
 /* ── API 関数 ─────────────────────────────────────────── */
 
-/** キャリアパス分析を実行する。 */
+/** キャリアパス分析を開始する（202 非同期）。 */
 export function generateAnalysis(targetPosition: string): Promise<CareerAnalysisResponse> {
   return request<CareerAnalysisResponse>("/api/career-analysis/generate", {
     method: "POST",
@@ -68,6 +75,11 @@ export function listAnalyses(): Promise<CareerAnalysisResponse[]> {
 /** 指定 ID の分析結果を取得する。 */
 export function getAnalysis(id: number): Promise<CareerAnalysisResponse> {
   return request<CareerAnalysisResponse>(`/api/career-analysis/${id}`);
+}
+
+/** 分析ステータスを取得する（ポーリング用）。 */
+export function getAnalysisStatus(id: number): Promise<TaskStatusResponse> {
+  return request<TaskStatusResponse>(`/api/career-analysis/${id}/status`);
 }
 
 /** 分析結果を削除する。 */

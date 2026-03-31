@@ -90,6 +90,31 @@ resource "google_cloud_run_v2_service" "app" {
         value = var.vertex_model
       }
 
+      env {
+        name  = "TASK_RUNNER"
+        value = var.task_runner
+      }
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "CLOUD_TASKS_QUEUE"
+        value = var.cloud_tasks_queue
+      }
+      env {
+        name  = "CLOUD_TASKS_LOCATION"
+        value = var.cloud_tasks_location
+      }
+      env {
+        name  = "CLOUD_TASKS_SERVICE_URL"
+        value = google_cloud_run_v2_service.app.uri
+      }
+      env {
+        name  = "CLOUD_TASKS_SERVICE_ACCOUNT"
+        value = var.cloud_tasks_service_account
+      }
+
       dynamic "env" {
         for_each = local.required_secret_env
         content {

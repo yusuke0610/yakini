@@ -1,7 +1,6 @@
 """ブログコレクター（fetch_note_articles / fetch_zenn_articles / verify_user_exists）のユニットテスト。"""
 
 import asyncio
-import xml.etree.ElementTree as ET
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -27,41 +26,30 @@ def _run(coro):
 # ── fetch_note_articles テスト ───────────────────────────────────────────
 
 
-def _build_rss(items: list[dict]) -> str:
-    """RSS フィード XML 文字列を構築するヘルパー。"""
-    channel = ET.Element("channel")
-    for item_data in items:
-        item = ET.SubElement(channel, "item")
-        for tag, text in item_data.items():
-            if tag == "categories":
-                for cat_text in text:
-                    cat = ET.SubElement(item, "category")
-                    cat.text = cat_text
-            else:
-                el = ET.SubElement(item, tag)
-                el.text = text
-    root = ET.Element("rss")
-    root.append(channel)
-    return ET.tostring(root, encoding="unicode")
+def _note_api_response(contents: list[dict], *, is_last_page: bool = True) -> dict:
+    """note API v2 のレスポンス JSON を構築するヘルパー。"""
+    return {"data": {"contents": contents, "isLastPage": is_last_page}}
 
 
-def test_fetch_note_articles_no_category_returns_empty_tags() -> None:
-    """RSS の category なし → tags が空リストになること。"""
-    rss_xml = _build_rss(
+def test_fetch_note_articles_no_hashtags_returns_empty_tags() -> None:
+    """hashtags なし → tags が空リストになること。"""
+    api_json = _note_api_response(
         [
             {
-                "title": "テスト記事",
-                "link": "https://note.com/user/n/abc123",
-                "pubDate": "Thu, 01 Jan 2026 00:00:00 +0000",
-                "description": "<p>本文</p>",
-                # category なし
+                "id": 123,
+                "name": "テスト記事",
+                "noteUrl": "https://note.com/user/n/abc123",
+                "publishAt": "2026-01-01T00:00:00.000+0900",
+                "likeCount": 5,
+                "body": "本文テキスト",
+                "hashtags": [],
             }
         ]
     )
 
     mock_resp = MagicMock()
     mock_resp.raise_for_status = MagicMock()
-    mock_resp.text = rss_xml
+    mock_resp.json = MagicMock(return_value=api_json)
 
     mock_client = AsyncMock()
     mock_client.get = AsyncMock(return_value=mock_resp)
@@ -73,25 +61,32 @@ def test_fetch_note_articles_no_category_returns_empty_tags() -> None:
 
     assert len(articles) == 1
     assert articles[0]["tags"] == []
+    assert articles[0]["likes_count"] == 5
+    assert articles[0]["external_id"] == "123"
 
 
-def test_fetch_note_articles_with_categories() -> None:
-    """RSS の category あり → tags に反映されること。"""
-    rss_xml = _build_rss(
+def test_fetch_note_articles_with_hashtags() -> None:
+    """hashtags あり → tags に反映されること。"""
+    api_json = _note_api_response(
         [
             {
-                "title": "Python記事",
-                "link": "https://note.com/user/n/abc456",
-                "pubDate": "Thu, 01 Jan 2026 00:00:00 +0000",
-                "description": "概要",
-                "categories": ["Python", "FastAPI"],
+                "id": 456,
+                "name": "Python記事",
+                "noteUrl": "https://note.com/user/n/abc456",
+                "publishAt": "2026-01-01T00:00:00.000+0900",
+                "likeCount": 42,
+                "body": "概要",
+                "hashtags": [
+                    {"hashtag": {"name": "Python"}},
+                    {"hashtag": {"name": "FastAPI"}},
+                ],
             }
         ]
     )
 
     mock_resp = MagicMock()
     mock_resp.raise_for_status = MagicMock()
-    mock_resp.text = rss_xml
+    mock_resp.json = MagicMock(return_value=api_json)
 
     mock_client = AsyncMock()
     mock_client.get = AsyncMock(return_value=mock_resp)
@@ -102,6 +97,7 @@ def test_fetch_note_articles_with_categories() -> None:
         articles = _run(fetch_note_articles("user"))
 
     assert articles[0]["tags"] == ["Python", "FastAPI"]
+    assert articles[0]["likes_count"] == 42
 
 
 # ── fetch_zenn_articles テスト ───────────────────────────────────────────

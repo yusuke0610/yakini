@@ -2,14 +2,16 @@ import { useState, useEffect } from "react";
 import {
   analyzeGitHub,
   getAnalysisCache,
+  getAnalysisCacheStatus,
   type AnalysisResponse,
 } from "../../api";
+import { useTaskPolling } from "../../hooks/useTaskPolling";
 import { LanguageBar } from "./LanguageBar";
 import { PositionRadarChart } from "./PositionRadarChart";
 import shared from "../../styles/shared.module.css";
 import styles from "./GitHubAnalysisPage.module.css";
 
-type Phase = "loading-cache" | "input" | "loading" | "result";
+type Phase = "loading-cache" | "input" | "polling" | "result";
 
 /**
  * GitHub 分析結果を表示するダッシュボードコンポーネント。
@@ -25,6 +27,30 @@ export function GitHubAnalysisPage() {
   // ポジションアドバイス（現状分析+学習アドバイス）
   const [positionAdvice, setPositionAdvice] = useState<string | null>(null);
 
+  const loadCache = async () => {
+    try {
+      const cache = await getAnalysisCache();
+      if (cache.analysis_result) {
+        setResult(cache.analysis_result);
+        setPositionAdvice(cache.position_advice ?? null);
+        setPhase("result");
+      } else {
+        setPhase("input");
+      }
+    } catch {
+      setPhase("input");
+    }
+  };
+
+  const { startPolling, isPolling } = useTaskPolling({
+    checkStatus: getAnalysisCacheStatus,
+    onCompleted: () => loadCache(),
+    onFailed: (err) => {
+      setError(err);
+      setPhase("input");
+    },
+  });
+
   /**
    * 初回マウント時にDBキャッシュを読み込む。
    */
@@ -33,6 +59,11 @@ export function GitHubAnalysisPage() {
     getAnalysisCache()
       .then((cache) => {
         if (cancelled) return;
+        // pending/processing ならポーリング開始
+        if (cache.status === "pending" || cache.status === "processing") {
+          setPhase("polling");
+          return;
+        }
         if (cache.analysis_result) {
           setResult(cache.analysis_result);
           setPositionAdvice(cache.position_advice ?? null);
@@ -47,19 +78,22 @@ export function GitHubAnalysisPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // polling フェーズになったらポーリング開始
+  useEffect(() => {
+    if (phase === "polling" && !isPolling) {
+      startPolling();
+    }
+  }, [phase, isPolling, startPolling]);
+
   /**
-   * GitHub 分析を実行します（再分析）。
+   * GitHub 分析を開始します（非同期バックグラウンド）。
    */
   const handleAnalyze = async () => {
     setError(null);
-    setPhase("loading");
     setPositionAdvice(null);
     try {
-      const data = await analyzeGitHub({
-        include_forks: includeForks,
-      });
-      setResult(data);
-      setPhase("result");
+      await analyzeGitHub({ include_forks: includeForks });
+      setPhase("polling");
     } catch (e) {
       setError(e instanceof Error ? e.message : "分析に失敗しました");
       setPhase("input");
@@ -122,13 +156,16 @@ export function GitHubAnalysisPage() {
     );
   }
 
-  // ── フェーズ: ローディング ────────────────────────────────────────
-  if (phase === "loading") {
+  // ── フェーズ: ポーリング中 ────────────────────────────────────────
+  if (phase === "polling") {
     return (
       <div className={shared.pageBody}>
         <div className={styles.loading}>
           <div className={styles.spinner} />
           <p>GitHubプロフィールを分析中...</p>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+            他の画面に移動しても処理は継続されます
+          </p>
         </div>
       </div>
     );

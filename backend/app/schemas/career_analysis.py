@@ -71,7 +71,16 @@ class CareerAnalysisResponse(BaseModel):
     id: int
     version: int
     target_position: str
-    result: CareerAnalysisResult
+    result: CareerAnalysisResult | None = None
+    status: str = "completed"
+    error_message: str | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TaskStatusResponse(BaseModel):
+    """タスクステータスの軽量レスポンス。"""
+
+    status: str
+    error_message: str | None = None

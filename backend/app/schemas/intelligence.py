@@ -53,3 +53,5 @@ class CachedAnalysisResponse(BaseModel):
 
     analysis_result: Optional[Dict[str, Any]] = None
     position_advice: Optional[str] = None
+    status: Optional[str] = None
+    error_message: Optional[str] = None
