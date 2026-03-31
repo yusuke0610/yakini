@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { marked } from "marked";
 import {
   RadarChart,
@@ -9,10 +9,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import {
-  getPositionAdvice,
-  type PositionScores,
-} from "../../api";
+import type { PositionScores } from "../../api";
 import styles from "./PositionRadarChart.module.css";
 
 interface Props {
@@ -33,37 +30,14 @@ const AXIS_LABELS: Record<string, string> = {
  * フルスタックへのギャップ分析とAI現状分析+学習アドバイスを提供するコンポーネント。
  */
 export function PositionRadarChart({ scores, cachedAdvice }: Props) {
-  const [advice, setAdvice] = useState<string | null>(cachedAdvice ?? null);
-  const [adviceLoading, setAdviceLoading] = useState(false);
-
   const chartData = Object.entries(AXIS_LABELS).map(([key, label]) => ({
     axis: label,
     score: scores[key as keyof PositionScores] as number,
   }));
 
   const adviceHtml = useMemo(() => {
-    if (!advice) return "";
-    return marked.parse(advice, { async: false }) as string;
-  }, [advice]);
-
-  const handleGetAdvice = async () => {
-    setAdviceLoading(true);
-    try {
-      const res = await getPositionAdvice();
-      if (res.available) {
-        setAdvice(res.advice);
-      }
-    } catch {
-      // エラー時は何もしない
-    } finally {
-      setAdviceLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (cachedAdvice) {
-      setAdvice(cachedAdvice);
-    }
+    if (!cachedAdvice) return "";
+    return marked.parse(cachedAdvice, { async: false }) as string;
   }, [cachedAdvice]);
 
   return (
@@ -137,23 +111,14 @@ export function PositionRadarChart({ scores, cachedAdvice }: Props) {
       )}
 
       {/* AI 現状分析 + 学習アドバイス */}
-      <div className={styles.adviceSection}>
-        {advice ? (
+      {cachedAdvice && (
+        <div className={styles.adviceSection}>
           <div
             className={styles.adviceContent}
             dangerouslySetInnerHTML={{ __html: adviceHtml }}
           />
-        ) : (
-          <button
-            type="button"
-            className={styles.adviceButton}
-            onClick={handleGetAdvice}
-            disabled={adviceLoading}
-          >
-            {adviceLoading ? "分析・アドバイス生成中..." : "AI分析 & 学習アドバイスを取得"}
-          </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
