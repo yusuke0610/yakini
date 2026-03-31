@@ -1,0 +1,210 @@
+"""バックグラウンドタスクのワーカー。
+
+ローカル: BackgroundTasks から直接呼ばれる。
+Cloud: /internal/tasks/{type} エンドポイント経由で呼ばれる。
+どちらも同じ関数を実行する。
+"""
+
+import json
+import logging
+from datetime import datetime, timezone
+
+from sqlalchemy.orm import Session
+
+from ...db.database import SessionLocal
+from ...models import BlogSummaryCache, GitHubAnalysisCache
+from ...models.career_analysis import CareerAnalysis
+from ...services.intelligence.llm import get_llm_client
+from .base import TaskType
+
+logger = logging.getLogger(__name__)
+
+
+async def execute_task(task_type: TaskType, payload: dict) -> None:
+    """タスクを実行する。自前で DB セッションを作成・管理する。"""
+    db = SessionLocal()
+    try:
+        if task_type == TaskType.GITHUB_ANALYSIS:
+            await _run_github_analysis(db, payload)
+        elif task_type == TaskType.BLOG_SUMMARIZE:
+            await _run_blog_summarize(db, payload)
+        elif task_type == TaskType.CAREER_ANALYSIS:
+            await _run_career_analysis(db, payload)
+        else:
+            logger.error("不明なタスク種別: %s", task_type)
+    except Exception:
+        logger.exception("タスク実行に失敗しました (type=%s, payload=%s)", task_type, payload)
+        _mark_failed(db, task_type, payload)
+        raise
+    finally:
+        db.close()
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+# ---------- GitHub 分析 ----------
+
+
+async def _run_github_analysis(db: Session, payload: dict) -> None:
+    """GitHub 分析パイプラインを実行し、結果をキャッシュに保存する。"""
+    from ...core.encryption import decrypt_field
+    from ...services.intelligence.github_collector import GitHubUserNotFoundError
+    from ...services.intelligence.pipeline import run_pipeline
+    from ...services.intelligence.response_mapper import map_pipeline_result
+
+    user_id = payload["user_id"]
+    cache = db.query(GitHubAnalysisCache).filter_by(user_id=user_id).first()
+    if not cache:
+        logger.error("GitHub 分析キャッシュが見つかりません (user_id=%s)", user_id)
+        return
+
+    cache.status = "processing"
+    cache.started_at = _now()
+    db.commit()
+
+    try:
+        result = await run_pipeline(
+            username=payload["github_username"],
+            token=decrypt_field(payload["github_token"]) if payload.get("github_token") else None,
+            include_forks=payload.get("include_forks", False),
+        )
+    except GitHubUserNotFoundError as exc:
+        cache.status = "failed"
+        cache.error_message = f"GitHubユーザーが見つかりません: {payload['github_username']}"
+        cache.completed_at = _now()
+        db.commit()
+        raise exc
+
+    response = map_pipeline_result(result)
+    cache.analysis_result = response.model_dump()
+    cache.position_advice = None
+    cache.status = "completed"
+    cache.error_message = None
+    cache.completed_at = _now()
+    db.commit()
+
+
+# ---------- ブログ AI サマリ ----------
+
+
+async def _run_blog_summarize(db: Session, payload: dict) -> None:
+    """ブログ記事の AI サマリを生成し、キャッシュに保存する。"""
+    from ...services.intelligence.llm_summarizer import summarize_blog_articles
+
+    user_id = payload["user_id"]
+    cache = db.query(BlogSummaryCache).filter_by(user_id=user_id).first()
+    if not cache:
+        logger.error("ブログサマリキャッシュが見つかりません (user_id=%s)", user_id)
+        return
+
+    cache.status = "processing"
+    cache.started_at = _now()
+    db.commit()
+
+    articles_data = payload.get("articles", [])
+    llm_client = get_llm_client()
+    if not await llm_client.check_available():
+        cache.status = "failed"
+        cache.error_message = "LLM サービスが利用できません"
+        cache.completed_at = _now()
+        db.commit()
+        return
+
+    summary = await summarize_blog_articles(articles_data)
+    if not summary:
+        cache.status = "failed"
+        cache.error_message = "AI サマリの生成に失敗しました"
+        cache.completed_at = _now()
+        db.commit()
+        return
+
+    cache.summary = summary
+    cache.status = "completed"
+    cache.error_message = None
+    cache.completed_at = _now()
+    db.commit()
+
+
+# ---------- キャリアパス分析 ----------
+
+
+async def _run_career_analysis(db: Session, payload: dict) -> None:
+    """AI キャリアパス分析を実行し、結果を保存する。"""
+    from ...services.career_analysis.builder import build_career_analysis
+
+    user_id = payload["user_id"]
+    record_id = payload["record_id"]
+    target_position = payload["target_position"]
+
+    analysis = db.query(CareerAnalysis).filter_by(id=record_id, user_id=user_id).first()
+    if not analysis:
+        logger.error("キャリア分析レコードが見つかりません (id=%s)", record_id)
+        return
+
+    analysis.status = "processing"
+    analysis.started_at = _now()
+    db.commit()
+
+    llm_client = get_llm_client()
+    try:
+        result = await build_career_analysis(
+            db=db,
+            user_id=user_id,
+            target_position=target_position,
+            llm_client=llm_client,
+        )
+    except ValueError as exc:
+        analysis.status = "failed"
+        analysis.error_message = str(exc)
+        analysis.completed_at = _now()
+        db.commit()
+        raise exc
+
+    analysis.result_json = json.dumps(result, ensure_ascii=False)
+    analysis.status = "completed"
+    analysis.error_message = None
+    analysis.completed_at = _now()
+    db.commit()
+
+
+# ---------- 共通 ----------
+
+
+def _mark_failed(db: Session, task_type: TaskType, payload: dict) -> None:
+    """タスク失敗時にステータスを更新する（予期しないエラー用）。"""
+    try:
+        user_id = payload.get("user_id")
+        if not user_id:
+            return
+
+        now = _now()
+
+        if task_type == TaskType.GITHUB_ANALYSIS:
+            cache = db.query(GitHubAnalysisCache).filter_by(user_id=user_id).first()
+            if cache and cache.status != "completed":
+                cache.status = "failed"
+                cache.error_message = "予期しないエラーが発生しました"
+                cache.completed_at = now
+                db.commit()
+
+        elif task_type == TaskType.BLOG_SUMMARIZE:
+            cache = db.query(BlogSummaryCache).filter_by(user_id=user_id).first()
+            if cache and cache.status != "completed":
+                cache.status = "failed"
+                cache.error_message = "予期しないエラーが発生しました"
+                cache.completed_at = now
+                db.commit()
+
+        elif task_type == TaskType.CAREER_ANALYSIS:
+            record_id = payload.get("record_id")
+            if record_id:
+                analysis = db.query(CareerAnalysis).filter_by(id=record_id).first()
+                if analysis and analysis.status != "completed":
+                    analysis.status = "failed"
+                    analysis.error_message = "予期しないエラーが発生しました"
+                    analysis.completed_at = now
+                    db.commit()
+    except Exception:
+        logger.exception("タスク失敗マーク中にエラーが発生しました")

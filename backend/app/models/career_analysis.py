@@ -22,7 +22,11 @@ class CareerAnalysis(Base):
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     target_position: Mapped[str] = mapped_column(String(200), nullable=False)
-    result_json: Mapped[str] = mapped_column(Text, nullable=False)
+    result_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="completed", server_default="completed")
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=func.now(),

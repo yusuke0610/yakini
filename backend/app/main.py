@@ -24,6 +24,7 @@ from .routers import (  # noqa: E402
     career_analysis_router,
     health_router,
     intelligence_router,
+    internal_router,
     master_data_router,
     resumes_router,
     rirekisho_router,
@@ -92,3 +93,4 @@ app.include_router(intelligence_router)
 app.include_router(blog_router)
 app.include_router(master_data_router)
 app.include_router(admin_router)
+app.include_router(internal_router)
