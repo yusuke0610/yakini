@@ -8,22 +8,30 @@
 - **基本情報**: 氏名・記載日・資格の管理
 - **職務経歴書**: 職務要約、自己PR、職務経歴、技術スタックの入力とPDF/Markdown出力
 - **履歴書**: 学歴・職歴・志望動機・証明写真等の入力とPDF/Markdown出力（個人情報フィールドは暗号化保存）
+- フォーム入力状態を Redux でページ遷移間に保持（入力途中で別ページに移動しても失われない）
 
 ### GitHub分析
 - GitHub OAuthログインしたユーザーのリポジトリ・コミット履歴を自動分析
 - スキル抽出・タイムライン可視化・成長分析・キャリア予測
-- Ollama（ローカルLLM）による分析結果のAI要約（オプション）
+- **ポジションアドバイス**: 分析結果をもとに、現在のスキルセットに対するポジション別の学習アドバイスをAIが生成
+- 分析はバックグラウンド非同期処理（202 Accepted → ステータスポーリング方式）
 
 ### ブログ連携
 - **Zenn** / **note** のアカウント連携・記事同期
 - 記事メトリクス（タイトル、URL、公開日、いいね数、タグ）の一覧管理
-- Ollama によるブログ活動のAI要約（オプション）
+- **ブログスコアリング**: 投稿頻度・反応数・技術記事比率等をもとにスコアを算出
+- AIによるブログ活動要約（バックグラウンド非同期、ステータスポーリング方式）
+
+### AIキャリアパス分析
+- 職務経歴書データをもとに、LLMが希望ポジションへのキャリアパスを生成
+- 分析履歴を複数バージョン保持・管理
+- バックグラウンド非同期処理（202 Accepted → ステータスポーリング方式）
 
 ## 技術スタック
 
 | レイヤー | 技術 |
 |---|---|
-| フロントエンド | React 18, TypeScript, Vite, Recharts |
+| フロントエンド | React 18, TypeScript, Vite, Redux Toolkit, Recharts, marked |
 | バックエンドAPI | Python 3.12, FastAPI, SQLAlchemy, Pydantic |
 | データベース | SQLite（GCSバックアップ） |
 | 認証 | JWT Cookie (python-jose), bcrypt, GitHub OAuth |
@@ -98,7 +106,9 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 - `POST /auth/login`: ログイン
 - `GET /auth/me`: 現在のログインユーザー取得
 - `POST /auth/logout`: ログアウト
+- `POST /auth/refresh`: リフレッシュトークンでアクセストークンを更新
 - `GET /auth/github/login-url`: GitHub OAuth 開始URL取得
+- `GET /auth/github/login`: GitHub OAuth 認可URLへリダイレクト
 - `GET /auth/github/callback`: GitHub OAuth コールバック（GitHub→backend）
 - `POST /auth/github/callback`: 互換用コールバック
 
@@ -110,6 +120,7 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 ### 職務経歴書
 - `POST /api/resumes`: 作成（1ユーザー1件。既存時は `409`）
 - `PUT /api/resumes/{id}`: 更新
+- `DELETE /api/resumes`: 削除
 - `GET /api/resumes/latest`: 現在データ取得
 - `GET /api/resumes/{id}`: 取得
 - `GET /api/resumes/{id}/pdf`: PDFダウンロード
@@ -118,23 +129,35 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 ### 履歴書
 - `POST /api/rirekisho`: 作成（1ユーザー1件。既存時は `409`）
 - `PUT /api/rirekisho/{id}`: 更新
+- `DELETE /api/rirekisho`: 削除
 - `GET /api/rirekisho/latest`: 現在データ取得
 - `GET /api/rirekisho/{id}`: 取得
 - `GET /api/rirekisho/{id}/pdf`: PDFダウンロード
 - `GET /api/rirekisho/{id}/markdown`: Markdownダウンロード
 
 ### GitHub分析
-- `POST /api/intelligence/analyze`: GitHub活動の全パイプライン分析（GitHub OAuth必須）
-- `POST /api/intelligence/skill-activity`: コミットアクティビティタイムライン取得
-- `POST /api/intelligence/summarize`: Ollama によるAI要約（オプション）
+- `POST /api/intelligence/analyze`: GitHub活動の全パイプライン分析（GitHub OAuth必須、202 非同期、レート: 5/分）
+- `GET /api/intelligence/cache`: キャッシュされた分析結果を取得
+- `GET /api/intelligence/cache/status`: 分析タスクのステータスをポーリング（軽量）
+- `POST /api/intelligence/position-advice`: 分析結果をもとにポジション別学習アドバイスを生成（レート: 10/分）
 
 ### ブログ連携
 - `GET /api/blog/accounts`: 連携アカウント一覧
-- `POST /api/blog/accounts`: アカウント追加（Zenn / note）
+- `POST /api/blog/accounts`: アカウント追加（Zenn / note、レート: 10/分）
 - `DELETE /api/blog/accounts/{id}`: アカウント削除
 - `GET /api/blog/articles`: 記事一覧（プラットフォームでフィルタ可）
-- `POST /api/blog/accounts/{id}/sync`: 外部プラットフォームから記事同期
-- `POST /api/blog/summarize`: Ollama によるブログAI要約（オプション）
+- `POST /api/blog/accounts/{id}/sync`: 外部プラットフォームから記事同期（レート: 10/分）
+- `GET /api/blog/score`: ブログスコア（投稿頻度・反応数・技術記事比率等）を算出
+- `GET /api/blog/summary-cache`: キャッシュされたAI要約を取得
+- `GET /api/blog/summary-cache/status`: AI要約タスクのステータスをポーリング（軽量）
+- `POST /api/blog/summarize`: ブログAI要約を生成（202 非同期、レート: 5/分）
+
+### AIキャリアパス分析
+- `POST /api/career-analysis/generate`: キャリアパス分析を開始（職務経歴書必須、202 非同期、レート: 5/分）
+- `GET /api/career-analysis/`: 分析履歴一覧
+- `GET /api/career-analysis/{id}`: 分析結果詳細
+- `GET /api/career-analysis/{id}/status`: ステータスをポーリング（軽量）
+- `DELETE /api/career-analysis/{id}`: 分析結果削除
 
 ### マスタデータ管理
 - `GET /api/master-data/qualification`: 資格一覧
@@ -142,7 +165,13 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 - `PUT /api/master-data/qualification/{id}`: 資格更新（管理者）
 - `DELETE /api/master-data/qualification/{id}`: 資格削除（管理者）
 - `GET /api/master-data/prefecture`: 都道府県一覧
+- `POST /api/master-data/prefecture`: 都道府県追加（管理者）
+- `PUT /api/master-data/prefecture/{id}`: 都道府県更新（管理者）
+- `DELETE /api/master-data/prefecture/{id}`: 都道府県削除（管理者）
+- `GET /api/master-data/technology-stack`: 技術スタック一覧
 - `POST /api/master-data/technology-stack`: 技術スタック追加（管理者）
+- `PUT /api/master-data/technology-stack/{id}`: 技術スタック更新（管理者）
+- `DELETE /api/master-data/technology-stack/{id}`: 技術スタック削除（管理者）
 
 ### 管理
 - `POST /admin/backup`: SQLite DBをGCSへバックアップ（Bearerトークン必須）
@@ -191,6 +220,8 @@ SQLiteはDDL制約があるため、複雑なALTERはテーブル再作成型マ
 ## データ設計メモ
 
 - `basic_info` / `resumes` / `rirekisho` は **1ユーザー1件**
+- `career_analyses` は **複数バージョン保持可能**（分析履歴として蓄積）
+- `intelligence_cache` / `blog_summary_cache` は **1ユーザー1件**（最新結果のみ保持）
 - 可変長データは JSON ではなく子テーブルに正規化
   - `basic_info_qualifications`
   - `resume_experiences` / `resume_clients` / `resume_projects` / `resume_project_*`
@@ -200,6 +231,7 @@ SQLiteはDDL制約があるため、複雑なALTERはテーブル再作成型マ
   - 日単位: `record_date` / `birthday` / `blog_articles.published_at`
   - 月単位: 職務経歴・学歴・職歴は月初日に正規化して保存し、API では `YYYY-MM` で返却
 - `blog_articles` は `account_id` 起点で管理し、`platform` は `blog_accounts` から解決
+- 非同期タスクはステータスフィールド（`pending` / `running` / `completed` / `failed`）で管理し、フロントエンドはポーリングで結果を取得する
 
 ## テスト
 
