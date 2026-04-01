@@ -154,7 +154,8 @@
         "Beego",
         "Ktor",
         "Firestore",
-        "Hulft"
+        "Hulft",
+        "hulft"
     ],
     "flake8.args": ["--max-line-length=100"],
     "editor.linkedEditing": true,
