@@ -21,8 +21,15 @@ export type CareerTechnologyStackCategory =
   | "framework"
   | "os"
   | "db"
-  | "cloud_resource"
-  | "dev_tool";
+  | "cloud_provider"
+  | "container"
+  | "iac"
+  | "vcs"
+  | "ci_cd"
+  | "project_tool"
+  | "monitoring"
+  | "middleware"
+  | "ai_agent";
 
 export type CareerTechnologyStack = {
   category: CareerTechnologyStackCategory;
