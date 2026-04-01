@@ -8,7 +8,21 @@ from ..core.messages import get_error
 
 
 class TechnologyStackItem(BaseModel):
-    category: Literal["language", "framework", "os", "db", "cloud_resource", "dev_tool"]
+    category: Literal[
+        "language",
+        "framework",
+        "os",
+        "db",
+        "cloud_provider",
+        "container",
+        "iac",
+        "vcs",
+        "ci_cd",
+        "project_tool",
+        "monitoring",
+        "middleware",
+        "ai_agent",
+    ]
     name: str = Field(min_length=1, max_length=120)
 
     model_config = ConfigDict(from_attributes=True)

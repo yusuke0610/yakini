@@ -308,7 +308,7 @@ export function ProjectModal({
 
           {/* 技術スタック */}
           <div className={styles.stackSection}>
-            <h3>技術スタック</h3>
+            <h3>技術スタック ※プルダウンにないものはテキストで入力できます。</h3>
             <div className={styles.stackGrid}>
               {local.technology_stacks.map((stack, stackIndex) => (
                 <div key={`stack-${stackIndex}`} className={styles.stackChip}>
