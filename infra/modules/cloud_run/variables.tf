@@ -29,6 +29,12 @@ variable "container_image_tag" {
   default     = "latest"
 }
 
+variable "bootstrap_image" {
+  description = "初回デプロイ用のブートストラップイメージ。空文字の場合は Artifact Registry のイメージを使用する。ignore_changes により CI が上書きしても Terraform は戻さない。"
+  type        = string
+  default     = "us-docker.pkg.dev/cloudrun/container/hello:latest"
+}
+
 variable "enable_github_oauth" {
   description = "Whether to inject GitHub OAuth secrets into Cloud Run."
   type        = bool
@@ -78,6 +84,12 @@ variable "cloud_tasks_location" {
 
 variable "cloud_tasks_service_account" {
   description = "Cloud Tasks OIDC 認証用サービスアカウントメール。"
+  type        = string
+  default     = ""
+}
+
+variable "cloud_tasks_service_url" {
+  description = "Cloud Tasks からコールバックする Cloud Run サービス URL。初回 apply 後に設定する。"
   type        = string
   default     = ""
 }

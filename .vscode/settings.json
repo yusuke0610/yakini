@@ -155,7 +155,9 @@
         "Ktor",
         "Firestore",
         "Hulft",
-        "hulft"
+        "hulft",
+        "cloudtasks",
+        "firebasehosting"
     ],
     "flake8.args": ["--max-line-length=100"],
     "editor.linkedEditing": true,

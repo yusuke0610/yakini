@@ -44,7 +44,7 @@ resource "google_cloud_run_v2_service" "app" {
     service_account = var.service_account_email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.stack_name}:${var.container_image_tag}"
+      image = var.bootstrap_image != "" ? var.bootstrap_image : "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.stack_name}:${var.container_image_tag}"
 
       resources {
         limits = {
@@ -108,7 +108,7 @@ resource "google_cloud_run_v2_service" "app" {
       }
       env {
         name  = "CLOUD_TASKS_SERVICE_URL"
-        value = google_cloud_run_v2_service.app.uri
+        value = var.cloud_tasks_service_url
       }
       env {
         name  = "CLOUD_TASKS_SERVICE_ACCOUNT"
