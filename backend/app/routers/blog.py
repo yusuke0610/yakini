@@ -36,10 +36,10 @@ from ..schemas.career_analysis import TaskStatusResponse
 from ..services.blog.collector import (
     BlogPlatformRequestError,
     UnsupportedBlogPlatformError,
-    fetch_articles,
     verify_user_exists,
 )
 from ..services.blog.scorer import calculate_blog_score
+from ..services.blog.sync_service import BlogSyncService
 from ..services.intelligence.llm_summarizer import check_llm_available
 from ..services.tasks import TaskType, get_task_dispatcher
 
@@ -133,33 +133,22 @@ async def sync_account(
     db=Depends(get_db),
 ):
     """外部 API からデータを取得して DB に保存する。"""
-    account_repo = BlogAccountRepository(db, user.id)
-    account = account_repo.get_by_id(account_id)
-    if not account:
+    service = BlogSyncService(db, user.id)
+    if not service.get_account_or_none(account_id):
         raise HTTPException(status_code=404, detail=get_error("blog.account_link_not_found"))
 
     try:
-        raw_articles = await fetch_articles(account.platform, account.username)
+        return await service.sync(account_id)
     except UnsupportedBlogPlatformError as exc:
         raise HTTPException(
             status_code=400,
             detail=get_error("blog.platform_not_supported"),
         ) from exc
-    except Exception:
-        logger.exception("ブログ記事の取得に失敗しました: %s/%s", account.platform, account.username)
+    except (BlogPlatformRequestError, Exception) as exc:
         raise HTTPException(
             status_code=502,
             detail=get_error("blog.sync_failed"),
-        )
-
-    for art in raw_articles:
-        art["account_id"] = account.id
-
-    article_repo = BlogArticleRepository(db, user.id)
-    synced = article_repo.upsert_many(raw_articles)
-    total = article_repo.count_by_user()
-
-    return BlogSyncResponse(synced_count=synced, total_count=total)
+        ) from exc
 
 
 @router.get("/summary-cache", response_model=BlogSummaryResponse)
