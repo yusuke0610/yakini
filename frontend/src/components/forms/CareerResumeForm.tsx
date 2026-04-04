@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 
 import {
   assertBasicInfoReady,
@@ -13,28 +13,15 @@ import {
 import { createInitialCareerForm, mapCareerResumeToForm } from "../../formMappers";
 import { useDocumentForm } from "../../hooks/useDocumentForm";
 import { buildCareerPayload } from "../../payloadBuilders";
-import type { CareerProjectForm } from "../../payloadBuilders";
-import {
-  blankCareerClient,
-  blankCareerExperience,
-  blankCareerProject,
-  blankCareerTechnologyStack,
-} from "../../constants";
-import type {
-  CareerTextFieldKey,
-  CareerExperienceFieldKey,
-  CareerClientFieldKey,
-} from "../../formTypes";
+import type { CareerTextFieldKey } from "../../formTypes";
 import { useTechnologyStacks } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
-import { useProjectModalState } from "../../hooks/useProjectModalState";
 import shared from "../../styles/shared.module.css";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { LoadingOverlay } from "../LoadingOverlay";
 import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
-import { ProjectModal } from "./ProjectModal";
-import { CareerExperienceEditor } from "./CareerFormEditors/CareerExperienceEditor";
+import { CareerExperienceSection } from "./sections/CareerExperienceSection";
 
 export function CareerResumeForm() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -64,16 +51,6 @@ export function CareerResumeForm() {
   });
 
   const { items: techStackOptions } = useTechnologyStacks();
-  /** カテゴリごとの名称リストを生成する */
-  const techStackNamesByCategory = useMemo(() => {
-    const map = new Map<string, string[]>();
-    for (const item of techStackOptions) {
-      const list = map.get(item.category) ?? [];
-      list.push(item.name);
-      map.set(item.category, list);
-    }
-    return map;
-  }, [techStackOptions]);
 
   const {
     downloading,
@@ -94,200 +71,13 @@ export function CareerResumeForm() {
   const error = pdfError ?? formError;
   const success = pdfSuccess ?? formSuccess;
 
-  /**
-   * form の experiences からプロジェクトを取得するコールバック。
-   * useProjectModalState に渡す。
-   */
-  const getProject = (
-    expIndex: number,
-    clientIndex: number,
-    projIndex: number,
-  ): CareerProjectForm | null => {
-    return form.experiences[expIndex]?.clients[clientIndex]?.projects[projIndex] ?? null;
-  };
-
-  /**
-   * モーダルで保存されたプロジェクトをフォームに反映するコールバック。
-   * useProjectModalState に渡す。
-   */
-  const onProjectSave = (
-    expIndex: number,
-    clientIndex: number,
-    projIndex: number | null,
-    project: CareerProjectForm,
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) => {
-            if (ci !== clientIndex) return c;
-            if (projIndex === null) {
-              return { ...c, projects: [...c.projects, project] };
-            }
-            return {
-              ...c,
-              projects: c.projects.map((p, pi) => (pi === projIndex ? project : p)),
-            };
-          }),
-        };
-      }),
-    }));
-  };
-
-  const {
-    modalTarget,
-    setModalTarget,
-    modalProject,
-    handleProjectSave,
-    closeModal,
-  } = useProjectModalState(getProject, onProjectSave);
-
   const onChangeField = (key: CareerTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const updateExperienceField = (
-    index: number,
-    key: CareerExperienceFieldKey,
-    value: string | boolean,
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, i) => {
-        if (i !== index) return exp;
-        if (key === "is_current") {
-          const isCurrent = Boolean(value);
-          return { ...exp, is_current: isCurrent, end_date: isCurrent ? "" : exp.end_date };
-        }
-        return { ...exp, [key]: value };
-      }),
-    }));
-  };
-
-  const updateClientField = (
-    expIndex: number,
-    clientIndex: number,
-    key: CareerClientFieldKey,
-    value: string,
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) =>
-            ci === clientIndex ? { ...c, [key]: value } : c,
-          ),
-        };
-      }),
-    }));
-  };
-
-  const updateClientHasClient = (expIndex: number, clientIndex: number, value: boolean) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) =>
-            ci === clientIndex ? { ...c, has_client: value, name: value ? c.name : "" } : c,
-          ),
-        };
-      }),
-    }));
-  };
-
-  const addClient = (expIndex: number) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) =>
-        ei === expIndex
-          ? { ...exp, clients: [...exp.clients, { ...blankCareerClient }] }
-          : exp,
-      ),
-    }));
-  };
-
-  const removeClient = (expIndex: number, clientIndex: number) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients:
-            exp.clients.length === 1
-              ? [{ ...blankCareerClient }]
-              : exp.clients.filter((_, ci) => ci !== clientIndex),
-        };
-      }),
-    }));
-  };
-
-  const removeProject = (expIndex: number, clientIndex: number, projIndex: number) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: prev.experiences.map((exp, ei) => {
-        if (ei !== expIndex) return exp;
-        return {
-          ...exp,
-          clients: exp.clients.map((c, ci) => {
-            if (ci !== clientIndex) return c;
-            return {
-              ...c,
-              projects:
-                c.projects.length === 1
-                  ? [{ ...blankCareerProject, technology_stacks: [{ ...blankCareerTechnologyStack }] }]
-                  : c.projects.filter((_, pi) => pi !== projIndex),
-            };
-          }),
-        };
-      }),
-    }));
-  };
-
-  const addExperience = () => {
-    setForm((prev) => ({
-      ...prev,
-      experiences: [...prev.experiences, { ...blankCareerExperience }],
-    }));
-  };
-
-  const removeExperience = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      experiences:
-        prev.experiences.length === 1
-          ? [{ ...blankCareerExperience }]
-          : prev.experiences.filter((_, i) => i !== index),
-    }));
   };
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     await save();
-  };
-
-  /** プロジェクトのサマリーテキストを生成する */
-  const projectSummary = (proj: CareerProjectForm) => {
-    const period = [proj.start_date, proj.is_current ? "現在" : proj.end_date]
-      .filter(Boolean)
-      .join(" 〜 ");
-    return period || "";
-  };
-
-  /** モーダルを開くハンドラ。setModalTarget のラッパー。 */
-  const handleOpenProjectModal = (
-    expIndex: number,
-    clientIndex: number,
-    projIndex: number | null,
-  ) => {
-    setModalTarget({ expIndex, clientIndex, projIndex });
   };
 
   const handleDelete = async () => {
@@ -309,14 +99,6 @@ export function CareerResumeForm() {
         />
       )}
       {previewUrl && <PdfPreviewModal previewUrl={previewUrl} onClose={closePreview} />}
-      {modalTarget && (
-        <ProjectModal
-          project={modalProject}
-          onSave={handleProjectSave}
-          onClose={closeModal}
-          techStackNamesByCategory={techStackNamesByCategory}
-        />
-      )}
       <form onSubmit={onSubmit}>
         <div className={shared.pageHeader}>
           <h1>職務経歴書</h1>
@@ -381,29 +163,12 @@ export function CareerResumeForm() {
               />
             </section>
 
-            <section className={shared.section}>
-              <h2>職務経歴</h2>
-              {form.experiences.map((exp, expIndex) => (
-                <CareerExperienceEditor
-                  key={`exp-${expIndex}`}
-                  exp={exp}
-                  expIndex={expIndex}
-                  onUpdateExperienceField={updateExperienceField}
-                  onUpdateClientField={updateClientField}
-                  onUpdateClientHasClient={updateClientHasClient}
-                  onAddClient={addClient}
-                  onRemoveClient={removeClient}
-                  onRemoveProject={removeProject}
-                  onOpenProjectModal={handleOpenProjectModal}
-                  onRemoveExperience={removeExperience}
-                  projectSummary={projectSummary}
-                />
-              ))}
-
-              <button type="button" className="ghost" onClick={addExperience}>
-                職務経歴を追加
-              </button>
-            </section>
+            {/* 職務経歴セクション: experiences 操作・モーダル管理を委譲 */}
+            <CareerExperienceSection
+              experiences={form.experiences}
+              setForm={setForm}
+              techStackOptions={techStackOptions}
+            />
           </div>
         </div>
       </form>

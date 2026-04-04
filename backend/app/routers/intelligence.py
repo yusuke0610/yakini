@@ -23,10 +23,7 @@ from ..schemas.intelligence import (
     CachedAnalysisResponse,
     PositionAdviceResponse,
 )
-from ..services.intelligence.llm_summarizer import (
-    check_llm_available,
-    generate_learning_advice,
-)
+from ..services.intelligence.llm_advice_service import LLMPositionAdviceService
 from ..services.tasks import TaskType, get_task_dispatcher
 
 logger = logging.getLogger(__name__)
@@ -139,31 +136,22 @@ async def position_advice(
     分析結果とポジションスコアに基づく現状分析+学習アドバイスを LLM で生成します。
     キャッシュ済みの分析結果からデータを取得し、統合プロンプトで生成します。
     """
-    cache = db.query(GitHubAnalysisCache).filter_by(user_id=user.id).first()
-    if not cache or not cache.analysis_result:
+    service = LLMPositionAdviceService(db, user.id)
+
+    if not service.has_analysis():
         raise HTTPException(
             status_code=404,
             detail=get_error("intelligence.no_analysis_cache"),
         )
 
-    analysis = cache.analysis_result
-    scores = analysis.get("position_scores")
-    if not scores:
+    if not service.has_position_scores():
         raise HTTPException(
             status_code=404,
             detail=get_error("intelligence.no_position_scores"),
         )
 
-    available = await check_llm_available()
-    if not available:
-        return PositionAdviceResponse(advice="", available=False)
-
-    advice = await generate_learning_advice(analysis, scores)
+    advice = await service.generate_and_save()
     if not advice:
         return PositionAdviceResponse(advice="", available=False)
-
-    # 学習アドバイスをDBに保存
-    cache.position_advice = advice
-    db.commit()
 
     return PositionAdviceResponse(advice=advice, available=True)
