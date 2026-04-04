@@ -60,6 +60,7 @@ export function CareerResumeForm() {
     mapResponseToForm: mapCareerResumeToForm,
     successMessage: "職務経歴書を保存しました。PDF出力できます。",
     beforeSave: assertBasicInfoReady,
+    cacheKey: "career",
   });
 
   const { items: techStackOptions } = useTechnologyStacks();

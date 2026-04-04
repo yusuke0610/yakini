@@ -1,5 +1,6 @@
 import { request } from "./client";
 import type { BlogAccount, BlogArticle } from "../types";
+import type { TaskStatusResponse } from "./career-analysis";
 
 export interface BlogScoreArticle {
   id: string;
@@ -21,6 +22,13 @@ export interface BlogScoreResponse {
   avg_monthly_posts: number;
   avg_likes: number;
   articles: BlogScoreArticle[];
+}
+
+export interface BlogSummaryResponse {
+  summary: string;
+  available: boolean;
+  status?: string;
+  error_message?: string;
 }
 
 /**
@@ -73,12 +81,12 @@ export function syncBlogAccount(
 }
 
 /**
- * ブログ記事の AI サマリを生成する。
+ * ブログ記事の AI サマリを生成する（202 非同期）。
  */
 export function summarizeBlogArticles(
   articles: BlogArticle[],
-): Promise<{ summary: string; available: boolean }> {
-  return request<{ summary: string; available: boolean }>(
+): Promise<BlogSummaryResponse> {
+  return request<BlogSummaryResponse>(
     "/api/blog/summarize",
     {
       method: "POST",
@@ -90,8 +98,15 @@ export function summarizeBlogArticles(
 /**
  * DB に保存されたブログ AI 分析結果を取得する。
  */
-export function getBlogSummaryCache(): Promise<{ summary: string; available: boolean }> {
-  return request<{ summary: string; available: boolean }>("/api/blog/summary-cache");
+export function getBlogSummaryCache(): Promise<BlogSummaryResponse> {
+  return request<BlogSummaryResponse>("/api/blog/summary-cache");
+}
+
+/**
+ * サマリ生成ステータスを取得する（ポーリング用）。
+ */
+export function getBlogSummaryCacheStatus(): Promise<TaskStatusResponse> {
+  return request<TaskStatusResponse>("/api/blog/summary-cache/status");
 }
 
 /**

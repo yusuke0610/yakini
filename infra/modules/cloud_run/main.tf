@@ -44,7 +44,7 @@ resource "google_cloud_run_v2_service" "app" {
     service_account = var.service_account_email
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.stack_name}:${var.container_image_tag}"
+      image = var.bootstrap_image != "" ? var.bootstrap_image : "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.stack_name}:${var.container_image_tag}"
 
       resources {
         limits = {
@@ -88,6 +88,31 @@ resource "google_cloud_run_v2_service" "app" {
       env {
         name  = "VERTEX_MODEL"
         value = var.vertex_model
+      }
+
+      env {
+        name  = "TASK_RUNNER"
+        value = var.task_runner
+      }
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "CLOUD_TASKS_QUEUE"
+        value = var.cloud_tasks_queue
+      }
+      env {
+        name  = "CLOUD_TASKS_LOCATION"
+        value = var.cloud_tasks_location
+      }
+      env {
+        name  = "CLOUD_TASKS_SERVICE_URL"
+        value = var.cloud_tasks_service_url
+      }
+      env {
+        name  = "CLOUD_TASKS_SERVICE_ACCOUNT"
+        value = var.cloud_tasks_service_account
       }
 
       dynamic "env" {

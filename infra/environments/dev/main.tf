@@ -33,6 +33,14 @@ module "storage" {
   service_account_email = module.service_account.email
 }
 
+module "cloud_tasks" {
+  source = "../../modules/cloud_tasks"
+
+  project_id = var.project_id
+  location   = local.region
+  queue_name = "devforge-ai-tasks-dev"
+}
+
 module "cloud_run" {
   source = "../../modules/cloud_run"
 
@@ -45,6 +53,10 @@ module "cloud_run" {
   enable_github_oauth             = var.enable_github_oauth
   db_backup_bucket_name           = module.storage.db_backup_bucket_name
   cors_origins                    = var.cors_origins
+  task_runner                     = "cloud_tasks"
+  cloud_tasks_queue               = module.cloud_tasks.queue_name
+  cloud_tasks_location            = local.region
+  cloud_tasks_service_account     = module.service_account.email
 }
 
 module "firebase" {
