@@ -306,5 +306,32 @@ def test_github_callback_redirect_sets_auth_cookie(client) -> None:
     assert "access_token=" in response.headers["set-cookie"]
 
 
+def test_begin_github_oauth_state_cookie_is_httponly(client) -> None:
+    """begin_github_oauth が設定する state Cookie が HttpOnly であることを確認する。"""
+    response = client.get(
+        "/auth/github/login-url",
+        headers={"Origin": "http://localhost:5173"},
+    )
+
+    assert response.status_code == 200
+    # Set-Cookie ヘッダーに HttpOnly が含まれていることを確認する
+    set_cookie_header = response.headers.get("set-cookie", "")
+    assert "github_oauth_state=" in set_cookie_header
+    assert "httponly" in set_cookie_header.lower()
+
+
+def test_begin_github_oauth_state_cookie_has_samesite(client) -> None:
+    """begin_github_oauth が設定する state Cookie に SameSite 属性が含まれることを確認する。"""
+    response = client.get(
+        "/auth/github/login-url",
+        headers={"Origin": "http://localhost:5173"},
+    )
+
+    assert response.status_code == 200
+    set_cookie_header = response.headers.get("set-cookie", "")
+    assert "github_oauth_state=" in set_cookie_header
+    assert "samesite=" in set_cookie_header.lower()
+
+
 # 使用しない環境変数を参照するだけのプレースホルダー（lint 対策）
 _ = os.environ
