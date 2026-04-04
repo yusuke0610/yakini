@@ -29,3 +29,12 @@ resource "google_project_iam_member" "deployer_firebase_hosting_admin" {
   role    = "roles/firebasehosting.admin"
   member  = "serviceAccount:${var.deployer_service_account_email}"
 }
+
+# Firebase CLI がプロジェクトメタデータを読み取るために必要
+resource "google_project_iam_member" "deployer_viewer" {
+  count = var.deployer_service_account_email != "" ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/viewer"
+  member  = "serviceAccount:${var.deployer_service_account_email}"
+}
