@@ -1,11 +1,18 @@
 import os
+import secrets
+from unittest.mock import AsyncMock
 
+import app.services.tasks.worker as _worker
 import pytest
+from app.core.security.auth import create_access_token, create_refresh_token
 from app.db import Base, get_db
 from app.models import (  # noqa: F401 — ensure models registered
     BasicInfo,
     BlogAccount,
     BlogArticle,
+    BlogSummaryCache,
+    CareerAnalysis,
+    GitHubAnalysisCache,
     MPrefecture,
     MQualification,
     MTechnologyStack,
@@ -13,12 +20,12 @@ from app.models import (  # noqa: F401 — ensure models registered
     Rirekisho,
     User,
 )
+from app.repositories import UserRepository
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 
 def _generate_test_rsa_keys() -> tuple[str, str]:
@@ -52,11 +59,11 @@ from app.main import app, limiter  # noqa: E402
 
 
 @pytest.fixture()
-def db_session():
+def db_session(tmp_path):
+    """一時ファイル SQLite を使うことで複数接続（worker の SessionLocal 等）を可能にする。"""
     engine = create_engine(
-        "sqlite:///:memory:",
+        f"sqlite:///{tmp_path}/test.db",
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
     TestSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -77,28 +84,39 @@ def client(db_session):
             pass
 
     app.dependency_overrides[get_db] = _override_get_db
+
+    # worker.execute_task をノーオペレーションに差し替える。
+    # テスト用のインメモリDBとLLMを持たない環境でバックグラウンドタスクが
+    # 実際に実行されると例外が発生し TestClient が伝播させてしまうため。
+    # バックグラウンドタスクの動作を検証したいテストはワーカー関数を直接呼ぶこと。
+    original_execute_task = _worker.execute_task
+    _worker.execute_task = AsyncMock(return_value=None)
+
     limiter.reset()
     with TestClient(app) as c:
+        c._db_session = db_session  # auth_header から参照するためセッションを保持
         yield c
     app.dependency_overrides.clear()
+    _worker.execute_task = original_execute_task
 
 
 def auth_header(client, username: str = "testuser") -> dict:
-    """テスト用の認証 Cookie をセットするヘルパー。CSRF トークンをヘッダーに含む dict を返す。"""
-    client.post(
-        "/auth/register",
-        json={
-            "username": username,
-            "email": f"{username}@example.com",
-            "password": "SecurePass123",
-        },
-    )
-    client.post(
-        "/auth/login",
-        json={
-            "email": f"{username}@example.com",
-            "password": "SecurePass123",
-        },
-    )
-    csrf_token = client.cookies.get("csrf_token", "")
+    """テスト用の認証 Cookie をセットするヘルパー。CSRF トークンをヘッダーに含む dict を返す。
+
+    DB にユーザーを直接作成し、JWT Cookie をセットする。
+    /auth/register や /auth/login エンドポイントには依存しない。
+    """
+    db = client._db_session
+    repo = UserRepository(db)
+    if not repo.get_by_username(username):
+        repo.create(username, hashed_password=None, email=f"{username}@example.com")
+
+    access_token = create_access_token(username)
+    refresh_token = create_refresh_token(username)
+    csrf_token = secrets.token_urlsafe(32)
+
+    client.cookies.set("access_token", access_token)
+    client.cookies.set("refresh_token", refresh_token)
+    client.cookies.set("csrf_token", csrf_token)
+
     return {"X-CSRF-Token": csrf_token}

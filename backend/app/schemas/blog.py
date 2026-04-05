@@ -68,6 +68,8 @@ class BlogSummaryResponse(BaseModel):
 
     summary: str
     available: bool
+    status: str | None = None
+    error_message: str | None = None
 
 
 class BlogScoreArticleResponse(BaseModel):

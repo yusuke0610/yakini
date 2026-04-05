@@ -51,12 +51,14 @@ class BlogScore:
     articles: list[ArticleWithTechFlag] = field(default_factory=list)
 
 
-def is_tech_article(tags: list[str]) -> bool:
-    """タグに技術系キーワードが含まれるか判定する。"""
-    for tag in tags:
-        tag_lower = tag.lower()
+def is_tech_article(tags: list[str], title: str = "") -> bool:
+    """タグまたはタイトルに技術系キーワードが含まれるか判定する。"""
+    targets = [tag.lower() for tag in tags] + [title.lower()]
+    for target in targets:
+        if not target:
+            continue
         for keyword in _TECH_KEYWORDS_LOWER:
-            if keyword in tag_lower or tag_lower in keyword:
+            if keyword in target:
                 return True
     return False
 
@@ -129,7 +131,8 @@ def calculate_blog_score(articles: list[dict]) -> BlogScore:
 
     for article in articles:
         tags = article.get("tags", [])
-        tech = is_tech_article(tags)
+        title = article.get("title", "")
+        tech = is_tech_article(tags, title)
         scored_articles.append(
             ArticleWithTechFlag(
                 id=article.get("id", ""),

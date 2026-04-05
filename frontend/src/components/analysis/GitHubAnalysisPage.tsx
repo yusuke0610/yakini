@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   analyzeGitHub,
   getAnalysisCache,
+  getAnalysisCacheStatus,
   type AnalysisResponse,
 } from "../../api";
-import { SkillTimelineChart } from "../SkillTimelineChart";
+import { useAsyncAnalysisPage } from "../../hooks/analysis/useAsyncAnalysisPage";
 import { LanguageBar } from "./LanguageBar";
 import { PositionRadarChart } from "./PositionRadarChart";
 import shared from "../../styles/shared.module.css";
 import styles from "./GitHubAnalysisPage.module.css";
-
-type Phase = "loading-cache" | "input" | "loading" | "result";
 
 /**
  * GitHub 分析結果を表示するダッシュボードコンポーネント。
@@ -18,53 +17,41 @@ type Phase = "loading-cache" | "input" | "loading" | "result";
  * 「再分析」ボタン押下時のみパイプラインを再実行する。
  */
 export function GitHubAnalysisPage() {
-  const [phase, setPhase] = useState<Phase>("loading-cache");
   const [includeForks, setIncludeForks] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AnalysisResponse | null>(null);
-
-  // ポジションアドバイス（現状分析+学習アドバイス）
+  /** ポジションアドバイス（GitHub 固有のキャッシュデータ） */
   const [positionAdvice, setPositionAdvice] = useState<string | null>(null);
 
-  /**
-   * 初回マウント時にDBキャッシュを読み込む。
-   */
-  useEffect(() => {
-    let cancelled = false;
-    getAnalysisCache()
-      .then((cache) => {
-        if (cancelled) return;
-        if (cache.analysis_result) {
-          setResult(cache.analysis_result);
-          setPositionAdvice(cache.position_advice ?? null);
-          setPhase("result");
-        } else {
-          setPhase("input");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setPhase("input");
-      });
-    return () => { cancelled = true; };
-  }, []);
+  const {
+    phase,
+    result,
+    setResult,
+    error,
+    setError,
+    transitionToPolling,
+    backToInput,
+  } = useAsyncAnalysisPage<AnalysisResponse>({
+    loadCache: async () => {
+      const cache = await getAnalysisCache();
+      // ポジションアドバイスをページ固有の状態として保持する
+      if (cache.position_advice) {
+        setPositionAdvice(cache.position_advice);
+      }
+      return { result: cache.analysis_result, status: cache.status };
+    },
+    checkStatus: getAnalysisCacheStatus,
+  });
 
   /**
-   * GitHub 分析を実行します（再分析）。
+   * GitHub 分析を開始します（非同期バックグラウンド）。
    */
   const handleAnalyze = async () => {
     setError(null);
-    setPhase("loading");
     setPositionAdvice(null);
     try {
-      const data = await analyzeGitHub({
-        include_forks: includeForks,
-      });
-      setResult(data);
-      setPhase("result");
+      await analyzeGitHub({ include_forks: includeForks });
+      transitionToPolling();
     } catch (e) {
       setError(e instanceof Error ? e.message : "分析に失敗しました");
-      setPhase("input");
     }
   };
 
@@ -72,9 +59,9 @@ export function GitHubAnalysisPage() {
    * 入力画面に戻ります（再分析用）。
    */
   const handleBack = () => {
-    setPhase("input");
-    setResult(null);
     setPositionAdvice(null);
+    setResult(null);
+    backToInput();
   };
 
   // ── フェーズ: キャッシュ読み込み中 ──────────────────────────────
@@ -97,27 +84,18 @@ export function GitHubAnalysisPage() {
           <h2>GitHub分析</h2>
           <p>あなたのGitHubアクティビティからスキルとキャリアを分析します</p>
 
-          <button
-            type="button"
-            className={styles.advancedToggle}
-            onClick={() => setShowAdvanced(!showAdvanced)}
-          >
-            {showAdvanced ? "▼" : "▶"} 詳細オプション
-          </button>
-
-          {showAdvanced && (
-            <div className={styles.advancedOptions}>
-              <div className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  id="includeForks"
-                  checked={includeForks}
-                  onChange={(e) => setIncludeForks(e.target.checked)}
-                />
-                <label htmlFor="includeForks">フォークしたリポジトリを含む</label>
-              </div>
+          <div className={styles.advancedOptions}>
+            <div className={styles.checkbox}>
+              <input
+                type="checkbox"
+                id="includeForks"
+                checked={includeForks}
+                onChange={(e) => setIncludeForks(e.target.checked)}
+              />
+              <label htmlFor="includeForks">フォークしたリポジトリを含む</label>
             </div>
-          )}
+          </div>
+
 
           <button
             type="button"
@@ -133,13 +111,16 @@ export function GitHubAnalysisPage() {
     );
   }
 
-  // ── フェーズ: ローディング ────────────────────────────────────────
-  if (phase === "loading") {
+  // ── フェーズ: ポーリング中 ────────────────────────────────────────
+  if (phase === "polling") {
     return (
       <div className={shared.pageBody}>
         <div className={styles.loading}>
           <div className={styles.spinner} />
           <p>GitHubプロフィールを分析中...</p>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+            他の画面に移動しても処理は継続されます
+          </p>
         </div>
       </div>
     );
@@ -196,11 +177,6 @@ export function GitHubAnalysisPage() {
             />
           </div>
         )}
-
-        {/* スキル成熟度グラフ */}
-        <div className={styles.section}>
-          <SkillTimelineChart />
-        </div>
       </div>
     </div>
   );

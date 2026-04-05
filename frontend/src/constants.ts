@@ -17,8 +17,15 @@ export const careerTechnologyStackCategories: CareerTechnologyStackCategory[] = 
   "framework",
   "os",
   "db",
-  "cloud_resource",
-  "dev_tool",
+  "cloud_provider",
+  "container",
+  "iac",
+  "vcs",
+  "ci_cd",
+  "project_tool",
+  "monitoring",
+  "middleware",
+  "ai_agent",
 ];
 
 export const careerTechnologyStackCategoryLabels: Record<CareerTechnologyStackCategory, string> = {
@@ -26,8 +33,15 @@ export const careerTechnologyStackCategoryLabels: Record<CareerTechnologyStackCa
   framework: "FW",
   os: "OS",
   db: "DB",
-  cloud_resource: "NW",
-  dev_tool: "Tool",
+  cloud_provider: "クラウド",
+  container: "コンテナ",
+  iac: "IaC",
+  vcs: "バージョン管理",
+  ci_cd: "CI/CD",
+  project_tool: "プロジェクトツール",
+  monitoring: "監視ツール",
+  middleware: "ミドルウェア",
+  ai_agent: "AIエージェント",
 };
 
 export const blankCareerTechnologyStack: CareerTechnologyStack = {
@@ -36,7 +50,7 @@ export const blankCareerTechnologyStack: CareerTechnologyStack = {
 };
 
 export const teamRoleOptions = [
-  "PM", "PL", "PMO","SM","SE", "PG", "テスター", "デザイナー", "インフラ", "その他",
+  "PM", "PL", "PMO", "SM", "SE", "PG", "テスター", "デザイナー", "インフラ", "その他",
 ];
 
 export const phaseOptions = [

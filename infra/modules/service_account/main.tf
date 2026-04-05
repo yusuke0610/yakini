@@ -17,3 +17,9 @@ resource "google_project_iam_member" "aiplatform_user" {
   role    = "roles/aiplatform.user"
   member  = "serviceAccount:${google_service_account.app.email}"
 }
+
+resource "google_project_iam_member" "cloud_tasks_enqueuer" {
+  project = var.project_id
+  role    = "roles/cloudtasks.enqueuer"
+  member  = "serviceAccount:${google_service_account.app.email}"
+}

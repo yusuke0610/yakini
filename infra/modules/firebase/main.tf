@@ -29,3 +29,30 @@ resource "google_project_iam_member" "deployer_firebase_hosting_admin" {
   role    = "roles/firebasehosting.admin"
   member  = "serviceAccount:${var.deployer_service_account_email}"
 }
+
+# Firebase CLI がプロジェクトメタデータを読み取るために必要
+resource "google_project_iam_member" "deployer_viewer" {
+  count = var.deployer_service_account_email != "" ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/viewer"
+  member  = "serviceAccount:${var.deployer_service_account_email}"
+}
+
+# Artifact Registry への Docker イメージ push に必要
+resource "google_project_iam_member" "deployer_artifact_registry_writer" {
+  count = var.deployer_service_account_email != "" ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${var.deployer_service_account_email}"
+}
+
+# Cloud Run サービスのデプロイに必要
+resource "google_project_iam_member" "deployer_run_developer" {
+  count = var.deployer_service_account_email != "" ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/run.developer"
+  member  = "serviceAccount:${var.deployer_service_account_email}"
+}

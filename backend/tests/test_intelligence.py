@@ -4,6 +4,9 @@ Unit tests for the career intelligence services.
 Tests cover deterministic modules only (no GitHub API calls).
 """
 
+import asyncio
+from unittest.mock import AsyncMock, patch
+
 from app.services.intelligence.career_paths import (
     match_skills_to_roles,
 )
@@ -11,7 +14,7 @@ from app.services.intelligence.career_predictor import predict_career
 from app.services.intelligence.career_simulator import simulate_careers
 from app.services.intelligence.confidence_scorer import score_path
 from app.services.intelligence.github_collector import RepoData
-from app.services.intelligence.pipeline import IntelligenceResult
+from app.services.intelligence.pipeline import IntelligenceResult, run_pipeline
 from app.services.intelligence.response_mapper import map_pipeline_result
 from app.services.intelligence.skill_extractor import extract_skills
 from app.services.intelligence.skill_growth_analyzer import (
@@ -731,17 +734,6 @@ def test_analyze_requires_github_user(client: TestClient) -> None:
     )
     assert resp.status_code == 403
 
-
-def test_skill_activity_requires_github_user(client: TestClient) -> None:
-    """通常ユーザーで skill-activity を呼ぶと 403 になること。"""
-    headers = auth_header(client, "normal_skill")
-    resp = client.post(
-        "/api/intelligence/skill-activity",
-        headers=headers,
-    )
-    assert resp.status_code == 403
-
-
 # ── Response Mapper Tests ──────────────────────────────────────────────
 
 
@@ -758,3 +750,58 @@ def test_map_pipeline_result_includes_languages() -> None:
     assert response.languages == {"Python": 50000, "TypeScript": 30000}
     assert response.username == "testuser"
     assert response.repos_analyzed == 3
+
+
+# ── Pipeline Tests ──────────────────────────────────────────────────────
+
+
+def _make_pipeline_repo(name: str, languages: dict | None = None) -> RepoData:
+    """パイプラインテスト用のリポジトリデータを生成するヘルパー。"""
+    return RepoData(
+        name=name,
+        owner="testuser",
+        description="",
+        languages=languages or {},
+        topics=[],
+        created_at="2024-01-01T00:00:00Z",
+        pushed_at="2024-06-01T00:00:00Z",
+        fork=False,
+        stargazers_count=0,
+        default_branch="main",
+        dependencies=[],
+        root_files=[],
+        detected_frameworks=[],
+    )
+
+
+def test_run_pipeline_aggregates_languages() -> None:
+    """複数リポジトリの言語バイト数が正しく集計されること。"""
+    repos = [
+        _make_pipeline_repo("repo-a", {"Python": 10000, "JavaScript": 5000}),
+        _make_pipeline_repo("repo-b", {"Python": 20000, "Go": 8000}),
+    ]
+
+    with patch(
+        "app.services.intelligence.pipeline.collect_repos",
+        new_callable=AsyncMock,
+        return_value=repos,
+    ):
+        result = asyncio.get_event_loop().run_until_complete(run_pipeline(username="testuser"))
+
+    assert result.languages["Python"] == 30000
+    assert result.languages["JavaScript"] == 5000
+    assert result.languages["Go"] == 8000
+
+
+def test_run_pipeline_empty_repos() -> None:
+    """リポジトリ 0 件で正常終了すること。"""
+    with patch(
+        "app.services.intelligence.pipeline.collect_repos",
+        new_callable=AsyncMock,
+        return_value=[],
+    ):
+        result = asyncio.get_event_loop().run_until_complete(run_pipeline(username="emptyuser"))
+
+    assert result.repos_analyzed == 0
+    assert result.unique_skills == 0
+    assert result.languages == {}

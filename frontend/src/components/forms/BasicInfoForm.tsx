@@ -32,6 +32,7 @@ export function BasicInfoForm() {
     buildPayload: buildBasicPayload,
     mapResponseToForm: mapBasicInfoToForm,
     successMessage: "基本情報を保存しました。",
+    cacheKey: "basicInfo",
   });
 
   const onChangeField = (key: BasicTextFieldKey, value: string) => {
@@ -132,7 +133,7 @@ export function BasicInfoForm() {
               <div key={`basic-qualification-${index}`} className={shared.entry}>
                 <div className={shared.inline}>
                   <label>
-                    資格名
+                    資格名 ※プルダウンにないものはテキストで入力できます。
                     <Combobox
                       value={qualification.name}
                       onChange={(val) => updateQualificationField(index, "name", val)}

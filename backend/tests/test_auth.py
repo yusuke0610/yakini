@@ -6,28 +6,11 @@ import pytest
 from app.core.security.auth import (
     create_access_token,
     create_refresh_token,
-    hash_password,
-    verify_password,
 )
 from app.core.settings import get_cookie_samesite, get_cookie_secure
 from jose import jwt
 
 from conftest import _test_public_key, auth_header
-
-# ── パスワードハッシュ ────────────────────────────────────────────
-
-
-def test_hash_and_verify_password() -> None:
-    hashed = hash_password("secret123")
-
-    assert verify_password("secret123", hashed)
-
-
-def test_verify_wrong_password() -> None:
-    hashed = hash_password("secret123")
-
-    assert not verify_password("wrong", hashed)
-
 
 # ── RS256 トークン生成・検証 ──────────────────────────────────────
 
@@ -71,18 +54,11 @@ def test_hs256_token_rejected_by_rs256_verification() -> None:
 
 def test_access_token_cannot_be_used_as_refresh(client) -> None:
     """アクセストークンでリフレッシュエンドポイントを叩いて拒否されることを確認する。"""
-    # ログインしてアクセストークンを取得
-    client.post(
-        "/auth/register",
-        json={"username": "rftest", "email": "rftest@example.com", "password": "SecurePass123"},
-    )
-    client.post(
-        "/auth/login",
-        json={"email": "rftest@example.com", "password": "SecurePass123"},
-    )
-    # アクセストークンをリフレッシュ Cookie に偽装してリフレッシュを試みる
+    auth_header(client, "rftest")
+    # 既存の有効なリフレッシュトークンを削除してアクセストークンで置き換える
     access_token = client.cookies.get("access_token", "")
-    client.cookies.set("refresh_token", access_token, path="/auth/refresh")
+    del client.cookies["refresh_token"]
+    client.cookies.set("refresh_token", access_token)
 
     response = client.post("/auth/refresh")
 
@@ -91,14 +67,7 @@ def test_access_token_cannot_be_used_as_refresh(client) -> None:
 
 def test_refresh_token_cannot_access_api(client) -> None:
     """リフレッシュトークンで通常 API を叩いて拒否されることを確認する。"""
-    client.post(
-        "/auth/register",
-        json={"username": "apitest", "email": "apitest@example.com", "password": "SecurePass123"},
-    )
-    client.post(
-        "/auth/login",
-        json={"email": "apitest@example.com", "password": "SecurePass123"},
-    )
+    auth_header(client, "apitest")
     refresh_token = create_refresh_token("apitest")
     client.cookies.set("access_token", refresh_token)
 
@@ -109,14 +78,7 @@ def test_refresh_token_cannot_access_api(client) -> None:
 
 def test_refresh_issues_new_access_token(client) -> None:
     """有効なリフレッシュトークンで新しいアクセストークンが発行されることを確認する。"""
-    client.post(
-        "/auth/register",
-        json={"username": "refuser", "email": "refuser@example.com", "password": "SecurePass123"},
-    )
-    client.post(
-        "/auth/login",
-        json={"email": "refuser@example.com", "password": "SecurePass123"},
-    )
+    auth_header(client, "refuser")
 
     response = client.post("/auth/refresh")
 
@@ -249,50 +211,6 @@ def test_get_request_skips_csrf_check(client) -> None:
     assert response.status_code == 200
 
 
-def test_login_sets_csrf_cookie(client) -> None:
-    """ログイン成功時に csrf_token Cookie がセットされることを確認する。"""
-    client.post(
-        "/auth/register",
-        json={
-            "username": "csrflogin",
-            "email": "csrflogin@example.com",
-            "password": "SecurePass123",
-        },
-    )
-
-    response = client.post(
-        "/auth/login",
-        json={"email": "csrflogin@example.com", "password": "SecurePass123"},
-    )
-
-    assert response.status_code == 200
-    assert "csrf_token=" in response.headers.get("set-cookie", "")
-
-
-# ── ブルートフォース対策 ───────────────────────────────────────────
-
-
-def test_login_rate_limit_after_5_failures(client) -> None:
-    """5回失敗後の6回目が 429 で拒否されることを確認する。"""
-    client.post(
-        "/auth/register",
-        json={"username": "bfuser", "email": "bfuser@example.com", "password": "SecurePass123"},
-    )
-
-    for _ in range(5):
-        client.post(
-            "/auth/login",
-            json={"email": "bfuser@example.com", "password": "WrongPass!"},
-        )
-
-    response = client.post(
-        "/auth/login",
-        json={"email": "bfuser@example.com", "password": "WrongPass!"},
-    )
-
-    assert response.status_code == 429
-
-
 # ── GitHub OAuth ──────────────────────────────────────────────────
 
 
@@ -388,22 +306,31 @@ def test_github_callback_redirect_sets_auth_cookie(client) -> None:
     assert "access_token=" in response.headers["set-cookie"]
 
 
-# ── ログアウト ────────────────────────────────────────────────────
+def test_begin_github_oauth_state_cookie_is_httponly(client) -> None:
+    """begin_github_oauth が設定する state Cookie が HttpOnly であることを確認する。"""
+    response = client.get(
+        "/auth/github/login-url",
+        headers={"Origin": "http://localhost:5173"},
+    )
+
+    assert response.status_code == 200
+    # Set-Cookie ヘッダーに HttpOnly が含まれていることを確認する
+    set_cookie_header = response.headers.get("set-cookie", "")
+    assert "github_oauth_state=" in set_cookie_header
+    assert "httponly" in set_cookie_header.lower()
 
 
-def test_logout_clears_cookies(client) -> None:
-    """ログアウト時に認証 Cookie がすべて削除されることを確認する。"""
-    auth_header(client, "logoutuser")
+def test_begin_github_oauth_state_cookie_has_samesite(client) -> None:
+    """begin_github_oauth が設定する state Cookie に SameSite 属性が含まれることを確認する。"""
+    response = client.get(
+        "/auth/github/login-url",
+        headers={"Origin": "http://localhost:5173"},
+    )
 
-    response = client.post("/auth/logout")
-
-    assert response.status_code == 204
-    set_cookie = response.headers.get("set-cookie", "")
-    assert "access_token=" in set_cookie
-
-    # ログアウト後に /auth/me にアクセスすると 401 になる
-    response = client.get("/auth/me")
-    assert response.status_code == 401
+    assert response.status_code == 200
+    set_cookie_header = response.headers.get("set-cookie", "")
+    assert "github_oauth_state=" in set_cookie_header
+    assert "samesite=" in set_cookie_header.lower()
 
 
 # 使用しない環境変数を参照するだけのプレースホルダー（lint 対策）

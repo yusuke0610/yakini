@@ -1,21 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
-import {
-  getBlogAccounts,
-  addBlogAccount,
-  deleteBlogAccount,
-  getBlogArticles,
-  syncBlogAccount,
-  summarizeBlogArticles,
-  getBlogSummaryCache,
-} from "../../api";
-import type { BlogAccount, BlogArticle } from "../../types";
+import { useState } from "react";
+
+import { useBlogAccountManager } from "../../hooks/useBlogAccountManager";
 import { ZennIcon } from "../icons/ZennIcon";
 import { NoteIcon } from "../icons/NoteIcon";
 import { BlogScoreCard } from "./BlogScoreCard";
+import { BlogAnalysisSection } from "./BlogAnalysisSection";
 import shared from "../../styles/shared.module.css";
 import styles from "./BlogPage.module.css";
 
 type PlatformFilter = "all" | "zenn" | "note";
+
+const ARTICLES_PER_PAGE = 5;
 
 /** 対応プラットフォーム定義 */
 const PLATFORMS = [
@@ -37,162 +32,40 @@ const PLATFORMS = [
  * ブログ連携ページ。固定プラットフォーム一覧でアカウント連携 → 記事一覧・AI分析。
  */
 export function BlogPage() {
-  const [accounts, setAccounts] = useState<BlogAccount[]>([]);
-  const [articles, setArticles] = useState<BlogArticle[]>([]);
   const [filter, setFilter] = useState<PlatformFilter>("all");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [pageByFilter, setPageByFilter] = useState<Record<PlatformFilter, number>>({
+    all: 1,
+    zenn: 1,
+    note: 1,
+  });
 
-  // プラットフォームごとの入力中ユーザー名
-  const [draftUsernames, setDraftUsernames] = useState<
-    Record<string, string>
-  >({ zenn: "", note: "" });
+  const {
+    accounts,
+    articles,
+    loading,
+    error,
+    success,
+    draftUsernames,
+    setDraftUsernames,
+    savingPlatform,
+    syncingPlatform,
+    summary,
+    summaryLoading,
+    accountMap,
+    handleSave,
+    handleSync,
+    handleDelete,
+    handleSummarize,
+  } = useBlogAccountManager(filter);
 
-  // 保存中 / 同期中のプラットフォーム
-  const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
-  const [syncingPlatform, setSyncingPlatform] = useState<string | null>(null);
-
-  // AI分析
-  const [summary, setSummary] = useState<string | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(false);
-
-  /** アカウント map（platform → account） */
-  const accountMap = new Map(accounts.map((a) => [a.platform, a]));
-
-  const loadData = useCallback(async () => {
-    try {
-      const accs = await getBlogAccounts();
-      setAccounts(accs);
-      if (accs.length > 0) {
-        const arts = await getBlogArticles(
-          filter === "all" ? undefined : filter,
-        );
-        setArticles(arts);
-      } else {
-        setArticles([]);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "データの取得に失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  }, [filter]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // 初回マウント時に保存済みのAI分析結果を読み込む
-  useEffect(() => {
-    getBlogSummaryCache()
-      .then((cached) => {
-        if (cached.available && cached.summary) {
-          setSummary(cached.summary);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  /**
-   * ユーザー名を保存（連携）し、自動で記事を同期する。
-   */
-  const handleSave = async (platform: "zenn" | "note") => {
-    const username = draftUsernames[platform]?.trim();
-    if (!username) return;
-    setSavingPlatform(platform);
-    setError(null);
-    setSuccess(null);
-    try {
-      const account = await addBlogAccount(platform, username);
-      setDraftUsernames((prev) => ({ ...prev, [platform]: "" }));
-      await loadData();
-      // 連携直後に自動同期
-      try {
-        const result = await syncBlogAccount(account.id);
-        await loadData();
-        setSuccess(
-          `${result.synced_count}件の記事を取得しました（合計: ${result.total_count}件）`,
-        );
-      } catch (syncErr) {
-        setSuccess("アカウントを連携しました");
-        setError(
-          syncErr instanceof Error
-            ? syncErr.message
-            : "記事の同期に失敗しました。「同期」ボタンで再試行してください。",
-        );
-      }
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "アカウントの連携に失敗しました",
-      );
-    } finally {
-      setSavingPlatform(null);
-    }
-  };
-
-  /**
-   * 記事を同期する。
-   */
-  const handleSync = async (platform: "zenn" | "note") => {
-    const account = accountMap.get(platform);
-    if (!account) return;
-    setSyncingPlatform(platform);
-    setError(null);
-    setSuccess(null);
-    try {
-      const result = await syncBlogAccount(account.id);
-      await loadData();
-      setSuccess(
-        `${result.synced_count}件の新しい記事を取得しました（合計: ${result.total_count}件）`,
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "同期に失敗しました");
-    } finally {
-      setSyncingPlatform(null);
-    }
-  };
-
-  /**
-   * アカウントを解除する。
-   */
-  const handleDelete = async (platform: "zenn" | "note") => {
-    const account = accountMap.get(platform);
-    if (!account) return;
-    setError(null);
-    setSuccess(null);
-    try {
-      await deleteBlogAccount(account.id);
-      await loadData();
-      setSuccess("アカウントを解除しました");
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "アカウントの解除に失敗しました",
-      );
-    }
-  };
-
-  /**
-   * AI分析を実行する。
-   */
-  const handleSummarize = async () => {
-    if (articles.length === 0) return;
-    setSummaryLoading(true);
-    setSummary(null);
-    setError(null);
-    try {
-      const result = await summarizeBlogArticles(articles);
-      if (result.available) {
-        setSummary(result.summary);
-      } else {
-        setError("AI分析サーバーに接続できません");
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "AI分析に失敗しました");
-    } finally {
-      setSummaryLoading(false);
-    }
-  };
+  const totalPages = Math.max(1, Math.ceil(articles.length / ARTICLES_PER_PAGE));
+  const currentPage = Math.min(pageByFilter[filter], totalPages);
+  const showPagination = articles.length > ARTICLES_PER_PAGE;
+  const pageStartIndex = (currentPage - 1) * ARTICLES_PER_PAGE;
+  const visibleArticles = articles.slice(
+    pageStartIndex,
+    pageStartIndex + ARTICLES_PER_PAGE,
+  );
 
   if (loading) {
     return (
@@ -314,7 +187,14 @@ export function BlogPage() {
                     key={f}
                     type="button"
                     className={`${styles.filterTab} ${filter === f ? styles.filterTabActive : ""}`}
-                    onClick={() => setFilter(f)}
+                    onClick={() => {
+                      if (filter === f) return;
+                      setFilter(f);
+                      setPageByFilter((prev) => ({
+                        ...prev,
+                        [f]: 1,
+                      }));
+                    }}
                   >
                     {f === "all" ? "All" : f === "zenn" ? "Zenn" : "note"}
                   </button>
@@ -327,61 +207,88 @@ export function BlogPage() {
                 記事がありません。「同期」ボタンで記事を取得してください。
               </p>
             ) : (
-              <div className={styles.articleList}>
-                {articles.map((art) => (
-                  <a
-                    key={art.id}
-                    href={art.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.articleItem}
-                  >
-                    <div className={styles.articleTop}>
-                      <span className={styles.articleIcon}>
-                        {art.platform === "zenn" ? (
-                          <ZennIcon size={16} />
-                        ) : (
-                          <NoteIcon size={16} />
-                        )}
-                      </span>
-                      <span className={styles.articleTitle}>{art.title}</span>
-                      <span className={styles.articleDate}>
-                        {art.published_at}
-                      </span>
-                    </div>
-                    <div className={styles.articleMeta}>
-                      {art.likes_count > 0 && (
-                        <span>いいね: {art.likes_count}</span>
-                      )}
-                      {art.tags.length > 0 && (
-                        <span>タグ: {art.tags.join(", ")}</span>
-                      )}
-                      {art.summary && (
-                        <span>
-                          {art.summary.length > 80
-                            ? `${art.summary.slice(0, 80)}...`
-                            : art.summary}
+              <>
+                <div className={styles.articleList}>
+                  {visibleArticles.map((art) => (
+                    <a
+                      key={art.id}
+                      href={art.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.articleItem}
+                    >
+                      <div className={styles.articleTop}>
+                        <span className={styles.articleIcon}>
+                          {art.platform === "zenn" ? (
+                            <ZennIcon size={16} />
+                          ) : (
+                            <NoteIcon size={16} />
+                          )}
                         </span>
-                      )}
-                    </div>
-                  </a>
-                ))}
-              </div>
+                        <span className={styles.articleTitle}>{art.title}</span>
+                        <span className={styles.articleDate}>
+                          {art.published_at}
+                        </span>
+                      </div>
+                      <div className={styles.articleMeta}>
+                        {art.likes_count > 0 && (
+                          <span>いいね: {art.likes_count}</span>
+                        )}
+                        {art.tags.length > 0 && (
+                          <span>タグ: {art.tags.join(", ")}</span>
+                        )}
+                        {art.summary && (
+                          <span>
+                            {art.summary.length > 80
+                              ? `${art.summary.slice(0, 80)}...`
+                              : art.summary}
+                          </span>
+                        )}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+
+                {showPagination && (
+                  <div className={styles.pagination}>
+                    <button
+                      type="button"
+                      className={styles.paginationButton}
+                      onClick={() =>
+                        setPageByFilter((prev) => ({
+                          ...prev,
+                          [filter]: Math.max(1, currentPage - 1),
+                        }))
+                      }
+                      disabled={currentPage === 1}
+                    >
+                      前へ
+                    </button>
+                    <span className={styles.pageIndicator}>
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.paginationButton}
+                      onClick={() =>
+                        setPageByFilter((prev) => ({
+                          ...prev,
+                          [filter]: Math.min(totalPages, currentPage + 1),
+                        }))
+                      }
+                      disabled={currentPage === totalPages}
+                    >
+                      次へ
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
 
         {/* AI 分析結果 */}
-        {(summaryLoading || summary) && (
-          <div className={styles.aiSection}>
-            <h2>AI 分析結果</h2>
-            {summaryLoading ? (
-              <p className={styles.summaryLoading}>分析中...</p>
-            ) : (
-              <p className={styles.summaryText}>{summary}</p>
-            )}
-          </div>
-        )}
+        <BlogAnalysisSection summaryLoading={summaryLoading} summary={summary} />
       </div>
     </>
   );

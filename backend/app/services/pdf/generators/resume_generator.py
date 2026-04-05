@@ -22,8 +22,15 @@ _CATEGORY_LABELS = {
     "framework": "FW",
     "os": "OS",
     "db": "DB",
-    "cloud_resource": "NW",
-    "dev_tool": "Tool",
+    "cloud_provider": "クラウド",
+    "container": "コンテナ",
+    "iac": "IaC",
+    "vcs": "バージョン管理",
+    "ci_cd": "CI/CD",
+    "project_tool": "プロジェクトツール",
+    "monitoring": "監視・可観測性",
+    "middleware": "ミドルウェア",
+    "ai_agent": "AIエージェント",
 }
 
 

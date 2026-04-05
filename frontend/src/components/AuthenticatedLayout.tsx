@@ -14,12 +14,10 @@ export function AuthenticatedLayout({
   user,
   theme,
   onToggleTheme,
-  onLogout,
 }: {
   user: AuthUser;
   theme: Theme;
   onToggleTheme: () => void;
-  onLogout: () => void;
 }) {
   return (
     <div className={shared.page}>
@@ -69,13 +67,20 @@ export function AuthenticatedLayout({
             >
               ブログ連携
             </NavLink>
+            <NavLink
+              to="/career_analysis"
+              className={({ isActive }) =>
+                `${styles.sidebarItem} ${isActive ? styles.active : ""}`
+              }
+            >
+              キャリア分析
+            </NavLink>
           </nav>
           <div className={styles.sidebarFooter}>
             <UserMenu
               username={user.username}
               theme={theme}
               onToggleTheme={onToggleTheme}
-              onLogout={onLogout}
             />
           </div>
         </aside>

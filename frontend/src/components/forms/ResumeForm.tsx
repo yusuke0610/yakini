@@ -13,8 +13,6 @@ import {
 import { createInitialResumeForm, mapResumeToForm } from "../../formMappers";
 import { useDocumentForm } from "../../hooks/useDocumentForm";
 import { buildResumePayload } from "../../payloadBuilders";
-import type { ResumeHistory } from "../../types";
-import { blankHistory } from "../../constants";
 import type { ResumeTextFieldKey } from "../../formTypes";
 import { usePrefectures } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
@@ -24,7 +22,11 @@ import { LoadingOverlay } from "../LoadingOverlay";
 import { Combobox } from "./Combobox";
 import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
-import styles from "./ResumeForm.module.css";
+import { ResumePhotoUploadSection } from "./sections/ResumePhotoUploadSection";
+import { ResumeEducationSection } from "./sections/ResumeEducationSection";
+import { ResumeWorkHistorySection } from "./sections/ResumeWorkHistorySection";
+import type { ResumeHistory } from "../../types";
+import { blankHistory } from "../../constants";
 
 export function ResumeForm() {
   const { items: prefectureOptions } = usePrefectures();
@@ -36,10 +38,8 @@ export function ResumeForm() {
     loading,
     saving,
     deleting,
-    error,
-    success,
-    setError,
-    setSuccess,
+    error: formError,
+    success: formSuccess,
     save,
     deleteDoc,
     saveButtonText,
@@ -53,45 +53,38 @@ export function ResumeForm() {
     mapResponseToForm: mapResumeToForm,
     successMessage: "履歴書を保存しました。PDF出力できます。",
     beforeSave: assertBasicInfoReady,
+    cacheKey: "resume",
   });
 
-  const { downloading, previewUrl, closePreview, onDownloadPdf, onDownloadMarkdown, onPreviewPdf } =
-    usePdfActions({
-      downloadPdf: downloadResumePdf,
-      downloadMarkdown: downloadResumeMarkdown,
-      getPdfBlobUrl: getResumePdfBlobUrl,
-    });
+  const {
+    downloading,
+    previewUrl,
+    closePreview,
+    onDownloadPdf,
+    onDownloadMarkdown,
+    onPreviewPdf,
+    error: pdfError,
+    success: pdfSuccess,
+  } = usePdfActions({
+    downloadPdf: downloadResumePdf,
+    downloadMarkdown: downloadResumeMarkdown,
+    getPdfBlobUrl: getResumePdfBlobUrl,
+  });
+
+  /** PDF アクションまたはフォーム保存のエラー・成功メッセージを統合して表示する */
+  const error = pdfError ?? formError;
+  const success = pdfSuccess ?? formSuccess;
 
   const onChangeField = (key: ResumeTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const onPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = 450;
-        canvas.height = 600;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, 450, 600);
-          const resized = canvas.toDataURL("image/jpeg", 0.9);
-          setForm((prev) => ({ ...prev, photo: resized }));
-        }
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
+  /** 写真変更ハンドラ。null の場合は写真削除とみなす。 */
+  const onPhotoChange = (photo: string | null) => {
+    setForm((prev) => ({ ...prev, photo }));
   };
 
-  const removePhoto = () => {
-    setForm((prev) => ({ ...prev, photo: null }));
-  };
-
+  /** 学歴フィールド変更ハンドラ */
   const updateEducationField = (index: number, key: keyof ResumeHistory, value: string) => {
     setForm((prev) => ({
       ...prev,
@@ -101,19 +94,12 @@ export function ResumeForm() {
     }));
   };
 
-  const updateWorkHistoryField = (index: number, key: keyof ResumeHistory, value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      work_histories: prev.work_histories.map((workHistory, i) =>
-        i === index ? { ...workHistory, [key]: value } : workHistory,
-      ),
-    }));
-  };
-
+  /** 学歴追加ハンドラ */
   const addEducation = () => {
     setForm((prev) => ({ ...prev, educations: [...prev.educations, { ...blankHistory }] }));
   };
 
+  /** 学歴削除ハンドラ */
   const removeEducation = (index: number) => {
     setForm((prev) => ({
       ...prev,
@@ -124,6 +110,17 @@ export function ResumeForm() {
     }));
   };
 
+  /** 職歴フィールド変更ハンドラ */
+  const updateWorkHistoryField = (index: number, key: keyof ResumeHistory, value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      work_histories: prev.work_histories.map((workHistory, i) =>
+        i === index ? { ...workHistory, [key]: value } : workHistory,
+      ),
+    }));
+  };
+
+  /** 職歴追加ハンドラ */
   const addWorkHistory = () => {
     setForm((prev) => ({
       ...prev,
@@ -131,6 +128,7 @@ export function ResumeForm() {
     }));
   };
 
+  /** 職歴削除ハンドラ */
   const removeWorkHistory = (index: number) => {
     setForm((prev) => ({
       ...prev,
@@ -174,7 +172,7 @@ export function ResumeForm() {
             </button>
             <button
               type="button"
-              onClick={() => resumeId && onPreviewPdf(resumeId, setError)}
+              onClick={() => resumeId && onPreviewPdf(resumeId)}
               disabled={!resumeId}
             >
               プレビュー
@@ -183,7 +181,7 @@ export function ResumeForm() {
               type="button"
               onClick={() =>
                 resumeId &&
-                onDownloadPdf(resumeId, setError, setSuccess, "履歴書PDFをダウンロードしました。")
+                onDownloadPdf(resumeId, "履歴書PDFをダウンロードしました。")
               }
               disabled={!resumeId || downloading}
             >
@@ -191,7 +189,7 @@ export function ResumeForm() {
             </button>
             <button
               type="button"
-              onClick={() => resumeId && onDownloadMarkdown(resumeId, setError)}
+              onClick={() => resumeId && onDownloadMarkdown(resumeId)}
               disabled={!resumeId}
             >
               Markdown出力
@@ -212,193 +210,126 @@ export function ResumeForm() {
             {error && <p className={shared.error}>{error}</p>}
             {success && <p className={shared.success}>{success}</p>}
 
+            {/* 証明写真セクション */}
+            <ResumePhotoUploadSection
+              photo={form.photo}
+              onPhotoChange={onPhotoChange}
+            />
+
             <section className={shared.section}>
-              <h2>証明写真</h2>
-          <div className={styles.photoUpload}>
-            {form.photo ? (
-              <img src={form.photo} alt="証明写真" className={styles.photoPreview} />
-            ) : (
-              <div className={styles.photoPlaceholder}>未選択</div>
-            )}
-            <div>
-              <input type="file" accept="image/*" onChange={onPhotoChange} />
-              {form.photo && (
-                <button
-                  type="button"
-                  className="danger"
-                  onClick={removePhoto}
-                  style={{ marginTop: "0.5rem" }}
-                >
-                  写真を削除
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className={shared.section}>
-          <div className={shared.inline}>
-            <label>
-              <span className={shared.labelText}>性別<span className={shared.requiredBadge}>必須</span></span>
-              <select
-                value={form.gender}
-                onChange={(e) => onChangeField("gender", e.target.value)}
-                required
-              >
-                <option value="">未選択</option>
-                <option value="male">男</option>
-                <option value="female">女</option>
-              </select>
-            </label>
-            <label>
-              <span className={shared.labelText}>生年月日<span className={shared.requiredBadge}>必須</span></span>
-              <input
-                type="date"
-                value={form.birthday}
-                onChange={(e) => onChangeField("birthday", e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              <span className={shared.labelText}>都道府県<span className={shared.requiredBadge}>必須</span></span>
-              <Combobox
-                value={form.prefecture}
-                onChange={(val) => onChangeField("prefecture", val)}
-                options={prefectureOptions.map((pref) => pref.name)}
-                placeholder="例: 東京都"
-              />
-            </label>
-            <label>
-              <span className={shared.labelText}>郵便番号<span className={shared.requiredBadge}>必須</span></span>
-              <input
-                type="text"
-                value={form.postal_code}
-                onChange={(e) => onChangeField("postal_code", e.target.value)}
-                placeholder="例: 150-0041"
-                required
-              />
-            </label>
-          </div>
-          <label>
-            <span className={shared.labelText}>住所ふりがな<span className={shared.requiredBadge}>必須</span></span>
-            <input
-              type="text"
-              value={form.address_furigana}
-              onChange={(e) => onChangeField("address_furigana", e.target.value)}
-              placeholder="例: しぶやく じんなん"
-              pattern="^[ぁ-ゖー\s　]+$"
-              title="ひらがなで入力してください"
-              required
-            />
-          </label>
-          <label>
-            <span className={shared.labelText}>住所<span className={shared.requiredBadge}>必須</span></span>
-            <input
-              type="text"
-              value={form.address}
-              onChange={(e) => onChangeField("address", e.target.value)}
-              required
-            />
-          </label>
-          <h3>連絡先</h3>
-          <div className={shared.inline}>
-            <label>
-              <span className={shared.labelText}>電話番号<span className={shared.requiredBadge}>必須</span></span>
-              <input
-                type="text"
-                value={form.phone}
-                onChange={(e) => onChangeField("phone", e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              <span className={shared.labelText}>メールアドレス<span className={shared.requiredBadge}>必須</span></span>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => onChangeField("email", e.target.value)}
-                required
-              />
-            </label>
-          </div>
-          <MarkdownTextarea
-            label="志望動機"
-            value={form.motivation}
-            onChange={(v) => onChangeField("motivation", v)}
-            rows={4}
-          />
-          <MarkdownTextarea
-            label="本人希望記入欄"
-            value={form.personal_preferences}
-            onChange={(v) => onChangeField("personal_preferences", v)}
-            rows={4}
-          />
-        </section>
-
-        <section className={shared.section}>
-          <h2>学歴</h2>
-          {form.educations.map((education, index) => (
-            <div key={`education-${index}`} className={shared.entry}>
               <div className={shared.inline}>
                 <label>
-                  日付
+                  <span className={shared.labelText}>性別<span className={shared.requiredBadge}>必須</span></span>
+                  <select
+                    value={form.gender}
+                    onChange={(e) => onChangeField("gender", e.target.value)}
+                    required
+                  >
+                    <option value="">未選択</option>
+                    <option value="male">男</option>
+                    <option value="female">女</option>
+                  </select>
+                </label>
+                <label>
+                  <span className={shared.labelText}>生年月日<span className={shared.requiredBadge}>必須</span></span>
                   <input
-                    type="month"
-                    value={education.date}
-                    onChange={(e) => updateEducationField(index, "date", e.target.value)}
+                    type="date"
+                    value={form.birthday}
+                    onChange={(e) => onChangeField("birthday", e.target.value)}
+                    required
                   />
                 </label>
                 <label>
-                  名称
+                  <span className={shared.labelText}>都道府県<span className={shared.requiredBadge}>必須</span></span>
+                  <Combobox
+                    value={form.prefecture}
+                    onChange={(val) => onChangeField("prefecture", val)}
+                    options={prefectureOptions.map((pref) => pref.name)}
+                    placeholder="例: 東京都"
+                  />
+                </label>
+                <label>
+                  <span className={shared.labelText}>郵便番号<span className={shared.requiredBadge}>必須</span></span>
                   <input
                     type="text"
-                    value={education.name}
-                    onChange={(e) => updateEducationField(index, "name", e.target.value)}
+                    value={form.postal_code}
+                    onChange={(e) => onChangeField("postal_code", e.target.value)}
+                    placeholder="例: 150-0041"
+                    required
                   />
                 </label>
               </div>
-              <button type="button" className="danger" onClick={() => removeEducation(index)}>
-                学歴を削除
-              </button>
-            </div>
-          ))}
-          <button type="button" className="ghost" onClick={addEducation}>
-            学歴を追加
-          </button>
-        </section>
-
-        <section className={shared.section}>
-          <h2>職歴</h2>
-          {form.work_histories.map((workHistory, index) => (
-            <div key={`work-${index}`} className={shared.entry}>
+              <label>
+                <span className={shared.labelText}>住所ふりがな<span className={shared.requiredBadge}>必須</span></span>
+                <input
+                  type="text"
+                  value={form.address_furigana}
+                  onChange={(e) => onChangeField("address_furigana", e.target.value)}
+                  placeholder="例: しぶやく じんなん"
+                  pattern="^[ぁ-ゖー\s　]+$"
+                  title="ひらがなで入力してください"
+                  required
+                />
+              </label>
+              <label>
+                <span className={shared.labelText}>住所<span className={shared.requiredBadge}>必須</span></span>
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => onChangeField("address", e.target.value)}
+                  required
+                />
+              </label>
+              <h3>連絡先</h3>
               <div className={shared.inline}>
                 <label>
-                  日付
+                  <span className={shared.labelText}>電話番号<span className={shared.requiredBadge}>必須</span></span>
                   <input
-                    type="month"
-                    value={workHistory.date}
-                    onChange={(e) => updateWorkHistoryField(index, "date", e.target.value)}
+                    type="text"
+                    value={form.phone}
+                    onChange={(e) => onChangeField("phone", e.target.value)}
+                    required
                   />
                 </label>
                 <label>
-                  名称
+                  <span className={shared.labelText}>メールアドレス<span className={shared.requiredBadge}>必須</span></span>
                   <input
-                    type="text"
-                    value={workHistory.name}
-                    onChange={(e) => updateWorkHistoryField(index, "name", e.target.value)}
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => onChangeField("email", e.target.value)}
+                    required
                   />
                 </label>
               </div>
-              <button type="button" className="danger" onClick={() => removeWorkHistory(index)}>
-                職歴を削除
-              </button>
-            </div>
-          ))}
-          <button type="button" className="ghost" onClick={addWorkHistory}>
-            職歴を追加
-          </button>
-        </section>
+              <MarkdownTextarea
+                label="志望動機"
+                value={form.motivation}
+                onChange={(v) => onChangeField("motivation", v)}
+                rows={4}
+              />
+              <MarkdownTextarea
+                label="本人希望記入欄"
+                value={form.personal_preferences}
+                onChange={(v) => onChangeField("personal_preferences", v)}
+                rows={4}
+              />
+            </section>
 
+            {/* 学歴セクション */}
+            <ResumeEducationSection
+              educations={form.educations}
+              onFieldChange={updateEducationField}
+              onAdd={addEducation}
+              onRemove={removeEducation}
+            />
+
+            {/* 職歴セクション */}
+            <ResumeWorkHistorySection
+              workHistories={form.work_histories}
+              onFieldChange={updateWorkHistoryField}
+              onAdd={addWorkHistory}
+              onRemove={removeWorkHistory}
+            />
           </div>
         </div>
       </form>

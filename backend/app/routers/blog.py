@@ -1,17 +1,20 @@
 """
 ブログ連携 API エンドポイント。
 
-GET    /api/blog/accounts          — 連携アカウント一覧
-POST   /api/blog/accounts          — 連携アカウント登録
-DELETE /api/blog/accounts/{id}     — 連携アカウント解除
-GET    /api/blog/articles          — 記事一覧
-POST   /api/blog/accounts/{id}/sync — 手動同期
-POST   /api/blog/summarize         — AI サマリ生成
+GET    /api/blog/accounts              — 連携アカウント一覧
+POST   /api/blog/accounts              — 連携アカウント登録
+DELETE /api/blog/accounts/{id}         — 連携アカウント解除
+GET    /api/blog/articles              — 記事一覧
+POST   /api/blog/accounts/{id}/sync   — 手動同期
+POST   /api/blog/summarize            — AI サマリ生成（202 非同期）
+GET    /api/blog/summary-cache         — 保存済みサマリ取得
+GET    /api/blog/summary-cache/status  — サマリ生成ステータスポーリング用
+GET    /api/blog/score                 — ブログスコアリング
 """
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from ..core.messages import get_error
@@ -29,17 +32,16 @@ from ..schemas import (
     BlogSummaryResponse,
     BlogSyncResponse,
 )
+from ..schemas.career_analysis import TaskStatusResponse
 from ..services.blog.collector import (
     BlogPlatformRequestError,
     UnsupportedBlogPlatformError,
-    fetch_articles,
     verify_user_exists,
 )
 from ..services.blog.scorer import calculate_blog_score
-from ..services.intelligence.llm_summarizer import (
-    check_llm_available,
-    summarize_blog_articles,
-)
+from ..services.blog.sync_service import BlogSyncService
+from ..services.intelligence.llm_summarizer import check_llm_available
+from ..services.tasks import TaskType, get_task_dispatcher
 
 logger = logging.getLogger(__name__)
 
@@ -131,33 +133,22 @@ async def sync_account(
     db=Depends(get_db),
 ):
     """外部 API からデータを取得して DB に保存する。"""
-    account_repo = BlogAccountRepository(db, user.id)
-    account = account_repo.get_by_id(account_id)
-    if not account:
+    service = BlogSyncService(db, user.id)
+    if not service.get_account_or_none(account_id):
         raise HTTPException(status_code=404, detail=get_error("blog.account_link_not_found"))
 
     try:
-        raw_articles = await fetch_articles(account.platform, account.username)
+        return await service.sync(account_id)
     except UnsupportedBlogPlatformError as exc:
         raise HTTPException(
             status_code=400,
             detail=get_error("blog.platform_not_supported"),
         ) from exc
-    except Exception:
-        logger.exception("ブログ記事の取得に失敗しました: %s/%s", account.platform, account.username)
+    except (BlogPlatformRequestError, Exception) as exc:
         raise HTTPException(
             status_code=502,
             detail=get_error("blog.sync_failed"),
-        )
-
-    for art in raw_articles:
-        art["account_id"] = account.id
-
-    article_repo = BlogArticleRepository(db, user.id)
-    synced = article_repo.upsert_many(raw_articles)
-    total = article_repo.count_by_user()
-
-    return BlogSyncResponse(synced_count=synced, total_count=total)
+        ) from exc
 
 
 @router.get("/summary-cache", response_model=BlogSummaryResponse)
@@ -168,37 +159,94 @@ def get_summary_cache(
     """保存済みのブログ AI 分析結果を取得する。"""
     cache = db.query(BlogSummaryCache).filter_by(user_id=user.id).first()
     if cache and cache.summary:
-        return BlogSummaryResponse(summary=cache.summary, available=True)
+        return BlogSummaryResponse(
+            summary=cache.summary,
+            available=True,
+            status=cache.status,
+            error_message=cache.error_message,
+        )
+    if cache:
+        return BlogSummaryResponse(
+            summary="",
+            available=False,
+            status=cache.status,
+            error_message=cache.error_message,
+        )
     return BlogSummaryResponse(summary="", available=False)
 
 
-@router.post("/summarize", response_model=BlogSummaryResponse)
+@router.get("/summary-cache/status", response_model=TaskStatusResponse)
+def get_summary_cache_status(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """サマリ生成ステータスを返す（軽量ポーリング用）。"""
+    cache = db.query(BlogSummaryCache).filter_by(user_id=user.id).first()
+    if not cache:
+        return TaskStatusResponse(status="completed")
+    return TaskStatusResponse(
+        status=cache.status,
+        error_message=cache.error_message,
+    )
+
+
+@router.post("/summarize", response_model=BlogSummaryResponse, status_code=202)
 @limiter.limit("5/minute")
 async def summarize_blog(
     request: Request,
     body: BlogSummaryRequest,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """ブログ記事の AI サマリを生成する（Ollama）。結果はDBに保存する。"""
+    """ブログ記事の AI サマリをバックグラウンドで生成する。"""
+    # 進行中のタスクがあればそのステータスを返す
+    cache = db.query(BlogSummaryCache).filter_by(user_id=user.id).first()
+    if cache and cache.status in ("pending", "processing"):
+        return BlogSummaryResponse(
+            summary=cache.summary or "",
+            available=False,
+            status=cache.status,
+        )
+
     available = await check_llm_available()
     if not available:
         return BlogSummaryResponse(summary="", available=False)
 
-    articles_data = [art.model_dump() for art in body.articles]
-    summary = await summarize_blog_articles(articles_data)
-    if not summary:
-        return BlogSummaryResponse(summary="", available=False)
-
-    # DB にキャッシュ保存
-    cache = db.query(BlogSummaryCache).filter_by(user_id=user.id).first()
+    # キャッシュレコードを準備して pending にセット
     if not cache:
         cache = BlogSummaryCache(user_id=user.id)
         db.add(cache)
-    cache.summary = summary
+    cache.status = "pending"
+    cache.error_message = None
     db.commit()
 
-    return BlogSummaryResponse(summary=summary, available=True)
+    articles_data = [art.model_dump() for art in body.articles]
+
+    try:
+        dispatcher = get_task_dispatcher(background_tasks)
+        await dispatcher.dispatch(
+            TaskType.BLOG_SUMMARIZE,
+            {
+                "user_id": user.id,
+                "articles": articles_data,
+            },
+        )
+    except Exception:
+        logger.exception("ブログサマリタスクのディスパッチに失敗しました")
+        cache.status = "failed"
+        cache.error_message = "タスクの開始に失敗しました"
+        db.commit()
+        raise HTTPException(
+            status_code=500,
+            detail=get_error("task.dispatch_failed"),
+        )
+
+    return BlogSummaryResponse(
+        summary="",
+        available=False,
+        status="pending",
+    )
 
 
 @router.get("/score", response_model=BlogScoreResponse)
