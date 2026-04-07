@@ -182,7 +182,6 @@ jobs:
             --quiet
 
   # stg フロントエンドデプロイ（stg ブランチ push 時）
-  # TODO: GitHub に登録が必要: GCP_SA_KEY_STG, VITE_API_BASE_URL_STG
   deploy-frontend-stg:
     runs-on: ubuntu-latest
     needs: [detect-changes, test]
@@ -261,7 +260,6 @@ jobs:
             --quiet
 
   # prod フロントエンドデプロイ（main ブランチ push 時）
-  # TODO: GitHub に登録が必要: GCP_SA_KEY_PROD, VITE_API_BASE_URL_PROD
   deploy-frontend-prod:
     runs-on: ubuntu-latest
     needs: [detect-changes, test]
