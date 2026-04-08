@@ -2,7 +2,7 @@ from sqlalchemy.orm import selectinload
 
 from ..core.date_utils import parse_iso_date
 from ..models import BasicInfo, BasicInfoQualification
-from ..services.shared.sort_utils import sort_by_date_desc
+from ..services.shared.sort_utils import sort_by_date_asc
 from .base import SingleUserDocumentRepository
 
 
@@ -14,7 +14,7 @@ class BasicInfoRepository(SingleUserDocumentRepository):
         entity.full_name = payload["full_name"]
         entity.name_furigana = payload["name_furigana"]
         entity.record_date_value = parse_iso_date(payload["record_date"])
-        sorted_qualifications = sort_by_date_desc(
+        sorted_qualifications = sort_by_date_asc(
             payload.get("qualifications", []),
             date_key="acquired_date",
         )

@@ -64,6 +64,32 @@ def test_basic_info_crud(client: TestClient) -> None:
     assert resp.json()["full_name"] == "田中花子"
 
 
+def test_basic_info_qualifications_sorted_asc(client: TestClient) -> None:
+    """資格一覧が取得日昇順で返ることを確認する。"""
+    headers = auth_header(client, "bi-sort-user")
+
+    resp = client.post(
+        "/api/basic-info",
+        json={
+            "full_name": "ソート確認",
+            "name_furigana": "そーとかくにん",
+            "record_date": "2026-03-12",
+            "qualifications": [
+                {"acquired_date": "2023-06-01", "name": "基本情報技術者"},
+                {"acquired_date": "2021-03-01", "name": "ITパスポート"},
+                {"acquired_date": "2025-01-01", "name": "応用情報技術者"},
+            ],
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 201
+
+    resp = client.get("/api/basic-info/latest", headers=headers)
+    assert resp.status_code == 200
+    dates = [q["acquired_date"] for q in resp.json()["qualifications"]]
+    assert dates == sorted(dates), f"取得日昇順でない: {dates}"
+
+
 def test_basic_info_duplicate_create_conflicts(client: TestClient) -> None:
     headers = auth_header(client, "bi-duplicate-user")
 
