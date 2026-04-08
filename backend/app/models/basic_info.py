@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..core.date_utils import format_iso_date
 from ..db import Base
-from ..services.shared.sort_utils import sort_by_date_desc
+from ..services.shared.sort_utils import sort_by_date_asc
 
 
 class BasicInfo(Base):
@@ -49,8 +49,8 @@ class BasicInfo(Base):
 
     @property
     def qualifications(self) -> list["BasicInfoQualification"]:
-        """資格を取得日の降順でソートして返す。"""
-        return sort_by_date_desc(list(self.qualification_rows))
+        """資格を取得日の昇順でソートして返す。"""
+        return sort_by_date_asc(list(self.qualification_rows), date_key="acquired_date_value")
 
 
 class BasicInfoQualification(Base):
