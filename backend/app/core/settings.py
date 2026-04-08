@@ -102,6 +102,11 @@ def get_github_client_secret() -> str:
     return os.getenv("GITHUB_CLIENT_SECRET", "").strip()
 
 
+def get_app_version() -> str:
+    """アプリケーションバージョンを取得する（Git タグから CI で注入）。"""
+    return os.getenv("APP_VERSION", "dev").strip()
+
+
 def get_llm_provider() -> str:
     return os.environ.get("LLM_PROVIDER", "ollama")
 
