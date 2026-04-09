@@ -36,3 +36,9 @@ variable "enable_github_oauth" {
   type        = bool
   default     = false
 }
+
+variable "alert_email" {
+  description = "監視アラート通知先メールアドレス。GitHub Secret → TF_VAR_alert_email で注入する。"
+  type        = string
+  sensitive   = true
+}

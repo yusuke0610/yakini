@@ -107,6 +107,11 @@ def get_app_version() -> str:
     return os.getenv("APP_VERSION", "dev").strip()
 
 
+def get_environment() -> str:
+    """実行環境を取得する（local / dev / stg / prod）。"""
+    return os.getenv("ENVIRONMENT", "local").strip()
+
+
 def get_llm_provider() -> str:
     return os.environ.get("LLM_PROVIDER", "ollama")
 
