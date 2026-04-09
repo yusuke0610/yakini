@@ -21,14 +21,24 @@ def _is_loopback_origin(origin: str) -> bool:
     return parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}
 
 
-def get_sqlite_db_path() -> Path:
-    db_path = os.getenv("SQLITE_DB_PATH", "./local.sqlite").strip()
-    return Path(db_path)
-
-
 def get_database_url() -> str:
+    """DATABASE_URL 環境変数からデータベース接続URLを取得する。
+
+    未設定の場合は SQLITE_DB_PATH から SQLite URL を組み立てる（後方互換）。
+    PostgreSQL 移行時は DATABASE_URL を postgresql+psycopg2://... に変更するだけでよい。
+    """
+    url = os.getenv("DATABASE_URL", "").strip()
+    if url:
+        return url
+    # 後方互換: SQLITE_DB_PATH からURLを組み立てる
     db_path = get_sqlite_db_path()
     return f"sqlite:///{db_path}"
+
+
+def get_sqlite_db_path() -> Path:
+    """SQLite ファイルのパスを取得する。GCS バックアップ等の物理パス操作に使用。"""
+    db_path = os.getenv("SQLITE_DB_PATH", "./local.sqlite").strip()
+    return Path(db_path)
 
 
 def get_cors_origins() -> list[str]:
