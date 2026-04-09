@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 
 from .base import LLMClient
 
@@ -34,6 +35,7 @@ class VertexClient(LLMClient):
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Vertex AI Gemini でテキスト生成を実行する。"""
+        start = time.monotonic()
         try:
             from google.genai import types
 
@@ -47,9 +49,18 @@ class VertexClient(LLMClient):
                     temperature=0.3,
                 ),
             )
+            duration_ms = int((time.monotonic() - start) * 1000)
+            logger.info(
+                "Vertex AI 生成完了",
+                extra={"status": "completed", "duration_ms": duration_ms},
+            )
             return response.text.strip()
         except Exception:
-            logger.exception("Vertex AI による生成に失敗しました")
+            duration_ms = int((time.monotonic() - start) * 1000)
+            logger.exception(
+                "Vertex AI による生成に失敗しました",
+                extra={"status": "failed", "duration_ms": duration_ms},
+            )
             return ""
 
     async def check_available(self) -> bool:
