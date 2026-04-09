@@ -22,6 +22,7 @@ concurrency:
 
 env:
   TF_IN_AUTOMATION: "true"
+  TF_VAR_alert_email: "ci-placeholder@example.com"
 
 jobs:
   detect-changes:

@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 
 import httpx
 
@@ -20,6 +21,7 @@ class OllamaClient(LLMClient):
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Ollama API でテキスト生成を実行する。"""
+        start = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 resp = await client.post(
@@ -33,19 +35,29 @@ class OllamaClient(LLMClient):
                 )
                 resp.raise_for_status()
                 data = resp.json()
+                duration_ms = int((time.monotonic() - start) * 1000)
+                logger.info(
+                    "Ollama 生成完了",
+                    extra={"status": "completed", "duration_ms": duration_ms},
+                )
                 return data.get("response", "").strip()
         except httpx.ConnectError:
             logger.info("Ollama が %s で利用できません", self.base_url)
             return ""
         except httpx.TimeoutException:
+            duration_ms = int((time.monotonic() - start) * 1000)
             logger.warning(
-                "Ollama generation timed out after %.1f seconds (model=%s)",
+                "Ollama 生成がタイムアウトしました (%.1f秒)",
                 self.timeout,
-                self.model,
+                extra={"status": "failed", "error_type": "TimeoutException", "duration_ms": duration_ms},
             )
             return ""
         except Exception:
-            logger.exception("Ollama による要約生成に失敗しました")
+            duration_ms = int((time.monotonic() - start) * 1000)
+            logger.exception(
+                "Ollama による生成に失敗しました",
+                extra={"status": "failed", "duration_ms": duration_ms},
+            )
             return ""
 
     async def check_available(self) -> bool:

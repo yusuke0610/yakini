@@ -53,10 +53,19 @@ module "cloud_run" {
   enable_github_oauth             = var.enable_github_oauth
   db_backup_bucket_name           = module.storage.db_backup_bucket_name
   cors_origins                    = var.cors_origins
+  environment                     = "dev"
   task_runner                     = "cloud_tasks"
   cloud_tasks_queue               = module.cloud_tasks.queue_name
   cloud_tasks_location            = local.region
   cloud_tasks_service_account     = module.service_account.email
+}
+
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  project_id       = var.project_id
+  cloud_run_domain = replace(module.cloud_run.service_url, "https://", "")
+  alert_email      = var.alert_email
 }
 
 module "firebase" {

@@ -72,6 +72,10 @@ resource "google_cloud_run_v2_service" "app" {
         name  = "CORS_ORIGINS"
         value = var.cors_origins
       }
+      env {
+        name  = "ENVIRONMENT"
+        value = var.environment
+      }
 
       env {
         name  = "LLM_PROVIDER"
