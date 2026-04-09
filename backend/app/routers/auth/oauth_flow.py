@@ -7,6 +7,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from fastapi import HTTPException, Request, Response, status
 
+from ...core.errors import ErrorCode, raise_app_error
 from ...core.messages import get_error
 from ...core.settings import get_cors_origins, get_github_client_id
 from .token_manager import (
@@ -37,9 +38,11 @@ def get_default_frontend_origin() -> str:
     """CORS_ORIGINS の先頭を返す。未設定の場合は503を発生させる。"""
     origins = get_cors_origins()
     if not origins:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=get_error("auth.cors_origins_not_configured"),
+            code=ErrorCode.INTERNAL_ERROR,
+            message=get_error("auth.cors_origins_not_configured"),
+            action="システム管理者に連絡してください",
         )
     return origins[0]
 
@@ -57,16 +60,20 @@ def normalize_frontend_url(frontend_url: str) -> str:
     """
     parsed = urlsplit(frontend_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=get_error("auth.invalid_return_to"),
+            code=ErrorCode.VALIDATION_ERROR,
+            message=get_error("auth.invalid_return_to"),
+            action="ログイン元の画面から再度やり直してください",
         )
 
     origin = f"{parsed.scheme}://{parsed.netloc}"
     if origin not in get_cors_origins():
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=get_error("auth.frontend_origin_not_allowed"),
+            code=ErrorCode.VALIDATION_ERROR,
+            message=get_error("auth.frontend_origin_not_allowed"),
+            action="許可されたフロントエンドから再度アクセスしてください",
         )
 
     path = parsed.path or "/"
@@ -157,14 +164,18 @@ def validate_github_oauth_state(
     state が一致しない場合は401を発生させる。
     """
     if not stored_state or not provided_state:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.oauth_state_invalid"),
+            code=ErrorCode.AUTH_EXPIRED,
+            message=get_error("auth.oauth_state_invalid"),
+            action="GitHub ログインをやり直してください",
         )
     if not secrets.compare_digest(stored_state, provided_state):
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.oauth_state_invalid"),
+            code=ErrorCode.AUTH_EXPIRED,
+            message=get_error("auth.oauth_state_invalid"),
+            action="GitHub ログインをやり直してください",
         )
 
 
@@ -198,9 +209,11 @@ def begin_github_oauth(
     """
     client_id = get_github_client_id()
     if not client_id:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=get_error("auth.github_oauth_not_configured"),
+            code=ErrorCode.INTERNAL_ERROR,
+            message=get_error("auth.github_oauth_not_configured"),
+            action="システム管理者に連絡してください",
         )
 
     redirect_uri = f"{build_external_base_url(request)}/auth/github/callback"

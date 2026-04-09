@@ -1,3 +1,7 @@
+import { ERROR_CONFIG } from "../constants/errorMessages";
+import { ApiError } from "../utils/appError";
+import { generateErrorId } from "../utils/errorId";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 let _onUnauthorized: (() => void) | null = null;
@@ -32,15 +36,55 @@ async function _tryRefresh(): Promise<boolean> {
   }
 }
 
-/** エラーレスポンスの detail を取得する。 */
-async function getErrorDetail(response: Response): Promise<string | null> {
+type ErrorResponseBody = {
+  code?: string;
+  message?: string;
+  action?: string | null;
+  retry_after?: number | null;
+  error_id?: string | null;
+  detail?: unknown;
+};
+
+async function getErrorBody(response: Response): Promise<ErrorResponseBody | null> {
   try {
-    const body = await response.json();
-    if (!body?.detail) return null;
-    return typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+    return (await response.json()) as ErrorResponseBody;
   } catch {
     return null;
   }
+}
+
+function getLegacyDetail(body: ErrorResponseBody | null): string | null {
+  if (!body?.detail) return null;
+  return typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+}
+
+function buildApiError(response: Response, body: ErrorResponseBody | null, fallbackMessage: string): ApiError {
+  const code =
+    body?.code ??
+    (response.status === 401
+      ? "AUTH_REQUIRED"
+      : response.status === 429
+        ? "RATE_LIMITED"
+        : response.status >= 500
+          ? "INTERNAL_ERROR"
+          : "VALIDATION_ERROR");
+  const message =
+    body?.message ??
+    getLegacyDetail(body) ??
+    ERROR_CONFIG[code]?.message ??
+    fallbackMessage;
+
+  return new ApiError({
+    code,
+    message,
+    action: body?.action ?? null,
+    retryAfter:
+      typeof body?.retry_after === "number" ? body.retry_after : null,
+    errorId:
+      typeof body?.error_id === "string" && body.error_id
+        ? body.error_id
+        : generateErrorId(),
+  });
 }
 
 export async function request<T>(
@@ -67,7 +111,10 @@ export async function request<T>(
       credentials: "include",
     });
   } catch {
-    throw new Error("サーバーに接続できません。ネットワーク接続を確認してください。");
+    throw new ApiError({
+      code: "INTERNAL_ERROR",
+      message: "サーバーに接続できません。ネットワーク接続を確認してください。",
+    });
   }
 
   if (response.status === 401 && !_isRetry) {
@@ -77,33 +124,35 @@ export async function request<T>(
       return request<T>(path, options, true);
     }
     _onUnauthorized?.();
-    throw new Error("認証が必要です。再度ログインしてください。");
+    throw new ApiError({
+      code: "AUTH_REQUIRED",
+      message: "認証が必要です。再度ログインしてください。",
+      action: "ログインし直してください",
+    });
   }
 
   if (response.status === 401) {
     _onUnauthorized?.();
-    throw new Error("認証が必要です。再度ログインしてください。");
-  }
-
-  if (response.status >= 500) {
-    const detail = await getErrorDetail(response);
-    if (detail) {
-      throw new Error(detail);
-    }
-    const messages: Record<number, string> = {
-      502: "サーバーとの通信に失敗しました。しばらくしてから再度お試しください。",
-      503: "サーバーが一時的に利用できません。しばらくしてから再度お試しください。",
-      504: "サーバーからの応答がタイムアウトしました。しばらくしてから再度お試しください。",
-    };
-    throw new Error(
-      messages[response.status] ??
-        "サーバーエラーが発生しました。しばらくしてから再度お試しください。",
-    );
+    throw new ApiError({
+      code: "AUTH_REQUIRED",
+      message: "認証が必要です。再度ログインしてください。",
+      action: "ログインし直してください",
+    });
   }
 
   if (!response.ok) {
-    const message = (await getErrorDetail(response)) ?? "リクエストの処理に失敗しました。";
-    throw new Error(message);
+    const body = await getErrorBody(response);
+    const fallbackMessage =
+      response.status >= 500
+        ? "サーバーエラーが発生しました。しばらくしてから再度お試しください。"
+        : "リクエストの処理に失敗しました。";
+    const apiError = buildApiError(response, body, fallbackMessage);
+
+    if (apiError.code === "AUTH_EXPIRED" || apiError.code === "AUTH_REQUIRED") {
+      _onUnauthorized?.();
+    }
+
+    throw apiError;
   }
 
   if (response.status === 204) {

@@ -73,13 +73,13 @@ generate-keys:
 # ------------------------------------------------------------------ #
 
 dev:
-	docker-compose up
+	docker compose up
 
 dev-build:
-	docker-compose up --build
+	docker compose up --build
 
 dev-down:
-	docker-compose down
+	docker compose down
 
 dev-frontend:
 	cd frontend && npm run dev

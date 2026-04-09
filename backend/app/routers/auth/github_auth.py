@@ -5,10 +5,11 @@ GitHub API 呼び出し（アクセストークン交換・ユーザー情報取
 import logging
 
 import httpx
-from fastapi import HTTPException, status
+from fastapi import status
 from sqlalchemy.orm import Session
 
 from ...core.encryption import encrypt_field
+from ...core.errors import ErrorCode, raise_app_error
 from ...core.logging_utils import log_event
 from ...core.messages import get_error
 from ...core.settings import get_github_client_id, get_github_client_secret
@@ -25,9 +26,11 @@ async def authenticate_github_user(db: Session, code: str) -> TokenResponse:
     client_id = get_github_client_id()
     client_secret = get_github_client_secret()
     if not client_id or not client_secret:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=get_error("auth.github_oauth_not_configured"),
+            code=ErrorCode.INTERNAL_ERROR,
+            message=get_error("auth.github_oauth_not_configured"),
+            action="システム管理者に連絡してください",
         )
 
     async with httpx.AsyncClient() as client:
@@ -49,9 +52,11 @@ async def authenticate_github_user(db: Session, code: str) -> TokenResponse:
                 "github_oauth_failed",
                 error=token_data.get("error_description", "unknown"),
             )
-            raise HTTPException(
+            raise_app_error(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=get_error("auth.github_oauth_failed"),
+                code=ErrorCode.AUTH_REQUIRED,
+                message=get_error("auth.github_oauth_failed"),
+                action="GitHub ログインをやり直してください",
             )
 
         # GitHub ユーザー情報の取得
@@ -67,9 +72,11 @@ async def authenticate_github_user(db: Session, code: str) -> TokenResponse:
     github_id = github_user.get("id")
     github_login = github_user.get("login")
     if not github_id or not github_login:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.github_user_info_failed"),
+            code=ErrorCode.AUTH_REQUIRED,
+            message=get_error("auth.github_user_info_failed"),
+            action="GitHub ログインをやり直してください",
         )
 
     # DB upsert

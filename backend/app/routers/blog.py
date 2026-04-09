@@ -17,6 +17,7 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
+from ..core.errors import infer_async_error_code
 from ..core.messages import get_error
 from ..core.security.auth import get_current_user
 from ..core.security.dependencies import limiter
@@ -164,6 +165,11 @@ def get_summary_cache(
             available=True,
             status=cache.status,
             error_message=cache.error_message,
+            error_code=(
+                infer_async_error_code(cache.error_message).value
+                if cache.error_message and infer_async_error_code(cache.error_message)
+                else None
+            ),
         )
     if cache:
         return BlogSummaryResponse(
@@ -171,6 +177,11 @@ def get_summary_cache(
             available=False,
             status=cache.status,
             error_message=cache.error_message,
+            error_code=(
+                infer_async_error_code(cache.error_message).value
+                if cache.error_message and infer_async_error_code(cache.error_message)
+                else None
+            ),
         )
     return BlogSummaryResponse(summary="", available=False)
 
@@ -187,6 +198,11 @@ def get_summary_cache_status(
     return TaskStatusResponse(
         status=cache.status,
         error_message=cache.error_message,
+        error_code=(
+            infer_async_error_code(cache.error_message).value
+            if cache.error_message and infer_async_error_code(cache.error_message)
+            else None
+        ),
     )
 
 

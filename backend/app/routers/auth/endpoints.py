@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
+from ...core.errors import ErrorCode, raise_app_error
 from ...core.messages import get_error
 from ...core.security.auth import (
     _REFRESH_COOKIE_NAME,
@@ -45,17 +46,21 @@ def refresh(
     """リフレッシュトークンで新しいアクセストークンを発行する。"""
     token = request.cookies.get(_REFRESH_COOKIE_NAME)
     if not token:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.login_required"),
+            code=ErrorCode.AUTH_REQUIRED,
+            message=get_error("auth.login_required"),
+            action="ログインし直してください",
         )
     username = verify_refresh_token(token)
 
     user = UserRepository(db).get_by_username(username)
     if not user:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.user_not_found"),
+            code=ErrorCode.AUTH_REQUIRED,
+            message=get_error("auth.user_not_found"),
+            action="ログインし直してください",
         )
 
     set_auth_cookies(response, user.username)
@@ -116,9 +121,11 @@ async def github_callback_redirect(
 
     try:
         if not code:
-            raise HTTPException(
+            raise_app_error(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=get_error("auth.github_code_missing"),
+                code=ErrorCode.AUTH_EXPIRED,
+                message=get_error("auth.github_code_missing"),
+                action="GitHub ログインをやり直してください",
             )
         validate_github_oauth_state(
             request.cookies.get(GITHUB_OAUTH_STATE_COOKIE),

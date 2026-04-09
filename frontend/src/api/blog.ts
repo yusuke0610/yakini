@@ -29,6 +29,7 @@ export interface BlogSummaryResponse {
   available: boolean;
   status?: string;
   error_message?: string;
+  error_code?: string;
 }
 
 /**

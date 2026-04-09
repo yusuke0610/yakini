@@ -4,11 +4,14 @@ import {
   listAnalyses,
   deleteAnalysis,
   getAnalysisStatus,
+  toAppError,
   type CareerAnalysisResponse,
   type CareerAnalysisResult,
   type EvidenceSource,
 } from "../../api";
 import { useTaskPolling } from "../../hooks/useTaskPolling";
+import type { AppErrorState } from "../../utils/appError";
+import { ErrorToast } from "../ui/ErrorToast";
 import styles from "./CareerAnalysisPage.module.css";
 
 type Phase = "loading" | "input" | "polling" | "list" | "detail";
@@ -19,7 +22,7 @@ type Phase = "loading" | "input" | "polling" | "list" | "detail";
  */
 export function CareerAnalysisPage() {
   const [phase, setPhase] = useState<Phase>("loading");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppErrorState | null>(null);
   const [analyses, setAnalyses] = useState<CareerAnalysisResponse[]>([]);
   const [selected, setSelected] = useState<CareerAnalysisResponse | null>(null);
   const [targetPosition, setTargetPosition] = useState("");
@@ -94,7 +97,7 @@ export function CareerAnalysisPage() {
       setPollingId(result.id);
       setPhase("polling");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "分析に失敗しました");
+      setError(toAppError(e, "分析に失敗しました"));
       setPhase("input");
     }
   };
@@ -114,7 +117,7 @@ export function CareerAnalysisPage() {
         setPhase(updated.length > 0 ? "list" : "input");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "削除に失敗しました");
+      setError(toAppError(e, "削除に失敗しました"));
     }
   };
 
@@ -165,7 +168,15 @@ export function CareerAnalysisPage() {
           >
             分析を開始
           </button>
-          {error && <p className={styles.errorMessage}>{error}</p>}
+          {error && (
+            <ErrorToast
+              code={error.code}
+              message={error.message}
+              action={error.action}
+              errorId={error.errorId}
+              onRetry={targetPosition.trim() ? handleGenerate : undefined}
+            />
+          )}
         </div>
 
         {analyses.length > 0 && (

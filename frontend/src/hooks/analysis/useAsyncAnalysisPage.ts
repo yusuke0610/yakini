@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTaskPolling } from "../useTaskPolling";
+import type { AppErrorState } from "../../utils/appError";
 
 /** 分析ページのフェーズ型 */
 export type AsyncAnalysisPhase = "loading-cache" | "input" | "polling" | "result";
@@ -19,7 +20,7 @@ type UseAsyncAnalysisPageOptions<TResult> = {
   /**
    * タスクステータス取得関数（ポーリング用）。
    */
-  checkStatus: () => Promise<{ status: string; error_message?: string }>;
+  checkStatus: () => Promise<{ status: string; error_message?: string; error_code?: string }>;
 };
 
 /** useAsyncAnalysisPage の戻り値型 */
@@ -33,9 +34,9 @@ type UseAsyncAnalysisPageReturn<TResult> = {
   /** 結果を更新する関数 */
   setResult: React.Dispatch<React.SetStateAction<TResult | null>>;
   /** エラーメッセージ */
-  error: string | null;
+  error: AppErrorState | null;
   /** エラーを更新する関数 */
-  setError: React.Dispatch<React.SetStateAction<string | null>>;
+  setError: React.Dispatch<React.SetStateAction<AppErrorState | null>>;
   /** ポーリング開始関数 */
   startPolling: () => void;
   /** ポーリング中フラグ */
@@ -63,7 +64,7 @@ export function useAsyncAnalysisPage<TResult>({
 }: UseAsyncAnalysisPageOptions<TResult>): UseAsyncAnalysisPageReturn<TResult> {
   const [phase, setPhase] = useState<AsyncAnalysisPhase>("loading-cache");
   const [result, setResult] = useState<TResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppErrorState | null>(null);
 
   const { startPolling, isPolling } = useTaskPolling({
     checkStatus,

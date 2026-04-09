@@ -87,7 +87,12 @@ describe("useAsyncAnalysisPage", () => {
       expect(result.current.phase).toBe("input");
     });
 
-    expect(result.current.error).toBe("分析に失敗しました");
+    expect(result.current.error).toEqual(
+      expect.objectContaining({
+        code: "INTERNAL_ERROR",
+        message: "分析に失敗しました",
+      }),
+    );
   });
 
   /** transitionToPolling を呼ぶと polling フェーズに遷移すること */

@@ -3,8 +3,10 @@ import {
   analyzeGitHub,
   getAnalysisCache,
   getAnalysisCacheStatus,
+  toAppError,
   type AnalysisResponse,
 } from "../../api";
+import { ErrorToast } from "../ui/ErrorToast";
 import { useAsyncAnalysisPage } from "../../hooks/analysis/useAsyncAnalysisPage";
 import { LanguageBar } from "./LanguageBar";
 import { PositionRadarChart } from "./PositionRadarChart";
@@ -51,7 +53,7 @@ export function GitHubAnalysisPage() {
       await analyzeGitHub({ include_forks: includeForks });
       transitionToPolling();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "分析に失敗しました");
+      setError(toAppError(e, "分析に失敗しました"));
     }
   };
 
@@ -105,7 +107,15 @@ export function GitHubAnalysisPage() {
             分析開始
           </button>
 
-          {error && <p className={styles.errorMessage}>{error}</p>}
+          {error && (
+            <ErrorToast
+              code={error.code}
+              message={error.message}
+              action={error.action}
+              errorId={error.errorId}
+              onRetry={handleAnalyze}
+            />
+          )}
         </div>
       </div>
     );
@@ -142,7 +152,15 @@ export function GitHubAnalysisPage() {
           </div>
         </div>
 
-        {error && <p className={styles.errorMessage}>{error}</p>}
+        {error && (
+          <ErrorToast
+            code={error.code}
+            message={error.message}
+            action={error.action}
+            errorId={error.errorId}
+            onRetry={handleAnalyze}
+          />
+        )}
 
         {/* 概要 */}
         <div className={styles.section}>

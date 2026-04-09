@@ -55,6 +55,9 @@ export interface CareerAnalysisResponse {
 export interface TaskStatusResponse {
   status: string;
   error_message?: string;
+  error_code?: string;
+  error_id?: string;
+  retry_after?: number;
 }
 
 /* ── API 関数 ─────────────────────────────────────────── */

@@ -28,6 +28,7 @@ export interface CachedAnalysisResponse {
   position_advice: string | null;
   status?: string;
   error_message?: string;
+  error_code?: string;
 }
 
 /**

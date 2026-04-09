@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { request } from "./client";
+import { ApiError } from "../utils/appError";
 
 /** fetch のモックレスポンスを生成するヘルパー */
 function makeResponse(status: number, body?: unknown): Response {
@@ -110,7 +111,27 @@ describe("api/client request", () => {
   it("500 レスポンスの場合エラーがスローされる", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeResponse(500)));
 
-    await expect(request("/api/test")).rejects.toThrow("サーバーエラー");
+    await expect(request("/api/test")).rejects.toThrow("予期しないエラーが発生しました");
+  });
+
+  it("構造化エラーレスポンスの場合 code と errorId を保持する", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        makeResponse(503, {
+          code: "LLM_UNAVAILABLE",
+          message: "AI 分析サービスが一時的に利用できません",
+          action: "しばらく待ってから再試行してください",
+          error_id: "err-1234",
+        }),
+      ),
+    );
+
+    await expect(request("/api/test")).rejects.toMatchObject({
+      code: "LLM_UNAVAILABLE",
+      message: "AI 分析サービスが一時的に利用できません",
+      errorId: "err-1234",
+    } satisfies Partial<ApiError>);
   });
 
   /** 503 の detail があれば汎用文言ではなく detail を返すこと */

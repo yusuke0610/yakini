@@ -55,7 +55,12 @@ describe("useTaskPolling", () => {
     });
 
     await waitFor(() => {
-      expect(onFailed).toHaveBeenCalledWith("LLM タイムアウト");
+      expect(onFailed).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: "INTERNAL_ERROR",
+          message: "LLM タイムアウト",
+        }),
+      );
     });
     expect(onCompleted).not.toHaveBeenCalled();
     expect(result.current.isPolling).toBe(false);
@@ -81,7 +86,12 @@ describe("useTaskPolling", () => {
     });
 
     await waitFor(() => {
-      expect(onFailed).toHaveBeenCalledWith("処理に失敗しました");
+      expect(onFailed).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: "INTERNAL_ERROR",
+          message: "処理に失敗しました",
+        }),
+      );
     });
   });
 

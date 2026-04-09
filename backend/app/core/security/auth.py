@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Request, status
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from ...db import get_db
 from ...models import User
+from ..errors import ErrorCode, raise_app_error
 from ..messages import get_error
 from ..settings import get_jwt_private_key, get_jwt_public_key
 
@@ -43,9 +44,11 @@ def _decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, get_jwt_public_key(), algorithms=[_ALGORITHM])
     except JWTError:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.invalid_token"),
+            code=ErrorCode.AUTH_EXPIRED,
+            message=get_error("auth.invalid_token"),
+            action="ログインし直してください",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -54,15 +57,19 @@ def verify_refresh_token(token: str) -> str:
     """リフレッシュトークンを検証し、username を返す。type 不一致時は 401 を送出する。"""
     payload = _decode_token(token)
     if payload.get("type") != "refresh":
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.invalid_token"),
+            code=ErrorCode.AUTH_EXPIRED,
+            message=get_error("auth.invalid_token"),
+            action="ログインし直してください",
         )
     username: str | None = payload.get("sub")
     if not username:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.invalid_token"),
+            code=ErrorCode.AUTH_EXPIRED,
+            message=get_error("auth.invalid_token"),
+            action="ログインし直してください",
         )
     return username
 
@@ -73,29 +80,37 @@ def get_current_user(
 ) -> User:
     token = request.cookies.get(_COOKIE_NAME)
     if not token:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.login_required"),
+            code=ErrorCode.AUTH_REQUIRED,
+            message=get_error("auth.login_required"),
+            action="ログインし直してください",
         )
     payload = _decode_token(token)
     if payload.get("type") != "access":
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.invalid_token"),
+            code=ErrorCode.AUTH_EXPIRED,
+            message=get_error("auth.invalid_token"),
+            action="ログインし直してください",
         )
     username: str | None = payload.get("sub")
     if not username:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.invalid_token"),
+            code=ErrorCode.AUTH_EXPIRED,
+            message=get_error("auth.invalid_token"),
+            action="ログインし直してください",
         )
 
     from ...repositories import UserRepository
 
     user = UserRepository(db).get_by_username(username)
     if not user:
-        raise HTTPException(
+        raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=get_error("auth.user_not_found"),
+            code=ErrorCode.AUTH_REQUIRED,
+            message=get_error("auth.user_not_found"),
+            action="ログインし直してください",
         )
     return user

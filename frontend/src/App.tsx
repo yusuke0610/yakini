@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import { getCurrentUser, setOnUnauthorized } from "./api";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { useTheme } from "./hooks/useTheme";
 import { AppRoutes, type AuthUser } from "./router";
 
@@ -78,12 +79,14 @@ export default function App() {
   }, [user]);
 
   return (
-    <AppRoutes
-      user={user}
-      authLoading={authLoading}
-      theme={theme}
-      onToggleTheme={toggleTheme}
-      githubError={githubError}
-    />
+    <ErrorBoundary>
+      <AppRoutes
+        user={user}
+        authLoading={authLoading}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        githubError={githubError}
+      />
+    </ErrorBoundary>
   );
 }

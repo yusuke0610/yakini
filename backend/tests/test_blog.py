@@ -41,7 +41,9 @@ def test_add_account_user_not_found(client: TestClient) -> None:
             headers=headers,
         )
     assert resp.status_code == 404
-    assert resp.json()["detail"] == "指定されたアカウントが見つかりません。ユーザー名を確認してください。"
+    body = resp.json()
+    assert body["message"] == "指定されたアカウントが見つかりません。ユーザー名を確認してください。"
+    assert body["code"] == "VALIDATION_ERROR"
 
 
 def test_add_duplicate_account(client: TestClient) -> None:

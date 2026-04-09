@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -5,12 +6,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, Request, Response  # noqa: E402
+from fastapi import FastAPI, HTTPException, Request, Response  # noqa: E402
+from fastapi.exceptions import RequestValidationError  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
+from .core.errors import (  # noqa: E402
+    ErrorCode,
+    build_app_error_response,
+    generate_error_id,
+    normalize_http_exception_detail,
+)
 from .core.logging_utils import setup_logging  # noqa: E402
 from .core.messages import get_error, load_messages  # noqa: E402
 from .core.security.csrf import CSRFMiddleware  # noqa: E402
@@ -43,13 +51,83 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Resume Builder API", lifespan=lifespan)
 app.state.limiter = limiter
+logger = logging.getLogger(__name__)
 
 
 @app.exception_handler(RateLimitExceeded)
 async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    retry_after = getattr(exc, "headers", {}).get("Retry-After") if hasattr(exc, "headers") else None
+    error_id = generate_error_id()
+    logger.warning(
+        "リクエストレート制限",
+        extra={"http_status": 429, "error_id": error_id, "status": "failed"},
+    )
     return JSONResponse(
         status_code=429,
-        content={"detail": get_error("server.rate_limited")},
+        content=build_app_error_response(
+            code=ErrorCode.RATE_LIMITED,
+            message=get_error("server.rate_limited"),
+            action="しばらく待ってから再試行してください",
+            retry_after=int(retry_after) if retry_after and str(retry_after).isdigit() else None,
+            error_id=error_id,
+        ).model_dump(exclude_none=True),
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_exception_handler(request: Request, exc: RequestValidationError):
+    error_id = generate_error_id()
+    logger.warning(
+        "リクエストバリデーションエラー",
+        extra={"http_status": 422, "error_id": error_id, "status": "failed"},
+    )
+    return JSONResponse(
+        status_code=422,
+        content=build_app_error_response(
+            code=ErrorCode.VALIDATION_ERROR,
+            message="入力内容を確認してください。",
+            action="入力内容を見直して再試行してください",
+            error_id=error_id,
+        ).model_dump(exclude_none=True),
+    )
+
+
+@app.exception_handler(HTTPException)
+async def _http_exception_handler(request: Request, exc: HTTPException):
+    error_id = generate_error_id()
+    payload = normalize_http_exception_detail(
+        status_code=exc.status_code,
+        detail=exc.detail,
+        error_id=error_id,
+    )
+    log_level = logging.WARNING if exc.status_code < 500 else logging.ERROR
+    logger.log(
+        log_level,
+        "HTTPエラー応答",
+        extra={"http_status": exc.status_code, "error_id": payload.error_id, "status": "failed"},
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=payload.model_dump(exclude_none=True),
+        headers=exc.headers,
+    )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    error_id = generate_error_id()
+    logger.exception(
+        "未処理例外",
+        extra={"http_status": 500, "error_id": error_id, "status": "failed"},
+    )
+    return JSONResponse(
+        status_code=500,
+        content=build_app_error_response(
+            code=ErrorCode.INTERNAL_ERROR,
+            message=get_error("server.internal_error"),
+            action="ページを再読み込みして、解消しない場合は時間を置いて再試行してください",
+            error_id=error_id,
+        ).model_dump(exclude_none=True),
     )
 
 

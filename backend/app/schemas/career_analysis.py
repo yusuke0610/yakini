@@ -84,3 +84,4 @@ class TaskStatusResponse(BaseModel):
 
     status: str
     error_message: str | None = None
+    error_code: str | None = None

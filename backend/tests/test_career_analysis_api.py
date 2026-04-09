@@ -33,10 +33,13 @@ def test_generate_returns_specific_error_when_llm_is_unavailable(client: TestCli
         )
 
     assert resp.status_code == 503
+    body = resp.json()
+    assert body["code"] == "LLM_UNAVAILABLE"
     assert (
-        resp.json()["detail"]
+        body["message"]
         == "AI キャリアパス分析サービスが利用できません。LLM の設定または接続状態を確認してください。"
     )
+    assert body["error_id"]
 
 
 def test_generate_returns_202_when_llm_is_available(client: TestClient) -> None:

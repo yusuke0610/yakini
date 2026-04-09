@@ -87,8 +87,12 @@ describe("GitHubAnalysisPage", () => {
       ),
       http.post("*/api/intelligence/analyze", () =>
         HttpResponse.json(
-          { detail: "Internal Server Error" },
-          { status: 500 },
+          {
+            code: "LLM_UNAVAILABLE",
+            message: "AI 分析サービスが一時的に利用できません",
+            error_id: "err-ui-500",
+          },
+          { status: 503 },
         ),
       ),
     );
@@ -103,7 +107,8 @@ describe("GitHubAnalysisPage", () => {
 
     await waitFor(() => {
       // エラーメッセージが表示されること（アプリがクラッシュしないこと）
-      expect(screen.getByText(/Internal Server Error/)).toBeInTheDocument();
+      expect(screen.getByText(/AI 分析サービスが一時的に利用できません/)).toBeInTheDocument();
+      expect(screen.getByText(/エラーID: err-ui-500/)).toBeInTheDocument();
     });
   });
 

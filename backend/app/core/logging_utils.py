@@ -27,7 +27,16 @@ _SEVERITY_MAP = {
 
 # 構造化フィールドとして JSON ペイロードに含めるキー
 _STRUCTURED_KEYS = frozenset(
-    {"task_id", "user_id", "record_id", "status", "duration_ms", "error_type", "http_status"}
+    {
+        "task_id",
+        "user_id",
+        "record_id",
+        "status",
+        "duration_ms",
+        "error_type",
+        "http_status",
+        "error_id",
+    }
 )
 
 

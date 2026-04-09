@@ -11,9 +11,10 @@ DELETE /api/career-analysis/{id}               — 分析結果削除
 import json
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from sqlalchemy.orm import Session
 
+from ..core.errors import ErrorCode, infer_async_error_code, raise_app_error
 from ..core.messages import get_error
 from ..core.security.auth import get_current_user
 from ..core.security.dependencies import limiter
@@ -73,15 +74,19 @@ async def generate(
     # 職務経歴書データの存在チェック
     resume = db.query(Resume).filter_by(user_id=current_user.id).first()
     if not resume:
-        raise HTTPException(
+        raise_app_error(
             status_code=422,
-            detail=get_error("career_analysis.no_resume_data"),
+            code=ErrorCode.VALIDATION_ERROR,
+            message=get_error("career_analysis.no_resume_data"),
+            action="職務経歴書を入力してから再試行してください",
         )
 
     if not await _llm_client.check_available():
-        raise HTTPException(
+        raise_app_error(
             status_code=503,
-            detail=get_error("career_analysis.llm_unavailable"),
+            code=ErrorCode.LLM_UNAVAILABLE,
+            message=get_error("career_analysis.llm_unavailable"),
+            action="しばらく待ってから再試行してください",
         )
 
     # pending レコード作成
@@ -100,9 +105,11 @@ async def generate(
         )
     except Exception:
         logger.exception("キャリア分析タスクのディスパッチに失敗しました")
-        raise HTTPException(
+        raise_app_error(
             status_code=500,
-            detail=get_error("task.dispatch_failed"),
+            code=ErrorCode.INTERNAL_ERROR,
+            message=get_error("task.dispatch_failed"),
+            action="しばらく待ってから再試行してください",
         )
 
     return _to_response(analysis)
@@ -128,9 +135,11 @@ def get_analysis(
     repo = CareerAnalysisRepository(db, current_user.id)
     analysis = repo.get_by_id(analysis_id)
     if not analysis:
-        raise HTTPException(
+        raise_app_error(
             status_code=404,
-            detail=get_error("career_analysis.not_found"),
+            code=ErrorCode.VALIDATION_ERROR,
+            message=get_error("career_analysis.not_found"),
+            action="一覧に戻って対象を選び直してください",
         )
     return _to_response(analysis)
 
@@ -145,13 +154,20 @@ def get_analysis_status(
     repo = CareerAnalysisRepository(db, current_user.id)
     analysis = repo.get_by_id(analysis_id)
     if not analysis:
-        raise HTTPException(
+        raise_app_error(
             status_code=404,
-            detail=get_error("career_analysis.not_found"),
+            code=ErrorCode.VALIDATION_ERROR,
+            message=get_error("career_analysis.not_found"),
+            action="一覧に戻って対象を選び直してください",
         )
     return TaskStatusResponse(
         status=analysis.status,
         error_message=analysis.error_message,
+        error_code=(
+            infer_async_error_code(analysis.error_message).value
+            if analysis.error_message and infer_async_error_code(analysis.error_message)
+            else None
+        ),
     )
 
 
@@ -164,7 +180,9 @@ def delete_analysis(
     """分析結果を削除する。"""
     repo = CareerAnalysisRepository(db, current_user.id)
     if not repo.delete(analysis_id):
-        raise HTTPException(
+        raise_app_error(
             status_code=404,
-            detail=get_error("career_analysis.not_found"),
+            code=ErrorCode.VALIDATION_ERROR,
+            message=get_error("career_analysis.not_found"),
+            action="一覧に戻って対象を選び直してください",
         )

@@ -8,3 +8,4 @@ export * from "./rirekisho";
 export * from "./intelligence";
 export * from "./master-data";
 export * from "./blog";
+export { ApiError, isApiError, toAppError, type AppErrorState } from "../utils/appError";

@@ -55,3 +55,4 @@ class CachedAnalysisResponse(BaseModel):
     position_advice: Optional[str] = None
     status: Optional[str] = None
     error_message: Optional[str] = None
+    error_code: Optional[str] = None

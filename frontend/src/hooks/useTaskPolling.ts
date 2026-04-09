@@ -1,8 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
+import { ApiError, type AppErrorState, toAppError } from "../utils/appError";
+
 interface TaskStatus {
   status: string;
   error_message?: string;
+  error_code?: string;
+  error_id?: string;
+  retry_after?: number;
 }
 
 interface UseTaskPollingOptions {
@@ -11,7 +16,7 @@ interface UseTaskPollingOptions {
   /** 完了時コールバック */
   onCompleted: () => void;
   /** 失敗時コールバック */
-  onFailed: (error: string) => void;
+  onFailed: (error: AppErrorState) => void;
   /** ポーリング間隔（ms、デフォルト: 5000） */
   intervalMs?: number;
 }
@@ -59,7 +64,17 @@ export function useTaskPolling(options: UseTaskPollingOptions) {
         } else if (data.status === "failed") {
           stopPolling();
           callbacksRef.current.onFailed(
-            data.error_message || "処理に失敗しました",
+            toAppError(
+              new ApiError({
+                code: data.error_code ?? "INTERNAL_ERROR",
+                message: data.error_message || "処理に失敗しました",
+                retryAfter:
+                  typeof data.retry_after === "number"
+                    ? data.retry_after
+                    : null,
+                errorId: data.error_id,
+              }),
+            ),
           );
         }
       } catch {
