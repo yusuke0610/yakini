@@ -7,6 +7,7 @@ Cloud: /internal/tasks/{type} エンドポイント経由で呼ばれる。
 
 import json
 import logging
+import time
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -19,9 +20,21 @@ from .base import TaskType
 
 logger = logging.getLogger(__name__)
 
+# duration_ms がこの閾値を超えたら WARNING を出す（5分）
+_SLOW_TASK_THRESHOLD_MS = 300_000
+
 
 async def execute_task(task_type: TaskType, payload: dict) -> None:
     """タスクを実行する。自前で DB セッションを作成・管理する。"""
+    user_id = payload.get("user_id", "unknown")
+    record_id = payload.get("record_id")
+    start = time.monotonic()
+
+    logger.info(
+        "タスク開始",
+        extra={"task_id": task_type.value, "user_id": user_id, "record_id": record_id, "status": "running"},
+    )
+
     db = SessionLocal()
     try:
         if task_type == TaskType.GITHUB_ANALYSIS:
@@ -32,8 +45,39 @@ async def execute_task(task_type: TaskType, payload: dict) -> None:
             await _run_career_analysis(db, payload)
         else:
             logger.error("不明なタスク種別: %s", task_type)
+            return
+
+        duration_ms = int((time.monotonic() - start) * 1000)
+        logger.info(
+            "タスク完了",
+            extra={
+                "task_id": task_type.value,
+                "user_id": user_id,
+                "record_id": record_id,
+                "status": "completed",
+                "duration_ms": duration_ms,
+            },
+        )
+        if duration_ms > _SLOW_TASK_THRESHOLD_MS:
+            logger.warning(
+                "タスクが低速です (%d ms)",
+                duration_ms,
+                extra={"task_id": task_type.value, "user_id": user_id, "duration_ms": duration_ms},
+            )
     except Exception:
-        logger.exception("タスク実行に失敗しました (type=%s, payload=%s)", task_type, payload)
+        duration_ms = int((time.monotonic() - start) * 1000)
+        logger.error(
+            "タスク実行に失敗しました",
+            extra={
+                "task_id": task_type.value,
+                "user_id": user_id,
+                "record_id": record_id,
+                "status": "failed",
+                "error_type": type(Exception).__name__,
+                "duration_ms": duration_ms,
+            },
+            exc_info=True,
+        )
         _mark_failed(db, task_type, payload)
         raise
     finally:
@@ -57,7 +101,7 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
     user_id = payload["user_id"]
     cache = db.query(GitHubAnalysisCache).filter_by(user_id=user_id).first()
     if not cache:
-        logger.error("GitHub 分析キャッシュが見つかりません (user_id=%s)", user_id)
+        logger.error("GitHub 分析キャッシュが見つかりません", extra={"user_id": user_id})
         return
 
     cache.status = "processing"
@@ -122,7 +166,7 @@ async def _run_blog_summarize(db: Session, payload: dict) -> None:
     user_id = payload["user_id"]
     cache = db.query(BlogSummaryCache).filter_by(user_id=user_id).first()
     if not cache:
-        logger.error("ブログサマリキャッシュが見つかりません (user_id=%s)", user_id)
+        logger.error("ブログサマリキャッシュが見つかりません", extra={"user_id": user_id})
         return
 
     cache.status = "processing"
@@ -166,7 +210,7 @@ async def _run_career_analysis(db: Session, payload: dict) -> None:
 
     analysis = db.query(CareerAnalysis).filter_by(id=record_id, user_id=user_id).first()
     if not analysis:
-        logger.error("キャリア分析レコードが見つかりません (id=%s)", record_id)
+        logger.error("キャリア分析レコードが見つかりません", extra={"record_id": record_id})
         return
 
     analysis.status = "processing"

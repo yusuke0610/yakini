@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
+from .core.logging_utils import setup_logging  # noqa: E402
 from .core.messages import get_error, load_messages  # noqa: E402
 from .core.security.csrf import CSRFMiddleware  # noqa: E402
 from .core.security.dependencies import limiter  # noqa: E402
@@ -33,6 +34,7 @@ from .routers import (  # noqa: E402
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    setup_logging()
     load_messages()
     if os.getenv("APP_BOOTSTRAPPED", "0") != "1":
         bootstrap()

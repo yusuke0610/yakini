@@ -93,3 +93,9 @@ variable "cloud_tasks_service_url" {
   type        = string
   default     = ""
 }
+
+variable "environment" {
+  description = "実行環境 (dev / stg / prod)。構造化ログの形式制御に使用。"
+  type        = string
+  default     = "dev"
+}
