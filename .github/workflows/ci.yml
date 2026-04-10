@@ -1,5 +1,8 @@
 name: CI
 
+env:
+  APP_VERSION: dev
+
 on:
   pull_request:
     branches:
@@ -228,7 +231,7 @@ jobs:
       - name: Build and push image
         run: |
           IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}
-          docker build -t ${IMAGE}:${{ github.sha }} -t ${IMAGE}:latest --build-arg APP_VERSION=${APP_VERSION} backend/
+          docker build -t ${IMAGE}:${{ github.sha }} -t ${IMAGE}:latest --build-arg APP_VERSION=${{ env.APP_VERSION }} backend/
           docker push ${IMAGE}:${{ github.sha }}
           docker push ${IMAGE}:latest
 
@@ -330,7 +333,7 @@ jobs:
       - name: Build and push image
         run: |
           IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}
-          docker build -t ${IMAGE}:${{ github.sha }} -t ${IMAGE}:latest --build-arg APP_VERSION=${APP_VERSION} backend/
+          docker build -t ${IMAGE}:${{ github.sha }} -t ${IMAGE}:latest --build-arg APP_VERSION=${{ env.APP_VERSION }} backend/
           docker push ${IMAGE}:${{ github.sha }}
           docker push ${IMAGE}:latest
 
@@ -432,7 +435,7 @@ jobs:
       - name: Build and push image
         run: |
           IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}
-          docker build -t ${IMAGE}:${{ github.sha }} -t ${IMAGE}:latest --build-arg APP_VERSION=${APP_VERSION} backend/
+          docker build -t ${IMAGE}:${{ github.sha }} -t ${IMAGE}:latest --build-arg APP_VERSION=${{ env.APP_VERSION }} backend/
           docker push ${IMAGE}:${{ github.sha }}
           docker push ${IMAGE}:latest
 
