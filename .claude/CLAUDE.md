@@ -5,6 +5,7 @@
 ### 共通ルール
 - **コメント・ドキュメント**: コード内のコメント、docstring、JSDoc はすべて**日本語**で記述すること。
 - **エラーメッセージ**: HTTPException の `detail` 等、ユーザーに返すエラーメッセージはすべて**日本語**で記述すること。
+- **例外の握りつぶし禁止**: `except SomeException: pass` は禁止。最低でも `logger.debug/warning/error` でログを出すこと。補助的な処理（通知など）で例外を抑制する場合も `logger.warning` でログを残すこと。
 
 ### Python (backend)
 - ruff に準拠すること
@@ -25,9 +26,18 @@
 # backend
 cd backend && .venv/bin/python -m ruff check app tests alembic_migrations && .venv/bin/python -m pytest -q tests
 
-# frontend
+# frontend（ユニット・ビルド）
 cd frontend && npm run lint && npm test && npm run build
+
+# frontend E2E（新機能・ページ追加・ルーティング変更・認証フロー変更を行った場合は必須）
+cd frontend && npm run test:e2e
 ```
+
+**E2E テスト実行のトリガー**: 以下のいずれかに該当する変更を行った場合、必ず E2E テストを実行すること:
+- 新しいページまたはルートの追加
+- 認証・ナビゲーション・レイアウトの変更
+- 通知ベルなどサイドバーコンポーネントの変更
+- バックエンド API の追加・変更で、フロントエンドの UI フローに影響するもの
 
 CI 定義: `.github/workflows/ci.yml`
 

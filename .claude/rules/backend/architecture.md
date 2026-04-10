@@ -25,10 +25,10 @@ backend/app/
 │   ├── migrations.py
 │   ├── seed.py
 │   └── sqlite_backup.py
-├── routers/             # エンドポイント（auth, basic_info, resumes, rirekisho, blog, intelligence, admin, health, master_data）
+├── routers/             # エンドポイント（auth, basic_info, resumes, rirekisho, blog, intelligence, admin, health, master_data, notifications）
 ├── models/              # SQLAlchemy 2.0 宣言的マッピング
 ├── schemas/             # Pydantic リクエスト/レスポンススキーマ
-├── repositories/        # データアクセス層（UserRepository 等）
+├── repositories/        # データアクセス層（UserRepository, NotificationRepository 等）
 ├── services/
 │   ├── blog/                    # ブログ収集・技術記事判定・スコア算出
 │   │   ├── collector.py

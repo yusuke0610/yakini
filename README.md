@@ -29,6 +29,11 @@ GitHub活動分析、ブログ連携による発信力を集計
 - 分析履歴を複数バージョン保持・管理
 - バックグラウンド非同期処理（202 Accepted → ステータスポーリング方式）
 
+### 通知
+- GitHub分析・ブログ要約・キャリア分析などのバックグラウンドタスクの成功/失敗をサイドバーの通知ベルで通知
+- 未読バッジ表示（30秒ポーリング）・ドロップダウンパネルで一覧表示
+- 「全て既読」ボタン・パネル外クリックで閉じる
+
 ## 技術スタック
 
 | レイヤー | 技術 |
@@ -175,6 +180,12 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 - `PUT /api/master-data/technology-stack/{id}`: 技術スタック更新（管理者）
 - `DELETE /api/master-data/technology-stack/{id}`: 技術スタック削除（管理者）
 
+### 通知
+- `GET /api/notifications`: 通知一覧（直近30件）
+- `GET /api/notifications/unread-count`: 未読件数
+- `PATCH /api/notifications/{id}/read`: 個別既読
+- `POST /api/notifications/read-all`: 全て既読
+
 ### 管理
 - `POST /admin/backup`: SQLite DBをGCSへバックアップ（Bearerトークン必須）
 
@@ -237,13 +248,22 @@ SQLiteはDDL制約があるため、複雑なALTERはテーブル再作成型マ
 
 ## テスト
 
-### フロントエンド
+### フロントエンド（ユニット・ビルド）
 ```bash
 cd frontend
 npm run lint
 npm run test
 npm run build
 ```
+
+### フロントエンド E2E（Playwright）
+```bash
+cd frontend
+npm run test:e2e        # ヘッドレス実行
+npm run test:e2e:ui     # UI モードで実行（デバッグ用）
+```
+
+E2E テストは `frontend/e2e/` に配置。新しいページ・ルート・認証フロー・レイアウト変更時は必ず実行すること。
 
 ### バックエンド
 ```bash
@@ -260,6 +280,7 @@ cd backend
   - 実行内容:
   - `frontend/**` / `backend/**` / `.github/workflows/ci.yml` に変更がある場合:
     - frontend: `npm run lint`, `npm run test`, `npm run build`
+    - frontend E2E: `npm run test:e2e`（Playwright / Chromium）
     - backend: `ruff check app tests alembic_migrations`, `python -m pytest -q tests` (working-directory: `backend`)
   - 上記以外の変更のみの場合:
     - `test` ジョブは軽量な no-op で成功を返す
