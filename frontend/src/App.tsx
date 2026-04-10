@@ -1,143 +1,92 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
-import { setAuthToken, setOnUnauthorized, githubCallback } from "./api";
-import { parseUsernameFromToken } from "./auth-utils";
-import type { PageKey } from "./formTypes";
+import { getCurrentUser, setOnUnauthorized } from "./api";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { useTheme } from "./hooks/useTheme";
-import { LoginForm } from "./components/auth/LoginForm";
-import { RegisterForm } from "./components/auth/RegisterForm";
-import { UserMenu } from "./components/UserMenu";
-import { BasicInfoForm } from "./components/forms/BasicInfoForm";
-import { CareerResumeForm } from "./components/forms/CareerResumeForm";
-import { ResumeForm } from "./components/forms/ResumeForm";
-import shared from "./styles/shared.module.css";
-import styles from "./App.module.css";
+import { AppRoutes, type AuthUser } from "./router";
 
+/**
+ * アプリケーションのメインエントリーポイントコンポーネント。
+ * 認証状態を管理し、AppRoutes にルーティングを委譲する。
+ */
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
-  const [token, setToken] = useState<string | null>(() => {
-    const saved = localStorage.getItem("auth_token");
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    const saved = sessionStorage.getItem("auth_user");
     if (saved) {
-      setAuthToken(saved);
+      try {
+        return JSON.parse(saved) as AuthUser;
+      } catch {
+        return null;
+      }
     }
-    return saved;
+    return null;
   });
-
-  const username = parseUsernameFromToken(token);
+  const [authLoading, setAuthLoading] = useState(user === null);
   const [githubError, setGithubError] = useState<string | null>(null);
-  const [githubLoading, setGithubLoading] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return !!params.get("code") && !localStorage.getItem("auth_token");
-  });
-  const [page, setPage] = useState<PageKey>(() => {
-    const saved = sessionStorage.getItem("current_page");
-    return saved === "career" || saved === "Resume" ? saved : "basic";
-  });
-  const [authMode, setAuthMode] = useState<"login" | "register">(() => {
-    return sessionStorage.getItem("auth_mode") === "register" ? "register" : "login";
-  });
-
-  useEffect(() => {
-    sessionStorage.setItem("current_page", page);
-  }, [page]);
-
-  useEffect(() => {
-    sessionStorage.setItem("auth_mode", authMode);
-  }, [authMode]);
-
-  const handleLogin = (newToken: string) => {
-    localStorage.setItem("auth_token", newToken);
-    setAuthToken(newToken);
-    setToken(newToken);
-    setPage("basic");
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("auth_token");
-    sessionStorage.removeItem("current_page");
-    setAuthToken(null);
-    setToken(null);
-    setAuthMode("login");
-  };
 
   useEffect(() => {
     setOnUnauthorized(() => {
-      localStorage.removeItem("auth_token");
-      setAuthToken(null);
-      setToken(null);
+      sessionStorage.removeItem("auth_user");
+      setUser(null);
     });
-
-    // Handle GitHub OAuth callback
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const saved = localStorage.getItem("auth_token");
-    if (code && !saved) {
-      window.history.replaceState({}, "", window.location.pathname);
-      setGithubLoading(true);
-      githubCallback(code)
-        .then((result) => {
-          handleLogin(result.access_token);
-        })
-        .catch(() => {
-          setGithubError("GitHub認証に失敗しました。もう一度お試しください。");
-        })
-        .finally(() => {
-          setGithubLoading(false);
-        });
-    }
   }, []);
 
-  if (!token) {
-    if (authMode === "register") {
-      return <RegisterForm onLogin={handleLogin} onSwitchToLogin={() => setAuthMode("login")} />;
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const error = params.get("github_error");
+    if (error) {
+      navigate(location.pathname, { replace: true });
+      setGithubError(error);
     }
-    return <LoginForm onLogin={handleLogin} onSwitchToRegister={() => setAuthMode("register")} githubError={githubError} githubLoading={githubLoading} />;
-  }
+  }, [location.search, location.pathname, navigate]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (user) {
+      setAuthLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    (async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (!active || !currentUser) return;
+        const authUser: AuthUser = {
+          username: currentUser.username,
+          isGitHubUser: currentUser.is_github_user,
+        };
+        sessionStorage.setItem("auth_user", JSON.stringify(authUser));
+        setUser(authUser);
+      } catch {
+        if (!active) return;
+      } finally {
+        if (active) {
+          setAuthLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   return (
-    <div className={shared.page}>
-      <div className={styles.appLayout}>
-        <aside className={styles.sidebar}>
-          <p className={styles.sidebarTitle}>DevForge</p>
-          <nav className={styles.sidebarNav}>
-            <button
-              type="button"
-              className={`${styles.sidebarItem} ${page === "basic" ? styles.active : ""}`}
-              onClick={() => setPage("basic")}
-            >
-              基本情報
-            </button>
-            <button
-              type="button"
-              className={`${styles.sidebarItem} ${page === "career" ? styles.active : ""}`}
-              onClick={() => setPage("career")}
-            >
-              職務経歴書
-            </button>
-            <button
-              type="button"
-              className={`${styles.sidebarItem} ${page === "Resume" ? styles.active : ""}`}
-              onClick={() => setPage("Resume")}
-            >
-              履歴書
-            </button>
-          </nav>
-          <div className={styles.sidebarFooter}>
-            <UserMenu
-              username={username}
-              theme={theme}
-              onToggleTheme={toggleTheme}
-              onLogout={handleLogout}
-            />
-          </div>
-        </aside>
-
-        <main className={styles.mainContent}>
-          {page === "basic" && <BasicInfoForm />}
-          {page === "career" && <CareerResumeForm />}
-          {page === "Resume" && <ResumeForm />}
-        </main>
-      </div>
-    </div>
+    <ErrorBoundary>
+      <AppRoutes
+        user={user}
+        authLoading={authLoading}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        githubError={githubError}
+      />
+    </ErrorBoundary>
   );
 }

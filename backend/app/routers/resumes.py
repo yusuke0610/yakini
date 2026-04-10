@@ -1,19 +1,20 @@
-import io
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from ..auth import get_current_user
-from ..database import get_db
+from ..core.messages import get_error, get_success
+from ..core.security.auth import get_current_user
+from ..db import get_db
 from ..models import User
 from ..repositories import BasicInfoRepository, ResumeRepository
 from ..schemas import ResumeCreate, ResumeResponse, ResumeUpdate
-from ..services.markdown.markdown_service import (
-    generate_resume_markdown as build_resume_markdown,
+from ..services.markdown.generators.resume_generator import (
+    build_resume_markdown,
 )
-from ..services.pdf.pdf_service import generate_resume as build_resume_pdf
+from ..services.pdf.generators.resume_generator import build_resume_pdf
+from .download_utils import stream_markdown, stream_pdf
 
 router = APIRouter(prefix="/api/resumes", tags=["resumes"])
 
@@ -25,7 +26,13 @@ def create_resume(
     current_user: User = Depends(get_current_user),
 ) -> ResumeResponse:
     repository = ResumeRepository(db, current_user.id)
-    return repository.create(payload.model_dump())
+    try:
+        return repository.create(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=get_error(str(exc), document="職務経歴書"),
+        ) from exc
 
 
 @router.get("/latest", response_model=ResumeResponse)
@@ -36,7 +43,10 @@ def get_latest_resume(
     repository = ResumeRepository(db, current_user.id)
     resume = repository.get_latest()
     if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
     return resume
 
 
@@ -49,7 +59,10 @@ def get_resume(
     repository = ResumeRepository(db, current_user.id)
     resume = repository.get_by_id(str(resume_id))
     if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
     return resume
 
 
@@ -63,9 +76,26 @@ def update_resume(
     repository = ResumeRepository(db, current_user.id)
     resume = repository.get_by_id(str(resume_id))
     if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
 
     return repository.update(resume, payload.model_dump())
+
+
+@router.delete("")
+def delete_resume(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    repository = ResumeRepository(db, current_user.id)
+    if not repository.delete():
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
+    return {"message": get_success("document.deleted", document="職務経歴書")}
 
 
 @router.get("/{resume_id}/pdf")
@@ -79,7 +109,10 @@ def download_resume_pdf(
 
     resume = resume_repository.get_by_id(str(resume_id))
     if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
 
     basic_info = basic_info_repository.get_latest()
 
@@ -92,15 +125,7 @@ def download_resume_pdf(
         "experiences": resume.experiences,
     }
     pdf_bytes = build_resume_pdf(payload)
-
-    headers = {
-        "Content-Disposition": (
-            f'attachment; filename="career-resume-{resume.id}.pdf"'
-        ),
-    }
-    return StreamingResponse(
-        io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers
-    )
+    return stream_pdf(pdf_bytes, f"career-resume-{resume.id}.pdf")
 
 
 @router.get("/{resume_id}/markdown")
@@ -114,7 +139,10 @@ def download_resume_markdown(
 
     resume = resume_repository.get_by_id(str(resume_id))
     if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("document.not_found", document="職務経歴書"),
+        )
 
     basic_info = basic_info_repository.get_latest()
 
@@ -127,14 +155,4 @@ def download_resume_markdown(
         "experiences": resume.experiences,
     }
     md_text = build_resume_markdown(payload)
-
-    headers = {
-        "Content-Disposition": (
-            f'attachment; filename="career-resume-{resume.id}.md"'
-        ),
-    }
-    return StreamingResponse(
-        io.BytesIO(md_text.encode("utf-8")),
-        media_type="text/markdown; charset=utf-8",
-        headers=headers,
-    )
+    return stream_markdown(md_text, f"career-resume-{resume.id}.md")

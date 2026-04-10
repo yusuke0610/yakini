@@ -1,0 +1,94 @@
+.card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.2rem;
+  background: var(--bg-section);
+}
+
+.title {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+}
+
+.loading {
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+/* ── Overall ────────────────────────────────────────────────── */
+
+.overallSection {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.overallRank {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 800;
+  border: 3px solid;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.overallMeta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.noArticles {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* ── Axis Grid ──────────────────────────────────────────────── */
+
+.axisGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem;
+}
+
+.axisItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.8rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.axisLabel {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.axisRank {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.axisDetail {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .axisGrid {
+    grid-template-columns: 1fr;
+  }
+}

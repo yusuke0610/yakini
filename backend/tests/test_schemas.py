@@ -1,7 +1,12 @@
 import pytest
+from app.schemas import (
+    BlogSummaryRequest,
+    Experience,
+    Project,
+    ResumeCreate,
+    RirekishoCreate,
+)
 from pydantic import ValidationError
-
-from app.schemas import Experience, ResumeCreate, RirekishoCreate
 
 
 def experience_payload() -> dict:
@@ -13,14 +18,27 @@ def experience_payload() -> dict:
         "is_current": False,
         "employee_count": "300名",
         "capital": "1億円",
-        "projects": [
+        "clients": [
             {
-                "name": "API開発",
-                "role": "メンバー",
-                "description": "API開発",
-                "achievements": "処理速度を改善",
-                "scale": "5名",
-                "technology_stacks": [{"category": "言語", "name": "Python"}],
+                "name": "クライアントA",
+                "projects": [
+                    {
+                        "name": "API開発",
+                        "role": "メンバー",
+                        "description": "API開発",
+                        "challenge": "課題",
+                        "action": "行動",
+                        "result": "処理速度を改善",
+                        "team": {
+                            "total": "5",
+                            "members": [
+                                {"role": "SE", "count": 3},
+                                {"role": "PG", "count": 2},
+                            ],
+                        },
+                        "technology_stacks": [{"category": "language", "name": "Python"}],
+                    }
+                ],
             }
         ],
     }
@@ -47,16 +65,20 @@ def test_end_date_is_required_when_not_current() -> None:
 
 def test_framework_category_is_accepted() -> None:
     payload = experience_payload()
-    payload["projects"][0]["technology_stacks"] = [{"category": "フレームワーク", "name": "FastAPI"}]
+    payload["clients"][0]["projects"][0]["technology_stacks"] = [
+        {"category": "framework", "name": "FastAPI"}
+    ]
 
     experience = Experience(**payload)
 
-    assert experience.projects[0].technology_stacks[0].category == "フレームワーク"
+    assert experience.clients[0].projects[0].technology_stacks[0].category == "framework"
 
 
 def test_unknown_category_is_rejected() -> None:
     payload = experience_payload()
-    payload["projects"][0]["technology_stacks"] = [{"category": "ミドルウェア", "name": "Nginx"}]
+    payload["clients"][0]["projects"][0]["technology_stacks"] = [
+        {"category": "ミドルウェア", "name": "Nginx"}
+    ]
 
     with pytest.raises(ValidationError):
         Experience(**payload)
@@ -74,9 +96,12 @@ def test_resume_requires_career_summary() -> None:
 
 def rirekisho_payload() -> dict:
     return {
-        "postal_code": "150-0001",
+        "gender": "male",
+        "birthday": "1990-01-15",
+        "postal_code": "150-0041",
         "prefecture": "東京都",
         "address": "渋谷区神南1-1-1",
+        "address_furigana": "しぶやく じんなん",
         "email": "test@example.com",
         "phone": "09012345678",
         "motivation": "御社の事業に共感しました",
@@ -88,22 +113,142 @@ def rirekisho_payload() -> dict:
 def test_rirekisho_create_valid() -> None:
     rirekisho = RirekishoCreate(**rirekisho_payload())
 
-    assert rirekisho.postal_code == "150-0001"
+    assert rirekisho.gender == "male"
     assert len(rirekisho.educations) == 1
     assert len(rirekisho.work_histories) == 1
 
 
-def test_rirekisho_requires_postal_code() -> None:
+def test_rirekisho_requires_prefecture() -> None:
     payload = rirekisho_payload()
-    del payload["postal_code"]
+    del payload["prefecture"]
 
     with pytest.raises(ValidationError):
         RirekishoCreate(**payload)
 
 
-def test_rirekisho_requires_motivation() -> None:
+def test_project_migrates_scale_to_team() -> None:
+    """旧形式 scale → team に自動変換されることを検証する。"""
+    proj = Project(
+        **{
+            "name": "テスト",
+            "scale": "10",
+            "technology_stacks": [],
+        }
+    )
+    assert proj.team.total == "10"
+    assert proj.team.members == []
+
+
+def test_rirekisho_allows_empty_motivation() -> None:
     payload = rirekisho_payload()
     payload["motivation"] = ""
 
+    rirekisho = RirekishoCreate(**payload)
+    assert rirekisho.motivation == ""
+
+
+def test_experience_end_date_before_start_date_is_rejected() -> None:
+    """経歴: 終了日が開始日より前の場合は422エラーとなること。"""
+    payload = experience_payload()
+    payload["start_date"] = "2024-04"
+    payload["end_date"] = "2021-03"
+    payload["is_current"] = False
+
+    with pytest.raises(ValidationError, match="開始日は終了日より前"):
+        Experience(**payload)
+
+
+def test_experience_end_date_equals_start_date_is_accepted() -> None:
+    """経歴: 終了日 = 開始日は正常に保存されること。"""
+    payload = experience_payload()
+    payload["start_date"] = "2024-04"
+    payload["end_date"] = "2024-04"
+    payload["is_current"] = False
+
+    exp = Experience(**payload)
+    assert exp.start_date == "2024-04"
+    assert exp.end_date == "2024-04"
+
+
+def test_experience_end_date_after_start_date_is_accepted() -> None:
+    """経歴: 終了日 > 開始日は正常に保存されること。"""
+    payload = experience_payload()
+    payload["start_date"] = "2021-04"
+    payload["end_date"] = "2024-03"
+    payload["is_current"] = False
+
+    exp = Experience(**payload)
+    assert exp.start_date == "2021-04"
+    assert exp.end_date == "2024-03"
+
+
+def test_experience_null_end_date_is_accepted() -> None:
+    """経歴: 終了日がNULL（在職中）は正常に保存されること。"""
+    payload = experience_payload()
+    payload["is_current"] = True
+    payload["end_date"] = "2024-03"
+
+    exp = Experience(**payload)
+    assert exp.end_date is None
+
+
+def test_project_end_date_before_start_date_is_rejected() -> None:
+    """プロジェクト: 終了日が開始日より前の場合はエラーとなること。"""
+    with pytest.raises(ValidationError, match="開始日は終了日より前"):
+        Project(
+            name="テスト",
+            start_date="2024-04",
+            end_date="2021-03",
+            is_current=False,
+            technology_stacks=[],
+        )
+
+
+def test_project_end_date_equals_start_date_is_accepted() -> None:
+    """プロジェクト: 終了日 = 開始日は正常に保存されること。"""
+    proj = Project(
+        name="テスト",
+        start_date="2024-04",
+        end_date="2024-04",
+        is_current=False,
+        technology_stacks=[],
+    )
+    assert proj.end_date == "2024-04"
+
+
+def test_project_end_date_after_start_date_is_accepted() -> None:
+    """プロジェクト: 終了日 > 開始日は正常に保存されること。"""
+    proj = Project(
+        name="テスト",
+        start_date="2021-04",
+        end_date="2024-03",
+        is_current=False,
+        technology_stacks=[],
+    )
+    assert proj.end_date == "2024-03"
+
+
+def test_project_null_end_date_is_accepted() -> None:
+    """プロジェクト: 終了日が空（参画中）は正常に保存されること。"""
+    proj = Project(
+        name="テスト",
+        start_date="2021-04",
+        is_current=True,
+        technology_stacks=[],
+    )
+    assert proj.end_date == ""
+
+
+def test_blog_summary_request_limits_article_count() -> None:
+    article = {
+        "platform": "zenn",
+        "title": "記事タイトル",
+        "url": "https://zenn.dev/example/articles/test",
+        "published_at": "2026-03-19",
+        "likes_count": 1,
+        "summary": "概要",
+        "tags": ["Python"],
+    }
+
     with pytest.raises(ValidationError):
-        RirekishoCreate(**payload)
+        BlogSummaryRequest(articles=[article] * 51)

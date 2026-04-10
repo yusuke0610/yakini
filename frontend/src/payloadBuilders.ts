@@ -1,21 +1,44 @@
 import type {
   BasicInfoPayload,
   BasicQualification,
+  CareerClient,
   CareerExperience,
   CareerProject,
   CareerResumePayload,
   CareerTechnologyStack,
+  ProjectTeam,
   ResumeHistory,
   ResumePayload,
+  TeamMember,
 } from "./types";
+
+export type TeamMemberForm = {
+  role: string;
+  count: string;
+};
 
 export type CareerProjectForm = {
   name: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
   role: string;
   description: string;
-  achievements: string;
-  scale: string;
+  challenge: string;
+  action: string;
+  result: string;
+  team: {
+    total: string;
+    members: TeamMemberForm[];
+  };
   technology_stacks: CareerTechnologyStack[];
+  phases: string[];
+};
+
+export type CareerClientForm = {
+  name: string;
+  has_client: boolean;
+  projects: CareerProjectForm[];
 };
 
 export type CareerExperienceForm = {
@@ -26,11 +49,12 @@ export type CareerExperienceForm = {
   is_current: boolean;
   employee_count: string;
   capital: string;
-  projects: CareerProjectForm[];
+  clients: CareerClientForm[];
 };
 
 export type BasicFormState = {
   full_name: string;
+  name_furigana: string;
   record_date: string;
   qualifications: BasicQualification[];
 };
@@ -42,9 +66,12 @@ export type CareerFormState = {
 };
 
 export type ResumeFormState = {
+  gender: "male" | "female" | "";
+  birthday: string;
   postal_code: string;
   prefecture: string;
   address: string;
+  address_furigana: string;
   email: string;
   phone: string;
   motivation: string;
@@ -58,9 +85,19 @@ export function hasAnyText(values: Array<string | null | undefined>): boolean {
   return values.some((value) => Boolean(value?.trim()));
 }
 
+/** 終了日が開始日より前の場合にエラーメッセージを返す */
+export function validateDateRange(startDate: string, endDate: string, isCurrent: boolean): string | null {
+  if (isCurrent || !startDate || !endDate) return null;
+  if (endDate < startDate) return "開始日は終了日より前に設定してください。";
+  return null;
+}
+
+const HIRAGANA_RE = /^[ぁ-ゖー\s\u3000]+$/;
+
 export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
   const payload: BasicInfoPayload = {
     full_name: state.full_name.trim(),
+    name_furigana: state.name_furigana.trim(),
     record_date: state.record_date.trim(),
     qualifications: state.qualifications
       .map((qualification) => ({
@@ -70,8 +107,12 @@ export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
       .filter((qualification) => hasAnyText([qualification.acquired_date, qualification.name])),
   };
 
-  if (!payload.full_name || !payload.record_date) {
-    throw new Error("氏名と記載日は必須です。");
+  if (!payload.full_name || !payload.name_furigana || !payload.record_date) {
+    throw new Error("ふりがな、氏名、記載日は必須です。");
+  }
+
+  if (!HIRAGANA_RE.test(payload.name_furigana)) {
+    throw new Error("ふりがなはひらがなで入力してください。");
   }
 
   for (const qualification of payload.qualifications) {
@@ -83,19 +124,45 @@ export function buildBasicPayload(state: BasicFormState): BasicInfoPayload {
   return payload;
 }
 
+function buildTeam(team: CareerProjectForm["team"]): ProjectTeam {
+  const members: TeamMember[] = team.members
+    .filter((m) => m.role.trim() && String(m.count).trim())
+    .map((m) => ({ role: m.role.trim(), count: Number(m.count) }));
+  return {
+    total: team.total.trim(),
+    members,
+  };
+}
+
 function buildProject(proj: CareerProjectForm): CareerProject {
   return {
     name: proj.name.trim(),
+    start_date: proj.start_date.trim(),
+    end_date: proj.is_current ? "" : proj.end_date.trim(),
+    is_current: proj.is_current,
     role: proj.role.trim(),
     description: proj.description.trim(),
-    achievements: proj.achievements.trim(),
-    scale: proj.scale.trim(),
+    challenge: proj.challenge.trim(),
+    action: proj.action.trim(),
+    result: proj.result.trim(),
+    team: buildTeam(proj.team),
     technology_stacks: proj.technology_stacks
       .map((stack) => ({
         category: stack.category,
         name: stack.name.trim(),
       }))
       .filter((stack) => Boolean(stack.name)),
+    phases: proj.phases.filter((p) => Boolean(p)),
+  };
+}
+
+function buildClient(client: CareerClientForm): CareerClient {
+  return {
+    name: client.has_client ? client.name.trim() : "",
+    has_client: client.has_client,
+    projects: client.projects
+      .map(buildProject)
+      .filter((p) => hasAnyText([p.name, p.description, p.challenge, p.action, p.result])),
   };
 }
 
@@ -119,9 +186,9 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
       is_current: exp.is_current,
       employee_count: exp.employee_count.trim(),
       capital: exp.capital.trim(),
-      projects: exp.projects
-        .map(buildProject)
-        .filter((p) => hasAnyText([p.name, p.description, p.achievements])),
+      clients: exp.clients
+        .map(buildClient)
+        .filter((c) => !c.has_client || c.name.trim() || c.projects.length > 0),
     }))
     .filter((exp) =>
       hasAnyText([exp.company, exp.business_description, exp.start_date, exp.end_date ?? ""]),
@@ -134,6 +201,16 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
     if (!exp.is_current && !exp.end_date) {
       throw new Error("職務経歴の離職年月を入力するか、在職を選択してください。");
     }
+    if (!exp.is_current && exp.start_date && exp.end_date && exp.end_date < exp.start_date) {
+      throw new Error("開始日は終了日より前に設定してください。");
+    }
+    for (const client of exp.clients) {
+      for (const proj of client.projects) {
+        if (!proj.is_current && proj.start_date && proj.end_date && proj.end_date < proj.start_date) {
+          throw new Error("開始日は終了日より前に設定してください。");
+        }
+      }
+    }
   }
 
   return {
@@ -145,9 +222,12 @@ export function buildCareerPayload(state: CareerFormState): CareerResumePayload 
 
 export function buildResumePayload(state: ResumeFormState): ResumePayload {
   const payload: ResumePayload = {
+    gender: state.gender as "male" | "female",
+    birthday: state.birthday.trim(),
     postal_code: state.postal_code.trim(),
     prefecture: state.prefecture.trim(),
     address: state.address.trim(),
+    address_furigana: state.address_furigana.trim(),
     email: state.email.trim(),
     phone: state.phone.trim(),
     motivation: state.motivation.trim(),
@@ -168,14 +248,18 @@ export function buildResumePayload(state: ResumeFormState): ResumePayload {
   };
 
   if (
-    !payload.postal_code ||
+    !payload.gender ||
     !payload.prefecture ||
     !payload.address ||
+    !payload.address_furigana ||
     !payload.email ||
-    !payload.phone ||
-    !payload.motivation
+    !payload.phone
   ) {
-    throw new Error("郵便番号、都道府県、住所、メールアドレス、電話番号、志望動機は必須です。");
+    throw new Error("性別、都道府県、住所、住所ふりがな、メールアドレス、電話番号は必須です。");
+  }
+
+  if (!HIRAGANA_RE.test(payload.address_furigana)) {
+    throw new Error("住所ふりがなはひらがなで入力してください。");
   }
 
   for (const education of payload.educations) {

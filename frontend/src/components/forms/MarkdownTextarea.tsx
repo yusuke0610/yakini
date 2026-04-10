@@ -1,0 +1,55 @@
+import { useMemo } from "react";
+import { marked } from "marked";
+import shared from "../../styles/shared.module.css";
+import styles from "./MarkdownTextarea.module.css";
+
+type Props = {
+  /** フィールドのラベル */
+  label: string;
+  /** テキストの値 */
+  value: string;
+  /** 値変更コールバック */
+  onChange: (value: string) => void;
+  /** textarea の行数（デフォルト: 3） */
+  rows?: number;
+  /** placeholder */
+  placeholder?: string;
+  /** 必須フィールドかどうか */
+  required?: boolean;
+};
+
+/**
+ * Markdownテキストエリア。入力内容をリアルタイムでプレビュー表示する。
+ */
+export function MarkdownTextarea({ label, value, onChange, rows = 3, placeholder, required }: Props) {
+  const renderedHtml = useMemo(() => {
+    if (!value) return "";
+    return marked.parse(value, { async: false }) as string;
+  }, [value]);
+
+  return (
+    <div className={styles.wrapper}>
+      <span className={shared.labelText}>
+        {label}
+        {required && <span className={shared.requiredBadge}>必須</span>}
+      </span>
+      <div className={styles.editorRow}>
+        <textarea
+          rows={rows}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          required={required}
+          className={styles.editor}
+        />
+        {value && (
+          <div
+            className={styles.preview}
+            style={{ minHeight: `${rows * 1.5}rem` }}
+            dangerouslySetInnerHTML={{ __html: renderedHtml }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

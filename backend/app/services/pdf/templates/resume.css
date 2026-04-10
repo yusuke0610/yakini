@@ -1,0 +1,169 @@
+@font-face {
+  font-family: "NotoSansJP";
+  src: url("{{ font_path }}");
+}
+
+@page {
+  size: A4;
+  margin: 15mm;
+  @bottom-center {
+    font-family: "NotoSansJP";
+    font-size: 8pt;
+    content: counter(page);
+  }
+}
+
+body {
+  font-family: "NotoSansJP", sans-serif;
+  font-size: 9pt;
+  line-height: 1.6;
+  color: #222;
+}
+
+h1 {
+  font-size: 18pt;
+  text-align: center;
+  margin: 0 0 2mm 0;
+  letter-spacing: 0.5em;
+}
+
+/* 記載日・氏名 */
+.meta {
+  text-align: right;
+  font-size: 10pt;
+  margin-bottom: 4mm;
+}
+
+h2 {
+  font-size: 12pt;
+  border-bottom: 2px solid #333;
+  padding-bottom: 1mm;
+  margin: 6mm 0 3mm 0;
+}
+
+/* 会社ブロック */
+.company {
+  border: 0.5px solid #666;
+  margin-bottom: 3mm;
+  page-break-inside: avoid;
+}
+
+.company-header {
+  background: #d6dce8;
+  padding: 3px 4px;
+  font-size: 10pt;
+  font-weight: bold;
+  border-bottom: 0.3px solid #999;
+}
+
+.company-info {
+  background: #d6dce8;
+  padding: 3px 4px;
+  font-size: 8pt;
+  border-bottom: 0.3px solid #999;
+}
+
+.company-body {
+  padding: 4px;
+}
+
+/* 取引先 */
+.client-name {
+  font-size: 10pt;
+  font-weight: bold;
+  margin: 3mm 0 2mm 0;
+  padding-bottom: 1mm;
+  border-bottom: 2px solid #333;
+}
+
+/* プロジェクトテーブル */
+.project {
+  margin-bottom: 2mm;
+}
+
+.project-header {
+  font-size: 9pt;
+  font-weight: bold;
+  margin: 2mm 0 1mm 0;
+}
+
+.project-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8pt;
+  line-height: 1.5;
+}
+
+.project-table th {
+  background: #d6dce8;
+  border: 0.5px solid #666;
+  padding: 3px 4px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.project-table td {
+  border: 0.5px solid #666;
+  padding: 3px 4px;
+  vertical-align: top;
+}
+
+.project-table td.desc {
+  width: 60%;
+}
+
+.project-table td.env {
+  width: 25%;
+}
+
+.project-table td.team {
+  width: 15%;
+}
+
+/* 業務内容カラム内のラベル */
+.project-table td.desc p {
+  margin: 0 0 0.5em 0;
+}
+
+/* プロジェクト概要テキストを太字で表示 */
+.desc-bold {
+  font-weight: bold;
+}
+
+.desc-bold p {
+  margin: 0 0 0.3em 0;
+}
+
+/* 資格テーブル */
+.qual-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+
+.qual-table td {
+  border: 0.5px solid #666;
+  padding: 3px 4px;
+  vertical-align: middle;
+}
+
+.qual-table td:first-child {
+  width: 63%;
+}
+
+/* 本文ブロック（職務要約、自己PR） */
+.body-text {
+  font-size: 9pt;
+  line-height: 1.6;
+  margin: 1mm 0;
+}
+
+.body-text ul,
+.body-text ol {
+  margin: 0.3em 0;
+  padding-left: 1.5em;
+}
+
+.body-text p {
+  margin: 0 0 0.3em 0;
+}
