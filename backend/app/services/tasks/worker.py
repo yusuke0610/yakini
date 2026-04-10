@@ -15,8 +15,16 @@ from sqlalchemy.orm import Session
 from ...db.database import SessionLocal
 from ...models import BlogSummaryCache, GitHubAnalysisCache
 from ...models.career_analysis import CareerAnalysis
+from ...repositories.notification import NotificationRepository
 from ...services.intelligence.llm import get_llm_client
 from .base import TaskType
+
+# タスク種別ごとの通知タイトル定義
+_TASK_TITLES = {
+    TaskType.GITHUB_ANALYSIS: ("GitHub分析が完了しました", "GitHub分析に失敗しました"),
+    TaskType.BLOG_SUMMARIZE: ("ブログAI分析が完了しました", "ブログAI分析に失敗しました"),
+    TaskType.CAREER_ANALYSIS: ("キャリア分析が完了しました", "キャリア分析に失敗しました"),
+}
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +72,8 @@ async def execute_task(task_type: TaskType, payload: dict) -> None:
                 duration_ms,
                 extra={"task_id": task_type.value, "user_id": user_id, "duration_ms": duration_ms},
             )
+        if isinstance(user_id, str) and user_id != "unknown":
+            _create_notification(db, task_type, user_id, "completed")
     except Exception:
         duration_ms = int((time.monotonic() - start) * 1000)
         logger.error(
@@ -79,6 +89,8 @@ async def execute_task(task_type: TaskType, payload: dict) -> None:
             exc_info=True,
         )
         _mark_failed(db, task_type, payload)
+        if isinstance(user_id, str) and user_id != "unknown":
+            _create_notification(db, task_type, user_id, "failed")
         raise
     finally:
         db.close()
@@ -240,6 +252,18 @@ async def _run_career_analysis(db: Session, payload: dict) -> None:
 
 
 # ---------- 共通 ----------
+
+
+def _create_notification(db: Session, task_type: TaskType, user_id: str, status: str) -> None:
+    """タスク完了・失敗時に通知を作成する。失敗しても例外を握りつぶす（通知は補助機能）。"""
+    try:
+        titles = _TASK_TITLES.get(task_type)
+        if not titles:
+            return
+        title = titles[0] if status == "completed" else titles[1]
+        NotificationRepository.create(db=db, user_id=user_id, task_type=task_type.value, status=status, title=title)
+    except Exception:
+        logger.warning("通知の作成に失敗しました（タスク処理には影響しません）", exc_info=True)
 
 
 def _mark_failed(db: Session, task_type: TaskType, payload: dict) -> None:

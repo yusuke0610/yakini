@@ -133,8 +133,11 @@ async def github_callback_redirect(
         )
         token_response = await authenticate_github_user(db, code)
     except HTTPException as error:
+        # error.detail は AppErrorResponse の dict 形式なので message フィールドを取り出す
+        detail = error.detail
+        error_message = detail.get("message") if isinstance(detail, dict) else str(detail)
         redirect = RedirectResponse(
-            url=build_frontend_redirect_url(frontend_url, error.detail),
+            url=build_frontend_redirect_url(frontend_url, error_message),
             status_code=status.HTTP_303_SEE_OTHER,
         )
         clear_github_oauth_cookies(redirect)

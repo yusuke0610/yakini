@@ -2,6 +2,7 @@
 OAuth state生成・検証・GitHub authorization URL構築・frontend URL解決を担うモジュール。
 """
 
+import logging
 import secrets
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -16,6 +17,8 @@ from .token_manager import (
     GITHUB_OAUTH_STATE_COOKIE,
     set_cookie,
 )
+
+logger = logging.getLogger(__name__)
 
 # 他モジュールが oauth_flow 経由でインポートできるよう再エクスポート
 __all__ = [
@@ -99,7 +102,7 @@ def resolve_frontend_url_from_request(
         try:
             return normalize_frontend_url(referer)
         except HTTPException:
-            pass
+            logger.debug("Referer が CORS_ORIGINS に含まれないためスキップ: %s", referer)
 
     request_origin = request.headers.get("origin")
     if request_origin:
@@ -114,7 +117,7 @@ def resolve_frontend_url_from_cookie(stored_url: str | None) -> str:
         try:
             return normalize_frontend_url(stored_url)
         except HTTPException:
-            pass
+            logger.warning("Cookie に保存されたリダイレクト URL が無効なためデフォルトを使用: %s", stored_url)
     return get_default_frontend_url()
 
 

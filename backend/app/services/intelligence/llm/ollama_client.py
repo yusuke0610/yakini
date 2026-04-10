@@ -49,7 +49,11 @@ class OllamaClient(LLMClient):
             logger.warning(
                 "Ollama 生成がタイムアウトしました (%.1f秒)",
                 self.timeout,
-                extra={"status": "failed", "error_type": "TimeoutException", "duration_ms": duration_ms},
+                extra={
+                    "status": "failed",
+                    "error_type": "TimeoutException",
+                    "duration_ms": duration_ms,
+                },
             )
             return ""
         except Exception:

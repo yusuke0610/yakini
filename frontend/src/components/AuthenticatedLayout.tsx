@@ -2,6 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 
 import type { AuthUser } from "../router/guards";
 import type { Theme } from "../hooks/useTheme";
+import { NotificationBell } from "./NotificationBell";
 import { UserMenu } from "./UserMenu";
 import shared from "../styles/shared.module.css";
 import styles from "../App.module.css";
@@ -77,6 +78,7 @@ export function AuthenticatedLayout({
             </NavLink>
           </nav>
           <div className={styles.sidebarFooter}>
+            <NotificationBell />
             <UserMenu
               username={user.username}
               theme={theme}
