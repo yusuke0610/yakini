@@ -132,7 +132,7 @@ export type TechStackMasterItem = {
 
 export type BlogAccount = {
   id: string;
-  platform: "zenn" | "note";
+  platform: "zenn" | "note" | "qiita";
   username: string;
   created_at: string;
 };

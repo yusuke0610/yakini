@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class BlogAccountCreate(BaseModel):
     """ブログ連携アカウントの作成リクエスト。"""
 
-    platform: Literal["zenn", "note"]
+    platform: Literal["zenn", "note", "qiita"]
     username: str = Field(min_length=1, max_length=120)
 
 
@@ -48,7 +48,7 @@ class BlogSyncResponse(BaseModel):
 class BlogSummaryArticle(BaseModel):
     """ブログ AI 分析に渡す記事情報。"""
 
-    platform: Literal["zenn", "note"]
+    platform: Literal["zenn", "note", "qiita"]
     title: str = Field(min_length=1, max_length=500)
     url: str = Field(min_length=1, max_length=1000)
     published_at: str | None = Field(default=None, max_length=30)

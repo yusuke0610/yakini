@@ -12,12 +12,12 @@ import {
 } from "../api";
 import type { BlogAccount, BlogArticle } from "../types";
 
-type PlatformKey = "zenn" | "note";
+type PlatformKey = "zenn" | "note" | "qiita";
 
 /**
  * BlogPage のブログアカウント管理・同期・AI分析ロジックを提供するカスタムフック。
  */
-export function useBlogAccountManager(filter: "all" | "zenn" | "note") {
+export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita") {
   const [accounts, setAccounts] = useState<BlogAccount[]>([]);
   const [articles, setArticles] = useState<BlogArticle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +28,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note") {
   const [draftUsernames, setDraftUsernames] = useState<Record<string, string>>({
     zenn: "",
     note: "",
+    qiita: "",
   });
 
   /** 保存中のプラットフォーム */

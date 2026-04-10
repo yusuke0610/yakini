@@ -3,12 +3,13 @@ import { useState } from "react";
 import { useBlogAccountManager } from "../../hooks/useBlogAccountManager";
 import { ZennIcon } from "../icons/ZennIcon";
 import { NoteIcon } from "../icons/NoteIcon";
+import { QiitaIcon } from "../icons/QiitaIcon";
 import { BlogScoreCard } from "./BlogScoreCard";
 import { BlogAnalysisSection } from "./BlogAnalysisSection";
 import shared from "../../styles/shared.module.css";
 import styles from "./BlogPage.module.css";
 
-type PlatformFilter = "all" | "zenn" | "note";
+type PlatformFilter = "all" | "zenn" | "note" | "qiita";
 
 const ARTICLES_PER_PAGE = 5;
 
@@ -26,6 +27,12 @@ const PLATFORMS = [
     urlPrefix: "https://note.com/",
     icon: <NoteIcon size={22} />,
   },
+  {
+    key: "qiita" as const,
+    label: "Qiita",
+    urlPrefix: "https://qiita.com/",
+    icon: <QiitaIcon size={22} />,
+  },
 ] as const;
 
 /**
@@ -37,6 +44,7 @@ export function BlogPage() {
     all: 1,
     zenn: 1,
     note: 1,
+    qiita: 1,
   });
 
   const {
@@ -182,7 +190,7 @@ export function BlogPage() {
             <div className={styles.articleHeader}>
               <h2>記事一覧</h2>
               <div className={styles.filterTabs}>
-                {(["all", "zenn", "note"] as PlatformFilter[]).map((f) => (
+                {(["all", "zenn", "note", "qiita"] as PlatformFilter[]).map((f) => (
                   <button
                     key={f}
                     type="button"
@@ -196,7 +204,7 @@ export function BlogPage() {
                       }));
                     }}
                   >
-                    {f === "all" ? "All" : f === "zenn" ? "Zenn" : "note"}
+                    {f === "all" ? "All" : f === "zenn" ? "Zenn" : f === "note" ? "note" : "Qiita"}
                   </button>
                 ))}
               </div>
@@ -221,6 +229,8 @@ export function BlogPage() {
                         <span className={styles.articleIcon}>
                           {art.platform === "zenn" ? (
                             <ZennIcon size={16} />
+                          ) : art.platform === "qiita" ? (
+                            <QiitaIcon size={16} />
                           ) : (
                             <NoteIcon size={16} />
                           )}

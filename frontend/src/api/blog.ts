@@ -43,7 +43,7 @@ export function getBlogAccounts(): Promise<BlogAccount[]> {
  * 連携アカウントを登録する。
  */
 export function addBlogAccount(
-  platform: "zenn" | "note",
+  platform: "zenn" | "note" | "qiita",
   username: string,
 ): Promise<BlogAccount> {
   return request<BlogAccount>("/api/blog/accounts", {

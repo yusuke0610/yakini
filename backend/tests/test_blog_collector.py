@@ -9,6 +9,7 @@ from app.services.blog.collector import (
     BlogPlatformRequestError,
     UnsupportedBlogPlatformError,
     fetch_note_articles,
+    fetch_qiita_articles,
     fetch_zenn_articles,
     verify_user_exists,
 )
@@ -100,6 +101,43 @@ def test_fetch_note_articles_with_hashtags() -> None:
     assert articles[0]["likes_count"] == 42
 
 
+# ── fetch_qiita_articles テスト ──────────────────────────────────────────
+
+
+def test_fetch_qiita_articles_success() -> None:
+    """Qiita API から記事を正常に取得できること。"""
+    api_json = [
+        {
+            "id": "abc12345",
+            "title": "Qiitaテスト記事",
+            "url": "https://qiita.com/user/items/abc12345",
+            "created_at": "2026-02-01T10:00:00+09:00",
+            "likes_count": 10,
+            "tags": [{"name": "TypeScript"}, {"name": "React"}],
+        }
+    ]
+
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json = MagicMock(return_value=api_json)
+
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.services.blog.collector.httpx.AsyncClient", return_value=mock_client):
+        articles = _run(fetch_qiita_articles("user"))
+
+    assert len(articles) == 1
+    assert articles[0]["platform"] == "qiita"
+    assert articles[0]["external_id"] == "abc12345"
+    assert articles[0]["title"] == "Qiitaテスト記事"
+    assert articles[0]["published_at"] == "2026-02-01"
+    assert articles[0]["likes_count"] == 10
+    assert articles[0]["tags"] == ["TypeScript", "React"]
+
+
 # ── fetch_zenn_articles テスト ───────────────────────────────────────────
 
 
@@ -121,7 +159,7 @@ def test_fetch_zenn_articles_timeout_raises() -> None:
 def test_verify_user_exists_unsupported_platform_raises_error() -> None:
     """未対応プラットフォームでは UnsupportedBlogPlatformError が送出されること。"""
     with pytest.raises(UnsupportedBlogPlatformError):
-        _run(verify_user_exists("qiita", "someuser"))
+        _run(verify_user_exists("hatena", "someuser"))
 
 
 def test_verify_user_exists_zenn_user_found() -> None:
