@@ -3,10 +3,8 @@ import { Route, Routes, Navigate } from "react-router-dom";
 import type { Theme } from "../hooks/useTheme";
 import { AuthenticatedLayout } from "../components/AuthenticatedLayout";
 import { PrivateRoute, PublicRoute, type AuthUser } from "./guards";
-import BasicInfoPage from "../pages/BasicInfoPage";
 import CareerAnalysisPage from "../pages/CareerAnalysisPage";
 import CareerPage from "../pages/CareerPage";
-import ResumePage from "../pages/ResumePage";
 import GitHubIntelligencePage from "../pages/GitHubIntelligencePage";
 import BlogPage from "../pages/BlogPage";
 import LoginPage from "../pages/LoginPage";
@@ -49,16 +47,14 @@ export default function AppRoutes({
             />
           }
         >
-          <Route path="/basic_info" element={<BasicInfoPage />} />
           <Route path="/career" element={<CareerPage />} />
-          <Route path="/resume" element={<ResumePage />} />
           <Route path="/github_intelligence" element={<GitHubIntelligencePage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/career_analysis" element={<CareerAnalysisPage />} />
         </Route>
       </Route>
 
-      <Route path="/" element={<Navigate to="/basic_info" replace />} />
+      <Route path="/" element={<Navigate to="/career" replace />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

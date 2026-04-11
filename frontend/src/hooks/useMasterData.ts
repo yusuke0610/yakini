@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { getPrefectures, getQualifications, getTechnologyStacks } from "../api";
+import { getQualifications, getTechnologyStacks } from "../api";
 import type { MasterItem, TechStackMasterItem } from "../types";
 
 /** 汎用のキャッシュ付きデータ取得フック */
@@ -40,7 +40,6 @@ function useCachedFetch<T>(
 /** モジュールレベルのキャッシュ */
 const qualificationsCache: { current: MasterItem[] | null } = { current: null };
 const techStacksCache: { current: TechStackMasterItem[] | null } = { current: null };
-const prefecturesCache: { current: MasterItem[] | null } = { current: null };
 
 /** 資格マスタを取得するフック */
 export function useQualifications() {
@@ -50,9 +49,4 @@ export function useQualifications() {
 /** 技術スタックマスタを取得するフック */
 export function useTechnologyStacks() {
   return useCachedFetch(techStacksCache, getTechnologyStacks);
-}
-
-/** 都道府県マスタを取得するフック */
-export function usePrefectures() {
-  return useCachedFetch(prefecturesCache, getPrefectures);
 }

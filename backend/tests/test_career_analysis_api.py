@@ -9,9 +9,11 @@ def _create_resume(client: TestClient, headers: dict[str, str]) -> None:
     resp = client.post(
         "/api/resumes",
         json={
+            "full_name": "山田 太郎",
             "career_summary": "バックエンド中心の開発経験",
             "self_pr": "API 設計が得意",
             "experiences": [],
+            "qualifications": [],
         },
         headers=headers,
     )

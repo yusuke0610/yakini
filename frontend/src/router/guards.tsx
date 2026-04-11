@@ -21,10 +21,10 @@ export function PrivateRoute({ user, authLoading }: GuardProps) {
 
 /**
  * 未認証ユーザー専用のルートガード。
- * 認証済み時は /basic_info にリダイレクトする。
+ * 認証済み時は /career にリダイレクトする。
  */
 export function PublicRoute({ user, authLoading }: GuardProps) {
   if (authLoading) return <LoadingOverlay />;
-  if (user) return <Navigate to="/basic_info" replace />;
+  if (user) return <Navigate to="/career" replace />;
   return <Outlet />;
 }

@@ -1,7 +1,6 @@
 """Pydantic スキーマ。"""
 
 from .auth import GitHubCallbackRequest, TokenResponse, UserResponse
-from .basic_info import BasicInfoCreate, BasicInfoResponse, BasicInfoUpdate, BasicQualification
 from .blog import (
     BlogAccountCreate,
     BlogAccountResponse,
@@ -45,26 +44,17 @@ from .resume import (
     Project,
     ProjectTeam,
     ResumeCreate,
+    ResumeQualificationItem,
     ResumeResponse,
     ResumeUpdate,
     TeamMember,
     TechnologyStackItem,
-)
-from .rirekisho import (
-    RirekishoCreate,
-    RirekishoHistory,
-    RirekishoResponse,
-    RirekishoUpdate,
 )
 
 __all__ = [
     "ActionItem",
     "AnalysisResponse",
     "AnalyzeRequest",
-    "BasicInfoCreate",
-    "BasicInfoResponse",
-    "BasicInfoUpdate",
-    "BasicQualification",
     "BlogAccountCreate",
     "BlogAccountResponse",
     "BlogArticleResponse",
@@ -90,12 +80,9 @@ __all__ = [
     "Project",
     "ProjectTeam",
     "ResumeCreate",
+    "ResumeQualificationItem",
     "ResumeResponse",
     "ResumeUpdate",
-    "RirekishoCreate",
-    "RirekishoHistory",
-    "RirekishoResponse",
-    "RirekishoUpdate",
     "StrengthItem",
     "TaskStatusResponse",
     "TeamMember",

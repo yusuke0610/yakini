@@ -8,7 +8,7 @@ from ..core.messages import get_error, get_success
 from ..core.security.auth import get_current_user
 from ..db import get_db
 from ..models import User
-from ..repositories import BasicInfoRepository, ResumeRepository
+from ..repositories import ResumeRepository
 from ..schemas import ResumeCreate, ResumeResponse, ResumeUpdate
 from ..services.markdown.generators.resume_generator import (
     build_resume_markdown,
@@ -17,6 +17,17 @@ from ..services.pdf.generators.resume_generator import build_resume_pdf
 from .download_utils import stream_markdown, stream_pdf
 
 router = APIRouter(prefix="/api/resumes", tags=["resumes"])
+
+
+def _resume_to_payload(resume) -> dict:
+    """Resume ORM から PDF/Markdown 生成用 payload を組み立てる。"""
+    return {
+        "full_name": resume.full_name,
+        "career_summary": resume.career_summary,
+        "self_pr": resume.self_pr,
+        "experiences": resume.experiences,
+        "qualifications": resume.qualifications,
+    }
 
 
 @router.post("", response_model=ResumeResponse, status_code=201)
@@ -104,27 +115,16 @@ def download_resume_pdf(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    resume_repository = ResumeRepository(db, current_user.id)
-    basic_info_repository = BasicInfoRepository(db, current_user.id)
+    repository = ResumeRepository(db, current_user.id)
 
-    resume = resume_repository.get_by_id(str(resume_id))
+    resume = repository.get_by_id(str(resume_id))
     if not resume:
         raise HTTPException(
             status_code=404,
             detail=get_error("document.not_found", document="職務経歴書"),
         )
 
-    basic_info = basic_info_repository.get_latest()
-
-    payload = {
-        "full_name": basic_info.full_name if basic_info else "",
-        "record_date": basic_info.record_date if basic_info else "",
-        "qualifications": basic_info.qualifications if basic_info else [],
-        "career_summary": resume.career_summary,
-        "self_pr": resume.self_pr,
-        "experiences": resume.experiences,
-    }
-    pdf_bytes = build_resume_pdf(payload)
+    pdf_bytes = build_resume_pdf(_resume_to_payload(resume))
     return stream_pdf(pdf_bytes, f"career-resume-{resume.id}.pdf")
 
 
@@ -134,25 +134,14 @@ def download_resume_markdown(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
-    resume_repository = ResumeRepository(db, current_user.id)
-    basic_info_repository = BasicInfoRepository(db, current_user.id)
+    repository = ResumeRepository(db, current_user.id)
 
-    resume = resume_repository.get_by_id(str(resume_id))
+    resume = repository.get_by_id(str(resume_id))
     if not resume:
         raise HTTPException(
             status_code=404,
             detail=get_error("document.not_found", document="職務経歴書"),
         )
 
-    basic_info = basic_info_repository.get_latest()
-
-    payload = {
-        "full_name": basic_info.full_name if basic_info else "",
-        "record_date": basic_info.record_date if basic_info else "",
-        "qualifications": basic_info.qualifications if basic_info else [],
-        "career_summary": resume.career_summary,
-        "self_pr": resume.self_pr,
-        "experiences": resume.experiences,
-    }
-    md_text = build_resume_markdown(payload)
+    md_text = build_resume_markdown(_resume_to_payload(resume))
     return stream_markdown(md_text, f"career-resume-{resume.id}.md")

@@ -4,7 +4,6 @@ from app.schemas import (
     Experience,
     Project,
     ResumeCreate,
-    RirekishoCreate,
 )
 from pydantic import ValidationError
 
@@ -86,44 +85,26 @@ def test_unknown_category_is_rejected() -> None:
 
 def test_resume_requires_career_summary() -> None:
     payload = {
+        "full_name": "山田 太郎",
         "self_pr": "自己PR",
         "experiences": [experience_payload()],
+        "qualifications": [],
     }
 
     with pytest.raises(ValidationError):
         ResumeCreate(**payload)
 
 
-def rirekisho_payload() -> dict:
-    return {
-        "gender": "male",
-        "birthday": "1990-01-15",
-        "postal_code": "150-0041",
-        "prefecture": "東京都",
-        "address": "渋谷区神南1-1-1",
-        "address_furigana": "しぶやく じんなん",
-        "email": "test@example.com",
-        "phone": "09012345678",
-        "motivation": "御社の事業に共感しました",
-        "educations": [{"date": "2018-03", "name": "○○大学 卒業"}],
-        "work_histories": [{"date": "2018-04", "name": "Example株式会社 入社"}],
+def test_resume_requires_full_name() -> None:
+    payload = {
+        "career_summary": "要約",
+        "self_pr": "自己PR",
+        "experiences": [experience_payload()],
+        "qualifications": [],
     }
 
-
-def test_rirekisho_create_valid() -> None:
-    rirekisho = RirekishoCreate(**rirekisho_payload())
-
-    assert rirekisho.gender == "male"
-    assert len(rirekisho.educations) == 1
-    assert len(rirekisho.work_histories) == 1
-
-
-def test_rirekisho_requires_prefecture() -> None:
-    payload = rirekisho_payload()
-    del payload["prefecture"]
-
     with pytest.raises(ValidationError):
-        RirekishoCreate(**payload)
+        ResumeCreate(**payload)
 
 
 def test_project_migrates_scale_to_team() -> None:
@@ -137,14 +118,6 @@ def test_project_migrates_scale_to_team() -> None:
     )
     assert proj.team.total == "10"
     assert proj.team.members == []
-
-
-def test_rirekisho_allows_empty_motivation() -> None:
-    payload = rirekisho_payload()
-    payload["motivation"] = ""
-
-    rirekisho = RirekishoCreate(**payload)
-    assert rirekisho.motivation == ""
 
 
 def test_experience_end_date_before_start_date_is_rejected() -> None:

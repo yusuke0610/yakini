@@ -296,11 +296,6 @@
   color: var(--warning);
 }
 
-.badgeBasicInfo {
-  background: color-mix(in srgb, var(--success) 15%, transparent);
-  color: var(--success);
-}
-
 /* ── キャリアパス ─────────────────────────────────────────── */
 
 .careerPath {

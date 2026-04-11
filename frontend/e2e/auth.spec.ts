@@ -34,7 +34,7 @@ test.describe("未認証ユーザー", () => {
     expect(oauthRedirectUrl).toContain("return_to=");
   });
 
-  test("/basic_info へ直接アクセスすると /login にリダイレクトされる", async ({ page }) => {
+  test("/career へ直接アクセスすると /login にリダイレクトされる", async ({ page }) => {
     let oauthRedirectUrl: string | null = null;
 
     await page.route("**/auth/me", (route) =>
@@ -53,7 +53,7 @@ test.describe("未認証ユーザー", () => {
       });
     });
 
-    await page.goto("/basic_info");
+    await page.goto("/career");
     await page.waitForURL("**/login", { timeout: 5_000 });
     await expect.poll(() => oauthRedirectUrl).not.toBeNull();
     expect(oauthRedirectUrl).toContain("/auth/github/login");

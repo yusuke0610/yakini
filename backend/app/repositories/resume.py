@@ -1,6 +1,6 @@
 from sqlalchemy.orm import selectinload
 
-from ..core.date_utils import parse_year_month
+from ..core.date_utils import parse_iso_date, parse_year_month
 from ..models import (
     Resume,
     ResumeClient,
@@ -9,8 +9,9 @@ from ..models import (
     ResumeProjectPhase,
     ResumeProjectTeamMember,
     ResumeProjectTechnologyStack,
+    ResumeQualification,
 )
-from ..services.shared.sort_utils import sort_by_period_desc
+from ..services.shared.sort_utils import sort_by_date_asc, sort_by_period_desc
 from .base import SingleUserDocumentRepository
 
 
@@ -30,9 +31,11 @@ class ResumeRepository(SingleUserDocumentRepository):
         .selectinload(ResumeExperience.client_rows)
         .selectinload(ResumeClient.project_rows)
         .selectinload(ResumeProject.phase_rows),
+        selectinload(Resume.qualification_rows),
     )
 
     def _apply_payload(self, entity: Resume, payload: dict[str, object]) -> None:
+        entity.full_name = payload["full_name"]
         entity.career_summary = payload["career_summary"]
         entity.self_pr = payload["self_pr"]
         sorted_experiences = sort_by_period_desc(
@@ -43,6 +46,18 @@ class ResumeRepository(SingleUserDocumentRepository):
         entity.experience_rows = [
             self._build_experience_row(index, experience)
             for index, experience in enumerate(sorted_experiences)
+        ]
+        sorted_qualifications = sort_by_date_asc(
+            payload.get("qualifications", []),
+            date_key="acquired_date",
+        )
+        entity.qualification_rows = [
+            ResumeQualification(
+                sort_order=index,
+                acquired_date_value=parse_iso_date(item["acquired_date"]),
+                name=item["name"],
+            )
+            for index, item in enumerate(sorted_qualifications)
         ]
 
     def _build_experience_row(self, index: int, payload: dict[str, object]) -> ResumeExperience:

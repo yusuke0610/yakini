@@ -13,7 +13,7 @@ export default function NotFoundPage() {
         <p className={styles.description}>
           お探しのページは存在しないか、移動した可能性があります。
         </p>
-        <button type="button" className={styles.button} onClick={() => navigate("/basic_info")}>
+        <button type="button" className={styles.button} onClick={() => navigate("/career")}>
           ホームに戻る
         </button>
       </div>
