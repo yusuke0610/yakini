@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import type { Notification } from "../api/notifications";
 import { useNotifications } from "../hooks/useNotifications";
+import { BellIcon } from "./icons/BellIcon";
 import styles from "./NotificationBell.module.css";
 
 /** 通知作成日時を相対表記に変換する（例: 3分前）。 */
@@ -97,7 +98,9 @@ export function NotificationBell() {
         aria-label={`通知${unreadCount > 0 ? `（未読${unreadCount}件）` : ""}`}
       >
         <span className={styles.triggerInner}>
-          <span className={styles.bellIcon}>🔔</span>
+          <span className={styles.bellIcon}>
+            <BellIcon className={styles.bellIconSvg} />
+          </span>
           <span className={styles.label}>通知</span>
         </span>
         {unreadCount > 0 && (

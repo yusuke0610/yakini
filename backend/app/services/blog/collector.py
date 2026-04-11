@@ -116,6 +116,49 @@ async def fetch_note_articles(username: str) -> list[dict]:
     return articles
 
 
+async def fetch_qiita_articles(username: str) -> list[dict]:
+    """Qiita API v2 から記事を取得する。全ページ分をフェッチ。"""
+    articles: list[dict] = []
+    page = 1
+    per_page = 100
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        while True:
+            resp = await client.get(
+                f"https://qiita.com/api/v2/users/{username}/items",
+                params={"page": page, "per_page": per_page},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+            if not data:
+                break
+
+            for item in data:
+                tag_names = [t.get("name", "") for t in item.get("tags", [])]
+                articles.append(
+                    {
+                        "platform": "qiita",
+                        "external_id": item.get("id", ""),
+                        "title": item.get("title", ""),
+                        "url": item.get("url", ""),
+                        "published_at": (
+                            item.get("created_at", "")[:10] if item.get("created_at") else None
+                        ),
+                        "likes_count": item.get("likes_count", 0),
+                        "summary": "",
+                        "tags": tag_names,
+                    }
+                )
+
+            if len(data) < per_page:
+                break
+            page += 1
+            await asyncio.sleep(0.5)
+
+    return articles
+
+
 async def verify_user_exists(platform: str, username: str) -> bool:
     """プラットフォーム上にユーザーが存在するか検証する。"""
     try:
@@ -130,6 +173,10 @@ async def verify_user_exists(platform: str, username: str) -> bool:
                     params={"kind": "note", "page": 1},
                 )
                 return resp.status_code == 200
+        if platform == "qiita":
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(f"https://qiita.com/api/v2/users/{username}")
+                return resp.status_code == 200
         raise UnsupportedBlogPlatformError(platform)
     except (httpx.ConnectError, httpx.TimeoutException):
         logger.warning("プラットフォーム %s への接続に失敗しました", platform)
@@ -142,4 +189,6 @@ async def fetch_articles(platform: str, username: str) -> list[dict]:
         return await fetch_zenn_articles(username)
     if platform == "note":
         return await fetch_note_articles(username)
+    if platform == "qiita":
+        return await fetch_qiita_articles(username)
     raise UnsupportedBlogPlatformError(platform)
