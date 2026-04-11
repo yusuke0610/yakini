@@ -1,0 +1,78 @@
+"""
+Cookie設定・削除・JWT生成・トークン検証を担うモジュール。
+"""
+
+import secrets
+
+from fastapi import Response
+
+from ...core.security.auth import (
+    _COOKIE_MAX_AGE,
+    _COOKIE_NAME,
+    _REFRESH_COOKIE_MAX_AGE,
+    _REFRESH_COOKIE_NAME,
+    create_access_token,
+    create_refresh_token,
+)
+from ...core.security.csrf import CSRF_COOKIE_NAME, set_csrf_cookie
+from ...core.settings import get_cookie_samesite, get_cookie_secure
+
+# GitHub OAuth 用 Cookie 名
+GITHUB_OAUTH_STATE_COOKIE = "github_oauth_state"
+GITHUB_OAUTH_REDIRECT_COOKIE = "github_oauth_redirect"
+GITHUB_OAUTH_COOKIE_MAX_AGE = 10 * 60
+
+
+def set_cookie(response: Response, key: str, value: str, max_age: int) -> None:
+    """指定したキーと値で HttpOnly Cookie を設定する。"""
+    response.set_cookie(
+        key=key,
+        value=value,
+        httponly=True,
+        secure=get_cookie_secure(),
+        samesite=get_cookie_samesite(),
+        max_age=max_age,
+        path="/",
+    )
+
+
+def delete_cookie(response: Response, key: str, path: str = "/") -> None:
+    """指定したキーの Cookie を削除する。"""
+    response.delete_cookie(key=key, path=path)
+
+
+def clear_github_oauth_cookies(response: Response) -> None:
+    """GitHub OAuth フロー用 Cookie をすべて削除する。"""
+    delete_cookie(response, GITHUB_OAUTH_STATE_COOKIE)
+    delete_cookie(response, GITHUB_OAUTH_REDIRECT_COOKIE)
+
+
+def set_auth_cookies(response: Response, username: str) -> None:
+    """アクセストークン・リフレッシュトークン・CSRF トークンを Cookie にセットする。"""
+    access_token = create_access_token(username)
+    refresh_token = create_refresh_token(username)
+    csrf_token = secrets.token_urlsafe(32)
+
+    # アクセストークン（15分, path="/"）
+    set_cookie(response, _COOKIE_NAME, access_token, _COOKIE_MAX_AGE)
+
+    # リフレッシュトークン（7日, path="/auth/refresh" に限定）
+    response.set_cookie(
+        key=_REFRESH_COOKIE_NAME,
+        value=refresh_token,
+        httponly=True,
+        secure=get_cookie_secure(),
+        samesite=get_cookie_samesite(),
+        max_age=_REFRESH_COOKIE_MAX_AGE,
+        path="/auth/refresh",
+    )
+
+    # CSRF トークン（httpOnly=False: JS から読み取れる）
+    set_csrf_cookie(response, csrf_token)
+
+
+def clear_auth_cookies(response: Response) -> None:
+    """認証関連の Cookie をすべて削除する。"""
+    delete_cookie(response, _COOKIE_NAME, path="/")
+    delete_cookie(response, _REFRESH_COOKIE_NAME, path="/auth/refresh")
+    delete_cookie(response, CSRF_COOKIE_NAME, path="/")

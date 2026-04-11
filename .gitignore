@@ -4,15 +4,39 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+uv.lock
 
 # Node
 node_modules/
 dist/
+frontend/.test-dist/
+frontend/tsconfig.app.tsbuildinfo
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+terraform.tfvars
+
+# SQLite data
+data/
+backend/local.sqlite
+backend/local.sqlite-shm
+backend/local.sqlite-wal
 
 # Env files
 .env
 frontend/.env
 backend/.env
+
+# Firebase
+.firebase/
 
 # OS
 .DS_Store

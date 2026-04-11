@@ -1,0 +1,448 @@
+name: CI
+
+env:
+  APP_VERSION: dev
+
+on:
+  pull_request:
+    branches:
+      - main
+      - stg
+      - dev
+  push:
+    branches:
+      - main
+      - stg
+      - dev
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed application files
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'frontend/**'
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    timeout-minutes: 10
+    if: needs.detect-changes.outputs.app == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefix frontend
+
+      - name: Lint frontend
+        run: npm run lint --prefix frontend
+
+      - name: Run frontend tests
+        run: npm run test --prefix frontend
+
+      - name: Build frontend
+        run: npm run build --prefix frontend
+
+  test-e2e:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    timeout-minutes: 15
+    if: needs.detect-changes.outputs.app == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefix frontend
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+        working-directory: frontend
+
+      - name: Run E2E tests
+        run: npm run test:e2e --prefix frontend
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+  test-backend:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    timeout-minutes: 10
+    if: needs.detect-changes.outputs.app == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "backend/requirements.txt"
+
+      - name: Setup Python
+        run: uv python install 3.13
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv venv && uv pip install -r requirements.txt
+
+      - name: Lint backend
+        working-directory: backend
+        run: uv run ruff check app tests alembic_migrations
+
+      - name: Run backend tests
+        working-directory: backend
+        run: uv run pytest -q tests
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, test-frontend, test-backend]
+    if: |
+      github.ref == 'refs/heads/dev' &&
+      github.event_name == 'push' &&
+      needs.detect-changes.outputs.app == 'true' &&
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped') &&
+      (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped')
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: バージョン取得
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefix frontend
+
+      - name: Build frontend
+        run: npm run build --prefix frontend
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_APP_VERSION: ${{ env.APP_VERSION }}
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Deploy to Firebase Hosting
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only hosting --project devforge-dev-20260311
+
+  deploy-backend:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, test-frontend, test-backend]
+    if: |
+      github.ref == 'refs/heads/dev' &&
+      github.event_name == 'push' &&
+      needs.detect-changes.outputs.app == 'true' &&
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped') &&
+      (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped')
+    timeout-minutes: 20
+    env:
+      PROJECT_ID: devforge-dev-20260311
+      REGION: asia-northeast1
+      REPO: devforge-dev
+      SERVICE: devforge-dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: バージョン取得
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}
+          docker build -t ${IMAGE}:${{ github.sha }} -t ${IMAGE}:latest --build-arg APP_VERSION=${{ env.APP_VERSION }} backend/
+          docker push ${IMAGE}:${{ github.sha }}
+          docker push ${IMAGE}:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --quiet
+
+  # stg フロントエンドデプロイ（stg ブランチ push 時）
+  deploy-frontend-stg:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, test-frontend, test-backend]
+    if: |
+      github.ref == 'refs/heads/stg' &&
+      github.event_name == 'push' &&
+      needs.detect-changes.outputs.app == 'true' &&
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped') &&
+      (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped')
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: バージョン取得
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefix frontend
+
+      - name: Build frontend
+        run: npm run build --prefix frontend
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL_STG }}
+          VITE_APP_VERSION: ${{ env.APP_VERSION }}
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_STG }}
+
+      - name: Deploy to Firebase Hosting (stg)
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only hosting --project devforge-stg-20260404
+
+  # stg バックエンドデプロイ（stg ブランチ push 時）
+  deploy-backend-stg:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, test-frontend, test-backend]
+    if: |
+      github.ref == 'refs/heads/stg' &&
+      github.event_name == 'push' &&
+      needs.detect-changes.outputs.app == 'true' &&
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped') &&
+      (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped')
+    timeout-minutes: 20
+    env:
+      PROJECT_ID: devforge-stg-20260404
+      REGION: asia-northeast1
+      REPO: devforge-stg
+      SERVICE: devforge-stg
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: バージョン取得
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_STG }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}
+          docker build -t ${IMAGE}:${{ github.sha }} -t ${IMAGE}:latest --build-arg APP_VERSION=${{ env.APP_VERSION }} backend/
+          docker push ${IMAGE}:${{ github.sha }}
+          docker push ${IMAGE}:latest
+
+      - name: Deploy to Cloud Run (stg)
+        run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --quiet
+
+  # prod フロントエンドデプロイ（main ブランチ push 時）
+  deploy-frontend-prod:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, test-frontend, test-backend]
+    if: |
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      needs.detect-changes.outputs.app == 'true' &&
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped') &&
+      (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped')
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: バージョン取得
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefix frontend
+
+      - name: Build frontend
+        run: npm run build --prefix frontend
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL_PROD }}
+          VITE_APP_VERSION: ${{ env.APP_VERSION }}
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PROD }}
+
+      - name: Deploy to Firebase Hosting (prod)
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only hosting --project devforge-prod-20260404
+
+  # prod バックエンドデプロイ（main ブランチ push 時）
+  deploy-backend-prod:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, test-frontend, test-backend]
+    if: |
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      needs.detect-changes.outputs.app == 'true' &&
+      (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped') &&
+      (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped')
+    timeout-minutes: 20
+    env:
+      PROJECT_ID: devforge-prod-20260404
+      REGION: asia-northeast1
+      REPO: devforge-prod
+      SERVICE: devforge-prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: バージョン取得
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PROD }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}
+          docker build -t ${IMAGE}:${{ github.sha }} -t ${IMAGE}:latest --build-arg APP_VERSION=${{ env.APP_VERSION }} backend/
+          docker push ${IMAGE}:${{ github.sha }}
+          docker push ${IMAGE}:latest
+
+      - name: Deploy to Cloud Run (prod)
+        run: |
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE }}:${{ github.sha }} \
+            --region=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --quiet

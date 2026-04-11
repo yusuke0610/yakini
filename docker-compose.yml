@@ -1,16 +1,43 @@
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: yakini-postgres
+  api:
+    build: ./backend
+    container_name: devforge-api
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      SQLITE_DB_PATH: /data/devforge.sqlite
+      CORS_ORIGINS: http://localhost:5173
+      SECRET_KEY: ${SECRET_KEY}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: qwen2.5:3b
+      OLLAMA_TIMEOUT: "600"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: devforge-ollama
     restart: unless-stopped
     environment:
-      POSTGRES_DB: yakini
-      POSTGRES_USER: yakini
-      POSTGRES_PASSWORD: yakini
+      OLLAMA_KEEP_ALIVE: 30m
     ports:
-      - "5432:5432"
+      - "11434:11434"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "ps"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
 
 volumes:
-  postgres_data:
+  ollama_data:

@@ -1,0 +1,166 @@
+name: Terraform CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - stg
+      - dev
+  push:
+    branches:
+      - main
+      - stg
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_VAR_alert_email: "ci-placeholder@example.com"
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      infra: ${{ steps.filter.outputs.infra }}
+      dev: ${{ steps.filter.outputs.dev }}
+      stg: ${{ steps.filter.outputs.stg }}
+      prod: ${{ steps.filter.outputs.prod }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed environments
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            infra:
+              - 'infra/**'
+              - '.github/workflows/terraform-ci.yml'
+            dev:
+              - 'infra/environments/dev/**'
+              - 'infra/modules/**'
+            stg:
+              - 'infra/environments/stg/**'
+              - 'infra/modules/**'
+            prod:
+              - 'infra/environments/prod/**'
+              - 'infra/modules/**'
+
+  terraform-fmt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: detect-changes
+
+    steps:
+      - name: No Terraform changes
+        if: needs.detect-changes.outputs.infra != 'true'
+        run: echo "No Terraform changes detected. Skipping format check."
+
+      - name: Checkout
+        if: needs.detect-changes.outputs.infra == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        if: needs.detect-changes.outputs.infra == 'true'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform format check
+        if: needs.detect-changes.outputs.infra == 'true'
+        run: terraform fmt -check -recursive infra
+
+  terraform-validate-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [terraform-fmt, detect-changes]
+
+    steps:
+      - name: No dev Terraform changes
+        if: needs.detect-changes.outputs.dev != 'true'
+        run: echo "No dev/module Terraform changes detected. Skipping validation."
+
+      - name: Checkout
+        if: needs.detect-changes.outputs.dev == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        if: needs.detect-changes.outputs.dev == 'true'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init (no backend)
+        if: needs.detect-changes.outputs.dev == 'true'
+        run: terraform -chdir=infra/environments/dev init -backend=false -input=false
+
+      - name: Terraform validate
+        if: needs.detect-changes.outputs.dev == 'true'
+        run: terraform -chdir=infra/environments/dev validate
+
+  terraform-validate-stg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [terraform-fmt, detect-changes]
+
+    steps:
+      - name: No stg Terraform changes
+        if: needs.detect-changes.outputs.stg != 'true'
+        run: echo "No stg/module Terraform changes detected. Skipping validation."
+
+      - name: Checkout
+        if: needs.detect-changes.outputs.stg == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        if: needs.detect-changes.outputs.stg == 'true'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init (no backend)
+        if: needs.detect-changes.outputs.stg == 'true'
+        run: terraform -chdir=infra/environments/stg init -backend=false -input=false
+
+      - name: Terraform validate
+        if: needs.detect-changes.outputs.stg == 'true'
+        run: terraform -chdir=infra/environments/stg validate
+
+  terraform-validate-prod:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [terraform-fmt, detect-changes]
+
+    steps:
+      - name: No prod Terraform changes
+        if: needs.detect-changes.outputs.prod != 'true'
+        run: echo "No prod/module Terraform changes detected. Skipping validation."
+
+      - name: Checkout
+        if: needs.detect-changes.outputs.prod == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        if: needs.detect-changes.outputs.prod == 'true'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform init (no backend)
+        if: needs.detect-changes.outputs.prod == 'true'
+        run: terraform -chdir=infra/environments/prod init -backend=false -input=false
+
+      - name: Terraform validate
+        if: needs.detect-changes.outputs.prod == 'true'
+        run: terraform -chdir=infra/environments/prod validate

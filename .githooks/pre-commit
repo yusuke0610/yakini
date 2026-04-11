@@ -1,0 +1,12 @@
+#!/bin/sh
+
+branch_name="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
+
+case "$branch_name" in
+  main|stg|dev)
+    echo "Error: $branch_name ブランチへの直接コミットは禁止です。feature ブランチを切って作業してください。"
+    exit 1
+    ;;
+esac
+
+exit 0
