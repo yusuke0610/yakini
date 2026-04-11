@@ -297,7 +297,6 @@ const BADGE_MAP: Record<EvidenceSource, { label: string; className: string }> = 
   resume: { label: "本業", className: styles.badgeResume },
   github: { label: "GitHub", className: styles.badgeGithub },
   blog: { label: "ブログ", className: styles.badgeBlog },
-  basic_info: { label: "資格", className: styles.badgeBasicInfo },
 };
 
 function StrengthsSection({ result }: { result: CareerAnalysisResult }) {

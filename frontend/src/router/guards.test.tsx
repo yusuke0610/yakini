@@ -16,8 +16,8 @@ function renderWithRoutes(user: AuthUser | null, initialPath: string) {
           element={<PrivateRoute user={user} authLoading={false} />}
         >
           <Route
-            path="/basic_info"
-            element={<div>BasicInfo</div>}
+            path="/career"
+            element={<div>Career</div>}
           />
         </Route>
         <Route
@@ -32,19 +32,19 @@ function renderWithRoutes(user: AuthUser | null, initialPath: string) {
 
 describe("PrivateRoute", () => {
   it("未認証ユーザーは /login にリダイレクトされる", () => {
-    renderWithRoutes(null, "/basic_info");
+    renderWithRoutes(null, "/career");
     expect(screen.getByText("Login")).toBeInTheDocument();
-    expect(screen.queryByText("BasicInfo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Career")).not.toBeInTheDocument();
   });
 
   it("認証済みユーザーはコンテンツが表示される", () => {
-    renderWithRoutes(testUser, "/basic_info");
-    expect(screen.getByText("BasicInfo")).toBeInTheDocument();
+    renderWithRoutes(testUser, "/career");
+    expect(screen.getByText("Career")).toBeInTheDocument();
   });
 
   it("authLoading 中はローディング表示される", () => {
     render(
-      <MemoryRouter initialEntries={["/basic_info"]}>
+      <MemoryRouter initialEntries={["/career"]}>
         <Routes>
           <Route
             element={
@@ -52,22 +52,22 @@ describe("PrivateRoute", () => {
             }
           >
             <Route
-              path="/basic_info"
-              element={<div>BasicInfo</div>}
+              path="/career"
+              element={<div>Career</div>}
             />
           </Route>
         </Routes>
       </MemoryRouter>,
     );
     expect(screen.getByText("読み込み中...")).toBeInTheDocument();
-    expect(screen.queryByText("BasicInfo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Career")).not.toBeInTheDocument();
   });
 });
 
 describe("PublicRoute", () => {
-  it("認証済みユーザーが /login にアクセスすると /basic_info にリダイレクト", () => {
+  it("認証済みユーザーが /login にアクセスすると /career にリダイレクト", () => {
     renderWithRoutes(testUser, "/login");
-    expect(screen.getByText("BasicInfo")).toBeInTheDocument();
+    expect(screen.getByText("Career")).toBeInTheDocument();
     expect(screen.queryByText("Login")).not.toBeInTheDocument();
   });
 

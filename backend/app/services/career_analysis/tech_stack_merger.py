@@ -4,7 +4,7 @@
 優先度付きテキストにマージする。
 """
 
-from ...models import BasicInfo, GitHubAnalysisCache, Resume
+from ...models import GitHubAnalysisCache, Resume
 
 
 def collect_resume_tech_stacks(resume: Resume) -> set[str]:
@@ -30,11 +30,11 @@ def collect_github_skills(analysis_cache: GitHubAnalysisCache | None) -> set[str
     return skills
 
 
-def collect_qualification_names(basic_info: BasicInfo | None) -> set[str]:
-    """BasicInfo の資格名を収集する。"""
-    if not basic_info:
+def collect_qualification_names(resume: Resume | None) -> set[str]:
+    """Resume の資格名を収集する。"""
+    if not resume:
         return set()
-    return {q.name for q in basic_info.qualifications}
+    return {q.name for q in resume.qualifications}
 
 
 def merge_tech_stacks(

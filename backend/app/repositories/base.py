@@ -59,7 +59,7 @@ class SingleUserDocumentRepository:
 
 
 class BaseMasterRepository:
-    """マスタデータ（資格・都道府県）の共通リポジトリ。"""
+    """マスタデータ（資格など）の共通リポジトリ。"""
 
     _model: type
 

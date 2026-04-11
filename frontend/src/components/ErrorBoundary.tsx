@@ -27,7 +27,7 @@ function FallbackComponent({ resetErrorBoundary }: FallbackProps) {
           <button
             type="button"
             className={styles.secondaryButton}
-            onClick={() => window.location.assign("/basic_info")}
+            onClick={() => window.location.assign("/career")}
           >
             ホームに戻る
           </button>

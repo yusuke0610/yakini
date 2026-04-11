@@ -1,57 +1,11 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const {
-  buildBasicPayload,
-  buildCareerPayload,
-  buildResumePayload
-} = require("../.test-dist/payloadBuilders.js");
-
-test("buildBasicPayload trims values and excludes empty資格", () => {
-  const payload = buildBasicPayload({
-    full_name: "  山田 太郎  ",
-    name_furigana: "  やまだ たろう  ",
-    record_date: "2026-02-21",
-    qualifications: [
-      {
-        acquired_date: "2020-04-01",
-        name: "応用情報技術者"
-      },
-      {
-        acquired_date: "  ",
-        name: "  "
-      }
-    ]
-  });
-
-  assert.equal(payload.full_name, "山田 太郎");
-  assert.equal(payload.qualifications.length, 1);
-  assert.deepEqual(payload.qualifications[0], {
-    acquired_date: "2020-04-01",
-    name: "応用情報技術者"
-  });
-});
-
-test("buildBasicPayload throws when a 資格 is partially filled", () => {
-  assert.throws(
-    () =>
-      buildBasicPayload({
-        full_name: "山田 太郎",
-        name_furigana: "やまだ たろう",
-        record_date: "2026-02-21",
-        qualifications: [
-          {
-            acquired_date: "2020-04-01",
-            name: ""
-          }
-        ]
-      }),
-    /資格は取得日と名称を両方入力してください。/
-  );
-});
+const { buildCareerPayload } = require("../.test-dist/payloadBuilders.js");
 
 test("buildCareerPayload trims data and keeps only non-empty technology stacks", () => {
   const payload = buildCareerPayload({
+    full_name: "  山田 太郎  ",
     career_summary: "  職務要約テスト  ",
     self_pr: "  自己PRテスト  ",
     experiences: [
@@ -102,9 +56,20 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
           }
         ]
       }
+    ],
+    qualifications: [
+      {
+        acquired_date: "2020-04-01",
+        name: "応用情報技術者"
+      },
+      {
+        acquired_date: "  ",
+        name: "  "
+      }
     ]
   });
 
+  assert.equal(payload.full_name, "山田 太郎");
   assert.equal(payload.career_summary, "職務要約テスト");
   assert.equal(payload.self_pr, "自己PRテスト");
   assert.equal(payload.experiences.length, 1);
@@ -121,12 +86,32 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
       name: "FastAPI"
     }
   ]);
+  assert.equal(payload.qualifications.length, 1);
+  assert.deepEqual(payload.qualifications[0], {
+    acquired_date: "2020-04-01",
+    name: "応用情報技術者"
+  });
+});
+
+test("buildCareerPayload throws when full_name is empty", () => {
+  assert.throws(
+    () =>
+      buildCareerPayload({
+        full_name: "",
+        career_summary: "職務要約",
+        self_pr: "自己PR",
+        experiences: [],
+        qualifications: []
+      }),
+    /氏名を入力してください。/
+  );
 });
 
 test("buildCareerPayload throws when 離職で終了年月がない", () => {
   assert.throws(
     () =>
       buildCareerPayload({
+        full_name: "山田 太郎",
         career_summary: "職務要約",
         self_pr: "自己PR",
         experiences: [
@@ -140,30 +125,28 @@ test("buildCareerPayload throws when 離職で終了年月がない", () => {
             capital: "5000万円",
             clients: []
           }
-        ]
+        ],
+        qualifications: []
       }),
     /職務経歴の離職年月を入力するか、在職を選択してください。/
   );
 });
 
-test("buildResumePayload throws when required fields are empty", () => {
+test("buildCareerPayload throws when a 資格 is partially filled", () => {
   assert.throws(
     () =>
-      buildResumePayload({
-        gender: "male",
-        birthday: "",
-        postal_code: "",
-        prefecture: "",
-        address: "渋谷区",
-        address_furigana: "",
-        email: "test@example.com",
-        phone: "09012345678",
-        motivation: "",
-        personal_preferences: "",
-        educations: [],
-        work_histories: [],
-        photo: null
+      buildCareerPayload({
+        full_name: "山田 太郎",
+        career_summary: "要約",
+        self_pr: "自己PR",
+        experiences: [],
+        qualifications: [
+          {
+            acquired_date: "2020-04-01",
+            name: ""
+          }
+        ]
       }),
-    /性別、都道府県、住所、住所ふりがな、メールアドレス、電話番号は必須です。/
+    /資格は取得日と名称を両方入力してください。/
   );
 });
