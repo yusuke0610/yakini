@@ -96,8 +96,8 @@ def test_ollama_uses_lightweight_defaults():
     with patch.dict(os.environ, env, clear=True):
         client = OllamaClient()
 
-    assert client.model == "qwen2.5:3b"
-    assert client.timeout == 600.0
+    assert client.model == "gemma4:31b"
+    assert client.timeout == 1200.0
 
 
 # ---------- VertexClient ----------
