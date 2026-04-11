@@ -5,6 +5,7 @@ import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import formCacheReducer from "../store/formCacheSlice";
 import { useDocumentForm } from "./useDocumentForm";
+import { ApiError } from "../utils/appError";
 
 /** テスト用の Redux Store を生成するヘルパー */
 function createTestStore() {
@@ -106,6 +107,40 @@ describe("useDocumentForm", () => {
 
     expect(result.current.success).toBe("保存しました");
     expect(result.current.error).toBeNull();
+  });
+
+  /** save() が 401 ApiError を受け取った場合、error メッセージがセットされること */
+  it("save() で 401 ApiError が発生した場合 error メッセージがセットされる", async () => {
+    mockLoadLatest.mockRejectedValue(new Error("Not found"));
+    mockCreateDocument.mockRejectedValueOnce(
+      new ApiError({ code: "UNAUTHORIZED", message: "認証が必要です" }),
+    );
+
+    const store = createTestStore();
+    const { result } = renderHook(
+      () =>
+        useDocumentForm<TestForm, { title: string }, TestResponse>({
+          createInitialForm: () => ({ title: "" }),
+          loadLatest: mockLoadLatest,
+          createDocument: mockCreateDocument,
+          updateDocument: mockUpdateDocument,
+          buildPayload: mockBuildPayload,
+          mapResponseToForm: mockMapResponseToForm,
+          successMessage: "保存しました",
+        }),
+      { wrapper: makeWrapper(store) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.save();
+    });
+
+    expect(result.current.error).toBe("認証が必要です");
+    expect(result.current.success).toBeNull();
   });
 
   /** beforeSave でエラーがスローされた場合、API が呼ばれずエラーが表示されること */
