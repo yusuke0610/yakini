@@ -16,8 +16,8 @@ class OllamaClient(LLMClient):
 
     def __init__(self) -> None:
         self.base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-        self.model = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
-        self.timeout = float(os.environ.get("OLLAMA_TIMEOUT", "600"))
+        self.model = os.environ.get("OLLAMA_MODEL", "gemma4:31b")
+        self.timeout = float(os.environ.get("OLLAMA_TIMEOUT", "1200.0"))  # デフォルトは 20 分
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         """Ollama API でテキスト生成を実行する。"""

@@ -1,12 +1,13 @@
-"""backend/prompts/ 配下の MD ファイルを読み込むユーティリティ。"""
+"""app/prompts/ 配下の MD ファイルを読み込むユーティリティ。"""
 
 from pathlib import Path
 
-PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
+# backend/app/utils/prompt_loader.py から見て backend/app/prompts を指すように修正
+PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 
 
 def load_prompt(filename: str) -> str:
-    """backend/prompts/ 配下の MD ファイルを読み込んで文字列で返す。
+    """app/prompts/ 配下の MD ファイルを読み込んで文字列で返す。
 
     呼び出し時に都度ファイルを読み込む（キャッシュなし）。
 
