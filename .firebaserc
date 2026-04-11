@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "devforge-dev-20260311",
+    "stg": "devforge-stg-20260404",
+    "prod": "devforge-prod-20260404"
+  }
+}

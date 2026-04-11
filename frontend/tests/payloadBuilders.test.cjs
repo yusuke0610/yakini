@@ -4,12 +4,13 @@ const test = require("node:test");
 const {
   buildBasicPayload,
   buildCareerPayload,
-  buildRirekishoPayload
+  buildResumePayload
 } = require("../.test-dist/payloadBuilders.js");
 
 test("buildBasicPayload trims values and excludes empty資格", () => {
   const payload = buildBasicPayload({
     full_name: "  山田 太郎  ",
+    name_furigana: "  やまだ たろう  ",
     record_date: "2026-02-21",
     qualifications: [
       {
@@ -36,6 +37,7 @@ test("buildBasicPayload throws when a 資格 is partially filled", () => {
     () =>
       buildBasicPayload({
         full_name: "山田 太郎",
+        name_furigana: "やまだ たろう",
         record_date: "2026-02-21",
         qualifications: [
           {
@@ -55,22 +57,48 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
     experiences: [
       {
         company: "  Example株式会社  ",
-        title: "  バックエンドエンジニア  ",
+        business_description: "  SES事業  ",
         start_date: "2020-04",
         end_date: "",
         is_current: true,
-        description: "  API開発  ",
-        achievements: "  パフォーマンス改善  ",
         employee_count: "  300名  ",
         capital: "  1億円  ",
-        technology_stacks: [
+        clients: [
           {
-            category: "フレームワーク",
-            name: "  FastAPI  "
-          },
-          {
-            category: "言語",
-            name: "   "
+            has_client: true,
+            name: "  クライアントA  ",
+            projects: [
+              {
+                name: "  プロジェクトA  ",
+                start_date: "2020-04",
+                end_date: "2021-03",
+                is_current: false,
+                role: "  メンバー  ",
+                description: "  API開発  ",
+                challenge: "  課題テスト  ",
+                action: "  行動テスト  ",
+                result: "  パフォーマンス改善  ",
+                team: {
+                  total: "  5  ",
+                  members: [
+                    { role: "SE", count: "3" },
+                    { role: "PG", count: "2" },
+                    { role: "  ", count: "  " }
+                  ]
+                },
+                phases: ["要件定義", "開発", ""],
+                technology_stacks: [
+                  {
+                    category: "framework",
+                    name: "  FastAPI  "
+                  },
+                  {
+                    category: "language",
+                    name: "   "
+                  }
+                ]
+              }
+            ]
           }
         ]
       }
@@ -81,9 +109,15 @@ test("buildCareerPayload trims data and keeps only non-empty technology stacks",
   assert.equal(payload.self_pr, "自己PRテスト");
   assert.equal(payload.experiences.length, 1);
   assert.equal(payload.experiences[0].is_current, true);
-  assert.deepEqual(payload.experiences[0].technology_stacks, [
+  assert.equal(payload.experiences[0].business_description, "SES事業");
+  assert.equal(payload.experiences[0].clients.length, 1);
+  assert.equal(payload.experiences[0].clients[0].name, "クライアントA");
+  assert.equal(payload.experiences[0].clients[0].projects.length, 1);
+  assert.equal(payload.experiences[0].clients[0].projects[0].name, "プロジェクトA");
+  assert.equal(payload.experiences[0].clients[0].projects[0].role, "メンバー");
+  assert.deepEqual(payload.experiences[0].clients[0].projects[0].technology_stacks, [
     {
-      category: "フレームワーク",
+      category: "framework",
       name: "FastAPI"
     }
   ]);
@@ -98,15 +132,13 @@ test("buildCareerPayload throws when 離職で終了年月がない", () => {
         experiences: [
           {
             company: "Example株式会社",
-            title: "エンジニア",
+            business_description: "SES事業",
             start_date: "2022-04",
             end_date: "",
             is_current: false,
-            description: "開発",
-            achievements: "改善",
             employee_count: "100名",
             capital: "5000万円",
-            technology_stacks: []
+            clients: []
           }
         ]
       }),
@@ -114,19 +146,24 @@ test("buildCareerPayload throws when 離職で終了年月がない", () => {
   );
 });
 
-test("buildRirekishoPayload throws when required fields are empty", () => {
+test("buildResumePayload throws when required fields are empty", () => {
   assert.throws(
     () =>
-      buildRirekishoPayload({
+      buildResumePayload({
+        gender: "male",
+        birthday: "",
         postal_code: "",
-        prefecture: "東京都",
+        prefecture: "",
         address: "渋谷区",
+        address_furigana: "",
         email: "test@example.com",
         phone: "09012345678",
-        motivation: "志望動機",
+        motivation: "",
+        personal_preferences: "",
         educations: [],
-        work_histories: []
+        work_histories: [],
+        photo: null
       }),
-    /郵便番号、都道府県、住所、メールアドレス、電話番号、志望動機は必須です。/
+    /性別、都道府県、住所、住所ふりがな、メールアドレス、電話番号は必須です。/
   );
 });
