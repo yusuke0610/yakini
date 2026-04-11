@@ -57,19 +57,6 @@ def _format_period(
     return f"{s}〜{e}"
 
 
-def _format_record_date(record_date: str) -> str:
-    """記載日を表示用にフォーマットする"""
-    if record_date and "-" in record_date:
-        parts = record_date.split("-")
-        result = ""
-        if len(parts) >= 2:
-            result = f"{parts[0]} 年 {parts[1].lstrip('0')} 月"
-        if len(parts) == 3:
-            result += f" {parts[2].lstrip('0')} 日"
-        return result
-    return record_date
-
-
 def _build_project_html(project) -> str:
     """プロジェクト1件分のHTMLを組み立てる"""
     # ヘッダー（3行構成: 期間/プロジェクト名、役割、工程）
@@ -171,12 +158,10 @@ def _build_html(resume: dict) -> str:
     # タイトル
     parts.append("<h1>職 務 経 歴 書</h1>")
 
-    # 記載日 / 氏名
-    record_date = resume.get("record_date") or ""
-    formatted_date = _format_record_date(record_date)
+    # 氏名
     full_name = resume.get("full_name") or ""
     parts.append(
-        f'<div class="meta">' f"{_esc(formatted_date)}現在<br/>氏名　{_esc(full_name)}" f"</div>",
+        f'<div class="meta">氏名　{_esc(full_name)}</div>',
     )
 
     # 職務要約

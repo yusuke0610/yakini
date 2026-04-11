@@ -2,7 +2,7 @@ import { request } from "./client";
 
 /* ── 型定義 ──────────────────────────────────────────── */
 
-export type EvidenceSource = "resume" | "github" | "blog" | "basic_info";
+export type EvidenceSource = "resume" | "github" | "blog";
 export type Horizon = "short" | "mid" | "long";
 
 export interface TechStackItem {

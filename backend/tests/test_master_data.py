@@ -2,7 +2,6 @@ import os
 
 from app.db.seed import seed_master_data
 from app.repositories import (
-    MPrefectureRepository,
     MQualificationRepository,
     MTechnologyStackRepository,
 )
@@ -27,16 +26,6 @@ def test_list_technology_stacks(client, db_session):
     assert len(data) == 1
     assert data[0]["name"] == "Python"
     assert data[0]["category"] == "language"
-
-
-def test_list_prefectures(client, db_session):
-    """GETで都道府県マスタが取得できること。"""
-    MPrefectureRepository(db_session).create("東京都", 13)
-    response = client.get("/api/master-data/prefecture")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["name"] == "東京都"
 
 
 def test_create_qualification_requires_admin(client):
@@ -134,34 +123,11 @@ def test_delete_technology_stack(client, db_session):
     assert response.status_code == 204
 
 
-def test_update_prefecture(client, db_session):
-    """admin tokenありでPUTすると都道府県マスタが更新されること。"""
-    os.environ["ADMIN_TOKEN"] = "test-admin-token"
-    item = MPrefectureRepository(db_session).create("更新前県", 1)
-    response = client.put(
-        f"/api/master-data/prefecture/{item.id}",
-        json={"name": "更新後県", "sort_order": 2},
-        headers={"Authorization": "Bearer test-admin-token"},
-    )
-    assert response.status_code == 200
-    assert response.json()["name"] == "更新後県"
-
-
-def test_delete_prefecture(client, db_session):
-    """admin tokenありでDELETEすると都道府県マスタが削除されること。"""
-    os.environ["ADMIN_TOKEN"] = "test-admin-token"
-    item = MPrefectureRepository(db_session).create("削除対象県", 1)
-    response = client.delete(
-        f"/api/master-data/prefecture/{item.id}",
-        headers={"Authorization": "Bearer test-admin-token"},
-    )
-    assert response.status_code == 204
-
-
 def test_seed_idempotent(db_session):
     """2回実行してもデータが重複しないこと。"""
     seed_master_data(db_session)
-    count_first = len(MPrefectureRepository(db_session).list_all())
+    count_first = len(MQualificationRepository(db_session).list_all())
     seed_master_data(db_session)
-    count_second = len(MPrefectureRepository(db_session).list_all())
-    assert count_first == count_second == 47
+    count_second = len(MQualificationRepository(db_session).list_all())
+    assert count_first == count_second
+    assert count_first > 0

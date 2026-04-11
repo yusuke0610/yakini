@@ -1,10 +1,9 @@
 """SQLAlchemy モデル。"""
 
-from .basic_info import BasicInfo, BasicInfoQualification
 from .blog import BlogAccount, BlogArticle, BlogArticleTag
 from .cache import BlogSummaryCache, GitHubAnalysisCache
 from .career_analysis import CareerAnalysis
-from .master_data import MPrefecture, MQualification, MTechnologyStack
+from .master_data import MQualification, MTechnologyStack
 from .notification import Notification
 from .resume import (
     Resume,
@@ -14,20 +13,17 @@ from .resume import (
     ResumeProjectPhase,
     ResumeProjectTeamMember,
     ResumeProjectTechnologyStack,
+    ResumeQualification,
 )
-from .rirekisho import Rirekisho, RirekishoEducation, RirekishoWorkHistory
 from .user import User
 
 __all__ = [
     "CareerAnalysis",
-    "BasicInfo",
-    "BasicInfoQualification",
     "BlogAccount",
     "BlogArticle",
     "BlogArticleTag",
     "BlogSummaryCache",
     "GitHubAnalysisCache",
-    "MPrefecture",
     "MQualification",
     "MTechnologyStack",
     "Notification",
@@ -38,8 +34,6 @@ __all__ = [
     "ResumeProjectPhase",
     "ResumeProjectTeamMember",
     "ResumeProjectTechnologyStack",
-    "Rirekisho",
-    "RirekishoEducation",
-    "RirekishoWorkHistory",
+    "ResumeQualification",
     "User",
 ]

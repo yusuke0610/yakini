@@ -7,17 +7,14 @@ import pytest
 from app.core.security.auth import create_access_token, create_refresh_token
 from app.db import Base, get_db
 from app.models import (  # noqa: F401 — ensure models registered
-    BasicInfo,
     BlogAccount,
     BlogArticle,
     BlogSummaryCache,
     CareerAnalysis,
     GitHubAnalysisCache,
-    MPrefecture,
     MQualification,
     MTechnologyStack,
     Resume,
-    Rirekisho,
     User,
 )
 from app.repositories import UserRepository

@@ -7,6 +7,13 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from ..core.messages import get_error
 
 
+class ResumeQualificationItem(BaseModel):
+    acquired_date: str = Field(min_length=1, max_length=30)
+    name: str = Field(min_length=1, max_length=120)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TechnologyStackItem(BaseModel):
     category: Literal[
         "language",
@@ -125,9 +132,11 @@ class Experience(BaseModel):
 
 
 class ResumeBase(BaseModel):
+    full_name: str = Field(min_length=1, max_length=120)
     career_summary: str = Field(min_length=1, max_length=2000)
     self_pr: str = Field(min_length=1, max_length=2000)
     experiences: list[Experience] = Field(default_factory=list)
+    qualifications: list[ResumeQualificationItem] = Field(default_factory=list)
 
 
 class ResumeCreate(ResumeBase):

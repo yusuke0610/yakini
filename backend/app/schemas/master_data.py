@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class MasterItem(BaseModel):
-    """マスタデータ共通レスポンス（資格・都道府県）。"""
+    """マスタデータ共通レスポンス（資格など）。"""
 
     id: UUID
     name: str
@@ -14,14 +14,14 @@ class MasterItem(BaseModel):
 
 
 class MasterItemCreate(BaseModel):
-    """マスタデータ共通の作成リクエスト（資格・都道府県）。"""
+    """マスタデータ共通の作成リクエスト（資格など）。"""
 
     name: str = Field(min_length=1, max_length=200)
     sort_order: int = Field(default=0)
 
 
 class MasterItemUpdate(BaseModel):
-    """マスタデータ共通の更新リクエスト（資格・都道府県）。"""
+    """マスタデータ共通の更新リクエスト（資格など）。"""
 
     name: str = Field(min_length=1, max_length=200)
     sort_order: int = Field(default=0)

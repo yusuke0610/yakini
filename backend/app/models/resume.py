@@ -14,9 +14,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ..core.date_utils import format_year_month
+from ..core.date_utils import format_iso_date, format_year_month
 from ..db import Base
-from ..services.shared.sort_utils import sort_by_period_desc
+from ..services.shared.sort_utils import sort_by_date_asc, sort_by_period_desc
 
 
 class Resume(Base):
@@ -27,12 +27,18 @@ class Resume(Base):
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=False, index=True
     )
+    full_name: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     career_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     self_pr: Mapped[str] = mapped_column(Text, nullable=False)
     experience_rows: Mapped[list["ResumeExperience"]] = relationship(
         back_populates="resume",
         cascade="all, delete-orphan",
         order_by="ResumeExperience.sort_order",
+    )
+    qualification_rows: Mapped[list["ResumeQualification"]] = relationship(
+        back_populates="resume",
+        cascade="all, delete-orphan",
+        order_by="ResumeQualification.sort_order",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -52,6 +58,31 @@ class Resume(Base):
     def experiences(self) -> list["ResumeExperience"]:
         """経歴を在籍期間の降順でソートして返す。"""
         return sort_by_period_desc(list(self.experience_rows))
+
+    @property
+    def qualifications(self) -> list["ResumeQualification"]:
+        """資格を取得日の昇順でソートして返す。"""
+        return sort_by_date_asc(list(self.qualification_rows), date_key="acquired_date_value")
+
+
+class ResumeQualification(Base):
+    __tablename__ = "resume_qualifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    resume_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("resumes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    acquired_date_value: Mapped[date] = mapped_column("acquired_date", Date, nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    resume: Mapped["Resume"] = relationship(back_populates="qualification_rows")
+
+    @property
+    def acquired_date(self) -> str:
+        return format_iso_date(self.acquired_date_value) or ""
 
 
 class ResumeExperience(Base):

@@ -1,4 +1,4 @@
-import type { CareerTechnologyStackCategory, ResumeHistory, BasicQualification } from "./types";
+import type { CareerTechnologyStackCategory, ResumeQualification } from "./types";
 import type {
   CareerClientForm,
   CareerExperienceForm,
@@ -7,7 +7,7 @@ import type {
 } from "./payloadBuilders";
 import type { CareerTechnologyStack } from "./types";
 
-export const blankBasicQualification: BasicQualification = {
+export const blankResumeQualification: ResumeQualification = {
   acquired_date: "",
   name: "",
 };
@@ -93,9 +93,4 @@ export const blankCareerExperience: CareerExperienceForm = {
   employee_count: "",
   capital: "",
   clients: [{ ...blankCareerClient }],
-};
-
-export const blankHistory: ResumeHistory = {
-  date: "",
-  name: "",
 };

@@ -1,6 +1,6 @@
 from sqlalchemy import select
 
-from ..models import MPrefecture, MQualification, MTechnologyStack
+from ..models import MQualification, MTechnologyStack
 from .base import BaseMasterRepository
 
 
@@ -8,12 +8,6 @@ class MQualificationRepository(BaseMasterRepository):
     """資格マスタリポジトリ。"""
 
     _model = MQualification
-
-
-class MPrefectureRepository(BaseMasterRepository):
-    """都道府県マスタリポジトリ。"""
-
-    _model = MPrefecture
 
 
 class MTechnologyStackRepository(BaseMasterRepository):
