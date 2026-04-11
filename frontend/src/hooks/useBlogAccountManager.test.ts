@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useBlogAccountManager } from "./useBlogAccountManager";
 import type { BlogAccount, BlogArticle } from "../types";
@@ -36,6 +36,7 @@ vi.mock("../api", () => ({
   syncBlogAccount: vi.fn(),
   summarizeBlogArticles: vi.fn(),
   getBlogSummaryCache: vi.fn(),
+  getBlogSummaryCacheStatus: vi.fn(),
 }));
 
 describe("useBlogAccountManager", () => {
@@ -47,7 +48,8 @@ describe("useBlogAccountManager", () => {
     vi.clearAllMocks();
     api = await import("../api");
     // デフォルトのモック戻り値を設定
-    api.getBlogSummaryCache.mockResolvedValue({ available: false, summary: null });
+    api.getBlogSummaryCache.mockResolvedValue({ available: false, summary: null, status: "idle" });
+    api.getBlogSummaryCacheStatus.mockResolvedValue({ status: "idle" });
     api.getBlogAccounts.mockResolvedValue([]);
     api.getBlogArticles.mockResolvedValue([]);
   });
@@ -117,5 +119,37 @@ describe("useBlogAccountManager", () => {
     });
 
     expect(result.current.error).toBe("ネットワークエラー");
+  });
+
+  /**
+   * addBlogAccount が成功し syncBlogAccount が失敗した場合、
+   * success と error の両方がセットされること（部分成功）
+   */
+  it("addBlogAccount 成功 + syncBlogAccount 失敗の場合 success と error が両方セットされる", async () => {
+    api.getBlogAccounts
+      .mockResolvedValueOnce([])
+      .mockResolvedValue(dummyAccounts);
+    api.getBlogArticles.mockResolvedValue(dummyArticles);
+    api.addBlogAccount.mockResolvedValue(dummyAccounts[0]);
+    api.syncBlogAccount.mockRejectedValue(new Error("同期に失敗しました"));
+
+    const { result } = renderHook(() => useBlogAccountManager("all"));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    await act(async () => {
+      result.current.setDraftUsernames((prev) => ({ ...prev, zenn: "testuser" }));
+    });
+
+    await act(async () => {
+      await result.current.handleSave("zenn");
+    });
+
+    // 連携成功メッセージが出ること
+    expect(result.current.success).toBe("アカウントを連携しました");
+    // 同期失敗エラーが出ること
+    expect(result.current.error).toBe("同期に失敗しました");
   });
 });

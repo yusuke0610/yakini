@@ -13,11 +13,12 @@ GET    /api/blog/score                 — ブログスコアリング
 """
 
 import logging
+from dataclasses import asdict
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
-from ..core.errors import infer_async_error_code
+from ..core.errors import resolve_async_error_code
 from ..core.messages import get_error
 from ..core.security.auth import get_current_user
 from ..core.security.dependencies import limiter
@@ -39,7 +40,7 @@ from ..services.blog.collector import (
     UnsupportedBlogPlatformError,
     verify_user_exists,
 )
-from ..services.blog.scorer import calculate_blog_score
+from ..services.blog.scorer import blog_articles_to_score_dicts, calculate_blog_score
 from ..services.blog.sync_service import BlogSyncService
 from ..services.intelligence.llm_summarizer import check_llm_available
 from ..services.tasks import TaskType, get_task_dispatcher
@@ -145,7 +146,8 @@ async def sync_account(
             status_code=400,
             detail=get_error("blog.platform_not_supported"),
         ) from exc
-    except (BlogPlatformRequestError, Exception) as exc:
+    except Exception as exc:
+        # UnsupportedBlogPlatformError は上の except で先に捕捉される
         raise HTTPException(
             status_code=502,
             detail=get_error("blog.sync_failed"),
@@ -165,11 +167,7 @@ def get_summary_cache(
             available=True,
             status=cache.status,
             error_message=cache.error_message,
-            error_code=(
-                infer_async_error_code(cache.error_message).value
-                if cache.error_message and infer_async_error_code(cache.error_message)
-                else None
-            ),
+            error_code=resolve_async_error_code(cache.error_message),
         )
     if cache:
         return BlogSummaryResponse(
@@ -177,11 +175,7 @@ def get_summary_cache(
             available=False,
             status=cache.status,
             error_message=cache.error_message,
-            error_code=(
-                infer_async_error_code(cache.error_message).value
-                if cache.error_message and infer_async_error_code(cache.error_message)
-                else None
-            ),
+            error_code=resolve_async_error_code(cache.error_message),
         )
     return BlogSummaryResponse(summary="", available=False)
 
@@ -198,11 +192,7 @@ def get_summary_cache_status(
     return TaskStatusResponse(
         status=cache.status,
         error_message=cache.error_message,
-        error_code=(
-            infer_async_error_code(cache.error_message).value
-            if cache.error_message and infer_async_error_code(cache.error_message)
-            else None
-        ),
+        error_code=resolve_async_error_code(cache.error_message),
     )
 
 
@@ -274,39 +264,5 @@ def get_blog_score(
     repo = BlogArticleRepository(db, user.id)
     articles = repo.list_by_user()
 
-    # BlogArticle モデルを dict に変換
-    articles_data = [
-        {
-            "id": str(art.id),
-            "title": art.title,
-            "url": art.url,
-            "published_at": art.published_at,
-            "likes_count": art.likes_count,
-            "tags": art.tags,
-        }
-        for art in articles
-    ]
-
-    score = calculate_blog_score(articles_data)
-    return BlogScoreResponse(
-        frequency_rank=score.frequency_rank,
-        reaction_rank=score.reaction_rank,
-        count_rank=score.count_rank,
-        overall_rank=score.overall_rank,
-        tech_article_count=score.tech_article_count,
-        total_article_count=score.total_article_count,
-        avg_monthly_posts=score.avg_monthly_posts,
-        avg_likes=score.avg_likes,
-        articles=[
-            {
-                "id": a.id,
-                "title": a.title,
-                "url": a.url,
-                "published_at": a.published_at,
-                "likes_count": a.likes_count,
-                "tags": a.tags,
-                "is_tech": a.is_tech,
-            }
-            for a in score.articles
-        ],
-    )
+    score = calculate_blog_score(blog_articles_to_score_dicts(articles))
+    return BlogScoreResponse.model_validate(asdict(score))

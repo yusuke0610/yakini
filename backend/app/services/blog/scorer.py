@@ -124,6 +124,25 @@ def _calc_overall_rank(freq: str, react: str, count: str) -> str:
     return "E"
 
 
+def blog_articles_to_score_dicts(articles: list) -> list[dict]:
+    """BlogArticle モデルリストを calculate_blog_score が受け取る dict リストに変換する。
+
+    router が BlogArticle モデルを直接渡せるようにし、フィールド名の二重管理を防ぐ。
+    BlogArticle は `published_at`・`tags` プロパティを持つため直接参照できる。
+    """
+    return [
+        {
+            "id": str(art.id),
+            "title": art.title,
+            "url": art.url,
+            "published_at": art.published_at,
+            "likes_count": art.likes_count,
+            "tags": art.tags,
+        }
+        for art in articles
+    ]
+
+
 def calculate_blog_score(articles: list[dict]) -> BlogScore:
     """ブログ記事一覧からスコアリング結果を算出する。"""
     scored_articles: list[ArticleWithTechFlag] = []
