@@ -8,7 +8,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from ...models import BasicInfo, BlogSummaryCache, GitHubAnalysisCache, Resume, Rirekisho
+from ...models import BlogSummaryCache, GitHubAnalysisCache, Resume
 from ...services.intelligence.llm.base import LLMClient
 from .prompt_builder import SYSTEM_PROMPT, build_user_prompt
 from .tech_stack_merger import (
@@ -76,22 +76,19 @@ async def build_career_analysis(
         ValueError: LLM レスポンスのパースに失敗した場合。
     """
     # 入力データ収集
-    basic_info = db.query(BasicInfo).filter_by(user_id=user_id).first()
     resume = db.query(Resume).filter_by(user_id=user_id).first()
-    rirekisho = db.query(Rirekisho).filter_by(user_id=user_id).first()
     analysis_cache = db.query(GitHubAnalysisCache).filter_by(user_id=user_id).first()
     blog_cache = db.query(BlogSummaryCache).filter_by(user_id=user_id).first()
 
     # 3ソースの技術スタックをマージ
     resume_techs = collect_resume_tech_stacks(resume) if resume else set()
     github_skills = collect_github_skills(analysis_cache)
-    qualification_names = collect_qualification_names(basic_info)
+    qualification_names = collect_qualification_names(resume)
     merged_stacks_text = merge_tech_stacks(resume_techs, github_skills, qualification_names)
 
-    # プロンプト組み立て
+    # プロンプト組み立て（氏名は渡さない・企業名はマスキング）
     user_prompt = build_user_prompt(
-        target_position, basic_info, resume, rirekisho,
-        analysis_cache, blog_cache, merged_stacks_text,
+        target_position, resume, analysis_cache, blog_cache, merged_stacks_text,
     )
 
     # LLM 呼び出し

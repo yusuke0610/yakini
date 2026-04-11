@@ -17,11 +17,8 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
     lines.append("")
 
     full_name = payload.get("full_name", "")
-    record_date = payload.get("record_date", "")
     if full_name:
         lines.append(field_line("氏名", full_name))
-    if record_date:
-        lines.append(field_line("記載日", record_date))
     lines.append("")
 
     qualifications = payload.get("qualifications", [])

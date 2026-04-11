@@ -147,19 +147,24 @@ def test_me_returns_current_user(client) -> None:
 # ── CSRF ─────────────────────────────────────────────────────────
 
 
+def _csrf_resume_payload() -> dict:
+    return {
+        "full_name": "テスト",
+        "career_summary": "要約",
+        "self_pr": "自己PR",
+        "experiences": [],
+        "qualifications": [],
+    }
+
+
 def test_post_without_csrf_token_is_rejected(client) -> None:
     """CSRFトークンなしの POST リクエストが 403 で拒否されることを確認する。"""
     auth_header(client, "csrftest1")
     client.cookies.delete("csrf_token")
 
     response = client.post(
-        "/api/basic-info",
-        json={
-            "full_name": "テスト",
-            "name_furigana": "てすと",
-            "record_date": "2026-01-01",
-            "qualifications": [],
-        },
+        "/api/resumes",
+        json=_csrf_resume_payload(),
         # CSRF ヘッダーなし
     )
 
@@ -171,13 +176,8 @@ def test_post_with_invalid_csrf_token_is_rejected(client) -> None:
     auth_header(client, "csrftest2")
 
     response = client.post(
-        "/api/basic-info",
-        json={
-            "full_name": "テスト",
-            "name_furigana": "てすと",
-            "record_date": "2026-01-01",
-            "qualifications": [],
-        },
+        "/api/resumes",
+        json=_csrf_resume_payload(),
         headers={"X-CSRF-Token": "invalid-token"},
     )
 
@@ -189,13 +189,8 @@ def test_post_with_valid_csrf_token_succeeds(client) -> None:
     headers = auth_header(client, "csrftest3")
 
     response = client.post(
-        "/api/basic-info",
-        json={
-            "full_name": "テスト",
-            "name_furigana": "てすと",
-            "record_date": "2026-01-01",
-            "qualifications": [],
-        },
+        "/api/resumes",
+        json=_csrf_resume_payload(),
         headers=headers,
     )
 

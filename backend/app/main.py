@@ -28,7 +28,6 @@ from .db.bootstrap import bootstrap  # noqa: E402
 from .routers import (  # noqa: E402
     admin_router,
     auth_router,
-    basic_info_router,
     blog_router,
     career_analysis_router,
     health_router,
@@ -37,7 +36,6 @@ from .routers import (  # noqa: E402
     master_data_router,
     notifications_router,
     resumes_router,
-    rirekisho_router,
 )
 
 
@@ -167,9 +165,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(career_analysis_router)
 app.include_router(auth_router)
-app.include_router(basic_info_router)
 app.include_router(resumes_router)
-app.include_router(rirekisho_router)
 app.include_router(intelligence_router)
 app.include_router(blog_router)
 app.include_router(master_data_router)

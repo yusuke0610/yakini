@@ -26,7 +26,7 @@ class StrengthItem(BaseModel):
 
     title: str
     detail: str
-    evidence_source: str  # "resume" | "github" | "blog" | "basic_info"
+    evidence_source: str  # "resume" | "github" | "blog"
 
 
 class CareerPathItem(BaseModel):

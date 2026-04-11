@@ -27,28 +27,12 @@ export function AuthenticatedLayout({
           <p className={styles.sidebarTitle}>DevForge</p>
           <nav className={styles.sidebarNav}>
             <NavLink
-              to="/basic_info"
-              className={({ isActive }) =>
-                `${styles.sidebarItem} ${isActive ? styles.active : ""}`
-              }
-            >
-              基本情報
-            </NavLink>
-            <NavLink
               to="/career"
               className={({ isActive }) =>
                 `${styles.sidebarItem} ${isActive ? styles.active : ""}`
               }
             >
               職務経歴書
-            </NavLink>
-            <NavLink
-              to="/resume"
-              className={({ isActive }) =>
-                `${styles.sidebarItem} ${isActive ? styles.active : ""}`
-              }
-            >
-              履歴書
             </NavLink>
             {user.isGitHubUser && (
               <NavLink

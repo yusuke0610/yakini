@@ -1,87 +1,26 @@
 import {
-  blankBasicQualification,
   blankCareerClient,
   blankCareerExperience,
   blankCareerProject,
   blankCareerTechnologyStack,
-  blankHistory,
+  blankResumeQualification,
 } from "./constants";
-import type { CareerFormState, ResumeFormState, BasicFormState } from "./payloadBuilders";
-import type { BasicInfoResponse, CareerResumeResponse, ResumeResponse } from "./types";
-
-export function createInitialBasicForm(): BasicFormState {
-  return {
-    full_name: "",
-    name_furigana: "",
-    record_date: "",
-    qualifications: [{ ...blankBasicQualification }],
-  };
-}
-
-export function mapBasicInfoToForm(response: BasicInfoResponse): BasicFormState {
-  return {
-    full_name: response.full_name,
-    name_furigana: response.name_furigana,
-    record_date: response.record_date,
-    qualifications:
-      response.qualifications.length > 0
-        ? response.qualifications
-        : [{ ...blankBasicQualification }],
-  };
-}
-
-export function createInitialResumeForm(): ResumeFormState {
-  return {
-    gender: "",
-    birthday: "",
-    postal_code: "",
-    prefecture: "",
-    address: "",
-    address_furigana: "",
-    email: "",
-    phone: "",
-    motivation: "",
-    personal_preferences: "",
-    educations: [{ ...blankHistory }],
-    work_histories: [{ ...blankHistory }],
-    photo: null,
-  };
-}
-
-export function mapResumeToForm(response: ResumeResponse): ResumeFormState {
-  return {
-    gender: response.gender,
-    birthday: response.birthday,
-    postal_code: response.postal_code,
-    prefecture: response.prefecture,
-    address: response.address,
-    address_furigana: response.address_furigana,
-    email: response.email,
-    phone: response.phone,
-    motivation: response.motivation,
-    personal_preferences: response.personal_preferences ?? "",
-    educations:
-      response.educations.length > 0
-        ? response.educations
-        : [{ ...blankHistory }],
-    work_histories:
-      response.work_histories.length > 0
-        ? response.work_histories
-        : [{ ...blankHistory }],
-    photo: response.photo ?? null,
-  };
-}
+import type { CareerFormState } from "./payloadBuilders";
+import type { CareerResumeResponse } from "./types";
 
 export function createInitialCareerForm(): CareerFormState {
   return {
+    full_name: "",
     career_summary: "",
     self_pr: "",
     experiences: [{ ...blankCareerExperience }],
+    qualifications: [{ ...blankResumeQualification }],
   };
 }
 
 export function mapCareerResumeToForm(response: CareerResumeResponse): CareerFormState {
   return {
+    full_name: response.full_name,
     career_summary: response.career_summary,
     self_pr: response.self_pr,
     experiences:
@@ -116,5 +55,9 @@ export function mapCareerResumeToForm(response: CareerResumeResponse): CareerFor
               : [{ ...blankCareerClient }],
         }))
         : [{ ...blankCareerExperience }],
+    qualifications:
+      response.qualifications.length > 0
+        ? response.qualifications
+        : [{ ...blankResumeQualification }],
   };
 }

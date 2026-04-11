@@ -385,8 +385,6 @@ def _create_normalized_tables() -> None:
 
 
 def upgrade() -> None:
-    from app.schemas import BasicInfoCreate, ResumeCreate, RirekishoCreate
-
     conn = op.get_bind()
 
     op.rename_table("basic_info", "basic_info_legacy")
@@ -398,12 +396,7 @@ def upgrade() -> None:
 
     basic_info_rows = _latest_rows(conn, "basic_info_legacy")
     for row in basic_info_rows:
-        payload = BasicInfoCreate(
-            full_name=row["full_name"],
-            name_furigana=row.get("name_furigana", ""),
-            record_date=row["record_date"],
-            qualifications=_load_json(row.get("qualifications")),
-        )
+        qualifications = _load_json(row.get("qualifications"))
         conn.execute(
             sa.text(
                 """
@@ -417,10 +410,10 @@ def upgrade() -> None:
             {
                 "id": row["id"],
                 "user_id": row["user_id"],
-                "full_name": payload.full_name,
-                "name_furigana": payload.name_furigana,
+                "full_name": row["full_name"],
+                "name_furigana": row.get("name_furigana", "") or "",
                 "record_date": _fallback_date(
-                    payload.record_date,
+                    row.get("record_date"),
                     row["updated_at"],
                     row["created_at"],
                 ),
@@ -428,7 +421,7 @@ def upgrade() -> None:
                 "updated_at": row["updated_at"],
             },
         )
-        for index, qualification in enumerate(payload.qualifications):
+        for index, qualification in enumerate(qualifications):
             conn.execute(
                 sa.text(
                     """
@@ -443,18 +436,14 @@ def upgrade() -> None:
                     "id": f"{row['id']}-qualification-{index}",
                     "basic_info_id": row["id"],
                     "sort_order": index,
-                    "acquired_date": _fallback_date(qualification.acquired_date),
-                    "name": qualification.name,
+                    "acquired_date": _fallback_date(qualification.get("acquired_date")),
+                    "name": qualification.get("name", ""),
                 },
             )
 
     resume_rows = _latest_rows(conn, "resumes_legacy")
     for row in resume_rows:
-        payload = ResumeCreate(
-            career_summary=row["career_summary"],
-            self_pr=row["self_pr"],
-            experiences=_load_json(row.get("experiences")),
-        )
+        experiences = _load_json(row.get("experiences"))
         conn.execute(
             sa.text(
                 """
@@ -468,13 +457,13 @@ def upgrade() -> None:
             {
                 "id": row["id"],
                 "user_id": row["user_id"],
-                "career_summary": payload.career_summary,
-                "self_pr": payload.self_pr,
+                "career_summary": row["career_summary"],
+                "self_pr": row["self_pr"],
                 "created_at": row["created_at"],
                 "updated_at": row["updated_at"],
             },
         )
-        for exp_index, experience in enumerate(payload.experiences):
+        for exp_index, experience in enumerate(experiences):
             experience_id = f"{row['id']}-experience-{exp_index}"
             conn.execute(
                 sa.text(
@@ -492,16 +481,19 @@ def upgrade() -> None:
                     "id": experience_id,
                     "resume_id": row["id"],
                     "sort_order": exp_index,
-                    "company": experience.company,
-                    "business_description": experience.business_description,
-                    "start_date": _fallback_year_month(experience.start_date),
-                    "end_date": _parse_year_month(experience.end_date),
-                    "is_current": experience.is_current,
-                    "employee_count": experience.employee_count,
-                    "capital": experience.capital,
+                    "company": experience.get("company", ""),
+                    "business_description": experience.get("business_description", ""),
+                    "start_date": _fallback_year_month(experience.get("start_date")),
+                    "end_date": _parse_year_month(experience.get("end_date")),
+                    "is_current": bool(experience.get("is_current", False)),
+                    "employee_count": experience.get("employee_count", "") or "",
+                    "capital": experience.get("capital", "") or "",
                 },
             )
-            for client_index, client in enumerate(experience.clients):
+            clients = experience.get("clients") or []
+            if not clients and experience.get("projects"):
+                clients = [{"name": "", "has_client": True, "projects": experience["projects"]}]
+            for client_index, client in enumerate(clients):
                 client_id = f"{experience_id}-client-{client_index}"
                 conn.execute(
                     sa.text(
@@ -517,12 +509,15 @@ def upgrade() -> None:
                         "id": client_id,
                         "experience_id": experience_id,
                         "sort_order": client_index,
-                        "name": client.name,
-                        "has_client": client.has_client,
+                        "name": client.get("name", "") or "",
+                        "has_client": bool(client.get("has_client", True)),
                     },
                 )
-                for project_index, project in enumerate(client.projects):
+                for project_index, project in enumerate(client.get("projects", [])):
                     project_id = f"{client_id}-project-{project_index}"
+                    team = project.get("team") or {}
+                    if not team and project.get("scale"):
+                        team = {"total": str(project["scale"]), "members": []}
                     conn.execute(
                         sa.text(
                             """
@@ -541,19 +536,19 @@ def upgrade() -> None:
                             "id": project_id,
                             "client_id": client_id,
                             "sort_order": project_index,
-                            "name": project.name,
-                            "start_date": _fallback_year_month(project.start_date),
-                            "end_date": _parse_year_month(project.end_date),
-                            "is_current": project.is_current,
-                            "role": project.role,
-                            "description": project.description,
-                            "challenge": project.challenge,
-                            "action": project.action,
-                            "result": project.result,
-                            "team_total": project.team.total,
+                            "name": project.get("name", "") or "",
+                            "start_date": _fallback_year_month(project.get("start_date")),
+                            "end_date": _parse_year_month(project.get("end_date")),
+                            "is_current": bool(project.get("is_current", False)),
+                            "role": project.get("role", "") or "",
+                            "description": project.get("description", "") or "",
+                            "challenge": project.get("challenge", "") or "",
+                            "action": project.get("action", "") or "",
+                            "result": project.get("result", "") or "",
+                            "team_total": team.get("total", "") or "",
                         },
                     )
-                    for member_index, member in enumerate(project.team.members):
+                    for member_index, member in enumerate(team.get("members", [])):
                         conn.execute(
                             sa.text(
                                 """
@@ -568,11 +563,11 @@ def upgrade() -> None:
                                 "id": f"{project_id}-member-{member_index}",
                                 "project_id": project_id,
                                 "sort_order": member_index,
-                                "role": member.role,
-                                "count": member.count,
+                                "role": member.get("role", ""),
+                                "count": int(member.get("count", 0) or 0),
                             },
                         )
-                    for stack_index, stack in enumerate(project.technology_stacks):
+                    for stack_index, stack in enumerate(project.get("technology_stacks", [])):
                         conn.execute(
                             sa.text(
                                 """
@@ -587,11 +582,11 @@ def upgrade() -> None:
                                 "id": f"{project_id}-stack-{stack_index}",
                                 "project_id": project_id,
                                 "sort_order": stack_index,
-                                "category": stack.category,
-                                "name": stack.name,
+                                "category": stack.get("category", ""),
+                                "name": stack.get("name", ""),
                             },
                         )
-                    for phase_index, phase in enumerate(project.phases):
+                    for phase_index, phase in enumerate(project.get("phases", [])):
                         conn.execute(
                             sa.text(
                                 """
@@ -612,21 +607,8 @@ def upgrade() -> None:
 
     rirekisho_rows = _latest_rows(conn, "rirekisho_legacy")
     for row in rirekisho_rows:
-        payload = RirekishoCreate(
-            gender=row.get("gender", ""),
-            birthday=row["birthday"],
-            prefecture=row["prefecture"],
-            postal_code=row["postal_code"],
-            address=row["address"],
-            address_furigana=row.get("address_furigana", ""),
-            email=row["email"],
-            phone=row["phone"],
-            motivation=row.get("motivation", ""),
-            personal_preferences=row.get("personal_preferences", ""),
-            photo=row.get("photo"),
-            educations=_load_json(row.get("educations")),
-            work_histories=_load_json(row.get("work_histories")),
-        )
+        educations = _load_json(row.get("educations"))
+        work_histories = _load_json(row.get("work_histories"))
         conn.execute(
             sa.text(
                 """
@@ -644,26 +626,26 @@ def upgrade() -> None:
             {
                 "id": row["id"],
                 "user_id": row["user_id"],
-                "gender": payload.gender,
+                "gender": row.get("gender", "") or "",
                 "birthday": _fallback_date(
-                    payload.birthday,
+                    row.get("birthday"),
                     row["updated_at"],
                     row["created_at"],
                 ),
-                "prefecture": payload.prefecture,
-                "postal_code": payload.postal_code,
-                "address": payload.address,
-                "address_furigana": payload.address_furigana,
-                "email": payload.email,
-                "phone": payload.phone,
-                "motivation": payload.motivation,
-                "personal_preferences": payload.personal_preferences,
-                "photo": payload.photo,
+                "prefecture": row["prefecture"],
+                "postal_code": row.get("postal_code", "") or "",
+                "address": row["address"],
+                "address_furigana": row.get("address_furigana", "") or "",
+                "email": row["email"],
+                "phone": row["phone"],
+                "motivation": row.get("motivation", "") or "",
+                "personal_preferences": row.get("personal_preferences", "") or "",
+                "photo": row.get("photo"),
                 "created_at": row["created_at"],
                 "updated_at": row["updated_at"],
             },
         )
-        for index, education in enumerate(payload.educations):
+        for index, education in enumerate(educations):
             conn.execute(
                 sa.text(
                     """
@@ -678,11 +660,11 @@ def upgrade() -> None:
                     "id": f"{row['id']}-education-{index}",
                     "rirekisho_id": row["id"],
                     "sort_order": index,
-                    "date": _fallback_year_month(education.date),
-                    "name": education.name,
+                    "date": _fallback_year_month(education.get("date")),
+                    "name": education.get("name", ""),
                 },
             )
-        for index, work_history in enumerate(payload.work_histories):
+        for index, work_history in enumerate(work_histories):
             conn.execute(
                 sa.text(
                     """
@@ -697,8 +679,8 @@ def upgrade() -> None:
                     "id": f"{row['id']}-work-history-{index}",
                     "rirekisho_id": row["id"],
                     "sort_order": index,
-                    "date": _fallback_year_month(work_history.date),
-                    "name": work_history.name,
+                    "date": _fallback_year_month(work_history.get("date")),
+                    "name": work_history.get("name", ""),
                 },
             )
 

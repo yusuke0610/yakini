@@ -8,7 +8,3 @@ export function getQualifications(): Promise<MasterItem[]> {
 export function getTechnologyStacks(): Promise<TechStackMasterItem[]> {
   return request<TechStackMasterItem[]>("/api/master-data/technology-stack");
 }
-
-export function getPrefectures(): Promise<MasterItem[]> {
-  return request<MasterItem[]>("/api/master-data/prefecture");
-}

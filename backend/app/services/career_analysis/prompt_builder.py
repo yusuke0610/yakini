@@ -1,10 +1,12 @@
 """AI キャリアパス分析 LLM プロンプト構築ロジック。
 
-SYSTEM_PROMPT と _build_user_prompt を提供する。
+SYSTEM_PROMPT と build_user_prompt を提供する。
 LLM 呼び出し自体は builder.py が担う。
+
+PII（氏名・企業名）は LLM へ渡す前にマスキングする。
 """
 
-from ...models import BasicInfo, BlogSummaryCache, GitHubAnalysisCache, Resume, Rirekisho
+from ...models import BlogSummaryCache, GitHubAnalysisCache, Resume
 
 SYSTEM_PROMPT = """あなたは日本の IT エンジニアのキャリア支援を専門とするアドバイザーです。
 提供されたエンジニアの本業経験・個人活動・資格情報を総合的に分析し、
@@ -30,6 +32,10 @@ SYSTEM_PROMPT = """あなたは日本の IT エンジニアのキャリア支援
 - ギャップスキルは「なぜそのスキルが必要か」を明示する
 - fit_score は現在地からそのパスへの到達しやすさ（0〜100）
 
+### 入力データの取り扱い
+- 入力には「[企業A]」「[企業B]」のようにマスキングされた企業名が含まれることがある
+- マスキングされたラベルはそのまま扱い、特定の企業名を推測しないこと
+
 ### ルール
 - 事実の捏造・誇張は行わない
 - 本業と個人活動を明確に区別して言及する
@@ -45,7 +51,7 @@ SYSTEM_PROMPT = """あなたは日本の IT エンジニアのキャリア支援
     "summary": "技術スタック全体の評価コメント（200字程度）"
   },
   "strengths": [
-    {"title": "強みタイトル", "detail": "根拠エピソード", "evidence_source": "resume|github|blog|basic_info"}
+    {"title": "強みタイトル", "detail": "根拠エピソード", "evidence_source": "resume|github|blog"}
   ],
   "career_paths": [
     {"horizon": "short", "label": "1年以内", "title": "...", "description": "...", "required_skills": [], "gap_skills": [], "fit_score": 82},
@@ -58,59 +64,92 @@ SYSTEM_PROMPT = """あなたは日本の IT エンジニアのキャリア支援
 }"""
 
 
+def _company_label(index: int) -> str:
+    """0 起算インデックスから [企業A] [企業B] ... のラベルを生成する。"""
+    return f"[企業{chr(ord('A') + index)}]" if index < 26 else f"[企業{index + 1}]"
+
+
+def build_company_mask(resume: Resume | None) -> dict[str, str]:
+    """Resume から登場する企業名を A, B, C... のラベルに対応付ける。
+
+    所属企業（experiences.company）と取引先（clients.name）の両方をマスキング対象にする。
+    """
+    if not resume:
+        return {}
+    seen: dict[str, str] = {}
+    for exp in resume.experiences:
+        if exp.company and exp.company not in seen:
+            seen[exp.company] = _company_label(len(seen))
+        for client in exp.clients:
+            if client.name and client.name not in seen:
+                seen[client.name] = _company_label(len(seen))
+    return seen
+
+
+def mask_text(text: str, company_mask: dict[str, str]) -> str:
+    """テキスト中の企業名をラベルに置換する。長い企業名から優先して置換する。"""
+    if not text or not company_mask:
+        return text or ""
+    masked = text
+    for name in sorted(company_mask.keys(), key=len, reverse=True):
+        masked = masked.replace(name, company_mask[name])
+    return masked
+
+
 def build_user_prompt(
     target_position: str,
-    basic_info: BasicInfo | None,
     resume: Resume | None,
-    rirekisho: Rirekisho | None,
     analysis_cache: GitHubAnalysisCache | None,
     blog_cache: BlogSummaryCache | None,
     merged_stacks_text: str,
 ) -> str:
-    """ユーザープロンプトを動的に組み立てる。"""
+    """ユーザープロンプトを動的に組み立てる。
+
+    氏名は LLM に渡さない。企業名は [企業A] [企業B]... としてマスキングする。
+    """
     parts: list[str] = []
+    company_mask = build_company_mask(resume)
 
     parts.append(f"## ターゲットポジション\n{target_position}")
 
-    # 基本情報 — 資格
-    parts.append("\n## 基本情報")
-    if basic_info and basic_info.qualifications:
-        quals = [f"- {q.name}（{q.acquired_date}）" for q in basic_info.qualifications]
-        parts.append("資格:\n" + "\n".join(quals))
+    # 資格
+    parts.append("\n## 資格")
+    if resume and resume.qualifications:
+        quals = [f"- {q.name}（{q.acquired_date}）" for q in resume.qualifications]
+        parts.append("\n".join(quals))
     else:
-        parts.append("資格: なし")
+        parts.append("なし")
 
     # 職務経歴
     parts.append("\n## 職務経歴（本業・IT 業界入社以降）")
 
     if resume:
         if resume.career_summary:
-            parts.append(f"\n### 職務要約\n{resume.career_summary}")
+            parts.append(f"\n### 職務要約\n{mask_text(resume.career_summary, company_mask)}")
 
         parts.append("\n### 担当プロジェクト一覧")
         for exp in resume.experiences:
+            company_label = company_mask.get(exp.company, exp.company)
             for client in exp.clients:
+                client_label = company_mask.get(client.name, client.name) if client.name else ""
                 for proj in client.projects:
                     end = proj.end_date or "現在"
                     phases = ", ".join(proj.phases) if proj.phases else "不明"
                     stacks = ", ".join(st.name for st in proj.technology_stacks)
-                    parts.append(f"- 案件名: {proj.name}")
+                    parts.append(f"- 案件名: {mask_text(proj.name, company_mask)}")
+                    parts.append(f"  所属: {company_label}")
+                    if client_label:
+                        parts.append(f"  取引先: {client_label}")
                     parts.append(f"  期間: {proj.start_date} 〜 {end}")
                     parts.append(f"  担当フェーズ: {phases}")
                     parts.append(f"  使用技術: {stacks}")
                     if proj.description:
-                        parts.append(f"  概要: {proj.description}")
+                        parts.append(f"  概要: {mask_text(proj.description, company_mask)}")
     else:
         parts.append("（職務経歴書未入力）")
 
     # 技術スタック（マージ済み）
     parts.append(f"\n### 技術スタック（マージ済み・優先度付き）\n{merged_stacks_text}")
-
-    # 履歴書（IT 業界入社以降の職歴のみ）
-    if rirekisho and rirekisho.work_histories:
-        parts.append("\n## IT 業界入社以降の職歴サマリ（履歴書より）")
-        for wh in rirekisho.work_histories:
-            parts.append(f"- {wh.name} / {wh.date}")
 
     # GitHub 分析
     if analysis_cache and analysis_cache.analysis_result:
@@ -146,7 +185,7 @@ def build_user_prompt(
 
     # ブログ発信力
     if blog_cache and blog_cache.summary:
-        parts.append(f"\n## ブログ発信力\n{blog_cache.summary}")
+        parts.append(f"\n## ブログ発信力\n{mask_text(blog_cache.summary, company_mask)}")
 
     parts.append(
         "\n---\n上記を踏まえて、指定の JSON スキーマでキャリアパス提案レポートを返してください。"

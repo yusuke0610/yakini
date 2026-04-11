@@ -1,7 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 /** フォームキャッシュのキー。各フォームページに対応。 */
-export type FormCacheKey = "basicInfo" | "resume" | "career";
+export type FormCacheKey = "career";
 
 interface FormCacheEntry {
   /** フォーム状態（型は各フォームに依存するため unknown） */

@@ -8,7 +8,6 @@ from ..core.security.dependencies import verify_admin_token
 from ..db import get_db
 from ..repositories import (
     BaseMasterRepository,
-    MPrefectureRepository,
     MQualificationRepository,
     MTechnologyStackRepository,
 )
@@ -29,7 +28,7 @@ def _register_master_crud(
     repo_factory: Callable[[Session], BaseMasterRepository],
     label: str,
 ) -> None:
-    """資格・都道府県など共通パターンのマスタ CRUD エンドポイントを一括登録する。"""
+    """資格など共通パターンのマスタ CRUD エンドポイントを一括登録する。"""
 
     @router.get(f"/{path}", response_model=list[MasterItem])
     def list_items(db: Session = Depends(get_db)):
@@ -82,7 +81,6 @@ def _register_master_crud(
 
 
 _register_master_crud("qualification", MQualificationRepository, "資格マスタ")
-_register_master_crud("prefecture", MPrefectureRepository, "都道府県マスタ")
 
 
 # --- 技術スタックマスタ（category フィールドがあるため個別定義） ---

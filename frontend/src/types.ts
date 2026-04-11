@@ -1,19 +1,6 @@
-export type BasicQualification = {
+export type ResumeQualification = {
   acquired_date: string;
   name: string;
-};
-
-export type BasicInfoPayload = {
-  full_name: string;
-  name_furigana: string;
-  record_date: string;
-  qualifications: BasicQualification[];
-};
-
-export type BasicInfoResponse = BasicInfoPayload & {
-  id: string;
-  created_at: string;
-  updated_at: string;
 };
 
 export type CareerTechnologyStackCategory =
@@ -79,39 +66,14 @@ export type CareerExperience = {
 };
 
 export type CareerResumePayload = {
+  full_name: string;
   career_summary: string;
   self_pr: string;
   experiences: CareerExperience[];
+  qualifications: ResumeQualification[];
 };
 
 export type CareerResumeResponse = CareerResumePayload & {
-  id: string;
-  created_at: string;
-  updated_at: string;
-};
-
-export type ResumeHistory = {
-  date: string;
-  name: string;
-};
-
-export type ResumePayload = {
-  gender: "male" | "female";
-  birthday: string;
-  postal_code: string;
-  prefecture: string;
-  address: string;
-  address_furigana: string;
-  email: string;
-  phone: string;
-  motivation: string;
-  personal_preferences: string;
-  educations: ResumeHistory[];
-  work_histories: ResumeHistory[];
-  photo: string | null;
-};
-
-export type ResumeResponse = ResumePayload & {
   id: string;
   created_at: string;
   updated_at: string;

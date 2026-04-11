@@ -12,7 +12,7 @@ test.describe("通知ベル", () => {
 
   test("未読なしのとき通知ベルにバッジが表示されない", async ({ page }) => {
     // setupAuth で unread-count は count: 0 が返るよう設定済み
-    await page.goto("/basic_info");
+    await page.goto("/career");
     await waitForAuthenticatedLayout(page);
 
     const bell = page.getByRole("button", { name: /通知/ });
@@ -31,7 +31,7 @@ test.describe("通知ベル", () => {
       }),
     );
 
-    await page.goto("/basic_info");
+    await page.goto("/career");
     await waitForAuthenticatedLayout(page);
 
     // バッジに "3" が表示されることを確認
@@ -76,7 +76,7 @@ test.describe("通知ベル", () => {
       }),
     );
 
-    await page.goto("/basic_info");
+    await page.goto("/career");
     await waitForAuthenticatedLayout(page);
     await page.getByRole("button", { name: /通知/ }).click();
 
@@ -118,7 +118,7 @@ test.describe("通知ベル", () => {
       }),
     );
 
-    await page.goto("/basic_info");
+    await page.goto("/career");
     await waitForAuthenticatedLayout(page);
 
     const bell = page.getByRole("button", { name: /通知/ });
@@ -132,7 +132,7 @@ test.describe("通知ベル", () => {
   });
 
   test("パネル外をクリックすると閉じる", async ({ page }) => {
-    await page.goto("/basic_info");
+    await page.goto("/career");
     await waitForAuthenticatedLayout(page);
 
     await page.getByRole("button", { name: /通知/ }).click();
