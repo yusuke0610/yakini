@@ -1,39 +1,22 @@
-"""LLM を利用したキャリア分析・ブログ記事の要約生成。"""
+"""LLM を利用したキャリア分析・ブログ記事の要約生成。
+
+システムプロンプトは backend/prompts/ 配下の MD ファイルから都度読み込む。
+"""
 
 import logging
 from typing import Any, Dict, List
 
+from ...utils.prompt_loader import load_prompt
 from .llm import get_llm_client
 
 logger = logging.getLogger(__name__)
 
 _client = get_llm_client()
 
-LEARNING_ADVICE_SYSTEM_PROMPT = (
-    "あなたはエンジニアのキャリアアドバイザーです。"
-    "GitHubの活動データから得られた分析結果を基に、日本語で以下の2つのセクションを作成してください。\n\n"
-    "## 現状分析\n"
-    "主要なスキルと技術的な強み、スキルの成長傾向、現在のキャリアポジションについて3〜5文で記述してください。\n\n"
-    "## 学習アドバイス\n"
-    "フルスタックエンジニアを目指すために、具体的に何をどの順番で学ぶべきか優先度をつけて3〜5文で記述してください。\n\n"
-    "箇条書きではなく自然な文章で書いてください。"
-)
-
 
 async def check_llm_available() -> bool:
     """LLM バックエンドが利用可能か確認します。"""
     return await _client.check_available()
-
-
-BLOG_SYSTEM_PROMPT = (
-    "あなたはテックブログの分析専門家です。"
-    "エンジニアのブログ記事一覧から、技術的な関心分野やアウトプット傾向を分析してください。"
-    "要約は3〜5文程度で、以下の点に触れてください：\n"
-    "1. 主要な技術的関心分野\n"
-    "2. アウトプットの傾向（頻度、深さ、ジャンル）\n"
-    "3. 技術的な強みや特徴\n"
-    "箇条書きではなく自然な文章で書いてください。"
-)
 
 
 def _build_blog_prompt(articles: List[Dict[str, Any]]) -> str:
@@ -58,8 +41,9 @@ async def summarize_blog_articles(articles: List[Dict[str, Any]]) -> str:
 
     LLM に接続できない場合は空文字列を返す。
     """
+    system_prompt = load_prompt("blog_analysis.md")
     prompt = _build_blog_prompt(articles)
-    return await _client.generate(BLOG_SYSTEM_PROMPT, prompt)
+    return await _client.generate(system_prompt, prompt)
 
 
 def _build_learning_advice_prompt(
@@ -111,5 +95,6 @@ async def generate_learning_advice(
 
     LLM に接続できない場合は空文字列を返す。
     """
+    system_prompt = load_prompt("github_analysis.md")
     prompt = _build_learning_advice_prompt(analysis, scores)
-    return await _client.generate(LEARNING_ADVICE_SYSTEM_PROMPT, prompt)
+    return await _client.generate(system_prompt, prompt)
