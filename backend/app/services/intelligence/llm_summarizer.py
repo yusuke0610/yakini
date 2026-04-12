@@ -4,9 +4,10 @@
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ...utils.prompt_loader import load_prompt
+from ..llm.sanitizer import SanitizeContext, sanitize_text
 from .llm import get_llm_client
 
 logger = logging.getLogger(__name__)
@@ -19,16 +20,26 @@ async def check_llm_available() -> bool:
     return await _client.check_available()
 
 
-def _build_blog_prompt(articles: List[Dict[str, Any]]) -> str:
-    """ブログ記事データから分析用プロンプトを構築する。"""
+def _build_blog_prompt(
+    articles: List[Dict[str, Any]],
+    context: Optional[SanitizeContext] = None,
+) -> str:
+    """ブログ記事データから分析用プロンプトを構築する。
+
+    context が指定された場合、title と summary を sanitize_text() でマスキングする。
+    未指定時は空コンテキストを使用する（マスキングなし）。
+    """
+    ctx = context if context is not None else SanitizeContext()
     parts = [f"記事数: {len(articles)}"]
 
     for i, art in enumerate(articles[:30], 1):
-        line = f"{i}. {art.get('title', '')}"
+        title = sanitize_text(art.get("title", ""), ctx)
+        line = f"{i}. {title}"
         if art.get("tags"):
             line += f" [タグ: {', '.join(art['tags'])}]"
         if art.get("summary"):
-            line += f" — {art['summary'][:100]}"
+            summary = sanitize_text(art["summary"][:100], ctx)
+            line += f" — {summary}"
         if art.get("likes_count", 0) > 0:
             line += f" (いいね: {art['likes_count']})"
         parts.append(line)
@@ -36,13 +47,17 @@ def _build_blog_prompt(articles: List[Dict[str, Any]]) -> str:
     return "\n".join(parts)
 
 
-async def summarize_blog_articles(articles: List[Dict[str, Any]]) -> str:
+async def summarize_blog_articles(
+    articles: List[Dict[str, Any]],
+    context: Optional[SanitizeContext] = None,
+) -> str:
     """ブログ記事一覧から LLM で AI サマリを生成する。
 
+    context が指定された場合、記事タイトル・要約を sanitize_text() でマスキングする。
     LLM に接続できない場合は空文字列を返す。
     """
     system_prompt = load_prompt("blog_analysis.md")
-    prompt = _build_blog_prompt(articles)
+    prompt = _build_blog_prompt(articles, context)
     return await _client.generate(system_prompt, prompt)
 
 
@@ -50,11 +65,13 @@ def _build_learning_advice_prompt(
     analysis: Dict[str, Any],
     scores: Dict[str, Any],
 ) -> str:
-    """分析データとポジションスコアから統合プロンプトを構築する。"""
+    """分析データとポジションスコアから統合プロンプトを構築する。
+
+    username はプライバシー上 LLM に渡さない。
+    """
     parts = []
 
-    # 基本情報
-    parts.append(f"ユーザー: {analysis.get('username', 'N/A')}")
+    # username を除いた基本情報（A分類フィールドのみ）
     parts.append(f"分析リポジトリ数: {analysis.get('repos_analyzed', 0)}")
     parts.append(f"ユニークスキル数: {analysis.get('unique_skills', 0)}")
 

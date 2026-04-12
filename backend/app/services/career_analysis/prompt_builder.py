@@ -4,42 +4,29 @@ build_user_prompt を提供する。システムプロンプトは
 backend/prompts/career_analysis.md から都度読み込む。
 LLM 呼び出し自体は builder.py が担う。
 
-PII（氏名・企業名）は LLM へ渡す前にマスキングする。
+企業名・顧客名・案件名・自由記述は LLM へ渡す前にサニタイザー経由でマスキングする。
+氏名等の C 分類フィールドはプロンプトに含めない。
 """
 
 from ...models import BlogSummaryCache, GitHubAnalysisCache, Resume
+from ..llm.sanitizer import SanitizeContext, sanitize_project_name, sanitize_text
 
 
-def _company_label(index: int) -> str:
-    """0 起算インデックスから [企業A] [企業B] ... のラベルを生成する。"""
-    return f"[企業{chr(ord('A') + index)}]" if index < 26 else f"[企業{index + 1}]"
+def _build_sanitize_context(resume: Resume | None) -> SanitizeContext:
+    """Resume から登場するエンティティをコンテキストに事前登録して返す。
 
-
-def build_company_mask(resume: Resume | None) -> dict[str, str]:
-    """Resume から登場する企業名を A, B, C... のラベルに対応付ける。
-
-    所属企業（experiences.company）と取引先（clients.name）の両方をマスキング対象にする。
+    事前登録することで自由記述テキスト内の同一名称を sanitize_text() で置換できる。
     """
+    context = SanitizeContext()
     if not resume:
-        return {}
-    seen: dict[str, str] = {}
+        return context
     for exp in resume.experiences:
-        if exp.company and exp.company not in seen:
-            seen[exp.company] = _company_label(len(seen))
+        context.register_company(exp.company)
         for client in exp.clients:
-            if client.name and client.name not in seen:
-                seen[client.name] = _company_label(len(seen))
-    return seen
-
-
-def mask_text(text: str, company_mask: dict[str, str]) -> str:
-    """テキスト中の企業名をラベルに置換する。長い企業名から優先して置換する。"""
-    if not text or not company_mask:
-        return text or ""
-    masked = text
-    for name in sorted(company_mask.keys(), key=len, reverse=True):
-        masked = masked.replace(name, company_mask[name])
-    return masked
+            context.register_customer(client.name)
+            for proj in client.projects:
+                context.register_project(proj.name)
+    return context
 
 
 def build_user_prompt(
@@ -51,10 +38,12 @@ def build_user_prompt(
 ) -> str:
     """ユーザープロンプトを動的に組み立てる。
 
-    氏名は LLM に渡さない。企業名は [企業A] [企業B]... としてマスキングする。
+    氏名は LLM に渡さない。企業名・顧客名・案件名はラベルにマスキングする。
+    自由記述テキスト（career_summary / 案件概要 / ブログ要約）は
+    登録済みエンティティを sanitize_text() で置換する。
     """
     parts: list[str] = []
-    company_mask = build_company_mask(resume)
+    context = _build_sanitize_context(resume)
 
     parts.append(f"## ターゲットポジション\n{target_position}")
 
@@ -71,18 +60,24 @@ def build_user_prompt(
 
     if resume:
         if resume.career_summary:
-            parts.append(f"\n### 職務要約\n{mask_text(resume.career_summary, company_mask)}")
+            parts.append(
+                f"\n### 職務要約\n{sanitize_text(resume.career_summary, context)}"
+            )
 
         parts.append("\n### 担当プロジェクト一覧")
         for exp in resume.experiences:
-            company_label = company_mask.get(exp.company, exp.company)
+            company_label = context.companies.get(exp.company, exp.company)
             for client in exp.clients:
-                client_label = company_mask.get(client.name, client.name) if client.name else ""
+                client_label = (
+                    context.customers.get(client.name, client.name) if client.name else ""
+                )
                 for proj in client.projects:
                     end = proj.end_date or "現在"
                     phases = ", ".join(proj.phases) if proj.phases else "不明"
                     stacks = ", ".join(st.name for st in proj.technology_stacks)
-                    parts.append(f"- 案件名: {mask_text(proj.name, company_mask)}")
+                    parts.append(
+                        f"- 案件名: {sanitize_project_name(proj.name, context)}"
+                    )
                     parts.append(f"  所属: {company_label}")
                     if client_label:
                         parts.append(f"  取引先: {client_label}")
@@ -90,7 +85,9 @@ def build_user_prompt(
                     parts.append(f"  担当フェーズ: {phases}")
                     parts.append(f"  使用技術: {stacks}")
                     if proj.description:
-                        parts.append(f"  概要: {mask_text(proj.description, company_mask)}")
+                        parts.append(
+                            f"  概要: {sanitize_text(proj.description, context)}"
+                        )
     else:
         parts.append("（職務経歴書未入力）")
 
@@ -131,7 +128,9 @@ def build_user_prompt(
 
     # ブログ発信力
     if blog_cache and blog_cache.summary:
-        parts.append(f"\n## ブログ発信力\n{mask_text(blog_cache.summary, company_mask)}")
+        parts.append(
+            f"\n## ブログ発信力\n{sanitize_text(blog_cache.summary, context)}"
+        )
 
     parts.append(
         "\n---\n上記を踏まえて、指定の JSON スキーマでキャリアパス提案レポートを返してください。"
