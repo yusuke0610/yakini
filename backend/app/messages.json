@@ -71,6 +71,20 @@
       "internal_unauthorized": "内部タスクエンドポイントへのアクセスが拒否されました。"
     }
   },
+  "notification": {
+    "github_analysis": {
+      "completed": "GitHub分析が完了しました",
+      "failed": "GitHub分析に失敗しました"
+    },
+    "blog_summarize": {
+      "completed": "ブログAI分析が完了しました",
+      "failed": "ブログAI分析に失敗しました"
+    },
+    "career_analysis": {
+      "completed": "キャリア分析が完了しました",
+      "failed": "キャリア分析に失敗しました"
+    }
+  },
   "success": {
     "auth": {
       "logout": "ログアウトしました。"
