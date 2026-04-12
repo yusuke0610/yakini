@@ -7,6 +7,7 @@ router から分離する。
 from sqlalchemy.orm import Session
 
 from ...models import GitHubAnalysisCache
+from ..llm.sanitizer import strip_prohibited_fields
 from .llm_summarizer import check_llm_available, generate_learning_advice
 
 
@@ -52,7 +53,9 @@ class LLMPositionAdviceService:
         if not available:
             return None
 
-        advice = await generate_learning_advice(analysis, scores)
+        # C分類フィールド（username 等）を防御的に除去してから LLM に渡す
+        sanitized_analysis = strip_prohibited_fields(analysis)
+        advice = await generate_learning_advice(sanitized_analysis, scores)
         if not advice:
             return None
 

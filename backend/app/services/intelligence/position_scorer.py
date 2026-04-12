@@ -138,6 +138,67 @@ def _calc_axis_score(
     return min(int(raw), 100)
 
 
+# 言語バイト比率からスキルへのマッピング（1% 以上で保有とみなす）
+_LANG_SKILL_MAP: Dict[str, str] = {
+    "Python": "Python", "Java": "Java", "Go": "Go",
+    "Rust": "Rust", "Ruby": "Ruby", "PHP": "PHP",
+    "TypeScript": "TypeScript", "JavaScript": "JavaScript",
+    "CSS": "CSS", "HTML": "HTML", "SCSS": "CSS",
+    "HCL": "Terraform", "Shell": "Shell",
+    "Kotlin": "Kotlin", "C#": "C#",
+}
+
+# GitHub トピックからスキルへのマッピング
+_TOPIC_SKILL_MAP: Dict[str, str] = {
+    "react": "React", "vue": "Vue", "angular": "Angular",
+    "nextjs": "Next.js", "docker": "Docker",
+    "kubernetes": "Kubernetes", "k8s": "Kubernetes",
+    "terraform": "Terraform", "aws": "AWS",
+    "gcp": "GCP", "azure": "Azure",
+    "ci-cd": "CI/CD", "graphql": "GraphQL",
+    "rest": "REST API", "api": "REST API",
+    "database": "SQL", "sql": "SQL",
+}
+
+# リポジトリルートファイルからスキルへのマッピング
+_FILE_SKILL_MAP: Dict[str, str] = {
+    "Dockerfile": "Docker",
+    "docker-compose.yml": "Docker",
+    "docker-compose.yaml": "Docker",
+    ".github": "CI/CD",
+    "Jenkinsfile": "CI/CD",
+    ".gitlab-ci.yml": "CI/CD",
+    ".circleci": "CI/CD",
+    "terraform": "Terraform",
+    ".terraform": "Terraform",
+}
+
+# 検出フレームワークからスキルへのマッピング
+_FRAMEWORK_SKILL_MAP: Dict[str, str] = {
+    "Docker": "Docker",
+    "Docker Compose": "Docker",
+    "GitHub Actions": "CI/CD",
+    "Jenkins": "CI/CD",
+    "GitLab CI": "CI/CD",
+    "CircleCI": "CI/CD",
+    "Terraform": "Terraform",
+    "React": "React",
+    "Vue": "Vue",
+    "Angular": "Angular",
+    "FastAPI": "REST API",
+    "Django": "REST API",
+    "Flask": "REST API",
+    "Express": "REST API",
+    "Spring Boot": "REST API",
+    "AWS": "AWS",
+    "GCP": "GCP",
+    "Azure": "Azure",
+}
+
+# 言語比率がこの閾値以上で「保有」とみなす
+_LANG_SKILL_THRESHOLD = 0.01
+
+
 def _detect_owned_skills(
     lang_ratios: Dict[str, float],
     topics: Set[str],
@@ -147,73 +208,19 @@ def _detect_owned_skills(
     """ユーザーが保有しているスキルを特定する。"""
     owned: Set[str] = set()
 
-    # 言語スキル（比率1%以上で保有とみなす）
-    threshold = 0.01
-    lang_skill_map = {
-        "Python": "Python", "Java": "Java", "Go": "Go",
-        "Rust": "Rust", "Ruby": "Ruby", "PHP": "PHP",
-        "TypeScript": "TypeScript", "JavaScript": "JavaScript",
-        "CSS": "CSS", "HTML": "HTML", "SCSS": "CSS",
-        "HCL": "Terraform", "Shell": "Shell",
-        "Kotlin": "Kotlin", "C#": "C#",
-    }
-    for lang, skill in lang_skill_map.items():
-        if lang_ratios.get(lang, 0) >= threshold:
+    for lang, skill in _LANG_SKILL_MAP.items():
+        if lang_ratios.get(lang, 0) >= _LANG_SKILL_THRESHOLD:
             owned.add(skill)
 
-    # トピック・フレームワークからスキル検出
-    topic_skill_map = {
-        "react": "React", "vue": "Vue", "angular": "Angular",
-        "nextjs": "Next.js", "docker": "Docker",
-        "kubernetes": "Kubernetes", "k8s": "Kubernetes",
-        "terraform": "Terraform", "aws": "AWS",
-        "gcp": "GCP", "azure": "Azure",
-        "ci-cd": "CI/CD", "graphql": "GraphQL",
-        "rest": "REST API", "api": "REST API",
-        "database": "SQL", "sql": "SQL",
-    }
-    for topic, skill in topic_skill_map.items():
+    for topic, skill in _TOPIC_SKILL_MAP.items():
         if topic in topics:
             owned.add(skill)
 
-    # ルートファイルからスキル検出
-    file_skill_map = {
-        "Dockerfile": "Docker",
-        "docker-compose.yml": "Docker",
-        "docker-compose.yaml": "Docker",
-        ".github": "CI/CD",
-        "Jenkinsfile": "CI/CD",
-        ".gitlab-ci.yml": "CI/CD",
-        ".circleci": "CI/CD",
-        "terraform": "Terraform",
-        ".terraform": "Terraform",
-    }
-    for fname, skill in file_skill_map.items():
+    for fname, skill in _FILE_SKILL_MAP.items():
         if fname in files:
             owned.add(skill)
 
-    # フレームワーク検出
-    framework_skill_map = {
-        "Docker": "Docker",
-        "Docker Compose": "Docker",
-        "GitHub Actions": "CI/CD",
-        "Jenkins": "CI/CD",
-        "GitLab CI": "CI/CD",
-        "CircleCI": "CI/CD",
-        "Terraform": "Terraform",
-        "React": "React",
-        "Vue": "Vue",
-        "Angular": "Angular",
-        "FastAPI": "REST API",
-        "Django": "REST API",
-        "Flask": "REST API",
-        "Express": "REST API",
-        "Spring Boot": "REST API",
-        "AWS": "AWS",
-        "GCP": "GCP",
-        "Azure": "Azure",
-    }
-    for fw, skill in framework_skill_map.items():
+    for fw, skill in _FRAMEWORK_SKILL_MAP.items():
         if fw in frameworks:
             owned.add(skill)
 

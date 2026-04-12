@@ -141,3 +141,15 @@ def infer_async_error_code(error_message: str | None) -> ErrorCode | None:
     if not error_message:
         return None
     return infer_error_code(500, error_message)
+
+
+def resolve_async_error_code(error_message: str | None) -> str | None:
+    """非同期タスクのエラーメッセージからエラーコード文字列を解決する。
+
+    ルーターで繰り返す `infer_async_error_code(msg).value if msg and ... else None`
+    パターンを一か所に集約する。
+    """
+    if not error_message:
+        return None
+    code = infer_async_error_code(error_message)
+    return code.value if code else None
