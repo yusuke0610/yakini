@@ -8,7 +8,7 @@ export APP_BOOTSTRAPPED=1
 # バックグラウンド pull だと pull 完了前にリクエストが来た際に 404 になるため同期化する
 if [ -n "${OLLAMA_BASE_URL:-}" ]; then
   OLLAMA_MODEL="${OLLAMA_MODEL:-gemma3:4b}"
-  OLLAMA_TIMEOUT="${OLLAMA_TIMEOUT:-600}"
+  OLLAMA_TIMEOUT="${OLLAMA_TIMEOUT:-1200}"
 
   # Ollama サーバが起動するまで最大 30 秒待機
   echo "Waiting for Ollama to be ready..."

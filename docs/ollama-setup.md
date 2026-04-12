@@ -60,7 +60,7 @@ curl -s http://localhost:11434/api/generate -d '{
 |---|---|---|
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama サーバーの URL |
 | `OLLAMA_MODEL` | `gemma3:4b` | 使用するモデル名 |
-| `OLLAMA_TIMEOUT` | `300.0` | 生成リクエストのタイムアウト秒数 |
+| `OLLAMA_TIMEOUT` | `1200.0` | 生成リクエストのタイムアウト秒数 |
 
 ## Docker で実行する場合
 

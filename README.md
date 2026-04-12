@@ -205,7 +205,7 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 | `LLM_PROVIDER` | `ollama` または `vertex` |
 | `OLLAMA_BASE_URL` | Ollama エンドポイント（デフォルト: `http://localhost:11434`） |
 | `OLLAMA_MODEL` | Ollama 利用時のモデル名（デフォルト: `gemma3:4b`） |
-| `OLLAMA_TIMEOUT` | Ollama 生成タイムアウト秒数（デフォルト: `300`） |
+| `OLLAMA_TIMEOUT` | Ollama 生成タイムアウト秒数（デフォルト: `1200`） |
 | `VERTEX_PROJECT_ID` / `VERTEX_LOCATION` | Vertex AI 利用時の設定 |
 | `VERTEX_MODEL` | Vertex AI 利用時のモデル名（デフォルト: `gemini-2.5-flash-lite`） |
 | `VITE_API_BASE_URL` | フロントエンド→バックエンドURL（デフォルト: `http://localhost:8000`） |
