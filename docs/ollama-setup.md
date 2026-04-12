@@ -57,7 +57,7 @@ curl -s http://localhost:11434/api/generate -d '{
 |---|---|---|
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama サーバーの URL |
 | `OLLAMA_MODEL` | `gemma4:31b` | 使用するモデル名 |
-| `OLLAMA_TIMEOUT` | `600` | 生成リクエストのタイムアウト秒数 |
+| `OLLAMA_TIMEOUT` | `1200.0` | 生成リクエストのタイムアウト秒数 |
 
 ## トラブルシューティング
 
@@ -87,7 +87,7 @@ ollama pull gemma4:31b
 
 ```bash
 export OLLAMA_MODEL=gemma4:31b
-export OLLAMA_TIMEOUT=600
+export OLLAMA_TIMEOUT=1200.0
 ```
 
 ### DevForge で AI 要約が表示されない
