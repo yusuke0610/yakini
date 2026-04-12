@@ -16,7 +16,7 @@ class OllamaClient(LLMClient):
 
     def __init__(self) -> None:
         self.base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-        self.model = os.environ.get("OLLAMA_MODEL", "gemma4:31b")
+        self.model = os.environ.get("OLLAMA_MODEL", "gemma3:4b")
         self.timeout = float(os.environ.get("OLLAMA_TIMEOUT", "1200.0"))  # デフォルトは 20 分
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
@@ -65,10 +65,13 @@ class OllamaClient(LLMClient):
             return ""
 
     async def check_available(self) -> bool:
-        """Ollama サーバーに接続可能か確認する。"""
+        """Ollama サーバーに接続可能、かつ指定モデルが利用可能か確認する。"""
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
                 resp = await client.get(f"{self.base_url}/api/tags")
-                return resp.status_code == 200
+                if resp.status_code != 200:
+                    return False
+                models = [m.get("name", "") for m in resp.json().get("models", [])]
+                return self.model in models
         except (httpx.ConnectError, httpx.TimeoutException):
             return False
