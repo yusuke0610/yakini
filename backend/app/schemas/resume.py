@@ -2,8 +2,9 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
 
+from ..core.date_utils import to_jst
 from ..core.messages import get_error
 
 
@@ -153,3 +154,8 @@ class ResumeResponse(ResumeBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("created_at", "updated_at")
+    def serialize_as_jst(self, dt: datetime) -> str:
+        """UTC datetime を JST (UTC+9) の ISO 8601 文字列にシリアライズする。"""
+        return to_jst(dt).isoformat()

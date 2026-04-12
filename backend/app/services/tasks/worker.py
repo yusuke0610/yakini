@@ -40,7 +40,12 @@ async def execute_task(task_type: TaskType, payload: dict) -> None:
 
     logger.info(
         "タスク開始",
-        extra={"task_id": task_type.value, "user_id": user_id, "record_id": record_id, "status": "running"},
+        extra={
+            "task_id": task_type.value,
+            "user_id": user_id,
+            "record_id": record_id,
+            "status": "running",
+        },
     )
 
     db = SessionLocal()
@@ -261,7 +266,9 @@ def _create_notification(db: Session, task_type: TaskType, user_id: str, status:
         if not titles:
             return
         title = titles[0] if status == "completed" else titles[1]
-        NotificationRepository.create(db=db, user_id=user_id, task_type=task_type.value, status=status, title=title)
+        NotificationRepository.create(
+            db=db, user_id=user_id, task_type=task_type.value, status=status, title=title
+        )
     except Exception:
         logger.warning("通知の作成に失敗しました（タスク処理には影響しません）", exc_info=True)
 

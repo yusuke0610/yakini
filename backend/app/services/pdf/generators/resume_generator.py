@@ -1,8 +1,11 @@
+from datetime import datetime
 from html import escape as _html_escape
 from pathlib import Path
 
 import markdown
 import weasyprint
+
+from ....core.date_utils import JST
 
 _CSS_PATH = Path(__file__).resolve().parent.parent / "templates" / "resume.css"
 _FONT_PATH = (
@@ -157,6 +160,12 @@ def _build_html(resume: dict) -> str:
 
     # タイトル
     parts.append("<h1>職 務 経 歴 書</h1>")
+
+    # 記載日（日本時間）
+    today = datetime.now(JST)
+    parts.append(
+        f'<div class="meta">記載日　{today.year}年{today.month}月{today.day}日</div>',
+    )
 
     # 氏名
     full_name = resume.get("full_name") or ""
