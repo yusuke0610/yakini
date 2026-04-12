@@ -131,18 +131,9 @@ def sanitize_project_name(name: str, context: SanitizeContext) -> str:
     return context.register_project(name)
 
 
-def sanitize_work_history_name(name: str, context: SanitizeContext) -> str:
-    """rirekisho.work_histories[].name を匿名化ラベルに変換する。
-
-    案件名と同じカテゴリで管理する。
-    """
-    return context.register_project(name)
-
-
 def strip_prohibited_fields(data: dict) -> dict:
     """C分類（原則送らない）フィールドを dict から除去して返す。
 
-    対象: full_name, name_furigana, address, postal_code, email,
-          phone, birthday, photo, motivation, personal_preferences, username
+    対象: full_name, email, motivation, personal_preferences, username
     """
     return {k: v for k, v in data.items() if k not in _PROHIBITED_FIELDS}

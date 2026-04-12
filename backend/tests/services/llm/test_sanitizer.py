@@ -5,7 +5,6 @@ from app.services.llm.sanitizer import (
     SanitizeContext,
     sanitize_project_name,
     sanitize_text,
-    sanitize_work_history_name,
     strip_prohibited_fields,
 )
 
@@ -54,7 +53,7 @@ def test_strip_prohibited_fields_returns_new_dict():
 
 
 # ============================================================
-# sanitize_project_name / sanitize_work_history_name
+# sanitize_project_name
 # ============================================================
 
 
@@ -67,16 +66,6 @@ def test_project_name_is_anonymized():
     assert label != raw_name
     assert raw_name not in label
     assert label == "[案件A]"
-
-
-def test_work_history_name_is_anonymized():
-    """sanitize_work_history_name が raw の職歴名をラベルに変換する。"""
-    context = SanitizeContext()
-    raw_name = "ECサイトリプレース案件"
-    label = sanitize_work_history_name(raw_name, context)
-
-    assert label != raw_name
-    assert raw_name not in label
 
 
 # ============================================================
