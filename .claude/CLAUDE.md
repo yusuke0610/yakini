@@ -79,3 +79,15 @@ VERTEX_MODEL         # 例: gemini-2.5-flash-lite
 ## スコープ別ルール
 
 バックエンド・フロントエンド・インフラ固有のルール（アーキテクチャ、DB設計、認証、LLM統合等）は `.claude/rules/` に分割済み。対象パスのファイルを編集する際に自動でロードされる。
+
+## ADR（Architecture Decision Record）
+
+技術選定・アーキテクチャ判断を行う際は必ず `docs/adr/` を確認し、
+既存の判断と矛盾しない実装を行うこと。
+
+新たに重要な技術判断を行う場合は `CONTRIBUTING.md` の ADR 運用ルールに従い、
+ADR を作成してから実装を開始すること。
+
+- ADR 一覧: `docs/adr/`
+- テンプレート: `docs/adr/0000-template.md`
+- 運用ルール: `CONTRIBUTING.md`
