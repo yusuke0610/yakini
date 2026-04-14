@@ -119,11 +119,16 @@ while IFS= read -r secret_full; do
   fi
 
   # DISABLED: 全て destroy
-  for ver in "${disabled_versions[@]}"; do
+  # bash 3.2（macOS デフォルト）では空配列を ${arr[@]} で展開すると
+  # set -u により "unbound variable" になるため ${arr[@]+"${arr[@]}"} を使う
+  for ver in "${disabled_versions[@]+"${disabled_versions[@]}"}"; do
     echo "  DISABLED（削除対象）: バージョン $ver"
   done
 
-  all_destroy=("${destroy_enabled[@]}" "${disabled_versions[@]}")
+  all_destroy=(
+    ${destroy_enabled[@]+"${destroy_enabled[@]}"}
+    ${disabled_versions[@]+"${disabled_versions[@]}"}
+  )
   total_destroy=$((total_destroy + ${#all_destroy[@]}))
 
   if [[ ${#all_destroy[@]} -eq 0 ]]; then
@@ -133,7 +138,7 @@ while IFS= read -r secret_full; do
 
   # 実際の削除（--execute 時のみ）
   if [[ "$DRY_RUN" == "false" ]]; then
-    for ver in "${all_destroy[@]}"; do
+    for ver in "${all_destroy[@]+"${all_destroy[@]}"}"; do
       echo -n "  destroy: バージョン $ver ... "
       if gcloud secrets versions destroy "$ver" \
           --secret="$secret_name" \
