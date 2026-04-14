@@ -86,12 +86,8 @@ class BlogScoreArticleResponse(BaseModel):
 
 
 class BlogScoreResponse(BaseModel):
-    """ブログスコアリング結果のレスポンス。"""
+    """ブログ統計サマリのレスポンス。"""
 
-    frequency_rank: str = Field("E", description="投稿頻度ランク (S-E)")
-    reaction_rank: str = Field("E", description="反応ランク (S-E)")
-    count_rank: str = Field("E", description="記事数ランク (S-E)")
-    overall_rank: str = Field("E", description="総合ランク (S-E)")
     tech_article_count: int = 0
     total_article_count: int = 0
     avg_monthly_posts: float = 0.0

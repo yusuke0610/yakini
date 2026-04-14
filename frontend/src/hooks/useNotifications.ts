@@ -34,7 +34,8 @@ export function useNotifications() {
     setIsLoading(true);
     try {
       const data = await getNotifications();
-      setNotifications(data);
+      // パネルを開く時点では未読のみを表示する（既読は非表示）
+      setNotifications(data.filter((n) => !n.is_read));
       setUnreadCount(data.filter((n) => !n.is_read).length);
     } catch {
       // エラーは無視

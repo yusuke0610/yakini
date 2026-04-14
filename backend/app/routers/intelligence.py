@@ -12,7 +12,7 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from sqlalchemy.orm import Session
 
-from ..core.errors import ErrorCode, infer_async_error_code, raise_app_error
+from ..core.errors import ErrorCode, raise_app_error, resolve_async_error_code
 from ..core.messages import get_error
 from ..core.security.auth import get_current_user
 from ..core.security.dependencies import limiter
@@ -56,11 +56,7 @@ def get_cache(
         position_advice=cache.position_advice,
         status=cache.status,
         error_message=cache.error_message,
-        error_code=(
-            infer_async_error_code(cache.error_message).value
-            if cache.error_message and infer_async_error_code(cache.error_message)
-            else None
-        ),
+        error_code=resolve_async_error_code(cache.error_message),
     )
 
 
@@ -76,11 +72,7 @@ def get_cache_status(
     return TaskStatusResponse(
         status=cache.status,
         error_message=cache.error_message,
-        error_code=(
-            infer_async_error_code(cache.error_message).value
-            if cache.error_message and infer_async_error_code(cache.error_message)
-            else None
-        ),
+        error_code=resolve_async_error_code(cache.error_message),
     )
 
 

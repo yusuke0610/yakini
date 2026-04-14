@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from ..core.date_utils import to_jst
 from ..core.security.auth import get_current_user
 from ..db import get_db
 from ..models import User
@@ -65,7 +66,7 @@ def list_notifications(
             title=n.title,
             message=n.message,
             is_read=n.is_read,
-            created_at=n.created_at.isoformat(),
+            created_at=to_jst(n.created_at).isoformat(),
         )
         for n in notifications
     ]

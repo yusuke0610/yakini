@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from ...core.messages import get_notification
 from ...db.database import SessionLocal
 from ...models import BlogSummaryCache, GitHubAnalysisCache
 from ...models.career_analysis import CareerAnalysis
@@ -19,17 +20,12 @@ from ...repositories.notification import NotificationRepository
 from ...services.intelligence.llm import get_llm_client
 from .base import TaskType
 
-# タスク種別ごとの通知タイトル定義
-_TASK_TITLES = {
-    TaskType.GITHUB_ANALYSIS: ("GitHub分析が完了しました", "GitHub分析に失敗しました"),
-    TaskType.BLOG_SUMMARIZE: ("ブログAI分析が完了しました", "ブログAI分析に失敗しました"),
-    TaskType.CAREER_ANALYSIS: ("キャリア分析が完了しました", "キャリア分析に失敗しました"),
-}
-
 logger = logging.getLogger(__name__)
+
 
 # duration_ms がこの閾値を超えたら WARNING を出す（5分）
 _SLOW_TASK_THRESHOLD_MS = 300_000
+
 
 
 async def execute_task(task_type: TaskType, payload: dict) -> None:
@@ -40,7 +36,12 @@ async def execute_task(task_type: TaskType, payload: dict) -> None:
 
     logger.info(
         "タスク開始",
-        extra={"task_id": task_type.value, "user_id": user_id, "record_id": record_id, "status": "running"},
+        extra={
+            "task_id": task_type.value,
+            "user_id": user_id,
+            "record_id": record_id,
+            "status": "running",
+        },
     )
 
     db = SessionLocal()
@@ -257,11 +258,10 @@ async def _run_career_analysis(db: Session, payload: dict) -> None:
 def _create_notification(db: Session, task_type: TaskType, user_id: str, status: str) -> None:
     """タスク完了・失敗時に通知を作成する。失敗しても例外を握りつぶす（通知は補助機能）。"""
     try:
-        titles = _TASK_TITLES.get(task_type)
-        if not titles:
-            return
-        title = titles[0] if status == "completed" else titles[1]
-        NotificationRepository.create(db=db, user_id=user_id, task_type=task_type.value, status=status, title=title)
+        title = get_notification(task_type.value, status)
+        NotificationRepository.create(
+            db=db, user_id=user_id, task_type=task_type.value, status=status, title=title
+        )
     except Exception:
         logger.warning("通知の作成に失敗しました（タスク処理には影響しません）", exc_info=True)
 

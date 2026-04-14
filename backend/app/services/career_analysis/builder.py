@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from ...models import BlogSummaryCache, GitHubAnalysisCache, Resume
 from ...services.intelligence.llm.base import LLMClient
-from .prompt_builder import SYSTEM_PROMPT, build_user_prompt
+from ...utils.prompt_loader import load_prompt
+from .prompt_builder import build_user_prompt
 from .tech_stack_merger import (
     collect_github_skills,
     collect_qualification_names,
@@ -92,7 +93,8 @@ async def build_career_analysis(
     )
 
     # LLM 呼び出し
-    raw_response = await llm_client.generate(SYSTEM_PROMPT, user_prompt)
+    system_prompt = load_prompt("career_analysis.md")
+    raw_response = await llm_client.generate(system_prompt, user_prompt)
     if not raw_response:
         raise ValueError("LLM からの応答が空です")
 

@@ -40,3 +40,8 @@ def get_error(key: str, **kwargs: str) -> str:
 def get_success(key: str, **kwargs: str) -> str:
     """正常系メッセージを取得する。"""
     return _get_message("success", key, **kwargs)
+
+
+def get_notification(task_type: str, status: str) -> str:
+    """通知タイトルを取得する。status は 'completed' or 'failed'。"""
+    return _get_message("notification", f"{task_type}.{status}")
