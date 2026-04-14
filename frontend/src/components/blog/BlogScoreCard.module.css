@@ -11,12 +11,6 @@
   color: var(--text-secondary);
 }
 
-.loading {
-  color: var(--text-muted);
-  font-style: italic;
-  margin: 0;
-}
-
 /* ── Stat Grid ──────────────────────────────────────────────── */
 
 .statGrid {

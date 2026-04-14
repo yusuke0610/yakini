@@ -30,11 +30,13 @@ def get_redis_client():
     try:
         import redis.asyncio as aioredis
 
+        # ssl_cert_reqs は TLS 接続（rediss://）専用。redis:// では渡すと TypeError になる。
+        ssl_kwargs: dict = {"ssl_cert_reqs": None} if url.startswith("rediss://") else {}
         _client = aioredis.from_url(
             url,
             password=token if token else None,
             decode_responses=True,
-            ssl_cert_reqs=None,
+            **ssl_kwargs,
         )
         return _client
     except Exception:

@@ -8,6 +8,7 @@ import {
   type AnalysisResponse,
 } from "../../api";
 import { ErrorToast } from "../ui/ErrorToast";
+import { InlineSpinner } from "../ui/InlineSpinner";
 import { useAsyncAnalysisPage } from "../../hooks/analysis/useAsyncAnalysisPage";
 import { TaskProgressStepper } from "../TaskProgressStepper";
 import { LanguageBar } from "./LanguageBar";
@@ -74,10 +75,7 @@ export function GitHubAnalysisPage() {
   if (phase === "loading-cache") {
     return (
       <div className={shared.pageBody}>
-        <div className={styles.loading}>
-          <div className={styles.spinner} />
-          <p>読み込み中...</p>
-        </div>
+        <InlineSpinner label="読み込み中..." />
       </div>
     );
   }

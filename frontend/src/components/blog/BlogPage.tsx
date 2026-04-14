@@ -6,6 +6,7 @@ import { NoteIcon } from "../icons/NoteIcon";
 import { QiitaIcon } from "../icons/QiitaIcon";
 import { BlogScoreCard } from "./BlogScoreCard";
 import { BlogAnalysisSection } from "./BlogAnalysisSection";
+import { InlineSpinner } from "../ui/InlineSpinner";
 import shared from "../../styles/shared.module.css";
 import styles from "./BlogPage.module.css";
 
@@ -82,7 +83,7 @@ export function BlogPage() {
           <h1>ブログ連携</h1>
         </div>
         <div className={shared.pageBody}>
-          <p className={styles.emptyMessage}>読み込み中...</p>
+          <InlineSpinner label="読み込み中..." />
         </div>
       </>
     );
