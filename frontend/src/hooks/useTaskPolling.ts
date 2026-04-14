@@ -17,35 +17,64 @@ interface UseTaskPollingOptions {
   onCompleted: () => void;
   /** 失敗時コールバック */
   onFailed: (error: AppErrorState) => void;
-  /** ポーリング間隔（ms、デフォルト: 5000） */
+  /** 初回ポーリング間隔（ms、デフォルト: 5000） */
   intervalMs?: number;
+  /** バックオフ最大間隔（ms、デフォルト: intervalMs と同値＝バックオフなし） */
+  maxIntervalMs?: number;
+  /** バックオフ乗数（デフォルト: 1 ＝固定間隔） */
+  multiplier?: number;
 }
 
 /**
  * バックグラウンドタスクのステータスをポーリングする汎用フック。
- * unmount 時に clearInterval するが、バックエンド処理はそのまま継続される。
+ * unmount 時にタイマーをクリアするが、バックエンド処理はそのまま継続される。
+ * maxIntervalMs / multiplier を渡すと指数バックオフが有効になる。
  */
 export function useTaskPolling(options: UseTaskPollingOptions) {
-  const { checkStatus, onCompleted, onFailed, intervalMs = 5000 } = options;
+  const {
+    checkStatus,
+    onCompleted,
+    onFailed,
+    intervalMs = 5000,
+    maxIntervalMs,
+    multiplier = 1,
+  } = options;
+
   const [isPolling, setIsPolling] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const intervalRef = useRef<number | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+  // 次回スケジュールに使う現在の間隔（バックオフで変化する）
+  const currentIntervalRef = useRef(intervalMs);
   const callbacksRef = useRef({ onCompleted, onFailed, checkStatus });
+  const configRef = useRef({
+    intervalMs,
+    maxIntervalMs: maxIntervalMs ?? intervalMs,
+    multiplier,
+  });
 
-  // コールバックを ref で最新に保つ（レンダー外で更新）
+  // コールバックと設定を ref で最新に保つ
   useEffect(() => {
     callbacksRef.current = { onCompleted, onFailed, checkStatus };
   });
+  useEffect(() => {
+    configRef.current = {
+      intervalMs,
+      maxIntervalMs: maxIntervalMs ?? intervalMs,
+      multiplier,
+    };
+  }, [intervalMs, maxIntervalMs, multiplier]);
 
   const stopPolling = useCallback(() => {
-    if (intervalRef.current !== null) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+    if (timeoutRef.current !== null) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
     setIsPolling(false);
   }, []);
 
   const startPolling = useCallback(() => {
+    // バックオフを初期値にリセット
+    currentIntervalRef.current = configRef.current.intervalMs;
     setIsPolling(true);
     setStatus("pending");
   }, []);
@@ -53,9 +82,25 @@ export function useTaskPolling(options: UseTaskPollingOptions) {
   useEffect(() => {
     if (!isPolling) return;
 
+    let cancelled = false;
+
+    /**
+     * 次回ポーリングをスケジュールし、現在の間隔をバックオフ係数で更新する。
+     * - 現在の間隔でスケジュール → その後に乗数を適用
+     * - これにより initialInterval が最初の待ち時間になる
+     */
+    const scheduleNext = () => {
+      const { maxIntervalMs: max, multiplier: mult } = configRef.current;
+      const current = currentIntervalRef.current;
+      currentIntervalRef.current = Math.min(current * mult, max);
+      timeoutRef.current = window.setTimeout(poll, current);
+    };
+
     const poll = async () => {
+      if (cancelled) return;
       try {
         const data = await callbacksRef.current.checkStatus();
+        if (cancelled) return;
         setStatus(data.status);
 
         if (data.status === "completed") {
@@ -69,30 +114,31 @@ export function useTaskPolling(options: UseTaskPollingOptions) {
                 code: data.error_code ?? "INTERNAL_ERROR",
                 message: data.error_message || "処理に失敗しました",
                 retryAfter:
-                  typeof data.retry_after === "number"
-                    ? data.retry_after
-                    : null,
+                  typeof data.retry_after === "number" ? data.retry_after : null,
                 errorId: data.error_id,
               }),
             ),
           );
+        } else {
+          scheduleNext();
         }
       } catch {
         // ネットワークエラーは無視してリトライ
+        if (!cancelled) scheduleNext();
       }
     };
 
     // 初回即実行
     poll();
-    intervalRef.current = window.setInterval(poll, intervalMs);
 
     return () => {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      cancelled = true;
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
     };
-  }, [isPolling, intervalMs, stopPolling]);
+  }, [isPolling, stopPolling]);
 
   return { startPolling, stopPolling, isPolling, status };
 }

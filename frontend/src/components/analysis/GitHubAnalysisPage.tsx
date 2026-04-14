@@ -3,11 +3,13 @@ import {
   analyzeGitHub,
   getAnalysisCache,
   getAnalysisCacheStatus,
+  getAnalysisProgress,
   toAppError,
   type AnalysisResponse,
 } from "../../api";
 import { ErrorToast } from "../ui/ErrorToast";
 import { useAsyncAnalysisPage } from "../../hooks/analysis/useAsyncAnalysisPage";
+import { TaskProgressStepper } from "../TaskProgressStepper";
 import { LanguageBar } from "./LanguageBar";
 import { PositionRadarChart } from "./PositionRadarChart";
 import shared from "../../styles/shared.module.css";
@@ -31,6 +33,7 @@ export function GitHubAnalysisPage() {
     setError,
     transitionToPolling,
     backToInput,
+    progress,
   } = useAsyncAnalysisPage<AnalysisResponse>({
     loadCache: async () => {
       const cache = await getAnalysisCache();
@@ -41,6 +44,7 @@ export function GitHubAnalysisPage() {
       return { result: cache.analysis_result, status: cache.status };
     },
     checkStatus: getAnalysisCacheStatus,
+    fetchProgress: getAnalysisProgress,
   });
 
   /**
@@ -125,13 +129,7 @@ export function GitHubAnalysisPage() {
   if (phase === "polling") {
     return (
       <div className={shared.pageBody}>
-        <div className={styles.loading}>
-          <div className={styles.spinner} />
-          <p>GitHubプロフィールを分析中...</p>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-            他の画面に移動しても処理は継続されます
-          </p>
-        </div>
+        <TaskProgressStepper progress={progress} />
       </div>
     );
   }
