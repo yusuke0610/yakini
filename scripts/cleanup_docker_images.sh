@@ -103,13 +103,15 @@ while IFS= read -r repo_full; do
 
   echo "─── リポジトリ: $repo_name ($registry) ───────────────────────────────"
 
-  # UPDATE_TIME 降順でイメージ一覧を取得
+  # CREATE_TIME 降順でイメージ一覧を取得
+  # UPDATE_TIME はタグ操作で変わるため「最後に push された順」を表さない。
+  # CREATE_TIME（初回 push 時刻）を使うことで Terraform の most_recent_versions と同じ基準になる。
   # --include-tags: タグ情報を含める（untagged 判定に必要）
   # 1 ダイジェストが複数タグを持つ場合、1 行に TAGS がまとめて返される
   images_raw=$(gcloud artifacts docker images list "$registry" \
     --include-tags \
-    --sort-by="~UPDATE_TIME" \
-    --format="value(IMAGE,TAGS,DIGEST,UPDATE_TIME)" \
+    --sort-by="~CREATE_TIME" \
+    --format="value(IMAGE,TAGS,DIGEST,CREATE_TIME)" \
     2>/dev/null) || {
     echo "  警告: イメージ一覧の取得に失敗しました。スキップします。"
     echo ""
