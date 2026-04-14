@@ -99,9 +99,9 @@ while IFS= read -r secret_full; do
     [[ -z "$ver_full" ]] && continue
     ver_num="${ver_full##*/}"
     case "$state" in
-      ENABLED)  enabled_versions+=("$ver_num") ;;
-      DISABLED) disabled_versions+=("$ver_num") ;;
-      # DESTROYED はスキップ
+      enabled)  enabled_versions+=("$ver_num") ;;
+      disabled) disabled_versions+=("$ver_num") ;;
+      # destroyed はスキップ
     esac
   done <<< "$versions"
 
