@@ -5,6 +5,10 @@ locals {
     "admin-token",
     "github-client-id",
     "github-client-secret",
+    # 棚卸し TODO: "field-encryption-key"（FIELD_ENCRYPTION_KEY / Fernet 鍵）は
+    # PII 削除対応（Rirekisho 個人情報フィールドの暗号化廃止）が完了した場合、
+    # このリストから除外し対応する Secret Manager シークレットを削除すること。
+    # 削除前に全環境（dev/stg/prod）の Cloud Run 設定から環境変数を外すこと。
   ]
   required_secret_env = {
     SECRET_KEY           = "secret-key"
