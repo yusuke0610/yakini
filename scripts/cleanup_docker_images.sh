@@ -167,10 +167,12 @@ while IFS= read -r repo_full; do
   if [[ "$DRY_RUN" == "false" ]]; then
     for ref in ${repo_delete[@]+"${repo_delete[@]}"}; do
       echo -n "  delete: $ref ... "
+      # --delete-tags: タグ付きイメージも削除できるようタグを同時に削除する
       # --async: 削除完了を待たない（大量削除時のタイムアウト回避）
       if gcloud artifacts docker images delete "$ref" \
           --quiet \
           --async \
+          --delete-tags \
           2>/dev/null; then
         echo "受付済み"
       else
