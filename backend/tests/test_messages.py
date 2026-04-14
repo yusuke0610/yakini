@@ -1,4 +1,13 @@
-from app.core.messages import get_error, get_success, load_messages
+from app.core.messages import get_error, get_notification, get_success, load_messages
+
+
+def test_get_notification_returns_message() -> None:
+    load_messages()
+
+    assert (
+        get_notification("github_analysis", "completed") == "GitHub分析が完了しました"
+    )
+    assert get_notification("github_analysis", "failed") == "GitHub分析に失敗しました"
 
 
 def test_get_error_returns_message_by_key() -> None:

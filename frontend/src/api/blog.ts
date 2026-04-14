@@ -13,10 +13,6 @@ export interface BlogScoreArticle {
 }
 
 export interface BlogScoreResponse {
-  frequency_rank: string;
-  reaction_rank: string;
-  count_rank: string;
-  overall_rank: string;
   tech_article_count: number;
   total_article_count: number;
   avg_monthly_posts: number;

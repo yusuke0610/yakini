@@ -56,7 +56,7 @@ test.describe("通知ベル", () => {
         status: "failed",
         title: "キャリア分析に失敗しました",
         message: null,
-        is_read: true,
+        is_read: false,
         created_at: new Date().toISOString(),
       },
     ];

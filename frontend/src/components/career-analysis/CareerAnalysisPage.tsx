@@ -1,123 +1,33 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
-  generateAnalysis,
-  listAnalyses,
-  deleteAnalysis,
-  getAnalysisStatus,
-  toAppError,
   type CareerAnalysisResponse,
   type CareerAnalysisResult,
   type EvidenceSource,
 } from "../../api";
-import { useTaskPolling } from "../../hooks/useTaskPolling";
-import type { AppErrorState } from "../../utils/appError";
+import { useCareerAnalysisPage } from "../../hooks/useCareerAnalysisPage";
 import { ErrorToast } from "../ui/ErrorToast";
 import styles from "./CareerAnalysisPage.module.css";
-
-type Phase = "loading" | "input" | "polling" | "list" | "detail";
 
 /**
  * AI キャリアパス分析ページ。
  * 分析生成・履歴管理・結果表示を1画面で行う。
  */
 export function CareerAnalysisPage() {
-  const [phase, setPhase] = useState<Phase>("loading");
-  const [error, setError] = useState<AppErrorState | null>(null);
-  const [analyses, setAnalyses] = useState<CareerAnalysisResponse[]>([]);
+  const { phase, setPhase, error, analyses, handleGenerate, handleDelete } =
+    useCareerAnalysisPage();
   const [selected, setSelected] = useState<CareerAnalysisResponse | null>(null);
   const [targetPosition, setTargetPosition] = useState("");
-  const [pollingId, setPollingId] = useState<number | null>(null);
-
-  const reloadAnalyses = useCallback(async () => {
-    try {
-      const data = await listAnalyses();
-      setAnalyses(data);
-      return data;
-    } catch {
-      return [];
-    }
-  }, []);
-
-  const { startPolling, isPolling } = useTaskPolling({
-    checkStatus: () => getAnalysisStatus(pollingId!),
-    onCompleted: async () => {
-      const data = await reloadAnalyses();
-      setPhase(data.length > 0 ? "list" : "input");
-    },
-    onFailed: (err) => {
-      setError(err);
-      reloadAnalyses().then((data) => {
-        setPhase(data.length > 0 ? "list" : "input");
-      });
-    },
-  });
-
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
-      try {
-        const data = await listAnalyses();
-        if (!active) return;
-        setAnalyses(data);
-
-        // pending/processing のレコードがあればポーリング再開
-        const pending = data.find(
-          (a) => a.status === "pending" || a.status === "processing",
-        );
-        if (pending) {
-          setPollingId(pending.id);
-          setPhase("polling");
-        } else {
-          setPhase(data.length > 0 ? "list" : "input");
-        }
-      } catch {
-        if (!active) return;
-        setPhase("input");
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // pollingId がセットされたらポーリング開始
-  useEffect(() => {
-    if (pollingId !== null && phase === "polling" && !isPolling) {
-      startPolling();
-    }
-  }, [pollingId, phase, isPolling, startPolling]);
-
-  const handleGenerate = async () => {
-    if (!targetPosition.trim()) return;
-    setError(null);
-    try {
-      const result = await generateAnalysis(targetPosition.trim());
-      setPollingId(result.id);
-      setPhase("polling");
-    } catch (e) {
-      setError(toAppError(e, "分析に失敗しました"));
-      setPhase("input");
-    }
-  };
 
   const handleSelect = (a: CareerAnalysisResponse) => {
     setSelected(a);
     setPhase("detail");
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      await deleteAnalysis(id);
-      const updated = analyses.filter((a) => a.id !== id);
-      setAnalyses(updated);
-      if (selected?.id === id) {
-        setSelected(null);
-        setPhase(updated.length > 0 ? "list" : "input");
-      }
-    } catch (e) {
-      setError(toAppError(e, "削除に失敗しました"));
+  const handleDeleteWithSelected = async (id: number) => {
+    const updated = await handleDelete(id);
+    if (updated !== null && selected?.id === id) {
+      setSelected(null);
+      setPhase(updated.length > 0 ? "list" : "input");
     }
   };
 
@@ -163,7 +73,7 @@ export function CareerAnalysisPage() {
           </div>
           <button
             className={styles.generateButton}
-            onClick={handleGenerate}
+            onClick={() => handleGenerate(targetPosition)}
             disabled={!targetPosition.trim()}
           >
             分析を開始
@@ -174,7 +84,7 @@ export function CareerAnalysisPage() {
               message={error.message}
               action={error.action}
               errorId={error.errorId}
-              onRetry={targetPosition.trim() ? handleGenerate : undefined}
+              onRetry={targetPosition.trim() ? () => handleGenerate(targetPosition) : undefined}
             />
           )}
         </div>
@@ -199,7 +109,7 @@ export function CareerAnalysisPage() {
                     {a.status === "completed" && a.result && (
                       <button onClick={() => handleSelect(a)}>表示</button>
                     )}
-                    <button className={styles.deleteButton} onClick={() => handleDelete(a.id)}>
+                    <button className={styles.deleteButton} onClick={() => handleDeleteWithSelected(a.id)}>
                       削除
                     </button>
                   </div>

@@ -16,8 +16,8 @@ services:
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
       OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_MODEL: qwen2.5:3b
-      OLLAMA_TIMEOUT: "600"
+      OLLAMA_MODEL: gemma3:4b
+      OLLAMA_TIMEOUT: "1200.0"
     ports:
       - "8000:8000"
     volumes:

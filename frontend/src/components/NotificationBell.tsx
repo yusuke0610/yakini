@@ -5,7 +5,7 @@ import { useNotifications } from "../hooks/useNotifications";
 import { BellIcon } from "./icons/BellIcon";
 import styles from "./NotificationBell.module.css";
 
-/** 通知作成日時を相対表記に変換する（例: 3分前）。 */
+/** 通知作成日時を相対表記に変換する（例: 3分前）。isoString はタイムゾーン付き（+09:00）を前提とする。 */
 function formatRelativeTime(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime();
   const minutes = Math.floor(diff / 60_000);
@@ -32,9 +32,8 @@ function NotificationItem({
       onKeyDown={(e) => e.key === "Enter" && !notification.is_read && onRead(notification.id)}
     >
       <span
-        className={`${styles.statusDot} ${
-          notification.status === "completed" ? styles.statusDotCompleted : styles.statusDotFailed
-        }`}
+        className={`${styles.statusDot} ${notification.status === "completed" ? styles.statusDotCompleted : styles.statusDotFailed
+          }`}
       />
       <div className={styles.itemBody}>
         <div className={styles.itemTitle}>{notification.title}</div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import {
   getBlogAccounts,
@@ -6,11 +6,9 @@ import {
   deleteBlogAccount,
   getBlogArticles,
   syncBlogAccount,
-  summarizeBlogArticles,
-  getBlogSummaryCache,
-  getBlogSummaryCacheStatus,
 } from "../api";
 import type { BlogAccount, BlogArticle } from "../types";
+import { useBlogSummaryPolling } from "./useBlogSummaryPolling";
 
 type PlatformKey = "zenn" | "note" | "qiita";
 
@@ -36,59 +34,8 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
   /** 同期中のプラットフォーム */
   const [syncingPlatform, setSyncingPlatform] = useState<string | null>(null);
 
-  /** AI分析結果 */
-  const [summary, setSummary] = useState<string | null>(null);
-  /** AI分析実行中フラグ（ポーリング含む） */
-  const [summaryLoading, setSummaryLoading] = useState(false);
-
-  /** ポーリング用 interval ref */
-  const pollRef = useRef<number | null>(null);
-
   /** アカウント map（platform → account） */
   const accountMap = new Map(accounts.map((a) => [a.platform, a]));
-
-  const stopSummaryPolling = useCallback(() => {
-    if (pollRef.current !== null) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
-
-  /**
-   * サマリポーリングを開始する。
-   */
-  const startSummaryPolling = useCallback(() => {
-    setSummaryLoading(true);
-    if (pollRef.current !== null) return;
-
-    const poll = async () => {
-      try {
-        const data = await getBlogSummaryCacheStatus();
-        if (data.status === "completed") {
-          stopSummaryPolling();
-          const cached = await getBlogSummaryCache();
-          if (cached.available && cached.summary) {
-            setSummary(cached.summary);
-          }
-          setSummaryLoading(false);
-        } else if (data.status === "failed") {
-          stopSummaryPolling();
-          setError(data.error_message || "AI分析に失敗しました");
-          setSummaryLoading(false);
-        }
-      } catch {
-        // ネットワークエラーは無視してリトライ
-      }
-    };
-
-    poll();
-    pollRef.current = window.setInterval(poll, 5000);
-  }, [stopSummaryPolling]);
-
-  // unmount 時にクリーンアップ
-  useEffect(() => {
-    return () => stopSummaryPolling();
-  }, [stopSummaryPolling]);
 
   /**
    * アカウント一覧と記事一覧を再取得する。
@@ -114,20 +61,8 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     loadData();
   }, [loadData]);
 
-  /** 初回マウント時に保存済みの AI 分析結果を読み込む。pending/processing ならポーリング再開。 */
-  useEffect(() => {
-    getBlogSummaryCache()
-      .then((cached) => {
-        if (cached.status === "pending" || cached.status === "processing") {
-          startSummaryPolling();
-          return;
-        }
-        if (cached.available && cached.summary) {
-          setSummary(cached.summary);
-        }
-      })
-      .catch(() => {});
-  }, [startSummaryPolling]);
+  const { summary, summaryLoading, summaryError, handleSummarize } =
+    useBlogSummaryPolling(articles);
 
   /**
    * ユーザー名を保存（連携）し、自動で記事を同期する。
@@ -203,34 +138,11 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     }
   };
 
-  /**
-   * AI分析をバックグラウンドで実行する。
-   */
-  const handleSummarize = async () => {
-    if (articles.length === 0) return;
-    setSummaryLoading(true);
-    setSummary(null);
-    setError(null);
-    try {
-      const result = await summarizeBlogArticles(articles);
-      if (!result.available && result.status !== "pending") {
-        setError("AI分析サーバーに接続できません");
-        setSummaryLoading(false);
-        return;
-      }
-      // 202 返却 → ポーリング開始
-      startSummaryPolling();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "AI分析に失敗しました");
-      setSummaryLoading(false);
-    }
-  };
-
   return {
     accounts,
     articles,
     loading,
-    error,
+    error: error || summaryError,
     success,
     draftUsernames,
     setDraftUsernames,

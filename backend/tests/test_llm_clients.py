@@ -58,10 +58,11 @@ def test_ollama_generate_connect_error():
 
 
 def test_ollama_check_available_success():
-    """Ollama ヘルスチェック: 200 で True を返す。"""
+    """Ollama ヘルスチェック: 指定モデルが存在する場合に True を返す。"""
     client = OllamaClient()
     mock_response = MagicMock()
     mock_response.status_code = 200
+    mock_response.json.return_value = {"models": [{"name": client.model}]}
 
     with patch("httpx.AsyncClient") as mock_cls:
         mock_http = AsyncMock()
@@ -71,6 +72,23 @@ def test_ollama_check_available_success():
         mock_cls.return_value = mock_http
 
         assert _run(client.check_available()) is True
+
+
+def test_ollama_check_available_model_not_found():
+    """指定モデルが pull されていない場合に False を返す。"""
+    client = OllamaClient()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"models": [{"name": "other_model:7b"}]}
+
+    with patch("httpx.AsyncClient") as mock_cls:
+        mock_http = AsyncMock()
+        mock_http.get.return_value = mock_response
+        mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+        mock_http.__aexit__ = AsyncMock(return_value=False)
+        mock_cls.return_value = mock_http
+
+        assert _run(client.check_available()) is False
 
 
 def test_ollama_check_available_timeout():
@@ -96,8 +114,8 @@ def test_ollama_uses_lightweight_defaults():
     with patch.dict(os.environ, env, clear=True):
         client = OllamaClient()
 
-    assert client.model == "qwen2.5:3b"
-    assert client.timeout == 600.0
+    assert client.model == "gemma3:4b"
+    assert client.timeout == 1200.0
 
 
 # ---------- VertexClient ----------

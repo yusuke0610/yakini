@@ -34,17 +34,16 @@ def test_is_tech_article_no_match():
 
 
 def test_empty_articles():
-    """記事0件の場合、全ランクEであること。"""
+    """記事0件の場合、統計がゼロであること。"""
     result = calculate_blog_score([])
-    assert result.overall_rank == "E"
-    assert result.frequency_rank == "E"
-    assert result.reaction_rank == "E"
-    assert result.count_rank == "E"
     assert result.tech_article_count == 0
+    assert result.total_article_count == 0
+    assert result.avg_monthly_posts == 0.0
+    assert result.avg_likes == 0.0
 
 
 def test_no_tech_articles():
-    """技術記事0件の場合、全ランクEであること。"""
+    """技術記事0件の場合、tech_article_count が0であること。"""
     articles = [
         {
             "id": "1",
@@ -56,14 +55,15 @@ def test_no_tech_articles():
         },
     ]
     result = calculate_blog_score(articles)
-    assert result.overall_rank == "E"
     assert result.tech_article_count == 0
     assert result.total_article_count == 1
+    assert result.avg_monthly_posts == 0.0
+    assert result.avg_likes == 0.0
 
 
-def test_frequency_rank_s():
-    """月4回以上の投稿でSランクになること。"""
-    # 1ヶ月で4記事 → S
+def test_avg_monthly_posts():
+    """月間平均投稿数が正しく計算されること。"""
+    # 1ヶ月で4記事 → avg_monthly_posts = 4.0
     articles = [
         {
             "id": str(i),
@@ -76,60 +76,7 @@ def test_frequency_rank_s():
         for i in range(4)
     ]
     result = calculate_blog_score(articles)
-    assert result.frequency_rank == "S"
-
-
-def test_reaction_rank():
-    """平均いいね数に基づくランク算出が正しいこと。"""
-    articles = [
-        {
-            "id": "1",
-            "title": "Tech",
-            "url": "https://example.com/1",
-            "published_at": "2024-01-01",
-            "likes_count": 60,
-            "tags": ["Python"],
-        },
-    ]
-    result = calculate_blog_score(articles)
-    assert result.reaction_rank == "S"  # 60 >= 50
-
-
-def test_count_rank():
-    """技術記事数に基づくランク算出が正しいこと。"""
-    articles = [
-        {
-            "id": str(i),
-            "title": f"Tech {i}",
-            "url": f"https://example.com/{i}",
-            "published_at": "2024-01-01",
-            "likes_count": 0,
-            "tags": ["Python"],
-        }
-        for i in range(50)
-    ]
-    result = calculate_blog_score(articles)
-    assert result.count_rank == "S"  # 50 >= 50
-
-
-def test_overall_rank_calculation():
-    """総合ランクが3軸の平均から算出されること。"""
-    # 1件、いいね0、1ヶ月前の投稿
-    articles = [
-        {
-            "id": "1",
-            "title": "Tech",
-            "url": "https://example.com/1",
-            "published_at": "2026-03-01",
-            "likes_count": 0,
-            "tags": ["Python"],
-        },
-    ]
-    result = calculate_blog_score(articles)
-    # count_rank = E (1件), reaction_rank = E (0いいね)
-    # frequency は1ヶ月で1回 → B
-    # (3 + 0 + 0) / 3 = 1.0 → D
-    assert result.overall_rank in ["D", "C", "E"]  # 頻度次第
+    assert result.avg_monthly_posts == 4.0
 
 
 def test_articles_flagged_correctly():
