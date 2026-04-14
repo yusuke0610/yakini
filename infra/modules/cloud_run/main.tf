@@ -118,6 +118,14 @@ resource "google_cloud_run_v2_service" "app" {
         name  = "CLOUD_TASKS_SERVICE_ACCOUNT"
         value = var.cloud_tasks_service_account
       }
+      env {
+        name  = "UPSTASH_REDIS_URL"
+        value = var.upstash_redis_url
+      }
+      env {
+        name  = "UPSTASH_REDIS_TOKEN"
+        value = var.upstash_redis_token
+      }
 
       dynamic "env" {
         for_each = local.required_secret_env

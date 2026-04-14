@@ -23,6 +23,7 @@ from ..schemas.intelligence import (
     AnalyzeRequest,
     CachedAnalysisResponse,
     PositionAdviceResponse,
+    ProgressResponse,
 )
 from ..services.intelligence.llm_advice_service import LLMPositionAdviceService
 from ..services.tasks import TaskType, get_task_dispatcher
@@ -58,6 +59,20 @@ def get_cache(
         error_message=cache.error_message,
         error_code=resolve_async_error_code(cache.error_message),
     )
+
+
+@router.get("/progress", response_model=ProgressResponse)
+async def get_analysis_progress(
+    user: User = Depends(get_current_user),
+):
+    """GitHub 分析タスクの進捗を取得する（ポーリング用）。
+
+    Redis にデータがない場合（タスク未開始・Redis 障害）は step_index=0 のデフォルトを返す。
+    """
+    from ..services.progress_service import get_progress
+
+    data = await get_progress(user.id)
+    return ProgressResponse(**data)
 
 
 @router.get("/cache/status", response_model=TaskStatusResponse)

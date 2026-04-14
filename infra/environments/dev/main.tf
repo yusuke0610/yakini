@@ -58,6 +58,8 @@ module "cloud_run" {
   cloud_tasks_queue               = module.cloud_tasks.queue_name
   cloud_tasks_location            = local.region
   cloud_tasks_service_account     = module.service_account.email
+  upstash_redis_url               = var.upstash_redis_url
+  upstash_redis_token             = var.upstash_redis_token
 }
 
 module "monitoring" {
