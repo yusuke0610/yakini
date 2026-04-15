@@ -26,7 +26,11 @@ def _run(coro):
 
 
 def test_github_analysis_timeout_propagates(db_session: Session) -> None:
-    """run_pipeline で asyncio.TimeoutError が発生した場合に例外が伝播することを確認する。"""
+    """collect_repos で asyncio.TimeoutError が発生した場合に例外が伝播することを確認する。
+
+    _run_github_analysis は run_pipeline を呼ばず collect_repos を直接呼ぶため、
+    パッチ対象は collect_repos が正しい。set_progress（Redis）もモックが必要。
+    """
     user = UserRepository(db_session).create(
         "github:timeout-user",
         hashed_password=None,
@@ -36,11 +40,16 @@ def test_github_analysis_timeout_propagates(db_session: Session) -> None:
     db_session.add(cache)
     db_session.commit()
 
-    # ローカルインポートされる run_pipeline を patch する
-    with patch(
-        "app.services.intelligence.pipeline.run_pipeline",
-        new_callable=AsyncMock,
-        side_effect=asyncio.TimeoutError,
+    with (
+        patch(
+            "app.services.intelligence.github_collector.collect_repos",
+            new_callable=AsyncMock,
+            side_effect=asyncio.TimeoutError,
+        ),
+        patch(
+            "app.services.progress_service.set_progress",
+            new_callable=AsyncMock,
+        ),
     ):
         with pytest.raises(asyncio.TimeoutError):
             _run(

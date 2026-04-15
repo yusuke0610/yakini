@@ -25,6 +25,7 @@ from .core.security.csrf import CSRFMiddleware  # noqa: E402
 from .core.security.dependencies import limiter  # noqa: E402
 from .core.settings import get_cors_origins  # noqa: E402
 from .db.bootstrap import bootstrap  # noqa: E402
+from .middleware.request_id import RequestIDMiddleware  # noqa: E402
 from .routers import (  # noqa: E402
     admin_router,
     auth_router,
@@ -55,7 +56,9 @@ logger = logging.getLogger(__name__)
 
 @app.exception_handler(RateLimitExceeded)
 async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    retry_after = getattr(exc, "headers", {}).get("Retry-After") if hasattr(exc, "headers") else None
+    retry_after = (
+        getattr(exc, "headers", {}).get("Retry-After") if hasattr(exc, "headers") else None
+    )
     error_id = generate_error_id()
     logger.warning(
         "リクエストレート制限",
@@ -159,8 +162,10 @@ app.add_middleware(
     allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"],
 )
+# RequestIDMiddleware は最後に追加することで最初に実行される（ミドルウェアは逆順）
+app.add_middleware(RequestIDMiddleware)
 
 app.include_router(health_router)
 app.include_router(career_analysis_router)

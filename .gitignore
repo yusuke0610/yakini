@@ -5,6 +5,8 @@ __pycache__/
 .venv/
 venv/
 uv.lock
+.coverage
+htmlcov/
 
 # Node
 node_modules/

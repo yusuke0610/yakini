@@ -99,3 +99,16 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
+
+variable "upstash_redis_url" {
+  description = "Upstash Redis 接続 URL（rediss://host:port 形式）。未設定の場合は進捗機能を無効化。"
+  type        = string
+  default     = ""
+}
+
+variable "upstash_redis_token" {
+  description = "Upstash Redis 認証トークン。"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

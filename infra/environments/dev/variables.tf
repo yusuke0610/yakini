@@ -42,3 +42,16 @@ variable "alert_email" {
   type        = string
   sensitive   = true
 }
+
+variable "upstash_redis_url" {
+  description = "Upstash Redis 接続 URL。GitHub Secret → TF_VAR_upstash_redis_url で注入する。"
+  type        = string
+  default     = ""
+}
+
+variable "upstash_redis_token" {
+  description = "Upstash Redis 認証トークン。GitHub Secret → TF_VAR_upstash_redis_token で注入する。"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

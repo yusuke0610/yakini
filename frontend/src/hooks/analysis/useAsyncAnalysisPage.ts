@@ -1,9 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTaskPolling } from "../useTaskPolling";
 import type { AppErrorState } from "../../utils/appError";
+import type { TaskProgress } from "../../api/intelligence";
 
 /** 分析ページのフェーズ型 */
 export type AsyncAnalysisPhase = "loading-cache" | "input" | "polling" | "result";
+
+/** 指数バックオフのデフォルト設定 */
+const POLLING_CONFIG = {
+  /** 初回ポーリング間隔（ms） */
+  initialInterval: 1000,
+  /** ポーリング最大間隔（ms） */
+  maxInterval: 10000,
+  /** バックオフ乗数 */
+  multiplier: 1.5,
+} as const;
+
+const getNextInterval = (current: number): number =>
+  Math.min(current * POLLING_CONFIG.multiplier, POLLING_CONFIG.maxInterval);
+
+// getNextInterval は将来の拡張用に export しておく
+export { getNextInterval };
 
 /** useAsyncAnalysisPage のオプション型 */
 type UseAsyncAnalysisPageOptions<TResult> = {
@@ -21,6 +38,12 @@ type UseAsyncAnalysisPageOptions<TResult> = {
    * タスクステータス取得関数（ポーリング用）。
    */
   checkStatus: () => Promise<{ status: string; error_message?: string; error_code?: string }>;
+  /**
+   * 進捗取得関数（オプション）。
+   * 指定した場合、ポーリングのたびに並走して呼ばれる。
+   * 失敗してもポーリング本体には影響しない。
+   */
+  fetchProgress?: () => Promise<TaskProgress>;
 };
 
 /** useAsyncAnalysisPage の戻り値型 */
@@ -51,23 +74,53 @@ type UseAsyncAnalysisPageReturn<TResult> = {
    * result と追加状態をリセットする。
    */
   backToInput: () => void;
+  /**
+   * 現在の進捗情報。fetchProgress が未指定または取得失敗時は null。
+   */
+  progress: TaskProgress | null;
 };
 
 /**
  * AI 分析ページで共通する phase 管理・ポーリング制御・エラー処理を提供するカスタムフック。
- * GitHubAnalysisPage・CareerAnalysisPage など、
+ * GitHubAnalysisPage など、
  * 「キャッシュ読み込み → 入力 → ポーリング → 結果」の状態遷移を持つページで利用する。
+ *
+ * fetchProgress を渡すと、ポーリングのたびに進捗も取得して progress に反映する。
+ * Redis 障害等で fetchProgress が失敗してもポーリング本体は継続される。
  */
 export function useAsyncAnalysisPage<TResult>({
   loadCache,
   checkStatus,
+  fetchProgress,
 }: UseAsyncAnalysisPageOptions<TResult>): UseAsyncAnalysisPageReturn<TResult> {
   const [phase, setPhase] = useState<AsyncAnalysisPhase>("loading-cache");
   const [result, setResult] = useState<TResult | null>(null);
   const [error, setError] = useState<AppErrorState | null>(null);
+  const [progress, setProgress] = useState<TaskProgress | null>(null);
+
+  /**
+   * checkStatus を、進捗取得を並走させるラッパーに差し替える。
+   * - ステータス取得と進捗取得は Promise.allSettled で並走
+   * - 進捗取得失敗は無視し、ステータス取得失敗のみ呼び出し元に伝播する
+   */
+  const checkStatusWithProgress = useCallback(async () => {
+    const [statusResult, progressResult] = await Promise.allSettled([
+      checkStatus(),
+      fetchProgress != null ? fetchProgress() : Promise.resolve(null),
+    ]);
+
+    if (progressResult.status === "fulfilled" && progressResult.value !== null) {
+      setProgress(progressResult.value);
+    }
+
+    if (statusResult.status === "rejected") {
+      throw statusResult.reason;
+    }
+    return statusResult.value;
+  }, [checkStatus, fetchProgress]);
 
   const { startPolling, isPolling } = useTaskPolling({
-    checkStatus,
+    checkStatus: checkStatusWithProgress,
     onCompleted: async () => {
       try {
         const cached = await loadCache();
@@ -85,6 +138,9 @@ export function useAsyncAnalysisPage<TResult>({
       setError(err);
       setPhase("input");
     },
+    intervalMs: POLLING_CONFIG.initialInterval,
+    maxIntervalMs: POLLING_CONFIG.maxInterval,
+    multiplier: POLLING_CONFIG.multiplier,
   });
 
   /** 初回マウント時にキャッシュを読み込み、フェーズを決定する */
@@ -132,6 +188,7 @@ export function useAsyncAnalysisPage<TResult>({
   const backToInput = () => {
     setPhase("input");
     setResult(null);
+    setProgress(null);
   };
 
   return {
@@ -145,5 +202,6 @@ export function useAsyncAnalysisPage<TResult>({
     isPolling,
     transitionToPolling,
     backToInput,
+    progress,
   };
 }

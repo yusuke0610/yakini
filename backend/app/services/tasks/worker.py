@@ -6,12 +6,12 @@ Cloud: /internal/tasks/{type} エンドポイント経由で呼ばれる。
 """
 
 import json
-import logging
 import time
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from ...core.logging_utils import get_logger
 from ...core.messages import get_notification
 from ...db.database import SessionLocal
 from ...models import BlogSummaryCache, GitHubAnalysisCache
@@ -20,7 +20,7 @@ from ...repositories.notification import NotificationRepository
 from ...services.intelligence.llm import get_llm_client
 from .base import TaskType
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # duration_ms がこの閾値を超えたら WARNING を出す（5分）
@@ -106,12 +106,24 @@ def _now() -> datetime:
 
 async def _run_github_analysis(db: Session, payload: dict) -> None:
     """GitHub 分析パイプラインを実行し、AI 学習アドバイスまで一括生成してキャッシュに保存する。"""
-    from ...core.encryption import decrypt_field
-    from ...services.intelligence.github_collector import GitHubUserNotFoundError
-    from ...services.intelligence.pipeline import run_pipeline
-    from ...services.intelligence.response_mapper import map_pipeline_result
+    from collections import defaultdict
+    from datetime import datetime
 
+    from ...core.encryption import decrypt_field
+    from ...services.intelligence.github_collector import (
+        GitHubUserNotFoundError,
+        collect_repos,
+    )
+    from ...services.intelligence.pipeline import IntelligenceResult
+    from ...services.intelligence.position_scorer import calculate_position_scores
+    from ...services.intelligence.response_mapper import map_pipeline_result
+    from ...services.intelligence.skill_extractor import extract_skills
+    from ...services.progress_service import set_progress
+
+    _TOTAL_STEPS = 6
     user_id = payload["user_id"]
+    task_id = user_id
+
     cache = db.query(GitHubAnalysisCache).filter_by(user_id=user_id).first()
     if not cache:
         logger.error("GitHub 分析キャッシュが見つかりません", extra={"user_id": user_id})
@@ -121,11 +133,26 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
     cache.started_at = _now()
     db.commit()
 
+    token = decrypt_field(payload["github_token"]) if payload.get("github_token") else None
+
     try:
-        result = await run_pipeline(
+        # ステップ 1: リポジトリ一覧取得
+        await set_progress(task_id, 1, _TOTAL_STEPS, "リポジトリ一覧取得中...")
+
+        async def _on_repo_fetched(done: int, total: int) -> None:
+            await set_progress(
+                task_id,
+                2,
+                _TOTAL_STEPS,
+                "リポジトリ詳細取得中...",
+                sub_progress={"done": done, "total": total},
+            )
+
+        repos = await collect_repos(
             username=payload["github_username"],
-            token=decrypt_field(payload["github_token"]) if payload.get("github_token") else None,
+            token=token,
             include_forks=payload.get("include_forks", False),
+            on_repo_fetched=_on_repo_fetched,
         )
     except GitHubUserNotFoundError as exc:
         cache.status = "failed"
@@ -133,6 +160,28 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
         cache.completed_at = _now()
         db.commit()
         raise exc
+
+    # ステップ 3: スキル抽出
+    await set_progress(task_id, 3, _TOTAL_STEPS, "スキル抽出中...")
+    extraction = extract_skills(repos)
+
+    lang_totals: dict = defaultdict(int)
+    for repo in repos:
+        for lang, byte_count in repo.languages.items():
+            lang_totals[lang] += byte_count
+
+    # ステップ 4: スコア算出
+    await set_progress(task_id, 4, _TOTAL_STEPS, "スコア算出中...")
+    scores = calculate_position_scores(repos)
+
+    result = IntelligenceResult(
+        username=payload["github_username"],
+        repos_analyzed=extraction.repos_analyzed,
+        unique_skills=len(extraction.unique_skills),
+        analyzed_at=datetime.now().isoformat(),
+        languages=dict(lang_totals),
+        position_scores=scores,
+    )
 
     response = map_pipeline_result(result)
     analysis_dict = response.model_dump()
@@ -142,10 +191,15 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
     advice = await _generate_advice_if_available(analysis_dict)
     cache.position_advice = advice
 
+    # ステップ 5: DB 保存
+    await set_progress(task_id, 5, _TOTAL_STEPS, "結果を保存中...")
     cache.status = "completed"
     cache.error_message = None
     cache.completed_at = _now()
     db.commit()
+
+    # ステップ 6: 完了
+    await set_progress(task_id, 6, _TOTAL_STEPS, "完了")
 
 
 async def _generate_advice_if_available(analysis: dict) -> str | None:

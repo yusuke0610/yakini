@@ -1,11 +1,12 @@
 """Zenn / note からブログ記事を取得するサービス。"""
 
 import asyncio
-import logging
 
 import httpx
 
-logger = logging.getLogger(__name__)
+from ...core.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class UnsupportedBlogPlatformError(ValueError):

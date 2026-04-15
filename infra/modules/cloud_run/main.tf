@@ -5,6 +5,10 @@ locals {
     "admin-token",
     "github-client-id",
     "github-client-secret",
+    # 棚卸し TODO: "field-encryption-key"（FIELD_ENCRYPTION_KEY / Fernet 鍵）は
+    # PII 削除対応（Rirekisho 個人情報フィールドの暗号化廃止）が完了した場合、
+    # このリストから除外し対応する Secret Manager シークレットを削除すること。
+    # 削除前に全環境（dev/stg/prod）の Cloud Run 設定から環境変数を外すこと。
   ]
   required_secret_env = {
     SECRET_KEY           = "secret-key"
@@ -117,6 +121,24 @@ resource "google_cloud_run_v2_service" "app" {
       env {
         name  = "CLOUD_TASKS_SERVICE_ACCOUNT"
         value = var.cloud_tasks_service_account
+      }
+      env {
+        name  = "UPSTASH_REDIS_URL"
+        value = var.upstash_redis_url
+      }
+      env {
+        name  = "UPSTASH_REDIS_TOKEN"
+        value = var.upstash_redis_token
+      }
+      env {
+        # Cloud Logging 向け JSON フォーマットを有効化
+        name  = "LOG_FORMAT"
+        value = "json"
+      }
+      env {
+        # 通常運用は INFO。パフォーマンス分析時のみ DEBUG に変更する
+        name  = "LOG_LEVEL"
+        value = "INFO"
       }
 
       dynamic "env" {

@@ -6,6 +6,7 @@ import {
 } from "../../api";
 import { useCareerAnalysisPage } from "../../hooks/useCareerAnalysisPage";
 import { ErrorToast } from "../ui/ErrorToast";
+import { InlineSpinner } from "../ui/InlineSpinner";
 import styles from "./CareerAnalysisPage.module.css";
 
 /**
@@ -34,23 +35,15 @@ export function CareerAnalysisPage() {
   // ── レンダリング ──────────────────────────────────────────
 
   if (phase === "loading") {
-    return (
-      <div className={styles.loading}>
-        <div className={styles.spinner} />
-        <p>読み込み中...</p>
-      </div>
-    );
+    return <InlineSpinner label="読み込み中..." />;
   }
 
   if (phase === "polling") {
     return (
-      <div className={styles.loading}>
-        <div className={styles.spinner} />
-        <p>AI がキャリアを分析中です...</p>
-        <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-          他の画面に移動しても処理は継続されます
-        </p>
-      </div>
+      <InlineSpinner
+        label="AI がキャリアを分析中です..."
+        sublabel="他の画面に移動しても処理は継続されます"
+      />
     );
   }
 
