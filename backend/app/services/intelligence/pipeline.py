@@ -7,17 +7,18 @@ GitHub のデータから以下の分析を順次実行します：
 オプションの LLM 要約を除き、各ステージは決定論的です。
 """
 
-import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from ...core.logging_utils import get_logger
+from ...core.metrics import measure_time_async
 from .github_collector import RepoData, collect_repos
 from .position_scorer import PositionScores, calculate_position_scores
 from .skill_extractor import ExtractionResult, extract_skills
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -32,6 +33,7 @@ class IntelligenceResult:
     position_scores: Optional[PositionScores] = None
 
 
+@measure_time_async("intelligence.pipeline")
 async def run_pipeline(
     username: str,
     token: Optional[str] = None,

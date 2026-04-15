@@ -3,14 +3,15 @@
 システムプロンプトは backend/prompts/ 配下の MD ファイルから都度読み込む。
 """
 
-import logging
 from typing import Any, Dict, List, Optional
 
+from ...core.logging_utils import get_logger
+from ...core.metrics import measure_time_async
 from ...utils.prompt_loader import load_prompt
 from ..llm.sanitizer import SanitizeContext, sanitize_text
 from .llm import get_llm_client
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _client = get_llm_client()
 
@@ -47,6 +48,7 @@ def _build_blog_prompt(
     return "\n".join(parts)
 
 
+@measure_time_async("llm.blog_summarize")
 async def summarize_blog_articles(
     articles: List[Dict[str, Any]],
     context: Optional[SanitizeContext] = None,
@@ -104,6 +106,7 @@ def _build_learning_advice_prompt(
     return "\n".join(parts)
 
 
+@measure_time_async("llm.learning_advice")
 async def generate_learning_advice(
     analysis: Dict[str, Any],
     scores: Dict[str, Any],

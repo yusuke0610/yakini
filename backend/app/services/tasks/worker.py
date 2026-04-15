@@ -6,12 +6,12 @@ Cloud: /internal/tasks/{type} エンドポイント経由で呼ばれる。
 """
 
 import json
-import logging
 import time
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from ...core.logging_utils import get_logger
 from ...core.messages import get_notification
 from ...db.database import SessionLocal
 from ...models import BlogSummaryCache, GitHubAnalysisCache
@@ -20,7 +20,7 @@ from ...repositories.notification import NotificationRepository
 from ...services.intelligence.llm import get_llm_client
 from .base import TaskType
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # duration_ms がこの閾値を超えたら WARNING を出す（5分）

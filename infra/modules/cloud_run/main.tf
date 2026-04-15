@@ -130,6 +130,16 @@ resource "google_cloud_run_v2_service" "app" {
         name  = "UPSTASH_REDIS_TOKEN"
         value = var.upstash_redis_token
       }
+      env {
+        # Cloud Logging 向け JSON フォーマットを有効化
+        name  = "LOG_FORMAT"
+        value = "json"
+      }
+      env {
+        # 通常運用は INFO。パフォーマンス分析時のみ DEBUG に変更する
+        name  = "LOG_LEVEL"
+        value = "INFO"
+      }
 
       dynamic "env" {
         for_each = local.required_secret_env
