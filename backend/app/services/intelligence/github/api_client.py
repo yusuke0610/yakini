@@ -5,13 +5,19 @@ GitHub REST API 呼び出しを担うモジュール。
 """
 
 import logging
+import time
 from typing import Any, Dict, List, Optional
 
 import httpx
 
+from ....services.tasks.exceptions import NonRetryableError, RetryableError
+
 logger = logging.getLogger(__name__)
 
 GITHUB_API = "https://api.github.com"
+
+# 一時障害とみなす HTTP ステータスコード
+_RETRYABLE_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 
 # この年数以内にプッシュされたリポジトリのみを取得
 _REPO_MAX_AGE_YEARS = 3
@@ -56,7 +62,10 @@ async def fetch_repos_raw(
     """
     指定ユーザーの全パブリックリポジトリを取得する（ページネーションあり）。
 
-    ユーザーが存在しない場合は GitHubUserNotFoundError を発生させる。
+    - ユーザーが存在しない場合は ``GitHubUserNotFoundError`` を発生させる
+    - レート制限（403 + rate limit ヘッダ / 429）は ``RetryableError`` を raise する
+    - 5xx も ``RetryableError`` を raise する
+    - その他の 4xx は ``NonRetryableError`` を raise する
     """
     raw_repos: List[Dict[str, Any]] = []
     for page in range(1, max_pages + 1):
@@ -72,14 +81,57 @@ async def fetch_repos_raw(
         if resp.status_code == 404:
             raise GitHubUserNotFoundError(username)
         if resp.status_code == 403:
-            logger.warning("GitHub API rate limit hit")
-            break
+            # GitHub は rate limit でも 403 を返すため、ヘッダで判別する
+            if _is_rate_limited(resp):
+                retry_after = _retry_after_from_github(resp)
+                logger.warning(
+                    "GitHub API rate limit hit (retry_after=%s)", retry_after,
+                )
+                raise RetryableError(
+                    "GitHub API rate limit", retry_after=retry_after,
+                )
+            raise NonRetryableError(f"GitHub API 403 Forbidden: {resp.text[:200]}")
+        if resp.status_code == 429:
+            retry_after = _retry_after_from_github(resp)
+            raise RetryableError(
+                "GitHub API 429 Too Many Requests", retry_after=retry_after,
+            )
+        if resp.status_code in _RETRYABLE_STATUS_CODES:
+            raise RetryableError(f"GitHub API {resp.status_code}")
+        if 400 <= resp.status_code < 500:
+            raise NonRetryableError(
+                f"GitHub API {resp.status_code}: {resp.text[:200]}"
+            )
         resp.raise_for_status()
         batch = resp.json()
         if not batch:
             break
         raw_repos.extend(batch)
     return raw_repos
+
+
+def _is_rate_limited(response: httpx.Response) -> bool:
+    """GitHub のレスポンスがレート制限起因かを判定する。"""
+    remaining = response.headers.get("x-ratelimit-remaining")
+    return remaining == "0"
+
+
+def _retry_after_from_github(response: httpx.Response) -> float | None:
+    """``Retry-After`` ヘッダまたは ``X-RateLimit-Reset`` から待機秒数を算出する。"""
+    retry_after = response.headers.get("retry-after")
+    if retry_after:
+        try:
+            return float(retry_after)
+        except (TypeError, ValueError):
+            pass
+    reset = response.headers.get("x-ratelimit-reset")
+    if reset:
+        try:
+            # Unix timestamp。現在時刻との差分を返す（負値にならないよう 0 下限）。
+            return max(0.0, float(reset) - time.time())
+        except (TypeError, ValueError):
+            pass
+    return None
 
 
 async def fetch_languages(

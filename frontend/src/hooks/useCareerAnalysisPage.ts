@@ -4,6 +4,7 @@ import {
   listAnalyses,
   deleteAnalysis,
   getAnalysisStatus,
+  retryAnalysis,
   toAppError,
   type CareerAnalysisResponse,
 } from "../api";
@@ -57,7 +58,10 @@ export function useCareerAnalysisPage() {
         setAnalyses(data);
 
         const pending = data.find(
-          (a) => a.status === "pending" || a.status === "processing",
+          (a) =>
+            a.status === "pending" ||
+            a.status === "processing" ||
+            a.status === "retrying",
         );
         if (pending) {
           setPollingId(pending.id);
@@ -115,5 +119,28 @@ export function useCareerAnalysisPage() {
     }
   };
 
-  return { phase, setPhase, error, analyses, handleGenerate, handleDelete };
+  /**
+   * 失敗した分析（failed / dead_letter）を再実行する。
+   * 成功時はポーリングを再開する。
+   */
+  const handleRetry = async (id: number) => {
+    setError(null);
+    try {
+      await retryAnalysis(id);
+      setPollingId(id);
+      setPhase("polling");
+    } catch (e) {
+      setError(toAppError(e, "再実行に失敗しました"));
+    }
+  };
+
+  return {
+    phase,
+    setPhase,
+    error,
+    analyses,
+    handleGenerate,
+    handleDelete,
+    handleRetry,
+  };
 }

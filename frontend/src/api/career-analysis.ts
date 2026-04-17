@@ -91,3 +91,10 @@ export function deleteAnalysis(id: number): Promise<void> {
     method: "DELETE",
   });
 }
+
+/** 失敗したキャリア分析タスクを手動で再実行する（202 非同期）。 */
+export function retryAnalysis(id: number): Promise<CareerAnalysisResponse> {
+  return request<CareerAnalysisResponse>(`/api/career-analysis/${id}/retry`, {
+    method: "POST",
+  });
+}

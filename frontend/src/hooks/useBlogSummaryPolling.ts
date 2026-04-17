@@ -35,7 +35,11 @@ export function useBlogSummaryPolling(articles: BlogArticle[]) {
   useEffect(() => {
     getBlogSummaryCache()
       .then((cached) => {
-        if (cached.status === "pending" || cached.status === "processing") {
+        if (
+          cached.status === "pending" ||
+          cached.status === "processing" ||
+          cached.status === "retrying"
+        ) {
           setSummaryLoading(true);
           startPolling();
           return;

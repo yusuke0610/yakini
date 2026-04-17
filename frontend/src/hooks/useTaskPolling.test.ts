@@ -33,11 +33,11 @@ describe("useTaskPolling", () => {
     expect(result.current.isPolling).toBe(false);
   });
 
-  it("failed になったとき onFailed が呼ばれる", async () => {
+  it("dead_letter になったとき onFailed が呼ばれる", async () => {
     const onCompleted = vi.fn();
     const onFailed = vi.fn();
     const checkStatus = vi.fn().mockResolvedValue({
-      status: "failed",
+      status: "dead_letter",
       error_message: "LLM タイムアウト",
     });
 
@@ -66,11 +66,11 @@ describe("useTaskPolling", () => {
     expect(result.current.isPolling).toBe(false);
   });
 
-  it("failed で error_message がない場合デフォルトメッセージが渡される", async () => {
+  it("dead_letter で error_message がない場合デフォルトメッセージが渡される", async () => {
     const onFailed = vi.fn();
     const checkStatus = vi
       .fn()
-      .mockResolvedValue({ status: "failed" });
+      .mockResolvedValue({ status: "dead_letter" });
 
     const { result } = renderHook(() =>
       useTaskPolling({

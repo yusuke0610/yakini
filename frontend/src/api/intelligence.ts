@@ -70,3 +70,15 @@ export function getAnalysisCacheStatus(): Promise<TaskStatusResponse> {
 export function getAnalysisProgress(): Promise<TaskProgress> {
   return request<TaskProgress>("/api/intelligence/progress");
 }
+
+/**
+ * 失敗した GitHub 分析タスクを手動で再実行します（202 非同期）。
+ */
+export function retryAnalyzeGitHub(
+  payload: AnalyzeGitHubPayload = {},
+): Promise<{ status: string }> {
+  return request<{ status: string }>("/api/intelligence/analyze/retry", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

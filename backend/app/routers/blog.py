@@ -240,8 +240,77 @@ async def summarize_blog(
         )
     except Exception:
         logger.exception("ブログサマリタスクのディスパッチに失敗しました")
-        cache.status = "failed"
+        cache.status = "dead_letter"
         cache.error_message = "タスクの開始に失敗しました"
+        db.commit()
+        raise HTTPException(
+            status_code=500,
+            detail=get_error("task.dispatch_failed"),
+        )
+
+    return BlogSummaryResponse(
+        summary="",
+        available=False,
+        status="pending",
+    )
+
+
+# リトライ可能な終端ステータス（リトライ枯渇 or リトライ不可エラー）
+_RETRYABLE_TERMINAL_STATUSES = {"dead_letter"}
+
+
+@router.post("/summarize/retry", response_model=BlogSummaryResponse, status_code=202)
+@limiter.limit("5/minute")
+async def retry_summarize_blog(
+    request: Request,
+    body: BlogSummaryRequest,
+    background_tasks: BackgroundTasks,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """失敗したブログサマリタスクを手動で再実行する。
+
+    ``dead_letter`` 状態のキャッシュのみ再実行可能。
+    ブログ記事リストはサーバーに保持していないため、クライアントから再送する必要がある。
+    """
+    cache = db.query(BlogSummaryCache).filter_by(user_id=user.id).first()
+    if not cache:
+        raise HTTPException(
+            status_code=404,
+            detail="サマリキャッシュが見つかりません",
+        )
+    if cache.status not in _RETRYABLE_TERMINAL_STATUSES:
+        raise HTTPException(
+            status_code=409,
+            detail=f"このタスクはリトライできない状態です（現在: {cache.status}）",
+        )
+
+    available = await check_llm_available()
+    if not available:
+        return BlogSummaryResponse(summary="", available=False)
+
+    cache.status = "pending"
+    cache.error_message = None
+    cache.retry_count = 0
+    cache.started_at = None
+    cache.completed_at = None
+    db.commit()
+
+    articles_data = [art.model_dump() for art in body.articles]
+
+    try:
+        dispatcher = get_task_dispatcher(background_tasks)
+        await dispatcher.dispatch(
+            TaskType.BLOG_SUMMARIZE,
+            {
+                "user_id": user.id,
+                "articles": articles_data,
+            },
+        )
+    except Exception:
+        logger.exception("ブログサマリタスクの再実行に失敗しました")
+        cache.status = "dead_letter"
+        cache.error_message = "タスクの再実行に失敗しました"
         db.commit()
         raise HTTPException(
             status_code=500,
