@@ -49,9 +49,11 @@ GitHub活動分析、ブログ連携による発信力を集計
 | IaC | Terraform（モジュール構成、マルチ環境） |
 | CI/CD | GitHub Actions |
 
-## クイックスタート
+## セットアップ
 
-### 1. バックエンド起動
+### ローカル開発
+
+#### バックエンド起動
 
 ```bash
 cd backend
@@ -64,7 +66,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 `SQLITE_DB_PATH=./local.sqlite` でローカル永続ファイルを使います。
 
-### 2. フロントエンド起動
+#### フロントエンド起動
 
 別ターミナルで:
 
@@ -77,7 +79,7 @@ npm run dev
 
 ブラウザで `http://localhost:5173` を開きます。
 
-### 3. Docker起動（FastAPI + Ollama）
+#### Docker起動（FastAPI + Ollama）
 
 ```bash
 docker compose up --build
@@ -85,7 +87,7 @@ docker compose up --build
 
 Ollama（LLM）も同時に起動します。GitHub分析やブログのAI要約機能を使う場合はDocker起動を推奨します。
 
-#### マスタデータ変更時の再起動
+##### マスタデータ変更時の再起動
 
 シードデータ（`backend/app/seed.py`）を変更した場合:
 
@@ -95,7 +97,7 @@ rm data/devforge.sqlite
 docker compose up
 ```
 
-## DBクライアント（DBeaver等）からSQLiteに接続する
+#### DBクライアント（DBeaver等）からSQLiteに接続する
 
 Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` にバインドマウントされます。
 
@@ -105,6 +107,83 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 4. **テスト接続** → **完了**
 
 > **注意**: SQLite はファイルロックで排他制御するため、DBeaver で書き込みを行うとアプリ側と競合する場合があります。参照のみの利用を推奨します。
+
+---
+
+### 本番デプロイ（GCP）
+
+#### 1. 事前準備
+
+```bash
+export PROJECT_ID=<your-gcp-project-id>   # 例: devforge-prod-xxxxxxxx
+export ENV=<dev|stg|prod>
+export REGION=asia-northeast1
+
+# gcloud 認証
+gcloud auth login
+gcloud config set project ${PROJECT_ID}
+
+# 必要な GCP API を有効化
+gcloud services enable artifactregistry.googleapis.com
+gcloud services enable run.googleapis.com
+gcloud services enable secretmanager.googleapis.com
+```
+
+#### 2. Terraform でインフラを構築する
+
+```bash
+# GCS tfstate バケットを作成（初回のみ）
+gcloud storage buckets create gs://devforge-tfstate-${ENV} \
+  --location=${REGION} --uniform-bucket-level-access
+
+# インフラ構築
+cd infra/environments/${ENV}
+terraform init && terraform plan && terraform apply
+```
+
+構成: `infra/environments/{dev|stg|prod}`, `infra/modules/`
+モジュール: `service_account`, `artifact_registry`, `storage`, `cloud_run`
+
+#### 3. Docker イメージをビルドして push する
+
+> **注意**: Apple Silicon Mac（M1/M2/M3）は必ず `--platform linux/amd64` を付けること。
+> 省略すると Cloud Run で `exec format error` が発生する。
+
+```bash
+# Docker → Artifact Registry の認証設定（初回のみ）
+gcloud auth configure-docker ${REGION}-docker.pkg.dev
+
+# ビルド → タグ付け → push
+docker build --platform linux/amd64 -t devforge-${ENV} ./backend
+docker tag devforge-${ENV} ${REGION}-docker.pkg.dev/${PROJECT_ID}/devforge-${ENV}/devforge-${ENV}:latest
+docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/devforge-${ENV}/devforge-${ENV}:latest
+```
+
+#### 4. Cloud Run にデプロイする
+
+```bash
+gcloud run deploy devforge-${ENV} \
+  --image ${REGION}-docker.pkg.dev/${PROJECT_ID}/devforge-${ENV}/devforge-${ENV}:latest \
+  --region ${REGION} \
+  --platform managed
+
+# デプロイ確認（URL取得）
+gcloud run services describe devforge-${ENV} --region ${REGION} \
+  --format "value(status.url)"
+```
+
+秘密情報（`ADMIN_TOKEN` 等）は Secret Manager 経由の環境変数注入を推奨。
+GitHub OAuth の `state` は backend 側 Cookie で検証されるため、`CORS_ORIGINS` と Cookie 設定を環境に合わせて揃えること。
+
+#### 5. トラブルシューティング
+
+| エラー | 原因 | 対処 |
+|---|---|---|
+| `Error 403: ... is disabled` | GCP API が未有効 | `gcloud services enable <API名>` |
+| `exec format error` | Apple Silicon で `--platform linux/amd64` が未指定 | 上記手順3でビルドし直す |
+| `deletion protection is enabled` | Terraform destroy 時 | リソースの `deletion_protection = false` に変更 → `apply` → `destroy` |
+
+---
 
 ## API概要
 
@@ -194,30 +273,100 @@ Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` に
 
 | 変数 | 用途 |
 |---|---|
-| `SQLITE_DB_PATH` | SQLiteファイルパス（例: `/tmp/devforge.sqlite`） |
-| `SECRET_KEY` | JWT署名キー |
+| `SQLITE_DB_PATH` | SQLiteファイルパス（Cloud Run: `/tmp/devforge.sqlite`） |
+| `SECRET_KEY` | CSRF等で引き続き使用 |
+| `JWT_PRIVATE_KEY` | RS256署名用秘密鍵（PEM形式） |
+| `JWT_PUBLIC_KEY` | RS256検証用公開鍵（PEM形式） |
 | `FIELD_ENCRYPTION_KEY` | Fernet暗号化キー |
 | `GCS_BUCKET_NAME` / `GCS_DB_OBJECT` | GCSバックアップ先（未設定ならスキップ） |
+| `ADMIN_TOKEN` | `/admin/backup` エンドポイント用 |
 | `CORS_ORIGINS` | 許可するオリジン（カンマ区切り） |
-| `COOKIE_SECURE` | 認証Cookieに `Secure` を付与するか（未設定時は origin から自動判定） |
-| `COOKIE_SAMESITE` | 認証Cookieの SameSite (`lax` / `strict` / `none`) |
+| `COOKIE_SECURE` | 認証Cookieに `Secure` を付与するか（本番: `true`） |
+| `COOKIE_SAMESITE` | 認証Cookieの SameSite（`lax` / `strict` / `none`） |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth（任意） |
 | `LLM_PROVIDER` | `ollama` または `vertex` |
-| `OLLAMA_BASE_URL` | Ollama エンドポイント（デフォルト: `http://localhost:11434`） |
+| `OLLAMA_BASE_URL` | Ollama エンドポイント（`LLM_PROVIDER=ollama` 時必須） |
 | `OLLAMA_MODEL` | Ollama 利用時のモデル名（デフォルト: `gemma3:4b`） |
 | `OLLAMA_TIMEOUT` | Ollama 生成タイムアウト秒数（デフォルト: `1200`） |
 | `VERTEX_PROJECT_ID` / `VERTEX_LOCATION` | Vertex AI 利用時の設定 |
 | `VERTEX_MODEL` | Vertex AI 利用時のモデル名（デフォルト: `gemini-2.5-flash-lite`） |
-| `VITE_API_BASE_URL` | フロントエンド→バックエンドURL（デフォルト: `http://localhost:8000`） |
+| `VITE_API_BASE_URL` | フロントエンド→バックエンドURL |
 
-## SQLite + GCSバックアップ/復元
+## システム構成図
+
+```mermaid
+graph TB
+    subgraph "ユーザー"
+        Browser["ブラウザ"]
+    end
+
+    subgraph "GitHub"
+        GitHubActions["GitHub Actions<br/>CI/CD"]
+        GitHubOAuth["GitHub OAuth"]
+        GitHubAPI["GitHub API"]
+    end
+
+    subgraph "外部サービス"
+        ZennAPI["Zenn API"]
+        NoteRSS["note RSS"]
+    end
+
+    subgraph "GCP Project: <PROJECT_ID>"
+        subgraph "Cloud Storage"
+            FrontendBucket["GCS: devforge-{env}-frontend<br/>静的サイトホスティング<br/>（React SPA）"]
+            DBBackupBucket["GCS: devforge-{env}-db<br/>SQLite バックアップ<br/>（バージョニング有効）"]
+            TfstateBucket["GCS: devforge-tfstate-{env}<br/>Terraform State"]
+        end
+
+        subgraph "Cloud Run"
+            CloudRun["Cloud Run: devforge-{env}<br/>FastAPI + SQLite<br/>max_instances=1 / min_instances=0<br/>CPU: 1000m / Memory: 512Mi"]
+        end
+
+        subgraph "Artifact Registry"
+            AR["devforge-{env}<br/>Docker イメージ"]
+        end
+
+        subgraph "Secret Manager"
+            Secrets["SECRET_KEY<br/>FIELD_ENCRYPTION_KEY<br/>ADMIN_TOKEN<br/>GITHUB_CLIENT_ID<br/>GITHUB_CLIENT_SECRET"]
+        end
+
+        subgraph "IAM"
+            SA["サービスアカウント<br/>devforge-{env}"]
+        end
+    end
+
+    Browser -->|"HTTPS"| FrontendBucket
+    Browser -->|"API リクエスト"| CloudRun
+    Browser -->|"OAuth 認証"| GitHubOAuth
+
+    GitHubActions -->|"npm build → upload"| FrontendBucket
+    GitHubActions -->|"docker push"| AR
+    GitHubActions -->|"gcloud run deploy"| CloudRun
+
+    CloudRun -->|"バックアップ/復元"| DBBackupBucket
+    CloudRun -->|"シークレット取得"| Secrets
+    CloudRun -->|"リポジトリ分析"| GitHubAPI
+    CloudRun -->|"記事取得"| ZennAPI
+    CloudRun -->|"記事取得"| NoteRSS
+    AR -->|"イメージ pull"| CloudRun
+    SA -->|"実行権限"| CloudRun
+    SA -->|"storage.objectAdmin"| DBBackupBucket
+    SA -->|"secretAccessor"| Secrets
+```
+
+## データベース・マイグレーション
+
+### SQLite + GCSバックアップ/復元
 
 - **起動時**: GCS→ローカル復元 → Alembic `upgrade head` → アプリ起動（復元失敗時は空DBで起動）
 - **バックアップ**: `POST /admin/backup` または `python -m app.db.backup` を明示実行した時のみ
 - **Cloud Run IAM**: `storage.objects.{get,create,list}`
 - **ローカルDB**: `backend/local.sqlite` はコミットしない。必要時に自動生成/再作成する
 
-## Alembicマイグレーション
+### Alembicマイグレーション
+
+本番環境では Cloud Run 起動時に自動実行される（`alembic upgrade head`）。
+手動実行が必要な場合:
 
 ```bash
 cd backend && alembic upgrade head
@@ -268,132 +417,32 @@ cd backend
 .venv/bin/python -m pytest -q tests
 ```
 
-## CI (GitHub Actions)
-- ワークフロー: `.github/workflows/ci.yml`
-- 実行タイミング:
-  - `pull_request` (target: `dev` / `stg` / `main`)
-  - `push` (`dev` / `stg` / `main`)
-  - 実行内容:
-  - `frontend/**` / `backend/**` / `.github/workflows/ci.yml` に変更がある場合:
-    - frontend: `npm run lint`, `npm run test`, `npm run build`
-    - frontend E2E: `npm run test:e2e`（Playwright / Chromium）
-    - backend: `ruff check app tests alembic_migrations`, `python -m pytest -q tests` (working-directory: `backend`)
-  - 上記以外の変更のみの場合:
-    - `test` ジョブは軽量な no-op で成功を返す
-- 低コスト運用の工夫:
-  - Linuxランナーのみ使用
-  - Node/Python依存キャッシュを利用
-  - アプリ差分がない場合は重い処理をスキップ
-  - `concurrency` で古い実行を自動キャンセル
-  - `dev` への `push` のみ CD を実行
+## CI/CD（GitHub Actions）
 
-### アプリケーションCI（`.github/workflows/ci.yml`）
-- **実行タイミング**: `pull_request` / `push`（target: `main` / `dev`、`frontend/**` or `backend/**` 変更時）
-- **テスト**: frontend（lint, test, build）+ backend（ruff, pytest）
+### アプリケーション CI（`.github/workflows/ci.yml`）
+
+- **実行タイミング**: `pull_request` / `push`（target: `dev` / `stg` / `main`、`frontend/**` or `backend/**` 変更時）
+- **テスト内容**:
+  - frontend: `npm run lint`, `npm run test`, `npm run build`, E2E（Playwright / Chromium）
+  - backend: `ruff check`, `pytest`
 - **自動デプロイ**（`dev` ブランチ push 時のみ）:
   - フロントエンド → GCSバケットへアップロード
   - バックエンド → Artifact Registry へイメージ push → Cloud Run デプロイ
   - GitHub Actions 実行用サービスアカウントには、Cloud Run runtime SA に対する `roles/iam.serviceAccountUser` が必要
-- **低コスト運用**: Linuxランナー、依存キャッシュ、`concurrency` で古い実行を自動キャンセル
+- **低コスト運用**: Linuxランナー、依存キャッシュ、`concurrency` で古い実行を自動キャンセル、アプリ差分がない場合は重い処理をスキップ
 
-## インフラストラクチャ
+### Terraform検証 CI（`.github/workflows/terraform-ci.yml`）
 
-### Terraform (GCS backend)
-- テンプレート配置: `infra/`
-- 構成: `infra/environments/dev|stg|prod`, `infra/modules/`
-- モジュール: `service_account`, `artifact_registry`, `storage`, `cloud_run`
-- バージョン管理: 各環境の `versions.tf` / `terraform.tfvars`
+- **実行タイミング**: `pull_request` / `push`（target: `dev` / `stg` / `main`、`infra/**` 変更時）
+- **実行内容**:
+  - `terraform fmt -check -recursive`
+  - `terraform init -backend=false`
+  - `terraform validate`
 
-### 初期設定
-```bash
-# 1. GCS tfstateバケットを作成
-gcloud storage buckets create gs://devforge-tfstate-dev \
-  --location=asia-northeast1 --uniform-bucket-level-access
+## ブランチ保護
 
-# 2. インフラ構築
-cd infra/environments/dev
-terraform init && terraform plan && terraform apply
-```
-
-### システム構成図（dev環境）
-
-```mermaid
-graph TB
-    subgraph "ユーザー"
-        Browser["ブラウザ"]
-    end
-
-    subgraph "GitHub"
-        GitHubActions["GitHub Actions<br/>CI/CD"]
-        GitHubOAuth["GitHub OAuth"]
-        GitHubAPI["GitHub API"]
-    end
-
-    subgraph "外部サービス"
-        ZennAPI["Zenn API"]
-        NoteRSS["note RSS"]
-    end
-
-    subgraph "GCP Project: devforge-dev-20260311"
-        subgraph "Cloud Storage"
-            FrontendBucket["GCS: devforge-dev-frontend<br/>静的サイトホスティング<br/>（React SPA）"]
-            DBBackupBucket["GCS: devforge-dev-db<br/>SQLite バックアップ<br/>（バージョニング有効）"]
-            TfstateBucket["GCS: devforge-tfstate-dev<br/>Terraform State"]
-        end
-
-        subgraph "Cloud Run"
-            CloudRun["Cloud Run: devforge-dev<br/>FastAPI + SQLite<br/>max_instances=1 / min_instances=0<br/>CPU: 1000m / Memory: 512Mi"]
-        end
-
-        subgraph "Artifact Registry"
-            AR["devforge-dev<br/>Docker イメージ"]
-        end
-
-        subgraph "Secret Manager"
-            Secrets["SECRET_KEY<br/>FIELD_ENCRYPTION_KEY<br/>ADMIN_TOKEN<br/>GITHUB_CLIENT_ID<br/>GITHUB_CLIENT_SECRET"]
-        end
-
-        subgraph "IAM"
-            SA["サービスアカウント<br/>devforge-dev"]
-        end
-    end
-
-    Browser -->|"HTTPS"| FrontendBucket
-    Browser -->|"API リクエスト"| CloudRun
-    Browser -->|"OAuth 認証"| GitHubOAuth
-
-    GitHubActions -->|"npm build → upload"| FrontendBucket
-    GitHubActions -->|"docker push"| AR
-    GitHubActions -->|"gcloud run deploy"| CloudRun
-
-    CloudRun -->|"バックアップ/復元"| DBBackupBucket
-    CloudRun -->|"シークレット取得"| Secrets
-    CloudRun -->|"リポジトリ分析"| GitHubAPI
-    CloudRun -->|"記事取得"| ZennAPI
-    CloudRun -->|"記事取得"| NoteRSS
-    AR -->|"イメージ pull"| CloudRun
-    SA -->|"実行権限"| CloudRun
-    SA -->|"storage.objectAdmin"| DBBackupBucket
-    SA -->|"secretAccessor"| Secrets
-```
-
-## main ブランチ保護
-
-### Terraform検証CI
-- ワークフロー: `.github/workflows/terraform-ci.yml`
-- 実行タイミング:
-  - `pull_request` (target: `dev` / `stg` / `main`)
-  - `push` (`dev` / `stg` / `main`)
-- 実行内容:
-  - `infra/**` または `.github/workflows/terraform-ci.yml` に変更がある場合:
-    - `terraform fmt -check -recursive`
-    - `terraform init -backend=false`
-    - `terraform validate`
-  - 上記以外の変更のみの場合:
-    - Terraform ジョブは軽量な no-op で成功を返す
-
-## protected branches
 ### ローカル（ターミナル）での直コミット/直push防止
+
 ```bash
 ./scripts/setup-git-hooks.sh
 ```
@@ -402,6 +451,7 @@ graph TB
 - `.githooks/pre-push`: `dev` / `stg` / `main` への直接pushを拒否
 
 ### GitHub 側での強制保護（推奨）
+
 1. GitHub リポジトリの `Settings` -> `Branches` -> `Add branch protection rule`
 2. `Branch name pattern` に `dev` を設定
 3. 以下を有効化
@@ -415,63 +465,3 @@ graph TB
 4. `stg` と `main` についても同じ設定を追加
 5. `Do not allow bypassing the above settings`（利用可能な場合）を有効化
 6. 保存
-
----
-
-## GCP デプロイ手順（dev 環境）
-
-### 1. 事前準備
-
-```bash
-# gcloud 認証
-gcloud auth login
-gcloud config set project devforge-dev-20260311
-
-# 必要な GCP API を有効化
-gcloud services enable artifactregistry.googleapis.com
-gcloud services enable run.googleapis.com
-```
-
-### 2. Terraform でインフラを構築する
-
-上記「[Terraform (GCS backend) > 初期設定](#初期設定)」を参照。
-
-### 3. Docker イメージをビルドして push する
-
-> **注意**: Apple Silicon Mac（M1/M2/M3）は必ず `--platform linux/amd64` を付けること。
-> 省略すると Cloud Run で `exec format error` が発生する。
-
-```bash
-# Docker → Artifact Registry の認証設定（初回のみ）
-gcloud auth configure-docker asia-northeast1-docker.pkg.dev
-
-# ビルド → タグ付け → push
-docker build --platform linux/amd64 -t devforge-dev ./backend
-docker tag devforge-dev asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest
-docker push asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest
-```
-
-### 4. Cloud Run にデプロイする
-
-```bash
-gcloud run deploy devforge-dev \
-  --image asia-northeast1-docker.pkg.dev/devforge-dev-20260311/devforge-dev/devforge-dev:latest \
-  --region asia-northeast1 \
-  --platform managed
-
-# デプロイ確認（URL取得）
-gcloud run services describe devforge-dev --region asia-northeast1 \
-  --format "value(status.url)"
-```
-
-### 5. トラブルシューティング
-
-| エラー | 原因 | 対処 |
-|---|---|---|
-| `Error 403: ... is disabled` | GCP API が未有効 | `gcloud services enable <API名>` |
-| `exec format error` | Apple Silicon で `--platform linux/amd64` が未指定 | 上記手順3でビルドし直す |
-| `deletion protection is enabled` | Terraform destroy 時 | リソースの `deletion_protection = false` に変更 → `apply` → `destroy` |
-
----
-
-秘密情報（`ADMIN_TOKEN` 等）は Secret Manager 経由の環境変数注入を推奨。GitHub OAuth の `state` は backend 側 Cookie で検証されるため、`CORS_ORIGINS` と Cookie 設定を環境に合わせて揃えること。
