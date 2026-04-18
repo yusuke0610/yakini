@@ -26,6 +26,7 @@ from .oauth_flow import (
     GITHUB_OAUTH_REDIRECT_COOKIE,
     GITHUB_OAUTH_STATE_COOKIE,
     begin_github_oauth,
+    build_external_base_url,
     build_frontend_redirect_url,
     resolve_frontend_url_from_cookie,
     resolve_frontend_url_from_request,
@@ -154,7 +155,8 @@ async def github_callback_redirect(
             request.cookies.get(GITHUB_OAUTH_STATE_COOKIE),
             state,
         )
-        token_response = await authenticate_github_user(db, code)
+        redirect_uri = f"{build_external_base_url(request)}/auth/github/callback"
+        token_response = await authenticate_github_user(db, code, redirect_uri)
     except HTTPException as error:
         # error.detail は AppErrorResponse の dict 形式なので message フィールドを取り出す
         detail = error.detail
@@ -184,7 +186,8 @@ async def github_callback(
         request.cookies.get(GITHUB_OAUTH_STATE_COOKIE),
         payload.state,
     )
-    token_response = await authenticate_github_user(db, payload.code)
+    redirect_uri = f"{build_external_base_url(request)}/auth/github/callback"
+    token_response = await authenticate_github_user(db, payload.code, redirect_uri)
     set_auth_cookies(response, token_response.username)
     clear_github_oauth_cookies(response)
     return token_response
