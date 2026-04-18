@@ -17,11 +17,16 @@ from ...repositories import UserRepository
 from ...schemas import TokenResponse
 
 
-async def authenticate_github_user(db: Session, code: str) -> TokenResponse:
+async def authenticate_github_user(
+    db: Session,
+    code: str,
+    redirect_uri: str | None = None,
+) -> TokenResponse:
     """
     GitHub OAuth コードを使ってユーザーを認証する。
 
     アクセストークン交換 → GitHub ユーザー情報取得 → DB upsert の順に処理する。
+    認可リクエストで redirect_uri を指定した場合は同じ値を渡すこと。
     """
     client_id = get_github_client_id()
     client_secret = get_github_client_secret()
@@ -33,15 +38,19 @@ async def authenticate_github_user(db: Session, code: str) -> TokenResponse:
             action="システム管理者に連絡してください",
         )
 
+    token_payload: dict = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "code": code,
+    }
+    if redirect_uri:
+        token_payload["redirect_uri"] = redirect_uri
+
     async with httpx.AsyncClient() as client:
         # アクセストークンの交換
         token_resp = await client.post(
             "https://github.com/login/oauth/access_token",
-            json={
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "code": code,
-            },
+            json=token_payload,
             headers={"Accept": "application/json"},
         )
         token_data = token_resp.json()
@@ -51,6 +60,8 @@ async def authenticate_github_user(db: Session, code: str) -> TokenResponse:
                 logging.WARNING,
                 "github_oauth_failed",
                 error=token_data.get("error_description", "unknown"),
+                github_error=token_data.get("error", "unknown"),
+                redirect_uri=redirect_uri,
             )
             raise_app_error(
                 status_code=status.HTTP_401_UNAUTHORIZED,
