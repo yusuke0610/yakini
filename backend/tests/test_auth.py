@@ -265,13 +265,11 @@ def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
             follow_redirects=False,
         )
 
-    assert response.status_code == 303
+    assert response.status_code == 200
     assert mock_async_client.call_count == 0
-    parsed = urlparse(response.headers["location"])
-    assert parsed.scheme == "http"
-    assert parsed.netloc == "localhost:5173"
-    assert parsed.path == "/index.html"
-    assert parse_qs(parsed.query)["github_error"] == ["OAuth state の検証に失敗しました。"]
+    # 200 + HTML リダイレクト: URL が HTML 本文に含まれていることを確認する
+    assert "localhost:5173" in response.text
+    assert "github_error=" in response.text
 
 
 def test_github_callback_redirect_sets_auth_cookie(client) -> None:
@@ -296,8 +294,9 @@ def test_github_callback_redirect_sets_auth_cookie(client) -> None:
             follow_redirects=False,
         )
 
-    assert response.status_code == 303
-    assert response.headers["location"] == "http://localhost:5173/index.html"
+    assert response.status_code == 200
+    # 200 + HTML リダイレクト: フロントエンド URL が HTML 本文に含まれていることを確認する
+    assert "localhost:5173/index.html" in response.text
     assert "access_token=" in response.headers["set-cookie"]
 
 

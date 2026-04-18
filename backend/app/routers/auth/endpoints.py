@@ -4,8 +4,10 @@
 各関数は薄いラッパーとして実装し、ロジックはサブモジュールに委譲する。
 """
 
+import json as _json
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from ...core.errors import ErrorCode, raise_app_error
@@ -35,6 +37,23 @@ from .token_manager import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _html_redirect(url: str) -> str:
+    """Firebase Hosting proxy 経由でも Set-Cookie が失われないよう 200 + HTML リダイレクトを返す。
+
+    303 レスポンスの Set-Cookie は Firebase Hosting CDN 層で除去されるため、
+    200 の HTML で meta refresh + JS リダイレクトを使う。
+    """
+    js_url = _json.dumps(url)
+    safe_url = url.replace('"', "&quot;")
+    return (
+        "<!DOCTYPE html><html><head>"
+        f'<meta http-equiv="refresh" content="0;url={safe_url}">'
+        "</head><body>"
+        f"<script>window.location.replace({js_url});</script>"
+        "</body></html>"
+    )
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -113,8 +132,12 @@ async def github_callback_redirect(
     code: str | None = None,
     state: str | None = None,
     db: Session = Depends(get_db),
-) -> RedirectResponse:
-    """GitHub OAuth コールバックを処理し、フロントエンドへリダイレクトする。"""
+) -> HTMLResponse:
+    """GitHub OAuth コールバックを処理し、フロントエンドへリダイレクトする。
+
+    Firebase Hosting rewrite 経由では 303 の Set-Cookie が転送されないため
+    200 + HTML リダイレクトで Cookie を確実にセットする。
+    """
     frontend_url = resolve_frontend_url_from_cookie(
         request.cookies.get(GITHUB_OAUTH_REDIRECT_COOKIE)
     )
@@ -136,20 +159,16 @@ async def github_callback_redirect(
         # error.detail は AppErrorResponse の dict 形式なので message フィールドを取り出す
         detail = error.detail
         error_message = detail.get("message") if isinstance(detail, dict) else str(detail)
-        redirect = RedirectResponse(
-            url=build_frontend_redirect_url(frontend_url, error_message),
-            status_code=status.HTTP_303_SEE_OTHER,
+        response = HTMLResponse(
+            content=_html_redirect(build_frontend_redirect_url(frontend_url, error_message))
         )
-        clear_github_oauth_cookies(redirect)
-        return redirect
+        clear_github_oauth_cookies(response)
+        return response
 
-    redirect = RedirectResponse(
-        url=build_frontend_redirect_url(frontend_url),
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
-    set_auth_cookies(redirect, token_response.username)
-    clear_github_oauth_cookies(redirect)
-    return redirect
+    response = HTMLResponse(content=_html_redirect(build_frontend_redirect_url(frontend_url)))
+    set_auth_cookies(response, token_response.username)
+    clear_github_oauth_cookies(response)
+    return response
 
 
 @router.post("/github/callback", response_model=TokenResponse)
