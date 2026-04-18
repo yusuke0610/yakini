@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { getGitHubLoginUrl } from "../../api";
+import { initiateGitHubLogin } from "../../api";
 import shared from "../../styles/shared.module.css";
 import styles from "./LoginForm.module.css";
 
@@ -13,7 +13,9 @@ export function LoginForm({
   useEffect(() => {
     // エラーがなければ自動的に GitHub OAuth へリダイレクトする
     if (!githubError) {
-      window.location.assign(getGitHubLoginUrl(window.location.origin));
+      initiateGitHubLogin(window.location.origin).catch(() => {
+        window.location.reload();
+      });
     }
   }, [githubError]);
 
