@@ -1,16 +1,76 @@
 {
-  "hosting": {
-    "public": "frontend/dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  }
+  "hosting": [
+    {
+      "target": "dev",
+      "public": "frontend/dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/auth/**",
+          "run": { "serviceId": "devforge-dev", "region": "asia-northeast1" }
+        },
+        {
+          "source": "/api/**",
+          "run": { "serviceId": "devforge-dev", "region": "asia-northeast1" }
+        },
+        {
+          "source": "/health",
+          "run": { "serviceId": "devforge-dev", "region": "asia-northeast1" }
+        },
+        { "source": "**", "destination": "/index.html" }
+      ]
+    },
+    {
+      "target": "stg",
+      "public": "frontend/dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/auth/**",
+          "run": { "serviceId": "devforge-stg", "region": "asia-northeast1" }
+        },
+        {
+          "source": "/api/**",
+          "run": { "serviceId": "devforge-stg", "region": "asia-northeast1" }
+        },
+        {
+          "source": "/health",
+          "run": { "serviceId": "devforge-stg", "region": "asia-northeast1" }
+        },
+        { "source": "**", "destination": "/index.html" }
+      ]
+    },
+    {
+      "target": "prod",
+      "public": "frontend/dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/auth/**",
+          "run": { "serviceId": "devforge-prod", "region": "asia-northeast1" }
+        },
+        {
+          "source": "/api/**",
+          "run": { "serviceId": "devforge-prod", "region": "asia-northeast1" }
+        },
+        {
+          "source": "/health",
+          "run": { "serviceId": "devforge-prod", "region": "asia-northeast1" }
+        },
+        { "source": "**", "destination": "/index.html" }
+      ]
+    }
+  ]
 }

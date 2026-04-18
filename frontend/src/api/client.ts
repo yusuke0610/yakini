@@ -2,7 +2,7 @@ import { ERROR_CONFIG } from "../constants/errorMessages";
 import { ApiError } from "../utils/appError";
 import { generateErrorId } from "../utils/errorId";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 let _onUnauthorized: (() => void) | null = null;
 

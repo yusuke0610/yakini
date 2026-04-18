@@ -3,5 +3,22 @@
     "default": "devforge-dev-20260311",
     "stg": "devforge-stg-20260404",
     "prod": "devforge-prod-20260404"
+  },
+  "targets": {
+    "devforge-dev-20260311": {
+      "hosting": {
+        "dev": ["devforge-dev-20260311"]
+      }
+    },
+    "devforge-stg-20260404": {
+      "hosting": {
+        "stg": ["devforge-stg-20260404"]
+      }
+    },
+    "devforge-prod-20260404": {
+      "hosting": {
+        "prod": ["devforge-prod-20260404"]
+      }
+    }
   }
 }

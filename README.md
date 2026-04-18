@@ -198,11 +198,6 @@ GitHub OAuth の `state` は backend 側 Cookie で検証されるため、`CORS
 - `GET /auth/github/callback`: GitHub OAuth コールバック（GitHub→backend）
 - `POST /auth/github/callback`: 互換用コールバック
 
-### 基本情報
-- `POST /api/basic-info`: 作成（1ユーザー1件。既存時は `409`）
-- `PUT /api/basic-info/{id}`: 更新
-- `GET /api/basic-info/latest`: 現在データ取得
-
 ### 職務経歴書
 - `POST /api/resumes`: 作成（1ユーザー1件。既存時は `409`）
 - `PUT /api/resumes/{id}`: 更新
@@ -211,15 +206,6 @@ GitHub OAuth の `state` は backend 側 Cookie で検証されるため、`CORS
 - `GET /api/resumes/{id}`: 取得
 - `GET /api/resumes/{id}/pdf`: PDFダウンロード
 - `GET /api/resumes/{id}/markdown`: Markdownダウンロード
-
-### 履歴書
-- `POST /api/rirekisho`: 作成（1ユーザー1件。既存時は `409`）
-- `PUT /api/rirekisho/{id}`: 更新
-- `DELETE /api/rirekisho`: 削除
-- `GET /api/rirekisho/latest`: 現在データ取得
-- `GET /api/rirekisho/{id}`: 取得
-- `GET /api/rirekisho/{id}/pdf`: PDFダウンロード
-- `GET /api/rirekisho/{id}/markdown`: Markdownダウンロード
 
 ### GitHub分析
 - `POST /api/intelligence/analyze`: GitHub活動の全パイプライン分析（GitHub OAuth必須、202 非同期、レート: 5/分）
