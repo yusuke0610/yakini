@@ -93,6 +93,22 @@ export function summarizeBlogArticles(
 }
 
 /**
+ * 失敗したブログサマリタスクを手動で再実行する（202 非同期）。
+ * サーバーは記事を保持していないため、articles を再送する必要がある。
+ */
+export function retrySummarizeBlogArticles(
+  articles: BlogArticle[],
+): Promise<BlogSummaryResponse> {
+  return request<BlogSummaryResponse>(
+    "/api/blog/summarize/retry",
+    {
+      method: "POST",
+      body: JSON.stringify({ articles }),
+    },
+  );
+}
+
+/**
  * DB に保存されたブログ AI 分析結果を取得する。
  */
 export function getBlogSummaryCache(): Promise<BlogSummaryResponse> {

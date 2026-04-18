@@ -106,7 +106,8 @@ export function useTaskPolling(options: UseTaskPollingOptions) {
         if (data.status === "completed") {
           stopPolling();
           callbacksRef.current.onCompleted();
-        } else if (data.status === "failed") {
+        } else if (data.status === "dead_letter") {
+          // dead_letter は失敗の終端状態（リトライ不可 or リトライ枯渇）
           stopPolling();
           callbacksRef.current.onFailed(
             toAppError(
@@ -120,6 +121,7 @@ export function useTaskPolling(options: UseTaskPollingOptions) {
             ),
           );
         } else {
+          // pending / processing / retrying はポーリング継続
           scheduleNext();
         }
       } catch {

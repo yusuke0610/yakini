@@ -15,6 +15,7 @@ from typing import Dict, List, Optional
 
 import httpx
 
+from ..tasks.exceptions import RetryableError
 from .github.api_client import (
     _REPO_MAX_AGE_YEARS,
     _REPO_MIN_SIZE_BYTES,
@@ -154,13 +155,14 @@ async def collect_repos(
 
     repos: List[RepoData] = []
 
-    async with httpx.AsyncClient(
-        base_url=GITHUB_API,
-        headers=headers,
-        timeout=30.0,
-    ) as client:
-        # 1. リポジトリリストの取得
-        raw_repos = await fetch_repos_raw(client, username, max_pages)
+    try:
+        async with httpx.AsyncClient(
+            base_url=GITHUB_API,
+            headers=headers,
+            timeout=30.0,
+        ) as client:
+            # 1. リポジトリリストの取得
+            raw_repos = await fetch_repos_raw(client, username, max_pages)
 
         # 2. 各リポジトリについて、言語の内訳と構造を取得
         cutoff = datetime.now(timezone.utc).replace(
@@ -201,6 +203,8 @@ async def collect_repos(
 
             if on_repo_fetched is not None:
                 await on_repo_fetched(i + 1, total)
+    except (httpx.TimeoutException, httpx.ConnectError) as exc:
+        raise RetryableError(f"GitHub ネットワーク障害: {exc}") from exc
 
     logger.info(
         "Collected %d repos for %s (skipped forks: %s)",

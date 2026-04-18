@@ -66,14 +66,14 @@ def test_github_analysis_timeout_propagates(db_session: Session) -> None:
 
     db_session.refresh(cache)
     # _run_github_analysis はタイムアウトで例外を再 raise する
-    # ステータスは processing のまま（_mark_failed は execute_task 層が担う）
+    # ステータスは processing のまま（_mark_dead_letter は execute_task 層が担う）
     assert cache.status == "processing"
 
 
-def test_github_analysis_mark_failed_on_unexpected_error(db_session: Session) -> None:
-    """予期しないエラー発生時に _mark_failed でステータスが failed になることを確認する。"""
+def test_github_analysis_mark_dead_letter_on_unexpected_error(db_session: Session) -> None:
+    """予期しないエラー発生時に _mark_dead_letter でステータスが dead_letter になることを確認する。"""
     from app.services.tasks.base import TaskType
-    from app.services.tasks.worker import _mark_failed
+    from app.services.tasks.worker import _mark_dead_letter
 
     user = UserRepository(db_session).create(
         "github:markfailed-user",
@@ -84,14 +84,14 @@ def test_github_analysis_mark_failed_on_unexpected_error(db_session: Session) ->
     db_session.add(cache)
     db_session.commit()
 
-    _mark_failed(
+    _mark_dead_letter(
         db_session,
         TaskType.GITHUB_ANALYSIS,
         {"user_id": user.id},
     )
 
     db_session.refresh(cache)
-    assert cache.status == "failed"
+    assert cache.status == "dead_letter"
     assert cache.error_message == "予期しないエラーが発生しました"
 
 
@@ -135,10 +135,10 @@ def test_blog_summarize_timeout_propagates(db_session: Session) -> None:
     assert cache.status == "processing"
 
 
-def test_blog_summarize_mark_failed_on_unexpected_error(db_session: Session) -> None:
-    """予期しないエラー発生時に _mark_failed でブログサマリのステータスが failed になることを確認する。"""
+def test_blog_summarize_mark_dead_letter_on_unexpected_error(db_session: Session) -> None:
+    """予期しないエラー発生時に _mark_dead_letter でブログサマリのステータスが dead_letter になることを確認する。"""
     from app.services.tasks.base import TaskType
-    from app.services.tasks.worker import _mark_failed
+    from app.services.tasks.worker import _mark_dead_letter
 
     user = UserRepository(db_session).create(
         "blog-markfailed-user",
@@ -149,12 +149,12 @@ def test_blog_summarize_mark_failed_on_unexpected_error(db_session: Session) -> 
     db_session.add(cache)
     db_session.commit()
 
-    _mark_failed(
+    _mark_dead_letter(
         db_session,
         TaskType.BLOG_SUMMARIZE,
         {"user_id": user.id},
     )
 
     db_session.refresh(cache)
-    assert cache.status == "failed"
+    assert cache.status == "dead_letter"
     assert cache.error_message == "予期しないエラーが発生しました"

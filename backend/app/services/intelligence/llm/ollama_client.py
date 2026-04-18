@@ -6,9 +6,13 @@ import time
 
 import httpx
 
+from ....services.tasks.exceptions import NonRetryableError, RetryableError
 from .base import LLMClient
 
 logger = logging.getLogger(__name__)
+
+# 一時障害とみなす HTTP ステータスコード
+_RETRYABLE_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 
 
 class OllamaClient(LLMClient):
@@ -20,7 +24,11 @@ class OllamaClient(LLMClient):
         self.timeout = float(os.environ.get("OLLAMA_TIMEOUT", "1200.0"))  # デフォルトは 20 分
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
-        """Ollama API でテキスト生成を実行する。"""
+        """Ollama API でテキスト生成を実行する。
+
+        タイムアウト・5xx・429 は ``RetryableError``、4xx は ``NonRetryableError``
+        を raise する。``ConnectError``（Ollama 未起動時）は既存動作を維持し空文字を返す。
+        """
         start = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -44,7 +52,7 @@ class OllamaClient(LLMClient):
         except httpx.ConnectError:
             logger.info("Ollama が %s で利用できません", self.base_url)
             return ""
-        except httpx.TimeoutException:
+        except httpx.TimeoutException as exc:
             duration_ms = int((time.monotonic() - start) * 1000)
             logger.warning(
                 "Ollama 生成がタイムアウトしました (%.1f秒)",
@@ -55,7 +63,20 @@ class OllamaClient(LLMClient):
                     "duration_ms": duration_ms,
                 },
             )
-            return ""
+            raise RetryableError(f"Ollama タイムアウト: {exc}") from exc
+        except httpx.HTTPStatusError as exc:
+            duration_ms = int((time.monotonic() - start) * 1000)
+            status_code = exc.response.status_code
+            logger.warning(
+                "Ollama が %d を返しました", status_code,
+                extra={"status": "failed", "duration_ms": duration_ms},
+            )
+            if status_code in _RETRYABLE_STATUS_CODES:
+                retry_after = _parse_retry_after(exc.response) if status_code == 429 else None
+                raise RetryableError(
+                    f"Ollama {status_code}: {exc}", retry_after=retry_after,
+                ) from exc
+            raise NonRetryableError(f"Ollama {status_code}: {exc}") from exc
         except Exception:
             duration_ms = int((time.monotonic() - start) * 1000)
             logger.exception(
@@ -75,3 +96,14 @@ class OllamaClient(LLMClient):
                 return self.model in models
         except (httpx.ConnectError, httpx.TimeoutException):
             return False
+
+
+def _parse_retry_after(response: httpx.Response) -> float | None:
+    """HTTP レスポンスから ``Retry-After`` ヘッダを秒単位で抽出する。"""
+    value = response.headers.get("retry-after")
+    if not value:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None

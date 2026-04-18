@@ -19,7 +19,7 @@ from app.repositories import UserRepository
 from app.services.tasks.base import TaskType
 from app.services.tasks.worker import (
     _generate_advice_if_available,
-    _mark_failed,
+    _mark_dead_letter,
     _run_blog_summarize,
     _run_career_analysis,
     _run_github_analysis,
@@ -145,8 +145,8 @@ class TestRunGithubAnalysis:
 
         assert "processing" in processing_status
 
-    def test_github_user_not_found_sets_failed(self, db_session: Session):
-        """GitHubUserNotFoundError 発生時に status が failed になること。"""
+    def test_github_user_not_found_sets_dead_letter(self, db_session: Session):
+        """GitHubUserNotFoundError 発生時に status が dead_letter になること。"""
         from app.services.intelligence.github.api_client import GitHubUserNotFoundError
 
         user, cache = self._make_user_and_cache(db_session, "github:notfound")
@@ -174,7 +174,7 @@ class TestRunGithubAnalysis:
                 )
 
         db_session.refresh(cache)
-        assert cache.status == "failed"
+        assert cache.status == "dead_letter"
 
     def test_no_cache_returns_early(self, db_session: Session):
         """キャッシュが見つからない場合、例外なく早期リターンすること。"""
@@ -229,8 +229,8 @@ class TestRunBlogSummarize:
         assert cache.summary == "AI 要約テキスト"
         assert cache.completed_at is not None
 
-    def test_llm_unavailable_sets_failed(self, db_session: Session):
-        """LLM が利用不可の場合に status が failed になること。"""
+    def test_llm_unavailable_sets_dead_letter(self, db_session: Session):
+        """LLM が利用不可の場合に status が dead_letter になること。"""
         user, cache = self._make_user_and_cache(db_session, "blog-nollm")
         mock_llm = MagicMock()
         mock_llm.check_available = AsyncMock(return_value=False)
@@ -244,11 +244,11 @@ class TestRunBlogSummarize:
             )
 
         db_session.refresh(cache)
-        assert cache.status == "failed"
+        assert cache.status == "dead_letter"
         assert cache.error_message is not None
 
-    def test_empty_summary_sets_failed(self, db_session: Session):
-        """LLM が空文字を返した場合に status が failed になること。"""
+    def test_empty_summary_sets_dead_letter(self, db_session: Session):
+        """LLM が空文字を返した場合に status が dead_letter になること。"""
         user, cache = self._make_user_and_cache(db_session, "blog-empty")
         mock_llm = MagicMock()
         mock_llm.check_available = AsyncMock(return_value=True)
@@ -269,7 +269,7 @@ class TestRunBlogSummarize:
             )
 
         db_session.refresh(cache)
-        assert cache.status == "failed"
+        assert cache.status == "dead_letter"
 
     def test_no_cache_returns_early(self, db_session: Session):
         """キャッシュが見つからない場合、例外なく早期リターンすること。"""
@@ -350,8 +350,8 @@ class TestRunCareerAnalysis:
         assert analysis.result_json is not None
         assert analysis.completed_at is not None
 
-    def test_value_error_sets_failed(self, db_session: Session):
-        """build_career_analysis が ValueError を送出した場合 status が failed になること。"""
+    def test_value_error_sets_dead_letter(self, db_session: Session):
+        """build_career_analysis が ValueError を送出した場合 status が dead_letter になること。"""
         user, analysis = self._make_user_and_analysis(db_session, "career-err")
         mock_llm = MagicMock()
 
@@ -376,7 +376,7 @@ class TestRunCareerAnalysis:
                 )
 
         db_session.refresh(analysis)
-        assert analysis.status == "failed"
+        assert analysis.status == "dead_letter"
         assert "不足" in analysis.error_message
 
     def test_no_record_returns_early(self, db_session: Session):
@@ -494,8 +494,9 @@ class TestExecuteTask:
         mock_gh.assert_called_once()
         mock_blog.assert_not_called()
 
-    def test_execute_task_marks_failed_on_error(self, db_session: Session):
-        """タスクで例外が発生した場合 _mark_failed が呼ばれ例外が再 raise されること。"""
+    def test_execute_task_marks_dead_letter_on_error(self, db_session: Session):
+        """予期しない例外が発生した場合（max_attempts=1）、_mark_dead_letter が
+        呼ばれ例外が再 raise されること。"""
         mock_db = MagicMock()
         mock_session_local = MagicMock(return_value=mock_db)
 
@@ -506,7 +507,7 @@ class TestExecuteTask:
                 new_callable=AsyncMock,
                 side_effect=RuntimeError("予期しないクラッシュ"),
             ),
-            patch("app.services.tasks.worker._mark_failed") as mock_mark_failed,
+            patch("app.services.tasks.worker._mark_dead_letter") as mock_mark_dead_letter,
             patch("app.services.tasks.worker._create_notification"),
         ):
             with pytest.raises(RuntimeError, match="予期しないクラッシュ"):
@@ -517,9 +518,14 @@ class TestExecuteTask:
                     )
                 )
 
-        mock_mark_failed.assert_called_once_with(
-            mock_db, TaskType.GITHUB_ANALYSIS, {"user_id": "test-user-id", "github_username": "u"}
+        mock_mark_dead_letter.assert_called_once()
+        call_args = mock_mark_dead_letter.call_args
+        assert call_args.args == (
+            mock_db,
+            TaskType.GITHUB_ANALYSIS,
+            {"user_id": "test-user-id", "github_username": "u"},
         )
+        assert isinstance(call_args.kwargs.get("error"), RuntimeError)
 
     def test_execute_task_creates_notification_on_success(self, db_session: Session):
         """タスク成功時に _create_notification が呼ばれること。"""
@@ -547,12 +553,12 @@ class TestExecuteTask:
         )
 
 
-# ── _mark_failed (career_analysis) ───────────────────────────────────────
+# ── _mark_dead_letter (career_analysis) ──────────────────────────────────
 
 
-class TestMarkFailedCareerAnalysis:
-    def test_mark_failed_career_analysis(self, db_session: Session):
-        """_mark_failed が CareerAnalysis のステータスを failed に更新すること。"""
+class TestMarkDeadLetterCareerAnalysis:
+    def test_mark_dead_letter_career_analysis(self, db_session: Session):
+        """_mark_dead_letter が CareerAnalysis のステータスを dead_letter に更新すること。"""
         user = UserRepository(db_session).create(
             "mf-career-user", hashed_password=None, email="mfcareer@test.com"
         )
@@ -565,18 +571,18 @@ class TestMarkFailedCareerAnalysis:
         db_session.add(analysis)
         db_session.commit()
 
-        _mark_failed(
+        _mark_dead_letter(
             db_session,
             TaskType.CAREER_ANALYSIS,
             {"user_id": user.id, "record_id": analysis.id},
         )
 
         db_session.refresh(analysis)
-        assert analysis.status == "failed"
+        assert analysis.status == "dead_letter"
         assert analysis.error_message == "予期しないエラーが発生しました"
 
-    def test_mark_failed_does_not_overwrite_completed(self, db_session: Session):
-        """completed 済みのレコードは _mark_failed で上書きされないこと。"""
+    def test_mark_dead_letter_does_not_overwrite_completed(self, db_session: Session):
+        """completed 済みのレコードは _mark_dead_letter で上書きされないこと。"""
         user = UserRepository(db_session).create(
             "mf-career-done", hashed_password=None, email="mfcareerdone@test.com"
         )
@@ -589,7 +595,7 @@ class TestMarkFailedCareerAnalysis:
         db_session.add(analysis)
         db_session.commit()
 
-        _mark_failed(
+        _mark_dead_letter(
             db_session,
             TaskType.CAREER_ANALYSIS,
             {"user_id": user.id, "record_id": analysis.id},

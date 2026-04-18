@@ -62,7 +62,7 @@ export const errorHandlers = {
     "*/api/intelligence/cache/status",
     () =>
       HttpResponse.json({
-        status: "failed",
+        status: "dead_letter",
         error_message: "LLM タイムアウト",
       }),
   ),

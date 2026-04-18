@@ -14,7 +14,7 @@ import styles from "./CareerAnalysisPage.module.css";
  * 分析生成・履歴管理・結果表示を1画面で行う。
  */
 export function CareerAnalysisPage() {
-  const { phase, setPhase, error, analyses, handleGenerate, handleDelete } =
+  const { phase, setPhase, error, analyses, handleGenerate, handleDelete, handleRetry } =
     useCareerAnalysisPage();
   const [selected, setSelected] = useState<CareerAnalysisResponse | null>(null);
   const [targetPosition, setTargetPosition] = useState("");
@@ -94,13 +94,21 @@ export function CareerAnalysisPage() {
                     <span className={styles.versionDate}>
                       {new Date(a.created_at).toLocaleDateString("ja-JP")}
                     </span>
-                    {a.status === "failed" && (
+                    {a.status === "dead_letter" && (
                       <span style={{ color: "var(--error)", fontSize: "0.8rem" }}>失敗</span>
+                    )}
+                    {a.status === "retrying" && (
+                      <span style={{ color: "var(--warning)", fontSize: "0.8rem" }}>
+                        再試行中
+                      </span>
                     )}
                   </div>
                   <div className={styles.versionActions}>
                     {a.status === "completed" && a.result && (
                       <button onClick={() => handleSelect(a)}>表示</button>
+                    )}
+                    {a.status === "dead_letter" && (
+                      <button onClick={() => handleRetry(a.id)}>再実行</button>
                     )}
                     <button className={styles.deleteButton} onClick={() => handleDeleteWithSelected(a.id)}>
                       削除

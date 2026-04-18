@@ -115,6 +115,73 @@ async def generate(
     return _to_response(analysis)
 
 
+# リトライ可能な終端ステータス（リトライ枯渇 or リトライ不可エラー）
+_RETRYABLE_TERMINAL_STATUSES = {"dead_letter"}
+
+
+@router.post("/{analysis_id}/retry", response_model=CareerAnalysisResponse, status_code=202)
+@limiter.limit("5/minute")
+async def retry_analysis(
+    analysis_id: int,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """失敗したキャリア分析タスクを手動で再実行する。
+
+    ``dead_letter`` 状態のレコードのみ再実行可能。
+    ``retry_count`` を 0 にリセットし、``target_position`` は既存レコードの値を再利用する。
+    """
+    repo = CareerAnalysisRepository(db, current_user.id)
+    analysis = repo.get_by_id(analysis_id)
+    if not analysis:
+        raise_app_error(
+            status_code=404,
+            code=ErrorCode.VALIDATION_ERROR,
+            message=get_error("career_analysis.not_found"),
+            action="一覧に戻って対象を選び直してください",
+        )
+    if analysis.status not in _RETRYABLE_TERMINAL_STATUSES:
+        raise_app_error(
+            status_code=409,
+            code=ErrorCode.VALIDATION_ERROR,
+            message=f"このタスクはリトライできない状態です（現在: {analysis.status}）",
+            action="タスクの完了または失敗を待ってから再試行してください",
+        )
+
+    analysis.status = "pending"
+    analysis.error_message = None
+    analysis.retry_count = 0
+    analysis.started_at = None
+    analysis.completed_at = None
+    db.commit()
+
+    try:
+        dispatcher = get_task_dispatcher(background_tasks)
+        await dispatcher.dispatch(
+            TaskType.CAREER_ANALYSIS,
+            {
+                "user_id": current_user.id,
+                "record_id": analysis.id,
+                "target_position": analysis.target_position,
+            },
+        )
+    except Exception:
+        logger.exception("キャリア分析タスクの再実行に失敗しました")
+        analysis.status = "dead_letter"
+        analysis.error_message = "タスクの再実行に失敗しました"
+        db.commit()
+        raise_app_error(
+            status_code=500,
+            code=ErrorCode.INTERNAL_ERROR,
+            message=get_error("task.dispatch_failed"),
+            action="しばらく待ってから再試行してください",
+        )
+
+    return _to_response(analysis)
+
+
 @router.get("/", response_model=list[CareerAnalysisResponse])
 def list_analyses(
     db: Session = Depends(get_db),

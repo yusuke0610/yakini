@@ -150,7 +150,11 @@ export function useAsyncAnalysisPage<TResult>({
     loadCache()
       .then((cached) => {
         if (cancelled) return;
-        if (cached.status === "pending" || cached.status === "processing") {
+        if (
+          cached.status === "pending" ||
+          cached.status === "processing" ||
+          cached.status === "retrying"
+        ) {
           setPhase("polling");
           return;
         }

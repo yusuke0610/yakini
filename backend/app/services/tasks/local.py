@@ -7,7 +7,11 @@ from .worker import execute_task
 
 
 class LocalDispatcher(TaskDispatcher):
-    """FastAPI の BackgroundTasks を利用してレスポンス返却後に同一プロセスで実行する。"""
+    """FastAPI の BackgroundTasks を利用してレスポンス返却後に同一プロセスで実行する。
+
+    ローカル環境では Cloud Tasks によるネイティブリトライが使えないため、
+    失敗したタスクは自動リトライされない。手動で再実行する前提。
+    """
 
     def __init__(self, background_tasks: BackgroundTasks):
         self._bg = background_tasks

@@ -1,7 +1,7 @@
 """バックグラウンドタスクのワーカー。
 
-ローカル: BackgroundTasks から直接呼ばれる。
-Cloud: /internal/tasks/{type} エンドポイント経由で呼ばれる。
+ローカル: BackgroundTasks から直接呼ばれる（retry_count=0, max_attempts=1 でリトライなし）。
+Cloud: /internal/tasks/{type} エンドポイント経由で呼ばれる（Cloud Tasks ネイティブリトライ）。
 どちらも同じ関数を実行する。
 """
 
@@ -19,6 +19,7 @@ from ...models.career_analysis import CareerAnalysis
 from ...repositories.notification import NotificationRepository
 from ...services.intelligence.llm import get_llm_client
 from .base import TaskType
+from .exceptions import NonRetryableError
 
 logger = get_logger(__name__)
 
@@ -28,8 +29,21 @@ _SLOW_TASK_THRESHOLD_MS = 300_000
 
 
 
-async def execute_task(task_type: TaskType, payload: dict) -> None:
-    """タスクを実行する。自前で DB セッションを作成・管理する。"""
+async def execute_task(
+    task_type: TaskType,
+    payload: dict,
+    *,
+    retry_count: int = 0,
+    max_attempts: int = 1,
+) -> None:
+    """タスクを実行する。自前で DB セッションを作成・管理する。
+
+    retry_count: Cloud Tasks の ``X-CloudTasks-TaskRetryCount`` ヘッダー値（0 始まり）。
+    max_attempts: Cloud Tasks キューの ``retry_config.max_attempts``（総試行回数）。
+
+    ローカル（BackgroundTasks）呼び出しではデフォルトの ``retry_count=0, max_attempts=1`` を使い、
+    失敗時は即座に ``dead_letter`` へ遷移する（ローカルはネイティブリトライが無いため）。
+    """
     user_id = payload.get("user_id", "unknown")
     record_id = payload.get("record_id")
     start = time.monotonic()
@@ -41,6 +55,8 @@ async def execute_task(task_type: TaskType, payload: dict) -> None:
             "user_id": user_id,
             "record_id": record_id,
             "status": "running",
+            "retry_count": retry_count,
+            "max_attempts": max_attempts,
         },
     )
 
@@ -65,6 +81,7 @@ async def execute_task(task_type: TaskType, payload: dict) -> None:
                 "record_id": record_id,
                 "status": "completed",
                 "duration_ms": duration_ms,
+                "retry_count": retry_count,
             },
         )
         if duration_ms > _SLOW_TASK_THRESHOLD_MS:
@@ -75,23 +92,62 @@ async def execute_task(task_type: TaskType, payload: dict) -> None:
             )
         if isinstance(user_id, str) and user_id != "unknown":
             _create_notification(db, task_type, user_id, "completed")
-    except Exception:
+    except NonRetryableError as exc:
         duration_ms = int((time.monotonic() - start) * 1000)
-        logger.error(
-            "タスク実行に失敗しました",
+        logger.warning(
+            "タスク失敗（リトライ不可）",
             extra={
                 "task_id": task_type.value,
                 "user_id": user_id,
                 "record_id": record_id,
-                "status": "failed",
-                "error_type": type(Exception).__name__,
+                "status": "dead_letter",
+                "error_type": type(exc).__name__,
                 "duration_ms": duration_ms,
+                "retry_count": retry_count,
             },
             exc_info=True,
         )
-        _mark_failed(db, task_type, payload)
+        _mark_dead_letter(db, task_type, payload, error=exc)
         if isinstance(user_id, str) and user_id != "unknown":
             _create_notification(db, task_type, user_id, "failed")
+        raise
+    except Exception as exc:
+        duration_ms = int((time.monotonic() - start) * 1000)
+        is_final = retry_count >= max_attempts - 1
+        if is_final:
+            logger.error(
+                "タスクが最終試行で失敗しました (dead_letter)",
+                extra={
+                    "task_id": task_type.value,
+                    "user_id": user_id,
+                    "record_id": record_id,
+                    "status": "dead_letter",
+                    "error_type": type(exc).__name__,
+                    "duration_ms": duration_ms,
+                    "retry_count": retry_count,
+                    "max_attempts": max_attempts,
+                },
+                exc_info=True,
+            )
+            _mark_dead_letter(db, task_type, payload, error=exc)
+            if isinstance(user_id, str) and user_id != "unknown":
+                _create_notification(db, task_type, user_id, "failed")
+        else:
+            logger.warning(
+                "タスク失敗（リトライ予定）",
+                extra={
+                    "task_id": task_type.value,
+                    "user_id": user_id,
+                    "record_id": record_id,
+                    "status": "retrying",
+                    "error_type": type(exc).__name__,
+                    "duration_ms": duration_ms,
+                    "retry_count": retry_count,
+                    "max_attempts": max_attempts,
+                },
+                exc_info=True,
+            )
+            _mark_retrying(db, task_type, payload, retry_count, max_attempts, error=exc)
         raise
     finally:
         db.close()
@@ -155,7 +211,7 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
             on_repo_fetched=_on_repo_fetched,
         )
     except GitHubUserNotFoundError as exc:
-        cache.status = "failed"
+        cache.status = "dead_letter"
         cache.error_message = f"GitHubユーザーが見つかりません: {payload['github_username']}"
         cache.completed_at = _now()
         db.commit()
@@ -243,7 +299,7 @@ async def _run_blog_summarize(db: Session, payload: dict) -> None:
     articles_data = payload.get("articles", [])
     llm_client = get_llm_client()
     if not await llm_client.check_available():
-        cache.status = "failed"
+        cache.status = "dead_letter"
         cache.error_message = "LLM サービスが利用できません"
         cache.completed_at = _now()
         db.commit()
@@ -251,7 +307,7 @@ async def _run_blog_summarize(db: Session, payload: dict) -> None:
 
     summary = await summarize_blog_articles(articles_data)
     if not summary:
-        cache.status = "failed"
+        cache.status = "dead_letter"
         cache.error_message = "AI サマリの生成に失敗しました"
         cache.completed_at = _now()
         db.commit()
@@ -293,7 +349,7 @@ async def _run_career_analysis(db: Session, payload: dict) -> None:
             llm_client=llm_client,
         )
     except ValueError as exc:
-        analysis.status = "failed"
+        analysis.status = "dead_letter"
         analysis.error_message = str(exc)
         analysis.completed_at = _now()
         db.commit()
@@ -320,39 +376,64 @@ def _create_notification(db: Session, task_type: TaskType, user_id: str, status:
         logger.warning("通知の作成に失敗しました（タスク処理には影響しません）", exc_info=True)
 
 
-def _mark_failed(db: Session, task_type: TaskType, payload: dict) -> None:
-    """タスク失敗時にステータスを更新する（予期しないエラー用）。"""
+def _get_task_record(db: Session, task_type: TaskType, payload: dict):
+    """タスク種別に応じた DB レコードを取得する。"""
+    user_id = payload.get("user_id")
+    if not user_id:
+        return None
+    if task_type == TaskType.GITHUB_ANALYSIS:
+        return db.query(GitHubAnalysisCache).filter_by(user_id=user_id).first()
+    if task_type == TaskType.BLOG_SUMMARIZE:
+        return db.query(BlogSummaryCache).filter_by(user_id=user_id).first()
+    if task_type == TaskType.CAREER_ANALYSIS:
+        record_id = payload.get("record_id")
+        if record_id:
+            return db.query(CareerAnalysis).filter_by(id=record_id).first()
+    return None
+
+
+def _mark_dead_letter(
+    db: Session,
+    task_type: TaskType,
+    payload: dict,
+    *,
+    error: Exception | None = None,
+) -> None:
+    """タスクを終端ステータス（``dead_letter``）に更新する。
+
+    リトライ不可（NonRetryableError）またはリトライ上限に達したエラーで呼ばれる。
+    失敗ステータスは ``dead_letter`` に一本化している。
+    """
     try:
-        user_id = payload.get("user_id")
-        if not user_id:
-            return
-
-        now = _now()
-
-        if task_type == TaskType.GITHUB_ANALYSIS:
-            cache = db.query(GitHubAnalysisCache).filter_by(user_id=user_id).first()
-            if cache and cache.status != "completed":
-                cache.status = "failed"
-                cache.error_message = "予期しないエラーが発生しました"
-                cache.completed_at = now
-                db.commit()
-
-        elif task_type == TaskType.BLOG_SUMMARIZE:
-            cache = db.query(BlogSummaryCache).filter_by(user_id=user_id).first()
-            if cache and cache.status != "completed":
-                cache.status = "failed"
-                cache.error_message = "予期しないエラーが発生しました"
-                cache.completed_at = now
-                db.commit()
-
-        elif task_type == TaskType.CAREER_ANALYSIS:
-            record_id = payload.get("record_id")
-            if record_id:
-                analysis = db.query(CareerAnalysis).filter_by(id=record_id).first()
-                if analysis and analysis.status != "completed":
-                    analysis.status = "failed"
-                    analysis.error_message = "予期しないエラーが発生しました"
-                    analysis.completed_at = now
-                    db.commit()
+        error_message = str(error) if error else "予期しないエラーが発生しました"
+        record = _get_task_record(db, task_type, payload)
+        if record and record.status != "completed":
+            record.status = "dead_letter"
+            record.error_message = error_message
+            record.completed_at = _now()
+            db.commit()
     except Exception:
         logger.exception("タスク失敗マーク中にエラーが発生しました")
+
+
+def _mark_retrying(
+    db: Session,
+    task_type: TaskType,
+    payload: dict,
+    retry_count: int,
+    max_attempts: int,
+    *,
+    error: Exception | None = None,
+) -> None:
+    """タスクをリトライ待ち状態（``retrying``）に更新する。"""
+    try:
+        record = _get_task_record(db, task_type, payload)
+        if record and record.status != "completed":
+            record.status = "retrying"
+            record.retry_count = retry_count
+            record.max_retries = max_attempts
+            if error is not None:
+                record.error_message = str(error)
+            db.commit()
+    except Exception:
+        logger.exception("タスクリトライマーク中にエラーが発生しました")

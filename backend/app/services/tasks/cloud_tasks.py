@@ -1,4 +1,8 @@
-"""Cloud Tasks 用ディスパッチャー。"""
+"""Cloud Tasks 用ディスパッチャー。
+
+リトライはキュー側の ``retry_config`` に任せる（ネイティブリトライ方式）。
+ワーカーが HTTP 5xx を返すと Cloud Tasks が exponential backoff で自動再試行する。
+"""
 
 import json
 import os
