@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ..messages import get_error
-from ..settings import get_cookie_secure
+from ..settings import get_cookie_samesite, get_cookie_secure
 
 CSRF_COOKIE_NAME = "csrf_token"
 CSRF_HEADER_NAME = "x-csrf-token"
@@ -32,13 +32,20 @@ _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 
 def set_csrf_cookie(response: Response, token: str) -> None:
-    """CSRF トークンを httpOnly=False Cookie にセットする（JS から読み取り可能）。"""
+    """CSRF トークンを httpOnly=False Cookie にセットする（JS から読み取り可能）。
+
+    samesite は他の認証 Cookie（access_token / refresh_token）と揃える。
+    フロントエンドとバックエンドが別オリジン（dev: Firebase Hosting と Cloud Run）の場合、
+    ``strict`` 固定では cross-site リクエストで Cookie が送信されず CSRF 検証に失敗する。
+    ダブルサブミット Cookie パターンの本質は「Cookie 値とヘッダー値の一致」であり、
+    CSRF 対策は成立する。
+    """
     response.set_cookie(
         key=CSRF_COOKIE_NAME,
         value=token,
         httponly=False,
         secure=get_cookie_secure(),
-        samesite="strict",
+        samesite=get_cookie_samesite(),
         max_age=CSRF_COOKIE_MAX_AGE,
         path="/",
     )
