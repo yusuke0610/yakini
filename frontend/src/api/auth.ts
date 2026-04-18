@@ -15,7 +15,14 @@ export async function getCurrentUser(): Promise<AuthResponse | null> {
   return (await response.json()) as AuthResponse;
 }
 
-export function getGitHubLoginUrl(returnTo: string): string {
+/** Firebase Hosting proxy 経由では 303 の Set-Cookie が除去されるため、
+ *  200 JSON エンドポイントを fetch して state cookie をセットしてから GitHub へ遷移する。 */
+export async function initiateGitHubLogin(returnTo: string): Promise<void> {
   const params = new URLSearchParams({ return_to: returnTo });
-  return `${API_BASE_URL}/auth/github/login?${params.toString()}`;
+  const response = await fetch(`${API_BASE_URL}/auth/github/login-url?${params.toString()}`, {
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("GitHub OAuth の開始に失敗しました");
+  const data = (await response.json()) as { authorization_url: string };
+  window.location.assign(data.authorization_url);
 }
