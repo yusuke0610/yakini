@@ -15,6 +15,29 @@ DEFAULT_VERTEX_MODEL = "gemini-2.5-flash-lite"
 _RETRYABLE_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 
 
+def _extract_usage(response) -> dict[str, int]:
+    """Vertex レスポンスの ``usage_metadata`` からトークン数を抜き出す。
+
+    SDK バージョンや部分障害でフィールドが欠ける可能性があるので、
+    取れたものだけを dict で返す。計測用途なので失敗しても握りつぶす。
+    """
+    meta = getattr(response, "usage_metadata", None)
+    if meta is None:
+        return {}
+    fields = {
+        "prompt_tokens": "prompt_token_count",
+        "output_tokens": "candidates_token_count",
+        "total_tokens": "total_token_count",
+        "cached_tokens": "cached_content_token_count",
+    }
+    out: dict[str, int] = {}
+    for key, attr in fields.items():
+        value = getattr(meta, attr, None)
+        if isinstance(value, int):
+            out[key] = value
+    return out
+
+
 def _parse_retry_after(exc: Exception) -> float | None:
     """APIError.response から ``Retry-After`` ヘッダを抽出する。"""
     response = getattr(exc, "response", None)
@@ -76,7 +99,11 @@ class VertexClient(LLMClient):
             duration_ms = int((time.monotonic() - start) * 1000)
             logger.info(
                 "Vertex AI 生成完了",
-                extra={"status": "completed", "duration_ms": duration_ms},
+                extra={
+                    "status": "completed",
+                    "duration_ms": duration_ms,
+                    **_extract_usage(response),
+                },
             )
             return response.text.strip()
         except (asyncio.TimeoutError, TimeoutError) as exc:
