@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-import { getCurrentUser, setOnUnauthorized } from "./api";
+import { getCurrentUser, logout, setOnUnauthorized } from "./api";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { useTheme } from "./hooks/useTheme";
 import { AppRoutes, type AuthUser } from "./router";
@@ -78,6 +78,12 @@ export default function App() {
     };
   }, [user]);
 
+  const handleLogout = async () => {
+    await logout();
+    sessionStorage.removeItem("auth_user");
+    setUser(null);
+  };
+
   return (
     <ErrorBoundary>
       <AppRoutes
@@ -86,6 +92,9 @@ export default function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
         githubError={githubError}
+        onLogout={() => {
+          void handleLogout();
+        }}
       />
     </ErrorBoundary>
   );

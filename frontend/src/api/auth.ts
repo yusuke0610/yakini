@@ -26,3 +26,12 @@ export async function initiateGitHubLogin(returnTo: string): Promise<void> {
   const data = (await response.json()) as { authorization_url: string };
   window.location.assign(data.authorization_url);
 }
+
+/** サーバー側で refresh_jti を無効化し Cookie を削除する。
+ *  401 ハンドラのループを避けるため request ラッパーではなく fetch を直接使う。 */
+export async function logout(): Promise<void> {
+  await fetch(`${API_BASE_URL}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+}

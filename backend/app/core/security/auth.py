@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, Request, status
@@ -32,11 +33,12 @@ def create_access_token(username: str) -> str:
     return jwt.encode(payload, get_jwt_private_key(), algorithm=_ALGORITHM)
 
 
-def create_refresh_token(username: str) -> str:
-    """長命のリフレッシュトークン（7日）を生成する。"""
+def create_refresh_token(username: str) -> tuple[str, str]:
+    """長命のリフレッシュトークン（7日）を生成する。jti（UUID）を埋め込み (token, jti) を返す。"""
+    jti = str(uuid.uuid4())
     expire = datetime.now(timezone.utc) + timedelta(days=_REFRESH_TOKEN_EXPIRE_DAYS)
-    payload = {"sub": username, "type": "refresh", "exp": expire}
-    return jwt.encode(payload, get_jwt_private_key(), algorithm=_ALGORITHM)
+    payload = {"sub": username, "type": "refresh", "exp": expire, "jti": jti}
+    return jwt.encode(payload, get_jwt_private_key(), algorithm=_ALGORITHM), jti
 
 
 def _decode_token(token: str) -> dict:
@@ -53,8 +55,8 @@ def _decode_token(token: str) -> dict:
         )
 
 
-def verify_refresh_token(token: str) -> str:
-    """リフレッシュトークンを検証し、username を返す。type 不一致時は 401 を送出する。"""
+def verify_refresh_token(token: str) -> tuple[str, str]:
+    """リフレッシュトークンを検証し、(username, jti) を返す。DB 照合は行わない。"""
     payload = _decode_token(token)
     if payload.get("type") != "refresh":
         raise_app_error(
@@ -71,7 +73,15 @@ def verify_refresh_token(token: str) -> str:
             message=get_error("auth.invalid_token"),
             action="ログインし直してください",
         )
-    return username
+    jti: str | None = payload.get("jti")
+    if not jti:
+        raise_app_error(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code=ErrorCode.AUTH_EXPIRED,
+            message=get_error("auth.invalid_token"),
+            action="ログインし直してください",
+        )
+    return username, jti
 
 
 def get_current_user(
