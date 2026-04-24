@@ -39,7 +39,7 @@ GitHub活動分析、ブログ連携による発信力を集計
 | レイヤー | 技術 |
 |---|---|
 | フロントエンド | React 18, TypeScript, Vite, Redux Toolkit, Recharts, marked |
-| バックエンドAPI | Python 3.12, FastAPI, SQLAlchemy, Pydantic |
+| バックエンドAPI | Python 3.13, FastAPI, SQLAlchemy, Pydantic |
 | データベース | SQLite（GCSバックアップ） |
 | 認証 | JWT Cookie (python-jose), bcrypt, GitHub OAuth |
 | 暗号化 | Fernet（フィールド暗号化）, bcrypt（パスワード） |
@@ -50,6 +50,34 @@ GitHub活動分析、ブログ連携による発信力を集計
 | CI/CD | GitHub Actions |
 
 ## セットアップ
+
+### Nix を使ったセットアップ（推奨）
+
+[Nix](https://nixos.org/download/) がインストール済みの場合、`nix develop` 一発で Python 3.13・Node.js 22・Redis・WeasyPrint ネイティブライブラリが揃った開発環境が起動します。
+
+```bash
+# フレーク機能を有効化（初回のみ）
+# ~/.config/nix/nix.conf または /etc/nix/nix.conf に以下を追加
+# experimental-features = nix-command flakes
+
+nix develop
+```
+
+シェルに入ったら、通常どおり `make setup` でセットアップできます。
+
+```bash
+make setup
+```
+
+#### direnv を使った自動起動
+
+[direnv](https://direnv.net/) がインストール済みであれば、`.envrc` が同梱されているためディレクトリに移動するだけで自動的に Nix 開発シェルが起動します。
+
+```bash
+direnv allow   # 初回のみ許可が必要
+```
+
+---
 
 ### ローカル開発
 
