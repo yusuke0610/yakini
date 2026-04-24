@@ -244,13 +244,13 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
     cache.analysis_result = analysis_dict
 
     # LLM が利用可能なら学習アドバイスも自動生成する
-    advice = await _generate_advice_if_available(analysis_dict)
+    advice, llm_failed = await _generate_advice_if_available(analysis_dict)
     cache.position_advice = advice
 
     # ステップ 5: DB 保存
     await set_progress(task_id, 5, _TOTAL_STEPS, "結果を保存中...")
     cache.status = "completed"
-    cache.error_message = None
+    cache.error_message = "LLM処理が利用できません" if llm_failed else None
     cache.completed_at = _now()
     db.commit()
 
@@ -258,25 +258,33 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
     await set_progress(task_id, 6, _TOTAL_STEPS, "完了")
 
 
-async def _generate_advice_if_available(analysis: dict) -> str | None:
-    """LLM が利用可能であれば学習アドバイスを生成する。失敗時は None を返す。"""
+async def _generate_advice_if_available(analysis: dict) -> tuple[str | None, bool]:
+    """LLM が利用可能であれば学習アドバイスを生成する。
+
+    戻り値は (advice, llm_failed) のタプル。
+    llm_failed=True は LLM の呼び出しを試みたが失敗したことを示す。
+    LLM が未設定またはスコア情報がない場合は llm_failed=False でスキップする。
+    """
     from ...services.intelligence.llm_summarizer import generate_learning_advice
 
     try:
         llm_client = get_llm_client()
         if not await llm_client.check_available():
             logger.info("LLM が利用できないため学習アドバイスの生成をスキップしました")
-            return None
+            return None, False
 
         scores = analysis.get("position_scores")
         if not scores:
-            return None
+            return None, False
 
         advice = await generate_learning_advice(analysis, scores)
-        return advice if advice else None
+        if advice is None:
+            logger.warning("LLM が学習アドバイスの生成に失敗しました")
+            return None, True
+        return advice, False
     except Exception:
         logger.warning("学習アドバイスの生成に失敗しましたが、分析結果は保存します", exc_info=True)
-        return None
+        return None, True
 
 
 # ---------- ブログ AI サマリ ----------
@@ -308,7 +316,7 @@ async def _run_blog_summarize(db: Session, payload: dict) -> None:
     summary = await summarize_blog_articles(articles_data)
     if not summary:
         cache.status = "dead_letter"
-        cache.error_message = "AI サマリの生成に失敗しました"
+        cache.error_message = "LLM処理が利用できません"
         cache.completed_at = _now()
         db.commit()
         return

@@ -76,11 +76,11 @@ class VertexClient(LLMClient):
             )
         return self._client
 
-    async def generate(self, system_prompt: str, user_prompt: str) -> str:
+    async def generate(self, system_prompt: str, user_prompt: str) -> str | None:
         """Vertex AI Gemini でテキスト生成を実行する。
 
         一時障害は ``RetryableError``、恒久的な障害は ``NonRetryableError`` を
-        raise する。未分類の例外は既存動作（空文字返却）を維持する。
+        raise する。未分類の例外は ``None`` を返す。
         """
         start = time.monotonic()
         try:
@@ -127,7 +127,7 @@ class VertexClient(LLMClient):
                 "Vertex AI による生成に失敗しました",
                 extra={"status": "failed", "duration_ms": duration_ms},
             )
-            return ""
+            return None
 
     async def check_available(self) -> bool:
         """VERTEX_PROJECT_ID が設定されていれば利用可能とみなす。"""

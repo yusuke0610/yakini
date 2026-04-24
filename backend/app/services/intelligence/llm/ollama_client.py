@@ -23,11 +23,11 @@ class OllamaClient(LLMClient):
         self.model = os.environ.get("OLLAMA_MODEL", "gemma3:4b")
         self.timeout = float(os.environ.get("OLLAMA_TIMEOUT", "1200.0"))  # デフォルトは 20 分
 
-    async def generate(self, system_prompt: str, user_prompt: str) -> str:
+    async def generate(self, system_prompt: str, user_prompt: str) -> str | None:
         """Ollama API でテキスト生成を実行する。
 
         タイムアウト・5xx・429 は ``RetryableError``、4xx は ``NonRetryableError``
-        を raise する。``ConnectError``（Ollama 未起動時）は既存動作を維持し空文字を返す。
+        を raise する。``ConnectError``（Ollama 未起動時）および未分類エラーは ``None`` を返す。
         """
         start = time.monotonic()
         try:
@@ -51,7 +51,7 @@ class OllamaClient(LLMClient):
                 return data.get("response", "").strip()
         except httpx.ConnectError:
             logger.info("Ollama が %s で利用できません", self.base_url)
-            return ""
+            return None
         except httpx.TimeoutException as exc:
             duration_ms = int((time.monotonic() - start) * 1000)
             logger.warning(
@@ -83,7 +83,7 @@ class OllamaClient(LLMClient):
                 "Ollama による生成に失敗しました",
                 extra={"status": "failed", "duration_ms": duration_ms},
             )
-            return ""
+            return None
 
     async def check_available(self) -> bool:
         """Ollama サーバーに接続可能、かつ指定モデルが利用可能か確認する。"""

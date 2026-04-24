@@ -43,7 +43,7 @@ def test_ollama_generate_success():
 
 
 def test_ollama_generate_connect_error():
-    """Ollama 接続エラー時に空文字列を返す。"""
+    """Ollama 接続エラー時に None を返す。"""
     client = OllamaClient()
 
     with patch("httpx.AsyncClient") as mock_cls:
@@ -54,7 +54,7 @@ def test_ollama_generate_connect_error():
         mock_cls.return_value = mock_http
 
         result = _run(client.generate("system", "user"))
-        assert result == ""
+        assert result is None
 
 
 def test_ollama_check_available_success():
@@ -144,7 +144,7 @@ def test_vertex_generate_success():
 
 
 def test_vertex_generate_exception():
-    """Vertex AI で例外発生時に空文字列を返す。"""
+    """Vertex AI で例外発生時に None を返す。"""
     with patch.dict(os.environ, {"VERTEX_PROJECT_ID": "test-project"}):
         client = VertexClient()
 
@@ -158,7 +158,7 @@ def test_vertex_generate_exception():
 
     client._client = mock_genai_client
     result = _run(client.generate("system", "user"))
-    assert result == ""
+    assert result is None
 
 
 def test_vertex_check_available_with_project():
