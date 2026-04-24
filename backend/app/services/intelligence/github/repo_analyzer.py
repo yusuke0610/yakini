@@ -113,6 +113,33 @@ def detect_from_root_files(root_files: List[str]) -> List[str]:
     return detected
 
 
+def detect_from_dependencies(dependencies: List[str]) -> List[str]:
+    """依存関係名のリストから DEPENDENCY_TO_FRAMEWORK でフレームワーク名を検出する。
+
+    重複を除去し、最初に出現した順序を保つ。
+    """
+    detected: List[str] = []
+    seen: set = set()
+    for dep in dependencies:
+        framework = DEPENDENCY_TO_FRAMEWORK.get(dep.lower())
+        if framework and framework not in seen:
+            seen.add(framework)
+            detected.append(framework)
+    return detected
+
+
+def merge_frameworks(*framework_lists: List[str]) -> List[str]:
+    """複数のフレームワークリストを順序を保ったままマージし、重複を除去する。"""
+    merged: List[str] = []
+    seen: set = set()
+    for fw_list in framework_lists:
+        for fw in fw_list:
+            if fw not in seen:
+                seen.add(fw)
+                merged.append(fw)
+    return merged
+
+
 def parse_requirements_txt(content: str) -> List[str]:
     """requirements.txt からパッケージ名を抽出する。"""
     packages: List[str] = []

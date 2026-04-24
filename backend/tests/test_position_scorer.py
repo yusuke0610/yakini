@@ -177,3 +177,46 @@ def test_scores_clamped_to_100():
     assert result.fullstack <= 100
     assert result.sre <= 100
     assert result.cloud <= 100
+
+
+def test_react_framework_boosts_frontend_score_without_topic_tag():
+    """topic タグが無くても React フレームワーク検出で frontend スコアが上がること（Issue #203）。"""
+    # トピック無し・ TypeScript のみでは従来 frontend スコアが低い
+    repos_without_fw = [
+        _make_repo(languages={"TypeScript": 100000}),
+    ]
+    baseline = calculate_position_scores(repos_without_fw).frontend
+
+    # 依存関係から React を検出したケース
+    repos_with_fw = [
+        _make_repo(
+            languages={"TypeScript": 100000},
+            detected_frameworks=["React", "Next.js"],
+        ),
+    ]
+    boosted = calculate_position_scores(repos_with_fw).frontend
+    assert boosted > baseline
+
+
+def test_react_framework_satisfies_react_or_vue_requirement():
+    """React フレームワーク検出で missing_skills から `React or Vue` が消えること（Issue #203）。"""
+    repos = [
+        _make_repo(
+            languages={"TypeScript": 80000, "Python": 20000, "CSS": 5000, "HTML": 5000},
+            detected_frameworks=["React", "FastAPI"],
+        ),
+    ]
+    result = calculate_position_scores(repos)
+    assert not any("React or Vue" in s for s in result.missing_skills)
+
+
+def test_fastapi_framework_satisfies_rest_api_requirement():
+    """FastAPI 検出で REST API 設計要件が満たされること。"""
+    repos = [
+        _make_repo(
+            languages={"Python": 100000},
+            detected_frameworks=["FastAPI"],
+        ),
+    ]
+    result = calculate_position_scores(repos)
+    assert not any("REST API設計" in s for s in result.missing_skills)

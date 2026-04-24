@@ -28,6 +28,8 @@ export interface AnalysisResponse {
   unique_skills: number;
   analyzed_at: string;
   languages: Record<string, number>;
+  /** 依存ファイル・ルートファイルから検出したフレームワーク／ライブラリ名（Issue #203） */
+  detected_frameworks: string[];
   position_scores: PositionScores | null;
 }
 

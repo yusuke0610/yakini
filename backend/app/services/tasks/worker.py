@@ -226,6 +226,15 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
         for lang, byte_count in repo.languages.items():
             lang_totals[lang] += byte_count
 
+    # 全リポジトリの検出フレームワークをユニーク化（最初の出現順を保持）
+    all_frameworks: list[str] = []
+    seen_frameworks: set[str] = set()
+    for repo in repos:
+        for fw in repo.detected_frameworks:
+            if fw not in seen_frameworks:
+                seen_frameworks.add(fw)
+                all_frameworks.append(fw)
+
     # ステップ 4: スコア算出
     await set_progress(task_id, 4, _TOTAL_STEPS, "スコア算出中...")
     scores = calculate_position_scores(repos)
@@ -236,6 +245,7 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
         unique_skills=len(extraction.unique_skills),
         analyzed_at=datetime.now().isoformat(),
         languages=dict(lang_totals),
+        detected_frameworks=all_frameworks,
         position_scores=scores,
     )
 

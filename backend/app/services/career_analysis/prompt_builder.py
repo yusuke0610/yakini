@@ -119,6 +119,11 @@ def build_user_prompt(
             lang_strs = [f"{name}: {b * 100 // total}%" for name, b in sorted_langs]
             parts.append(f"主要言語: {', '.join(lang_strs)}")
 
+        # 検出フレームワークは設計思想・フレームワーク成熟度の評価根拠として別行で明示する
+        detected_frameworks = ar.get("detected_frameworks") or []
+        if detected_frameworks:
+            parts.append(f"検出フレームワーク: {', '.join(detected_frameworks)}")
+
         all_skills: set[str] = set()
         for repo in ar.get("repositories", []):
             for s in repo.get("skills", []):

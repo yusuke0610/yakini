@@ -2,7 +2,9 @@
 
 from app.services.intelligence.github.repo_analyzer import (
     compute_language_ratios,
+    detect_from_dependencies,
     detect_from_root_files,
+    merge_frameworks,
     parse_package_json,
     parse_requirements_txt,
 )
@@ -136,3 +138,59 @@ def test_parse_package_json_empty_deps() -> None:
     """依存関係が空の場合は空リストが返ること。"""
     result = parse_package_json('{"name": "my-app"}')
     assert result == []
+
+
+# ── detect_from_dependencies テスト（Issue #203） ────────────────────────
+
+
+def test_detect_from_dependencies_react_and_nextjs() -> None:
+    """react と next が React / Next.js として検出されること。"""
+    result = detect_from_dependencies(["react", "react-dom", "next"])
+    assert "React" in result
+    assert "Next.js" in result
+    # react と react-dom はどちらも React にマップされ重複しないこと
+    assert result.count("React") == 1
+
+
+def test_detect_from_dependencies_fastapi() -> None:
+    """fastapi が FastAPI として検出されること。"""
+    result = detect_from_dependencies(["fastapi", "uvicorn"])
+    assert "FastAPI" in result
+
+
+def test_detect_from_dependencies_case_insensitive() -> None:
+    """大文字混じりの依存名でも検出できること。"""
+    result = detect_from_dependencies(["Django", "Spring-Boot"])
+    assert "Django" in result
+    assert "Spring Boot" in result
+
+
+def test_detect_from_dependencies_unknown_ignored() -> None:
+    """マッピングに無い依存は無視されること。"""
+    result = detect_from_dependencies(["unknown-lib", "my-internal-pkg"])
+    assert result == []
+
+
+def test_detect_from_dependencies_empty() -> None:
+    """空リストでは空リストが返ること。"""
+    assert detect_from_dependencies([]) == []
+
+
+# ── merge_frameworks テスト ─────────────────────────────────────────────
+
+
+def test_merge_frameworks_preserves_order_and_dedupes() -> None:
+    """複数ソースの framework リストを順序保持してマージ・重複除去できること。"""
+    root_fw = ["Docker", "GitHub Actions"]
+    dep_fw = ["React", "Docker", "FastAPI"]
+    result = merge_frameworks(root_fw, dep_fw)
+    # root 側の順序が先
+    assert result.index("Docker") < result.index("React")
+    # 重複は 1 回だけ
+    assert result.count("Docker") == 1
+    assert set(result) == {"Docker", "GitHub Actions", "React", "FastAPI"}
+
+
+def test_merge_frameworks_empty_inputs() -> None:
+    """空リストのみでも空リストが返ること。"""
+    assert merge_frameworks([], []) == []
