@@ -11,6 +11,7 @@ import { ErrorToast } from "../ui/ErrorToast";
 import { InlineSpinner } from "../ui/InlineSpinner";
 import { useAsyncAnalysisPage } from "../../hooks/analysis/useAsyncAnalysisPage";
 import { TaskProgressStepper } from "../TaskProgressStepper";
+import { FrameworkList } from "./FrameworkList";
 import { LanguageBar } from "./LanguageBar";
 import { PositionRadarChart } from "./PositionRadarChart";
 import shared from "../../styles/shared.module.css";
@@ -186,6 +187,14 @@ export function GitHubAnalysisPage() {
           <div className={styles.section}>
             <h2>Languages</h2>
             <LanguageBar languages={result.languages} />
+          </div>
+        )}
+
+        {/* 検出フレームワーク（Issue #203） */}
+        {result.detected_frameworks && result.detected_frameworks.length > 0 && (
+          <div className={styles.section}>
+            <h2>Frameworks</h2>
+            <FrameworkList frameworks={result.detected_frameworks} />
           </div>
         )}
 

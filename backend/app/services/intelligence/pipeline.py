@@ -30,6 +30,7 @@ class IntelligenceResult:
     unique_skills: int
     analyzed_at: str
     languages: Dict[str, int] = field(default_factory=dict)
+    detected_frameworks: List[str] = field(default_factory=list)
     position_scores: Optional[PositionScores] = None
 
 
@@ -63,6 +64,15 @@ async def run_pipeline(
         for lang, byte_count in repo.languages.items():
             lang_totals[lang] += byte_count
 
+    # 全リポジトリの検出フレームワークをユニーク化（最初の出現順を保持）
+    all_frameworks: List[str] = []
+    seen_frameworks: set = set()
+    for repo in repos:
+        for fw in repo.detected_frameworks:
+            if fw not in seen_frameworks:
+                seen_frameworks.add(fw)
+                all_frameworks.append(fw)
+
     # ステージ 2: スキルを抽出
     extraction: ExtractionResult = extract_skills(repos)
 
@@ -82,5 +92,6 @@ async def run_pipeline(
         unique_skills=len(extraction.unique_skills),
         analyzed_at=datetime.now().isoformat(),
         languages=dict(lang_totals),
+        detected_frameworks=all_frameworks,
         position_scores=scores,
     )
