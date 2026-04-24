@@ -25,6 +25,8 @@ export function GitHubAnalysisPage() {
   const [includeForks, setIncludeForks] = useState(false);
   /** ポジションアドバイス（GitHub 固有のキャッシュデータ） */
   const [positionAdvice, setPositionAdvice] = useState<string | null>(null);
+  /** LLM 処理が失敗した場合のエラーコード（部分成功ケース） */
+  const [llmErrorCode, setLlmErrorCode] = useState<string | null>(null);
 
   const {
     phase,
@@ -42,6 +44,8 @@ export function GitHubAnalysisPage() {
       if (cache.position_advice) {
         setPositionAdvice(cache.position_advice);
       }
+      // LLM 処理失敗のエラーコードを保持する（部分成功ケース）
+      setLlmErrorCode(cache.error_code ?? null);
       return { result: cache.analysis_result, status: cache.status };
     },
     checkStatus: getAnalysisCacheStatus,
@@ -54,6 +58,7 @@ export function GitHubAnalysisPage() {
   const handleAnalyze = async () => {
     setError(null);
     setPositionAdvice(null);
+    setLlmErrorCode(null);
     try {
       await analyzeGitHub({ include_forks: includeForks });
       transitionToPolling();
@@ -67,6 +72,7 @@ export function GitHubAnalysisPage() {
    */
   const handleBack = () => {
     setPositionAdvice(null);
+    setLlmErrorCode(null);
     setResult(null);
     backToInput();
   };
@@ -157,6 +163,8 @@ export function GitHubAnalysisPage() {
             onRetry={handleAnalyze}
           />
         )}
+
+        {llmErrorCode && <ErrorToast code={llmErrorCode} />}
 
         {/* 概要 */}
         <div className={styles.section}>
