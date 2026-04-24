@@ -15,10 +15,12 @@ export function AuthenticatedLayout({
   user,
   theme,
   onToggleTheme,
+  onLogout,
 }: {
   user: AuthUser;
   theme: Theme;
   onToggleTheme: () => void;
+  onLogout: () => void;
 }) {
   return (
     <div className={shared.page}>
@@ -67,6 +69,7 @@ export function AuthenticatedLayout({
               username={user.username}
               theme={theme}
               onToggleTheme={onToggleTheme}
+              onLogout={onLogout}
             />
           </div>
         </aside>

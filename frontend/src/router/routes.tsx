@@ -16,6 +16,7 @@ type AppRoutesProps = {
   theme: Theme;
   onToggleTheme: () => void;
   githubError: string | null;
+  onLogout: () => void;
 };
 
 /**
@@ -28,6 +29,7 @@ export default function AppRoutes({
   theme,
   onToggleTheme,
   githubError,
+  onLogout,
 }: AppRoutesProps) {
   return (
     <Routes>
@@ -44,6 +46,7 @@ export default function AppRoutes({
               user={user!}
               theme={theme}
               onToggleTheme={onToggleTheme}
+              onLogout={onLogout}
             />
           }
         >

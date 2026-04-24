@@ -37,11 +37,12 @@ def test_create_access_token_type_is_access() -> None:
 
 
 def test_create_refresh_token_type_is_refresh() -> None:
-    token = create_refresh_token("alice")
+    token, jti = create_refresh_token("alice")
     payload = jwt.decode(token, _test_public_key, algorithms=["RS256"])
 
     assert payload["type"] == "refresh"
     assert payload["sub"] == "alice"
+    assert payload["jti"] == jti
 
 
 def test_hs256_token_rejected_by_rs256_verification() -> None:
@@ -68,7 +69,7 @@ def test_access_token_cannot_be_used_as_refresh(client) -> None:
 def test_refresh_token_cannot_access_api(client) -> None:
     """リフレッシュトークンで通常 API を叩いて拒否されることを確認する。"""
     auth_header(client, "apitest")
-    refresh_token = create_refresh_token("apitest")
+    refresh_token, _ = create_refresh_token("apitest")
     client.cookies.set("access_token", refresh_token)
 
     response = client.get("/auth/me")
@@ -85,6 +86,49 @@ def test_refresh_issues_new_access_token(client) -> None:
     assert response.status_code == 200
     assert response.json()["username"] == "refuser"
     assert "access_token=" in response.headers.get("set-cookie", "")
+
+
+# ── ログアウト ────────────────────────────────────────────────────
+
+
+def test_logout_clears_cookies(client) -> None:
+    """ログアウト後に認証 Cookie が削除されることを確認する。"""
+    auth_header(client, "logoutuser")
+
+    response = client.post("/auth/logout")
+
+    assert response.status_code == 204
+    set_cookie = response.headers.get("set-cookie", "")
+    assert "access_token=" in set_cookie
+
+
+def test_logout_invalidates_refresh_token(client) -> None:
+    """ログアウト後にリフレッシュトークンで再認証できないことを確認する。"""
+    auth_header(client, "logoutuser2")
+
+    client.post("/auth/logout")
+    response = client.post("/auth/refresh")
+
+    assert response.status_code == 401
+
+
+def test_refresh_rejects_revoked_jti(client) -> None:
+    """DB の refresh_jti と一致しないトークンでリフレッシュが拒否されることを確認する。"""
+    auth_header(client, "revokeduser")
+    # jti が DB と一致しない別トークンを発行してセット
+    stale_token, _ = create_refresh_token("revokeduser")
+    client.cookies.set("refresh_token", stale_token)
+
+    response = client.post("/auth/refresh")
+
+    assert response.status_code == 401
+
+
+def test_logout_without_token_returns_204(client) -> None:
+    """リフレッシュトークンなしでもログアウトが 204 を返すことを確認する。"""
+    response = client.post("/auth/logout")
+
+    assert response.status_code == 204
 
 
 # ── Cookie 設定 ───────────────────────────────────────────────────

@@ -30,5 +30,10 @@ class UserRepository:
         self.db.refresh(user)
         return user
 
+    def update_refresh_jti(self, user: User, jti: str | None) -> None:
+        """refresh_jti を更新する。None を渡すとトークンを失効させる。"""
+        user.refresh_jti = jti
+        self.db.commit()
+
     def count(self) -> int:
         return self.db.scalar(select(func.count()).select_from(User)) or 0
