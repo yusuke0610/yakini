@@ -1,6 +1,6 @@
 # DevForge
 
-キャリア関連ドキュメント（職務経歴書・履歴書）の作成・管理。
+キャリア関連ドキュメント（職務経歴書）の作成・管理。
 GitHub活動分析、ブログ連携による発信力を集計
 キャリアインテリジェンスを提供するWebアプリケーションです。
 
@@ -9,7 +9,6 @@ GitHub活動分析、ブログ連携による発信力を集計
 ### ドキュメント管理
 - **基本情報**: 氏名・記載日・資格の管理
 - **職務経歴書**: 職務要約、自己PR、職務経歴、技術スタックの入力とPDF/Markdown出力
-- **履歴書**: 学歴・職歴・志望動機・証明写真等の入力とPDF/Markdown出力（個人情報フィールドは暗号化保存）
 - フォーム入力状態を Redux でページ遷移間に保持（入力途中で別ページに移動しても失われない）
 
 ### GitHub分析
@@ -39,17 +38,45 @@ GitHub活動分析、ブログ連携による発信力を集計
 | レイヤー | 技術 |
 |---|---|
 | フロントエンド | React 18, TypeScript, Vite, Redux Toolkit, Recharts, marked |
-| バックエンドAPI | Python 3.12, FastAPI, SQLAlchemy, Pydantic |
+| バックエンドAPI | Python 3.13, FastAPI, SQLAlchemy, Pydantic |
 | データベース | SQLite（GCSバックアップ） |
 | 認証 | JWT Cookie (python-jose), bcrypt, GitHub OAuth |
 | 暗号化 | Fernet（フィールド暗号化）, bcrypt（パスワード） |
-| PDF出力 | WeasyPrint（職務経歴書/履歴書）, ReportLab（分析レポート補助） |
+| PDF出力 | WeasyPrint（職務経歴書）, ReportLab（分析レポート補助） |
 | LLM | Ollama / Vertex AI（設定で切替、任意） |
 | インフラ | GCP (Cloud Run, GCS, Artifact Registry, Secret Manager) |
 | IaC | Terraform（モジュール構成、マルチ環境） |
 | CI/CD | GitHub Actions |
 
 ## セットアップ
+
+### Nix を使ったセットアップ（推奨）
+
+[Nix](https://nixos.org/download/) がインストール済みの場合、`nix develop` 一発で Python 3.13・Node.js 22・Redis・WeasyPrint ネイティブライブラリが揃った開発環境が起動します。
+
+```bash
+# フレーク機能を有効化（初回のみ）
+# ~/.config/nix/nix.conf または /etc/nix/nix.conf に以下を追加
+# experimental-features = nix-command flakes
+
+nix develop
+```
+
+シェルに入ったら、通常どおり `make setup` でセットアップできます。
+
+```bash
+make setup
+```
+
+#### direnv を使った自動起動
+
+[direnv](https://direnv.net/) がインストール済みであれば、`.envrc` が同梱されているためディレクトリに移動するだけで自動的に Nix 開発シェルが起動します。
+
+```bash
+direnv allow   # 初回のみ許可が必要
+```
+
+---
 
 ### ローカル開発
 
@@ -363,13 +390,12 @@ SQLiteはDDL制約があるため、複雑なALTERはテーブル再作成型マ
 
 ## データ設計メモ
 
-- `basic_info` / `resumes` / `rirekisho` は **1ユーザー1件**
+- `basic_info` / `resumes` は **1ユーザー1件**
 - `career_analyses` は **複数バージョン保持可能**（分析履歴として蓄積）
 - `intelligence_cache` / `blog_summary_cache` は **1ユーザー1件**（最新結果のみ保持）
 - 可変長データは JSON ではなく子テーブルに正規化
   - `basic_info_qualifications`
   - `resume_experiences` / `resume_clients` / `resume_projects` / `resume_project_*`
-  - `rirekisho_educations` / `rirekisho_work_histories`
   - `blog_article_tags`
 - 日付は DB では `DATE` として保持
   - 日単位: `record_date` / `birthday` / `blog_articles.published_at`
