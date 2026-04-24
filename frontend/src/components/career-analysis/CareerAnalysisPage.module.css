@@ -387,6 +387,57 @@
   padding-left: 2rem;
 }
 
+/* ── 学習リソース ────────────────────────────────────────── */
+
+.resourceDescription {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  white-space: normal;
+}
+
+.resourceList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  white-space: normal;
+}
+
+.resourceItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: var(--ghost-bg);
+  border-radius: 6px;
+  gap: 1rem;
+}
+
+.resourceSkill {
+  font-weight: 500;
+  font-size: 0.88rem;
+}
+
+.resourceLinks {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.resourceLink {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.resourceLink:hover {
+  background: var(--ghost-hover);
+}
+
 /* ── レスポンシブ ─────────────────────────────────────────── */
 
 @media (max-width: 768px) {
