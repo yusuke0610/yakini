@@ -81,13 +81,6 @@ def get_admin_token() -> str:
     return os.getenv("ADMIN_TOKEN", "").strip()
 
 
-def get_secret_key() -> str:
-    key = os.getenv("SECRET_KEY", "").strip()
-    if not key:
-        raise RuntimeError("SECRET_KEY is not configured")
-    return key
-
-
 def get_jwt_private_key() -> str:
     """RS256署名用秘密鍵（PEM形式）を取得する。"""
     key = os.getenv("JWT_PRIVATE_KEY", "").replace("\\n", "\n").strip()
@@ -132,3 +125,18 @@ def get_vertex_project_id() -> str:
 
 def get_vertex_location() -> str:
     return os.environ.get("VERTEX_LOCATION", "asia-northeast1")
+
+
+def get_vertex_model(default: str) -> str:
+    """Vertex AI のモデル名を取得する。default は呼び出し元（Vertex クライアント）の既定値を渡す。"""
+    return os.environ.get("VERTEX_MODEL", default)
+
+
+def get_log_format() -> str:
+    """ログフォーマット指定（json / text / 空）を小文字で取得する。"""
+    return os.getenv("LOG_FORMAT", "").strip().lower()
+
+
+def get_log_level() -> str:
+    """ログレベル名（DEBUG / INFO / WARNING / ERROR / CRITICAL）を大文字で取得する。"""
+    return os.getenv("LOG_LEVEL", "INFO").strip().upper()
