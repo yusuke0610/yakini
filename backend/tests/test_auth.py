@@ -1,3 +1,4 @@
+import logging
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.parse import parse_qs, urlparse
@@ -8,6 +9,7 @@ from app.core.security.auth import (
     create_refresh_token,
 )
 from app.core.settings import get_cookie_samesite, get_cookie_secure
+from app.main import limiter
 from jose import jwt
 
 from conftest import _test_public_key, auth_header
@@ -369,6 +371,69 @@ def test_begin_github_oauth_state_cookie_has_samesite(client) -> None:
     set_cookie_header = response.headers.get("set-cookie", "")
     assert "github_oauth_state=" in set_cookie_header
     assert "samesite=" in set_cookie_header.lower()
+
+
+# ── 不正アクセス追跡: 認証失敗ログ ────────────────────────────────
+
+
+def _auth_failed_records(records: list[logging.LogRecord]) -> list[logging.LogRecord]:
+    """auth_failed イベント (devforge ロガー WARNING) のみ抽出する。"""
+    return [r for r in records if r.name == "devforge" and r.message == "auth_failed"]
+
+
+def test_auth_failed_logged_when_cookie_missing(client, caplog) -> None:
+    """Cookie 無しで保護 API を叩くと reason=missing_cookie の WARNING が出ることを確認する。"""
+    client.cookies.clear()
+    with caplog.at_level(logging.WARNING, logger="devforge"):
+        response = client.get("/auth/me")
+
+    assert response.status_code == 401
+    records = _auth_failed_records(caplog.records)
+    assert any(getattr(r, "reason", None) == "missing_cookie" for r in records)
+
+
+def test_auth_failed_logged_for_invalid_jwt(client, caplog) -> None:
+    """不正な JWT で 401 + reason=jwt_decode_error がログされることを確認する。"""
+    client.cookies.clear()
+    client.cookies.set("access_token", "not-a-valid-jwt")
+    with caplog.at_level(logging.WARNING, logger="devforge"):
+        response = client.get("/auth/me")
+
+    assert response.status_code == 401
+    records = _auth_failed_records(caplog.records)
+    assert any(getattr(r, "reason", None) == "jwt_decode_error" for r in records)
+
+
+def test_auth_failed_logged_for_user_not_found(client, caplog) -> None:
+    """DB に存在しないユーザー名のトークンで reason=user_not_found がログされることを確認する。"""
+    token = create_access_token("nonexistent-user-xyz")
+    client.cookies.clear()
+    client.cookies.set("access_token", token)
+    with caplog.at_level(logging.WARNING, logger="devforge"):
+        response = client.get("/auth/me")
+
+    assert response.status_code == 401
+    records = _auth_failed_records(caplog.records)
+    assert any(getattr(r, "reason", None) == "user_not_found" for r in records)
+
+
+# ── レートリミット ──────────────────────────────────────────────
+
+
+def test_auth_me_rate_limited_after_threshold(client) -> None:
+    """/auth/me が 60/分の上限を超えると 429 を返すことを確認する。"""
+    auth_header(client, "rl-user")
+    limiter.reset()
+    statuses: list[int] = []
+    for _i in range(65):
+        resp = client.get("/auth/me")
+        statuses.append(resp.status_code)
+        if resp.status_code == 429:
+            break
+    assert 429 in statuses
+    # 上限到達前に少なくとも数件は 200 を返している
+    assert statuses.count(200) >= 50
+    limiter.reset()
 
 
 # 使用しない環境変数を参照するだけのプレースホルダー（lint 対策）
