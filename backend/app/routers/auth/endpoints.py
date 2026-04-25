@@ -62,6 +62,7 @@ def _html_redirect(url: str) -> str:
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("20/minute")
 def refresh(
     request: Request,
     response: Response,
@@ -104,6 +105,7 @@ def refresh(
 
 
 @router.post("/logout", status_code=204)
+@limiter.limit("20/minute")
 def logout(
     request: Request,
     response: Response,
@@ -127,7 +129,8 @@ def logout(
 
 
 @router.get("/me", response_model=TokenResponse)
-def me(current_user=Depends(get_current_user)) -> TokenResponse:
+@limiter.limit("60/minute")
+def me(request: Request, current_user=Depends(get_current_user)) -> TokenResponse:
     """現在のログインユーザー情報を返す。"""
     return TokenResponse(
         username=current_user.username,
