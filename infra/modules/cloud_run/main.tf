@@ -19,6 +19,11 @@ locals {
     GITHUB_CLIENT_ID     = "github-client-id"
     GITHUB_CLIENT_SECRET = "github-client-secret"
   } : {}
+
+  # 初回 apply 時のブートストラップ用イメージ。
+  # AR にアプリイメージが push される前でも Cloud Run リソース作成を成立させるための公開 hello イメージ。
+  # 以後は ignore_changes により CI のデプロイが image を上書きする。
+  bootstrap_image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 }
 
 resource "google_secret_manager_secret" "app" {
@@ -48,7 +53,7 @@ resource "google_cloud_run_v2_service" "app" {
     service_account = var.service_account_email
 
     containers {
-      image = var.bootstrap_image != "" ? var.bootstrap_image : "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.stack_name}:${var.container_image_tag}"
+      image = local.bootstrap_image
 
       resources {
         limits = {
@@ -83,7 +88,7 @@ resource "google_cloud_run_v2_service" "app" {
 
       env {
         name  = "LLM_PROVIDER"
-        value = var.llm_provider
+        value = "vertex"
       }
       env {
         name  = "VERTEX_PROJECT_ID"
@@ -95,7 +100,7 @@ resource "google_cloud_run_v2_service" "app" {
       }
       env {
         name  = "VERTEX_MODEL"
-        value = var.vertex_model
+        value = "gemini-2.5-flash-lite"
       }
 
       env {

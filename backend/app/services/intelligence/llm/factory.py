@@ -1,8 +1,8 @@
 """LLM クライアントのファクトリ。"""
 
 import logging
-import os
 
+from ....core.settings import get_llm_provider
 from .base import LLMClient
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ def get_llm_client() -> LLMClient:
     - ``"ollama"`` (デフォルト): OllamaClient
     - ``"vertex"``: VertexClient (google-cloud-aiplatform が必要)
     """
-    provider = os.environ.get("LLM_PROVIDER", "ollama").lower()
+    provider = get_llm_provider().lower()
 
     if provider == "vertex":
         from .vertex_client import VertexClient
