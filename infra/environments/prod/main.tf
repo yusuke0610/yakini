@@ -79,20 +79,20 @@ module "cloud_tasks" {
 module "cloud_run" {
   source = "../../modules/cloud_run"
 
-  project_id                      = var.project_id
-  region                          = local.region
-  stack_name                      = local.stack_name
-  service_account_email           = module.service_account.email
-  enable_github_oauth             = var.enable_github_oauth
-  db_backup_bucket_name           = module.storage.db_backup_bucket_name
-  cors_origins                    = var.cors_origins
-  environment                     = "prod"
-  task_runner                     = "cloud_tasks"
-  cloud_tasks_queue               = module.cloud_tasks.queue_name
-  cloud_tasks_location            = local.region
-  cloud_tasks_service_account     = module.service_account.email
-  upstash_redis_url               = var.upstash_redis_url
-  upstash_redis_token             = var.upstash_redis_token
+  project_id                  = var.project_id
+  region                      = local.region
+  stack_name                  = local.stack_name
+  service_account_email       = module.service_account.email
+  enable_github_oauth         = var.enable_github_oauth
+  db_backup_bucket_name       = module.storage.db_backup_bucket_name
+  cors_origins                = var.cors_origins
+  environment                 = "prod"
+  task_runner                 = "cloud_tasks"
+  cloud_tasks_queue           = module.cloud_tasks.queue_name
+  cloud_tasks_location        = local.region
+  cloud_tasks_service_account = module.service_account.email
+  upstash_redis_url           = var.upstash_redis_url
+  upstash_redis_token         = var.upstash_redis_token
 
   depends_on = [google_project_service.apis]
 }
