@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./client";
+import { API_BASE_URL, request } from "./client";
 
 type AuthResponse = { username: string; is_github_user: boolean };
 
@@ -13,6 +13,13 @@ export async function getCurrentUser(): Promise<AuthResponse | null> {
     throw new Error("ログイン状態の確認に失敗しました。");
   }
   return (await response.json()) as AuthResponse;
+}
+
+export async function handleGitHubCallback(code: string, state: string): Promise<AuthResponse> {
+  return request<AuthResponse>("/auth/github/callback", {
+    method: "POST",
+    body: JSON.stringify({ code, state }),
+  });
 }
 
 /** Firebase Hosting proxy 経由では 303 の Set-Cookie が除去されるため、

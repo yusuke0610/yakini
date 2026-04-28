@@ -84,6 +84,15 @@ export default function App() {
     setUser(null);
   };
 
+  const handleLoginSuccess = (rawUser: { username: string; is_github_user: boolean }) => {
+    const authUser: AuthUser = {
+      username: rawUser.username,
+      isGitHubUser: rawUser.is_github_user,
+    };
+    sessionStorage.setItem("auth_user", JSON.stringify(authUser));
+    setUser(authUser);
+  };
+
   return (
     <ErrorBoundary>
       <AppRoutes
@@ -95,6 +104,7 @@ export default function App() {
         onLogout={() => {
           void handleLogout();
         }}
+        onLoginSuccess={handleLoginSuccess}
       />
     </ErrorBoundary>
   );
