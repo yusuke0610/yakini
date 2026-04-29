@@ -60,7 +60,7 @@ install-hooks:
 	./scripts/setup-git-hooks.sh
 
 install-backend:
-	cd backend && uv pip install -r requirements.txt
+	cd backend && (.venv/bin/python --version > /dev/null 2>&1 || (rm -rf .venv && uv venv)) && uv pip install --python .venv/bin/python -r requirements.txt
 
 install-frontend:
 	cd frontend && npm ci

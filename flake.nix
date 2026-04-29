@@ -28,8 +28,7 @@
             uv                 # 高速パッケージマネージャ
 
             # --- Node.js (Frontend) ---
-            nodejs_22          # Node.js 22 LTS
-            nodePackages.npm
+            nodejs_22          # Node.js 22 LTS（npm 同梱）
 
             # --- WeasyPrint ネイティブ依存 ---
             pango

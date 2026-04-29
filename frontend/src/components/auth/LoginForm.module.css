@@ -35,6 +35,16 @@
 .githubLogin {
   background: var(--github-bg);
   color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.githubIcon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .githubLogin:hover {
