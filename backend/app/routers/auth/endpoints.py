@@ -5,6 +5,7 @@
 """
 
 import json as _json
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -14,6 +15,7 @@ from ...core.errors import ErrorCode, raise_app_error
 from ...core.messages import get_error
 from ...core.security.auth import (
     _REFRESH_COOKIE_NAME,
+    _decode_token,
     get_current_user,
     verify_refresh_token,
 )
@@ -33,11 +35,13 @@ from .oauth_flow import (
     validate_github_oauth_state,
 )
 from .token_manager import (
+    clear_auth_cookies,
     clear_github_oauth_cookies,
     set_auth_cookies,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 def _html_redirect(url: str) -> str:
@@ -58,6 +62,7 @@ def _html_redirect(url: str) -> str:
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("20/minute")
 def refresh(
     request: Request,
     response: Response,
@@ -72,7 +77,7 @@ def refresh(
             message=get_error("auth.login_required"),
             action="ログインし直してください",
         )
-    username = verify_refresh_token(token)
+    username, jti = verify_refresh_token(token)
 
     user = UserRepository(db).get_by_username(username)
     if not user:
@@ -83,15 +88,49 @@ def refresh(
             action="ログインし直してください",
         )
 
-    set_auth_cookies(response, user.username)
+    # DB の refresh_jti と一致しない場合は失効済みとして拒否する
+    if user.refresh_jti != jti:
+        raise_app_error(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code=ErrorCode.AUTH_EXPIRED,
+            message=get_error("auth.invalid_token"),
+            action="ログインし直してください",
+        )
+
+    set_auth_cookies(response, user.username, db)
     return TokenResponse(
         username=user.username,
         is_github_user=user.username.startswith("github:"),
     )
 
 
+@router.post("/logout", status_code=204)
+@limiter.limit("20/minute")
+def logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> None:
+    """ログアウト処理。DB の refresh_jti を無効化し Cookie を削除する。
+    トークン解析が失敗した場合でも必ず Cookie を削除して 204 を返す。
+    """
+    token = request.cookies.get(_REFRESH_COOKIE_NAME)
+    if token:
+        try:
+            payload = _decode_token(token)
+            username: str | None = payload.get("sub")
+            if username:
+                user = UserRepository(db).get_by_username(username)
+                if user:
+                    UserRepository(db).update_refresh_jti(user, None)
+        except HTTPException:
+            logger.debug("ログアウト時のトークン解析に失敗（Cookie 削除を継続）", exc_info=True)
+    clear_auth_cookies(response)
+
+
 @router.get("/me", response_model=TokenResponse)
-def me(current_user=Depends(get_current_user)) -> TokenResponse:
+@limiter.limit("60/minute")
+def me(request: Request, current_user=Depends(get_current_user)) -> TokenResponse:
     """現在のログインユーザー情報を返す。"""
     return TokenResponse(
         username=current_user.username,
@@ -168,7 +207,7 @@ async def github_callback_redirect(
         return response
 
     response = HTMLResponse(content=_html_redirect(build_frontend_redirect_url(frontend_url)))
-    set_auth_cookies(response, token_response.username)
+    set_auth_cookies(response, token_response.username, db)
     clear_github_oauth_cookies(response)
     return response
 
@@ -188,6 +227,6 @@ async def github_callback(
     )
     redirect_uri = f"{build_external_base_url(request)}/auth/github/callback"
     token_response = await authenticate_github_user(db, payload.code, redirect_uri)
-    set_auth_cookies(response, token_response.username)
+    set_auth_cookies(response, token_response.username, db)
     clear_github_oauth_cookies(response)
     return token_response

@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
+from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
 from .core.errors import (  # noqa: E402
@@ -56,12 +57,11 @@ logger = logging.getLogger(__name__)
 
 @app.exception_handler(RateLimitExceeded)
 async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    retry_after = (
-        getattr(exc, "headers", {}).get("Retry-After") if hasattr(exc, "headers") else None
-    )
+    # exc.headers は属性自体は存在するが None の場合があるため `or {}` で吸収する
+    retry_after = (getattr(exc, "headers", None) or {}).get("Retry-After")
     error_id = generate_error_id()
     logger.warning(
-        "リクエストレート制限",
+        "rate_limit_exceeded",
         extra={"http_status": 429, "error_id": error_id, "status": "failed"},
     )
     return JSONResponse(
@@ -157,6 +157,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CSRFMiddleware)
+# SlowAPIMiddleware: limiter の default_limits を全ルートに適用する
+# （個別 @limiter.limit デコレータは付与されたルートのみ上書き）
+app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),

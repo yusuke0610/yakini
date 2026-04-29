@@ -18,23 +18,6 @@ variable "service_account_email" {
   type        = string
 }
 
-variable "artifact_registry_repository_id" {
-  description = "Artifact Registry repository ID for container images."
-  type        = string
-}
-
-variable "container_image_tag" {
-  description = "Container image tag used for the initial Cloud Run deployment."
-  type        = string
-  default     = "latest"
-}
-
-variable "bootstrap_image" {
-  description = "初回デプロイ用のブートストラップイメージ。空文字の場合は Artifact Registry のイメージを使用する。ignore_changes により CI が上書きしても Terraform は戻さない。"
-  type        = string
-  default     = "us-docker.pkg.dev/cloudrun/container/hello:latest"
-}
-
 variable "enable_github_oauth" {
   description = "Whether to inject GitHub OAuth secrets into Cloud Run."
   type        = bool
@@ -49,19 +32,6 @@ variable "db_backup_bucket_name" {
 variable "cors_origins" {
   description = "Allowed CORS origins for the API."
   type        = string
-  default     = "https://storage.googleapis.com"
-}
-
-variable "llm_provider" {
-  description = "LLM バックエンド (ollama / vertex)。"
-  type        = string
-  default     = "vertex"
-}
-
-variable "vertex_model" {
-  description = "Vertex AI で使用するモデル名。"
-  type        = string
-  default     = "gemini-2.5-flash-lite"
 }
 
 variable "task_runner" {

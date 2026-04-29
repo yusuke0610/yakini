@@ -7,6 +7,7 @@ import CareerAnalysisPage from "../pages/CareerAnalysisPage";
 import CareerPage from "../pages/CareerPage";
 import GitHubIntelligencePage from "../pages/GitHubIntelligencePage";
 import BlogPage from "../pages/BlogPage";
+import GitHubCallbackPage from "../pages/GitHubCallbackPage";
 import LoginPage from "../pages/LoginPage";
 import NotFoundPage from "../pages/NotFoundPage";
 
@@ -16,6 +17,8 @@ type AppRoutesProps = {
   theme: Theme;
   onToggleTheme: () => void;
   githubError: string | null;
+  onLogout: () => void;
+  onLoginSuccess: (user: { username: string; is_github_user: boolean }) => void;
 };
 
 /**
@@ -28,6 +31,8 @@ export default function AppRoutes({
   theme,
   onToggleTheme,
   githubError,
+  onLogout,
+  onLoginSuccess,
 }: AppRoutesProps) {
   return (
     <Routes>
@@ -44,6 +49,7 @@ export default function AppRoutes({
               user={user!}
               theme={theme}
               onToggleTheme={onToggleTheme}
+              onLogout={onLogout}
             />
           }
         >
@@ -53,6 +59,11 @@ export default function AppRoutes({
           <Route path="/career_analysis" element={<CareerAnalysisPage />} />
         </Route>
       </Route>
+
+      <Route
+        path="/auth/github/callback"
+        element={<GitHubCallbackPage onLoginSuccess={onLoginSuccess} />}
+      />
 
       <Route path="/" element={<Navigate to="/career" replace />} />
       <Route path="*" element={<NotFoundPage />} />

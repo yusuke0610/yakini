@@ -43,10 +43,7 @@ terraform -chdir=infra/environments/dev validate
 GCS backend を使用しているため、`terraform init` 時にバックエンドの認証が必要です。
 ローカルで `plan` する場合は `gcloud auth application-default login` を実施してください。
 
-Cloud Run サービスを Terraform で初回作成する場合は、指定するコンテナイメージタグが Artifact Registry に既に存在している必要があります。デフォルトは `container_image_tag = "latest"` です。
-
-- 初回 bootstrap 前に `:latest` を push する
-- または `terraform.tfvars` で `container_image_tag` に既存タグを指定する
+Cloud Run サービスを Terraform で初回作成する場合は、`modules/cloud_run/main.tf` の `local.bootstrap_image` に定義された公開 hello イメージで起動します。Artifact Registry にアプリイメージが push されていなくても初回 apply が成立します。
 
 GitHub Actions はその後 `gcloud run deploy` で新しいリビジョンを配備します。Terraform では Cloud Run の `image` 差分を無視するため、後続の `apply` で CI 配備済みイメージへ巻き戻しません。
 

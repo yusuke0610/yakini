@@ -412,17 +412,17 @@ class TestGenerateAdviceIfAvailable:
         }
 
     def test_llm_unavailable_returns_none(self):
-        """LLM が利用不可の場合 None を返すこと。"""
+        """LLM が利用不可の場合 (None, False) を返すこと。"""
         mock_llm = MagicMock()
         mock_llm.check_available = AsyncMock(return_value=False)
 
         with patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm):
             result = _run(_generate_advice_if_available(self._analysis()))
 
-        assert result is None
+        assert result == (None, False)
 
     def test_llm_available_returns_advice(self):
-        """LLM が利用可能の場合、アドバイス文字列を返すこと。"""
+        """LLM が利用可能の場合、(アドバイス文字列, False) を返すこと。"""
         mock_llm = MagicMock()
         mock_llm.check_available = AsyncMock(return_value=True)
 
@@ -436,27 +436,27 @@ class TestGenerateAdviceIfAvailable:
         ):
             result = _run(_generate_advice_if_available(self._analysis()))
 
-        assert result == "学習アドバイスです"
+        assert result == ("学習アドバイスです", False)
 
     def test_llm_exception_returns_none(self):
-        """LLM が例外を送出した場合 None を返し例外が外に漏れないこと。"""
+        """LLM が例外を送出した場合 (None, True) を返し例外が外に漏れないこと。"""
         mock_llm = MagicMock()
         mock_llm.check_available = AsyncMock(side_effect=Exception("LLM クラッシュ"))
 
         with patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm):
             result = _run(_generate_advice_if_available(self._analysis()))
 
-        assert result is None
+        assert result == (None, True)
 
     def test_no_position_scores_returns_none(self):
-        """position_scores が None の場合 None を返すこと。"""
+        """position_scores が None の場合 (None, False) を返すこと。"""
         mock_llm = MagicMock()
         mock_llm.check_available = AsyncMock(return_value=True)
 
         with patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm):
             result = _run(_generate_advice_if_available({"repos_analyzed": 5}))
 
-        assert result is None
+        assert result == (None, False)
 
 
 # ── execute_task (ルーティングロジック) ───────────────────────────────────

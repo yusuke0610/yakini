@@ -1,3 +1,4 @@
+import logging
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.parse import parse_qs, urlparse
@@ -8,6 +9,7 @@ from app.core.security.auth import (
     create_refresh_token,
 )
 from app.core.settings import get_cookie_samesite, get_cookie_secure
+from app.main import limiter
 from jose import jwt
 
 from conftest import _test_public_key, auth_header
@@ -37,11 +39,12 @@ def test_create_access_token_type_is_access() -> None:
 
 
 def test_create_refresh_token_type_is_refresh() -> None:
-    token = create_refresh_token("alice")
+    token, jti = create_refresh_token("alice")
     payload = jwt.decode(token, _test_public_key, algorithms=["RS256"])
 
     assert payload["type"] == "refresh"
     assert payload["sub"] == "alice"
+    assert payload["jti"] == jti
 
 
 def test_hs256_token_rejected_by_rs256_verification() -> None:
@@ -68,7 +71,7 @@ def test_access_token_cannot_be_used_as_refresh(client) -> None:
 def test_refresh_token_cannot_access_api(client) -> None:
     """リフレッシュトークンで通常 API を叩いて拒否されることを確認する。"""
     auth_header(client, "apitest")
-    refresh_token = create_refresh_token("apitest")
+    refresh_token, _ = create_refresh_token("apitest")
     client.cookies.set("access_token", refresh_token)
 
     response = client.get("/auth/me")
@@ -85,6 +88,49 @@ def test_refresh_issues_new_access_token(client) -> None:
     assert response.status_code == 200
     assert response.json()["username"] == "refuser"
     assert "access_token=" in response.headers.get("set-cookie", "")
+
+
+# ── ログアウト ────────────────────────────────────────────────────
+
+
+def test_logout_clears_cookies(client) -> None:
+    """ログアウト後に認証 Cookie が削除されることを確認する。"""
+    auth_header(client, "logoutuser")
+
+    response = client.post("/auth/logout")
+
+    assert response.status_code == 204
+    set_cookie = response.headers.get("set-cookie", "")
+    assert "access_token=" in set_cookie
+
+
+def test_logout_invalidates_refresh_token(client) -> None:
+    """ログアウト後にリフレッシュトークンで再認証できないことを確認する。"""
+    auth_header(client, "logoutuser2")
+
+    client.post("/auth/logout")
+    response = client.post("/auth/refresh")
+
+    assert response.status_code == 401
+
+
+def test_refresh_rejects_revoked_jti(client) -> None:
+    """DB の refresh_jti と一致しないトークンでリフレッシュが拒否されることを確認する。"""
+    auth_header(client, "revokeduser")
+    # jti が DB と一致しない別トークンを発行してセット
+    stale_token, _ = create_refresh_token("revokeduser")
+    client.cookies.set("refresh_token", stale_token)
+
+    response = client.post("/auth/refresh")
+
+    assert response.status_code == 401
+
+
+def test_logout_without_token_returns_204(client) -> None:
+    """リフレッシュトークンなしでもログアウトが 204 を返すことを確認する。"""
+    response = client.post("/auth/logout")
+
+    assert response.status_code == 204
 
 
 # ── Cookie 設定 ───────────────────────────────────────────────────
@@ -325,6 +371,69 @@ def test_begin_github_oauth_state_cookie_has_samesite(client) -> None:
     set_cookie_header = response.headers.get("set-cookie", "")
     assert "github_oauth_state=" in set_cookie_header
     assert "samesite=" in set_cookie_header.lower()
+
+
+# ── 不正アクセス追跡: 認証失敗ログ ────────────────────────────────
+
+
+def _auth_failed_records(records: list[logging.LogRecord]) -> list[logging.LogRecord]:
+    """auth_failed イベント (devforge ロガー WARNING) のみ抽出する。"""
+    return [r for r in records if r.name == "devforge" and r.message == "auth_failed"]
+
+
+def test_auth_failed_logged_when_cookie_missing(client, caplog) -> None:
+    """Cookie 無しで保護 API を叩くと reason=missing_cookie の WARNING が出ることを確認する。"""
+    client.cookies.clear()
+    with caplog.at_level(logging.WARNING, logger="devforge"):
+        response = client.get("/auth/me")
+
+    assert response.status_code == 401
+    records = _auth_failed_records(caplog.records)
+    assert any(getattr(r, "reason", None) == "missing_cookie" for r in records)
+
+
+def test_auth_failed_logged_for_invalid_jwt(client, caplog) -> None:
+    """不正な JWT で 401 + reason=jwt_decode_error がログされることを確認する。"""
+    client.cookies.clear()
+    client.cookies.set("access_token", "not-a-valid-jwt")
+    with caplog.at_level(logging.WARNING, logger="devforge"):
+        response = client.get("/auth/me")
+
+    assert response.status_code == 401
+    records = _auth_failed_records(caplog.records)
+    assert any(getattr(r, "reason", None) == "jwt_decode_error" for r in records)
+
+
+def test_auth_failed_logged_for_user_not_found(client, caplog) -> None:
+    """DB に存在しないユーザー名のトークンで reason=user_not_found がログされることを確認する。"""
+    token = create_access_token("nonexistent-user-xyz")
+    client.cookies.clear()
+    client.cookies.set("access_token", token)
+    with caplog.at_level(logging.WARNING, logger="devforge"):
+        response = client.get("/auth/me")
+
+    assert response.status_code == 401
+    records = _auth_failed_records(caplog.records)
+    assert any(getattr(r, "reason", None) == "user_not_found" for r in records)
+
+
+# ── レートリミット ──────────────────────────────────────────────
+
+
+def test_auth_me_rate_limited_after_threshold(client) -> None:
+    """/auth/me が 60/分の上限を超えると 429 を返すことを確認する。"""
+    auth_header(client, "rl-user")
+    limiter.reset()
+    statuses: list[int] = []
+    for _i in range(65):
+        resp = client.get("/auth/me")
+        statuses.append(resp.status_code)
+        if resp.status_code == 429:
+            break
+    assert 429 in statuses
+    # 上限到達前に少なくとも数件は 200 を返している
+    assert statuses.count(200) >= 50
+    limiter.reset()
 
 
 # 使用しない環境変数を参照するだけのプレースホルダー（lint 対策）

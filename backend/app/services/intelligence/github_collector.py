@@ -33,7 +33,13 @@ from .github.repo_analyzer import (
     DEPENDENCY_TO_FRAMEWORK,
 )
 from .github.repo_analyzer import (
+    detect_from_dependencies as _detect_from_dependencies,
+)
+from .github.repo_analyzer import (
     detect_from_root_files as _detect_from_root_files,
+)
+from .github.repo_analyzer import (
+    merge_frameworks as _merge_frameworks,
 )
 from .github.repo_analyzer import (
     parse_go_mod as _parse_go_mod,
@@ -181,7 +187,12 @@ async def collect_repos(
             dependencies = await _parse_dependencies(
                 client, owner_login, repo_name, root_files
             )
-            detected_frameworks = _detect_from_root_files(root_files)
+            # root files 由来（Docker/CI/Terraform 等）と依存関係由来（React/Django/FastAPI 等）
+            # のフレームワークをマージする
+            detected_frameworks = _merge_frameworks(
+                _detect_from_root_files(root_files),
+                _detect_from_dependencies(dependencies),
+            )
 
             repos.append(
                 RepoData(

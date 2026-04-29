@@ -67,6 +67,11 @@ def calculate_position_scores(repos: List[RepoData]) -> PositionScores:
         all_files.update(repo.root_files)
         all_frameworks.update(repo.detected_frameworks)
 
+    # 検出フレームワークを等価なトピックに展開してスコア算出に反映させる
+    # （リポジトリに topic タグが無くても依存関係から推定できるようにする）
+    for fw in all_frameworks:
+        all_topics.update(_FRAMEWORK_TO_TOPICS.get(fw, ()))
+
     # 各ポジションのスコア算出
     backend = _calc_axis_score("backend", lang_ratios, all_topics, all_files)
     frontend = _calc_axis_score("frontend", lang_ratios, all_topics, all_files)
@@ -173,6 +178,51 @@ _FILE_SKILL_MAP: Dict[str, str] = {
     ".terraform": "Terraform",
 }
 
+# 検出フレームワーク → position_weights.json で参照されるトピック語のマッピング。
+# リポジトリに topic タグが無いケースでも依存関係から推定できるよう、
+# `_calc_axis_score` の topic 判定に合成的に注入する。
+_FRAMEWORK_TO_TOPICS: Dict[str, tuple] = {
+    # フロントエンド
+    "React": ("react", "frontend", "web"),
+    "React Native": ("react", "frontend"),
+    "Next.js": ("nextjs", "react", "frontend", "web"),
+    "Gatsby": ("gatsby", "react", "frontend"),
+    "Remix": ("remix", "react", "frontend"),
+    "Vue": ("vue", "frontend", "web"),
+    "Nuxt.js": ("nuxt", "vue", "frontend"),
+    "Angular": ("angular", "frontend", "web"),
+    "Svelte": ("svelte", "frontend"),
+    "Astro": ("astro", "frontend"),
+    # バックエンド
+    "FastAPI": ("fastapi", "api", "backend"),
+    "Django": ("django", "backend", "api"),
+    "Flask": ("flask", "backend"),
+    "Express": ("express", "backend", "api"),
+    "NestJS": ("nestjs", "backend", "api"),
+    "Spring Boot": ("spring", "backend", "api"),
+    "Gin": ("backend", "api"),
+    "Echo": ("backend", "api"),
+    "Fiber": ("backend", "api"),
+    # データベース / API
+    "PostgreSQL": ("database",),
+    "MongoDB": ("database",),
+    "Redis": ("database",),
+    "GraphQL": ("graphql", "api"),
+    # インフラ / SRE
+    "Docker": ("docker",),
+    "Docker Compose": ("docker",),
+    "GitHub Actions": ("ci-cd",),
+    "Jenkins": ("ci-cd",),
+    "GitLab CI": ("ci-cd",),
+    "CircleCI": ("ci-cd",),
+    "Terraform": ("terraform", "iac"),
+    # クラウド
+    "AWS": ("aws", "cloud"),
+    "GCP": ("gcp", "cloud"),
+    "Azure": ("azure", "cloud"),
+}
+
+
 # 検出フレームワークからスキルへのマッピング
 _FRAMEWORK_SKILL_MAP: Dict[str, str] = {
     "Docker": "Docker",
@@ -182,17 +232,37 @@ _FRAMEWORK_SKILL_MAP: Dict[str, str] = {
     "GitLab CI": "CI/CD",
     "CircleCI": "CI/CD",
     "Terraform": "Terraform",
+    # フロントエンドフレームワーク
     "React": "React",
+    "React Native": "React",
+    "Next.js": "React",
+    "Gatsby": "React",
+    "Remix": "React",
     "Vue": "Vue",
+    "Nuxt.js": "Vue",
     "Angular": "Angular",
+    "Svelte": "Svelte",
+    "Astro": "Astro",
+    # バックエンドフレームワーク
     "FastAPI": "REST API",
     "Django": "REST API",
     "Flask": "REST API",
     "Express": "REST API",
+    "NestJS": "REST API",
     "Spring Boot": "REST API",
+    "Gin": "REST API",
+    "Echo": "REST API",
+    "Fiber": "REST API",
+    # データベース
+    "PostgreSQL": "SQL",
+    "MongoDB": "SQL",
+    "Redis": "SQL",
+    # クラウド SDK
     "AWS": "AWS",
     "GCP": "GCP",
     "Azure": "Azure",
+    # GraphQL
+    "GraphQL": "GraphQL",
 }
 
 # 言語比率がこの閾値以上で「保有」とみなす
@@ -233,12 +303,13 @@ def _find_missing_skills(owned: Set[str]) -> List[str]:
     missing: List[str] = []
 
     # 要件チェック用マッピング
+    # `React or Vue` は SPA フレームワーク系スキルがどれか一つあれば満たすものとする
     checks = {
         "Python or Java or Go": {"Python", "Java", "Go"},
-        "REST API設計": {"REST API"},
+        "REST API設計": {"REST API", "GraphQL"},
         "DB設計/SQL": {"SQL"},
         "TypeScript": {"TypeScript"},
-        "React or Vue": {"React", "Vue", "Angular"},
+        "React or Vue": {"React", "Vue", "Angular", "Svelte", "Astro"},
         "HTML/CSS": {"CSS", "HTML"},
         "Docker": {"Docker"},
         "CI/CD": {"CI/CD"},

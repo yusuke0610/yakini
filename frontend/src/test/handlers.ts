@@ -30,6 +30,7 @@ const analysisCacheResult = http.get("*/api/intelligence/cache", () =>
       unique_skills: 5,
       analyzed_at: "2026-01-01T00:00:00Z",
       languages: { TypeScript: 60, Python: 40 },
+      detected_frameworks: ["React", "FastAPI"],
       position_scores: null,
     },
     position_advice: null,

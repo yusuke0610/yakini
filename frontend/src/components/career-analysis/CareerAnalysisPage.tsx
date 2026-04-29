@@ -4,6 +4,37 @@ import {
   type CareerAnalysisResult,
   type EvidenceSource,
 } from "../../api";
+
+/** スキル名 → 公式ドキュメント URL のキュレーション済みマップ */
+const OFFICIAL_DOCS: Record<string, string> = {
+  TypeScript: "https://www.typescriptlang.org/docs/",
+  Python: "https://docs.python.org/ja/3/",
+  Go: "https://go.dev/doc/",
+  Rust: "https://doc.rust-lang.org/book/",
+  Java: "https://docs.oracle.com/javase/",
+  "C#": "https://learn.microsoft.com/ja-jp/dotnet/csharp/",
+  Kotlin: "https://kotlinlang.org/docs/",
+  Swift: "https://docs.swift.org/swift-book/",
+  React: "https://react.dev/learn",
+  "Next.js": "https://nextjs.org/docs",
+  Vue: "https://ja.vuejs.org/guide/",
+  Angular: "https://angular.jp/docs",
+  FastAPI: "https://fastapi.tiangolo.com/ja/",
+  Django: "https://docs.djangoproject.com/ja/",
+  "Spring Boot": "https://spring.io/guides",
+  "Node.js": "https://nodejs.org/ja/docs/",
+  Docker: "https://docs.docker.com/",
+  Kubernetes: "https://kubernetes.io/ja/docs/",
+  Terraform: "https://developer.hashicorp.com/terraform/docs",
+  "GitHub Actions": "https://docs.github.com/ja/actions",
+  AWS: "https://docs.aws.amazon.com/",
+  GCP: "https://cloud.google.com/docs?hl=ja",
+  Azure: "https://learn.microsoft.com/ja-jp/azure/",
+  PostgreSQL: "https://www.postgresql.org/docs/",
+  MySQL: "https://dev.mysql.com/doc/",
+  Redis: "https://redis.io/docs/",
+  MongoDB: "https://www.mongodb.com/docs/",
+};
 import { useCareerAnalysisPage } from "../../hooks/useCareerAnalysisPage";
 import { ErrorToast } from "../ui/ErrorToast";
 import { InlineSpinner } from "../ui/InlineSpinner";
@@ -143,6 +174,7 @@ export function CareerAnalysisPage() {
         <StrengthsSection result={r} />
         <CareerPathsSection result={r} />
         <ActionItemsSection result={r} />
+        <LearningResourcesSection result={r} />
       </div>
     );
   }
@@ -289,6 +321,53 @@ function ActionItemsSection({ result }: { result: CareerAnalysisResult }) {
             <div className={styles.actionReason}>{a.reason}</div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function LearningResourcesSection({ result }: { result: CareerAnalysisResult }) {
+  const gapSkills = [...new Set(result.career_paths.flatMap((cp) => cp.gap_skills))];
+  if (gapSkills.length === 0) return null;
+
+  return (
+    <div className={styles.resultCard}>
+      <div className={styles.resultHeader}>学習リソース</div>
+      <div className={styles.resultBody}>
+        <p className={styles.resourceDescription}>
+          キャリアパス実現に向けて習得が推奨されるスキルの学習リソースです。
+        </p>
+        <div className={styles.resourceList}>
+          {gapSkills.map((skill) => {
+            const officialUrl = OFFICIAL_DOCS[skill];
+            const udemyUrl = `https://www.udemy.com/courses/search/?q=${encodeURIComponent(skill)}&lang=ja`;
+            return (
+              <div key={skill} className={styles.resourceItem}>
+                <span className={styles.resourceSkill}>{skill}</span>
+                <div className={styles.resourceLinks}>
+                  {officialUrl && (
+                    <a
+                      href={officialUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.resourceLink}
+                    >
+                      公式ドキュメント
+                    </a>
+                  )}
+                  <a
+                    href={udemyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.resourceLink}
+                  >
+                    Udemy で検索
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

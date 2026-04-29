@@ -2,9 +2,9 @@
 
 import asyncio
 import logging
-import os
 import time
 
+from ....core.settings import get_vertex_location, get_vertex_model, get_vertex_project_id
 from ....services.tasks.exceptions import NonRetryableError, RetryableError
 from .base import LLMClient
 
@@ -57,11 +57,9 @@ class VertexClient(LLMClient):
     """google-genai SDK を使用した Vertex AI Gemini クライアント。"""
 
     def __init__(self) -> None:
-        self.project_id = os.environ.get("VERTEX_PROJECT_ID", "")
-        self.location = os.environ.get("VERTEX_LOCATION", "asia-northeast1")
-        self.model_name = os.environ.get(
-            "VERTEX_MODEL", DEFAULT_VERTEX_MODEL
-        )
+        self.project_id = get_vertex_project_id()
+        self.location = get_vertex_location()
+        self.model_name = get_vertex_model(DEFAULT_VERTEX_MODEL)
         self._client = None
 
     def _get_client(self):
@@ -76,11 +74,11 @@ class VertexClient(LLMClient):
             )
         return self._client
 
-    async def generate(self, system_prompt: str, user_prompt: str) -> str:
+    async def generate(self, system_prompt: str, user_prompt: str) -> str | None:
         """Vertex AI Gemini でテキスト生成を実行する。
 
         一時障害は ``RetryableError``、恒久的な障害は ``NonRetryableError`` を
-        raise する。未分類の例外は既存動作（空文字返却）を維持する。
+        raise する。未分類の例外は ``None`` を返す。
         """
         start = time.monotonic()
         try:
@@ -127,7 +125,7 @@ class VertexClient(LLMClient):
                 "Vertex AI による生成に失敗しました",
                 extra={"status": "failed", "duration_ms": duration_ms},
             )
-            return ""
+            return None
 
     async def check_available(self) -> bool:
         """VERTEX_PROJECT_ID が設定されていれば利用可能とみなす。"""

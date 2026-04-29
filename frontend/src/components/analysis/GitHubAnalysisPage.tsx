@@ -11,6 +11,7 @@ import { ErrorToast } from "../ui/ErrorToast";
 import { InlineSpinner } from "../ui/InlineSpinner";
 import { useAsyncAnalysisPage } from "../../hooks/analysis/useAsyncAnalysisPage";
 import { TaskProgressStepper } from "../TaskProgressStepper";
+import { FrameworkList } from "./FrameworkList";
 import { LanguageBar } from "./LanguageBar";
 import { PositionRadarChart } from "./PositionRadarChart";
 import shared from "../../styles/shared.module.css";
@@ -25,6 +26,8 @@ export function GitHubAnalysisPage() {
   const [includeForks, setIncludeForks] = useState(false);
   /** ポジションアドバイス（GitHub 固有のキャッシュデータ） */
   const [positionAdvice, setPositionAdvice] = useState<string | null>(null);
+  /** LLM 処理が失敗した場合のエラーコード（部分成功ケース） */
+  const [llmErrorCode, setLlmErrorCode] = useState<string | null>(null);
 
   const {
     phase,
@@ -42,6 +45,8 @@ export function GitHubAnalysisPage() {
       if (cache.position_advice) {
         setPositionAdvice(cache.position_advice);
       }
+      // LLM 処理失敗のエラーコードを保持する（部分成功ケース）
+      setLlmErrorCode(cache.error_code ?? null);
       return { result: cache.analysis_result, status: cache.status };
     },
     checkStatus: getAnalysisCacheStatus,
@@ -54,6 +59,7 @@ export function GitHubAnalysisPage() {
   const handleAnalyze = async () => {
     setError(null);
     setPositionAdvice(null);
+    setLlmErrorCode(null);
     try {
       await analyzeGitHub({ include_forks: includeForks });
       transitionToPolling();
@@ -67,6 +73,7 @@ export function GitHubAnalysisPage() {
    */
   const handleBack = () => {
     setPositionAdvice(null);
+    setLlmErrorCode(null);
     setResult(null);
     backToInput();
   };
@@ -158,6 +165,8 @@ export function GitHubAnalysisPage() {
           />
         )}
 
+        {llmErrorCode && <ErrorToast code={llmErrorCode} />}
+
         {/* 概要 */}
         <div className={styles.section}>
           <h2>Overview</h2>
@@ -178,6 +187,14 @@ export function GitHubAnalysisPage() {
           <div className={styles.section}>
             <h2>Languages</h2>
             <LanguageBar languages={result.languages} />
+          </div>
+        )}
+
+        {/* 検出フレームワーク（Issue #203） */}
+        {result.detected_frameworks && result.detected_frameworks.length > 0 && (
+          <div className={styles.section}>
+            <h2>Frameworks</h2>
+            <FrameworkList frameworks={result.detected_frameworks} />
           </div>
         )}
 

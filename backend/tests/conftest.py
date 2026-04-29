@@ -121,8 +121,14 @@ def auth_header(client, username: str = "testuser") -> dict:
         repo.create(username, hashed_password=None, email=f"{username}@example.com")
 
     access_token = create_access_token(username)
-    refresh_token = create_refresh_token(username)
+    refresh_token, jti = create_refresh_token(username)
     csrf_token = secrets.token_urlsafe(32)
+
+    # refresh_jti を DB に保存（/auth/refresh の jti 照合テストで必要）
+    user = repo.get_by_username(username)
+    if user:
+        user.refresh_jti = jti
+        db.commit()
 
     client.cookies.set("access_token", access_token)
     client.cookies.set("refresh_token", refresh_token)
