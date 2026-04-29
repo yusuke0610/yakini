@@ -53,7 +53,7 @@ export function LoginForm({
                     fill="#fff"
                   />
                 </svg>
-                GitHubログイン
+                GitHubでログイン
               </button>
             </div>
           </div>
