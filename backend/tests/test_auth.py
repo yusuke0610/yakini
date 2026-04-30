@@ -282,6 +282,24 @@ def test_github_login_url_uses_forwarded_https_scheme(client) -> None:
     assert redirect_uri == "https://devforge-dev-nktebahhoq-an.a.run.app/auth/github/callback"
 
 
+def test_github_login_url_uses_callback_base_url_when_set(client) -> None:
+    """CALLBACK_BASE_URL が設定されている場合、x-forwarded-host より優先されることを確認する。"""
+    with patch.dict(os.environ, {"CALLBACK_BASE_URL": "https://devforge-dev-20260311.web.app"}):
+        response = client.get(
+            "/auth/github/login-url",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+                "X-Forwarded-Proto": "https",
+            },
+        )
+
+    assert response.status_code == 200
+    parsed = urlparse(response.json()["authorization_url"])
+    redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
+    assert redirect_uri == "https://devforge-dev-20260311.web.app/auth/github/callback"
+
+
 def test_github_login_redirect_sets_cookies_and_redirects(client) -> None:
     response = client.get(
         "/auth/github/login",

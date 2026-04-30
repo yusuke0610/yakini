@@ -20,6 +20,7 @@ from ...core.security.auth import (
     verify_refresh_token,
 )
 from ...core.security.dependencies import limiter
+from ...core.settings import get_callback_base_url
 from ...db import get_db
 from ...repositories import UserRepository
 from ...schemas import GitHubCallbackRequest, TokenResponse
@@ -194,7 +195,8 @@ async def github_callback_redirect(
             request.cookies.get(GITHUB_OAUTH_STATE_COOKIE),
             state,
         )
-        redirect_uri = f"{build_external_base_url(request)}/auth/github/callback"
+        callback_base = get_callback_base_url() or build_external_base_url(request)
+        redirect_uri = f"{callback_base}/auth/github/callback"
         token_response = await authenticate_github_user(db, code, redirect_uri)
     except HTTPException as error:
         # error.detail は AppErrorResponse の dict 形式なので message フィールドを取り出す
@@ -225,7 +227,8 @@ async def github_callback(
         request.cookies.get(GITHUB_OAUTH_STATE_COOKIE),
         payload.state,
     )
-    redirect_uri = f"{build_external_base_url(request)}/auth/github/callback"
+    callback_base = get_callback_base_url() or build_external_base_url(request)
+    redirect_uri = f"{callback_base}/auth/github/callback"
     token_response = await authenticate_github_user(db, payload.code, redirect_uri)
     set_auth_cookies(response, token_response.username, db)
     clear_github_oauth_cookies(response)

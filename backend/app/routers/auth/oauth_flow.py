@@ -10,7 +10,7 @@ from fastapi import HTTPException, Request, Response, status
 
 from ...core.errors import ErrorCode, raise_app_error
 from ...core.messages import get_error
-from ...core.settings import get_cors_origins, get_github_client_id
+from ...core.settings import get_callback_base_url, get_cors_origins, get_github_client_id
 from .token_manager import (
     GITHUB_OAUTH_COOKIE_MAX_AGE,
     GITHUB_OAUTH_REDIRECT_COOKIE,
@@ -219,7 +219,8 @@ def begin_github_oauth(
             action="システム管理者に連絡してください",
         )
 
-    redirect_uri = f"{build_external_base_url(request)}/auth/github/callback"
+    callback_base = get_callback_base_url() or build_external_base_url(request)
+    redirect_uri = f"{callback_base}/auth/github/callback"
     state = secrets.token_urlsafe(32)
 
     set_cookie(

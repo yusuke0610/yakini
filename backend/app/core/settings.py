@@ -97,6 +97,17 @@ def get_jwt_public_key() -> str:
     return key
 
 
+def get_callback_base_url() -> str:
+    """OAuth callback の base URL を取得する。環境変数が設定されていれば優先する。
+
+    Firebase Hosting → Cloud Run 構成では x-forwarded-host が伝播しないため、
+    CALLBACK_BASE_URL に Firebase Hosting の URL を明示することで redirect_uri を固定できる。
+    空の場合は呼び出し元が build_external_base_url にフォールバックする。
+    """
+    url = os.getenv("CALLBACK_BASE_URL", "").strip()
+    return url.rstrip("/") if url else ""
+
+
 def get_github_client_id() -> str:
     return os.getenv("GITHUB_CLIENT_ID", "").strip()
 
