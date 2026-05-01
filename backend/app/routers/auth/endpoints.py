@@ -26,8 +26,6 @@ from ...repositories import UserRepository
 from ...schemas import GitHubCallbackRequest, TokenResponse
 from .github_auth import authenticate_github_user
 from .oauth_flow import (
-    GITHUB_OAUTH_REDIRECT_COOKIE,
-    GITHUB_OAUTH_STATE_COOKIE,
     begin_github_oauth,
     build_external_base_url,
     build_frontend_redirect_url,
@@ -37,7 +35,8 @@ from .oauth_flow import (
 )
 from .token_manager import (
     clear_auth_cookies,
-    clear_github_oauth_cookies,
+    clear_github_oauth_session,
+    get_github_oauth_session,
     set_auth_cookies,
 )
 
@@ -180,15 +179,8 @@ async def github_callback_redirect(
     200 + HTML リダイレクトで Cookie を確実にセットする。
     """
 
-    # ===== 一時デバッグログ =====
-    logger.warning("DEBUG callback cookies: %s", dict(request.cookies))
-    logger.warning("DEBUG callback state_param: %s", state)
-    logger.warning("DEBUG callback code: %s", code[:8] if code else None)
-    # ===========================
-
-    frontend_url = resolve_frontend_url_from_cookie(
-        request.cookies.get(GITHUB_OAUTH_REDIRECT_COOKIE)
-    )
+    stored_state, stored_redirect = get_github_oauth_session(request)
+    frontend_url = resolve_frontend_url_from_cookie(stored_redirect)
 
     try:
         if not code:
@@ -198,10 +190,7 @@ async def github_callback_redirect(
                 message=get_error("auth.github_code_missing"),
                 action="GitHub ログインをやり直してください",
             )
-        validate_github_oauth_state(
-            request.cookies.get(GITHUB_OAUTH_STATE_COOKIE),
-            state,
-        )
+        validate_github_oauth_state(stored_state, state)
         callback_base = get_callback_base_url() or build_external_base_url(request)
         redirect_uri = f"{callback_base}/auth/github/callback"
         token_response = await authenticate_github_user(db, code, redirect_uri)
@@ -212,12 +201,12 @@ async def github_callback_redirect(
         response = HTMLResponse(
             content=_html_redirect(build_frontend_redirect_url(frontend_url, error_message))
         )
-        clear_github_oauth_cookies(response)
+        clear_github_oauth_session(response)
         return response
 
     response = HTMLResponse(content=_html_redirect(build_frontend_redirect_url(frontend_url)))
     set_auth_cookies(response, token_response.username, db)
-    clear_github_oauth_cookies(response)
+    clear_github_oauth_session(response)
     return response
 
 
@@ -230,13 +219,11 @@ async def github_callback(
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """GitHub OAuth コードを受け取り、認証 Cookie を発行する。"""
-    validate_github_oauth_state(
-        request.cookies.get(GITHUB_OAUTH_STATE_COOKIE),
-        payload.state,
-    )
+    stored_state, _ = get_github_oauth_session(request)
+    validate_github_oauth_state(stored_state, payload.state)
     callback_base = get_callback_base_url() or build_external_base_url(request)
     redirect_uri = f"{callback_base}/auth/github/callback"
     token_response = await authenticate_github_user(db, payload.code, redirect_uri)
     set_auth_cookies(response, token_response.username, db)
-    clear_github_oauth_cookies(response)
+    clear_github_oauth_session(response)
     return token_response

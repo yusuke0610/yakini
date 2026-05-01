@@ -2,9 +2,10 @@
 Cookie設定・削除・JWT生成・トークン検証を担うモジュール。
 """
 
+import json
 import secrets
 
-from fastapi import Response
+from fastapi import Request, Response
 from sqlalchemy.orm import Session
 
 from ...core.security.auth import (
@@ -22,6 +23,9 @@ from ...repositories import UserRepository
 # GitHub OAuth 用 Cookie 名
 GITHUB_OAUTH_STATE_COOKIE = "github_oauth_state"
 GITHUB_OAUTH_REDIRECT_COOKIE = "github_oauth_redirect"
+# Firebase Hosting は __session という名前の Cookie のみ Cloud Run に転送するため、
+# state と redirect_url を JSON で1つの Cookie にまとめて格納する
+GITHUB_OAUTH_SESSION_COOKIE = "__session"
 GITHUB_OAUTH_COOKIE_MAX_AGE = 10 * 60
 
 
@@ -47,6 +51,40 @@ def clear_github_oauth_cookies(response: Response) -> None:
     """GitHub OAuth フロー用 Cookie をすべて削除する。"""
     delete_cookie(response, GITHUB_OAUTH_STATE_COOKIE)
     delete_cookie(response, GITHUB_OAUTH_REDIRECT_COOKIE)
+
+
+def set_github_oauth_session(
+    response: Response, state: str, redirect_url: str
+) -> None:
+    """GitHub OAuth 用の state と redirect_url を __session cookie に格納する。
+
+    Firebase Hosting は __session という名前の Cookie のみ Cloud Run に転送するため、
+    state と redirect_url を JSON で1つの Cookie にまとめる。
+    """
+    payload = json.dumps({"state": state, "redirect": redirect_url})
+    set_cookie(response, GITHUB_OAUTH_SESSION_COOKIE, payload, GITHUB_OAUTH_COOKIE_MAX_AGE)
+
+
+def get_github_oauth_session(request: Request) -> tuple[str | None, str | None]:
+    """__session cookie から (state, redirect_url) を取り出す。
+
+    取得できない場合は (None, None) を返す。
+    """
+    raw = request.cookies.get(GITHUB_OAUTH_SESSION_COOKIE)
+    if not raw:
+        return None, None
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None, None
+    if not isinstance(data, dict):
+        return None, None
+    return data.get("state"), data.get("redirect")
+
+
+def clear_github_oauth_session(response: Response) -> None:
+    """__session cookie を削除する。"""
+    delete_cookie(response, GITHUB_OAUTH_SESSION_COOKIE)
 
 
 def set_auth_cookies(response: Response, username: str, db: Session) -> None:

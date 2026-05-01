@@ -12,10 +12,9 @@ from ...core.errors import ErrorCode, raise_app_error
 from ...core.messages import get_error
 from ...core.settings import get_callback_base_url, get_cors_origins, get_github_client_id
 from .token_manager import (
-    GITHUB_OAUTH_COOKIE_MAX_AGE,
     GITHUB_OAUTH_REDIRECT_COOKIE,
     GITHUB_OAUTH_STATE_COOKIE,
-    set_cookie,
+    set_github_oauth_session,
 )
 
 logger = logging.getLogger(__name__)
@@ -223,18 +222,7 @@ def begin_github_oauth(
     redirect_uri = f"{callback_base}/auth/github/callback"
     state = secrets.token_urlsafe(32)
 
-    set_cookie(
-        response,
-        GITHUB_OAUTH_STATE_COOKIE,
-        state,
-        GITHUB_OAUTH_COOKIE_MAX_AGE,
-    )
-    set_cookie(
-        response,
-        GITHUB_OAUTH_REDIRECT_COOKIE,
-        frontend_url,
-        GITHUB_OAUTH_COOKIE_MAX_AGE,
-    )
+    set_github_oauth_session(response, state, frontend_url)
 
     return build_github_authorization_url(
         client_id=client_id,
