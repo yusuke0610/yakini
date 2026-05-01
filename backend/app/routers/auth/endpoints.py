@@ -40,6 +40,11 @@ from .token_manager import (
     set_auth_cookies,
 )
 
+# GitHub OAuth Callback URL のパス
+# 旧: /auth/github/callback (Firebase Hosting の /auth/** rewrite に巻き込まれて Cookie が剥落するため不可)
+# 新: /github/callback (フロントの React ルートで受け取り、POST /auth/github/callback でトークン交換)
+GITHUB_CALLBACK_PATH = "/github/callback"
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
 
@@ -142,13 +147,15 @@ def me(request: Request, current_user=Depends(get_current_user)) -> TokenRespons
 @limiter.limit("10/minute")
 def github_login_url(
     request: Request,
-    response: Response,
     return_to: str | None = None,
 ) -> dict[str, str]:
-    """GitHub OAuth 認可 URL を返す。"""
+    """GitHub OAuth 認可 URL と state を返す。
+
+    state はフロントが sessionStorage に保持し、コールバック時に CSRF 検証する。
+    """
     frontend_url = resolve_frontend_url_from_request(request, return_to)
-    authorization_url = begin_github_oauth(request, response, frontend_url)
-    return {"authorization_url": authorization_url}
+    authorization_url, state = begin_github_oauth(request, frontend_url)
+    return {"authorization_url": authorization_url, "state": state}
 
 
 @router.get("/github/login")
@@ -159,10 +166,8 @@ def github_login(
 ) -> RedirectResponse:
     """GitHub OAuth 認可 URL へリダイレクトする。"""
     frontend_url = resolve_frontend_url_from_request(request, return_to)
-    redirect = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-    redirect_url = begin_github_oauth(request, redirect, frontend_url)
-    redirect.headers["location"] = redirect_url
-    return redirect
+    authorization_url, _state = begin_github_oauth(request, frontend_url)
+    return RedirectResponse(url=authorization_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/github/callback")
@@ -218,12 +223,13 @@ async def github_callback(
     payload: GitHubCallbackRequest,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    """GitHub OAuth コードを受け取り、認証 Cookie を発行する。"""
-    stored_state, _ = get_github_oauth_session(request)
-    validate_github_oauth_state(stored_state, payload.state)
+    """GitHub OAuth コードを受け取り、認証 Cookie を発行する。
+
+    state はフロントの sessionStorage で検証済みのためサーバー側では再検証しない。
+    redirect_uri は GitHub OAuth App の登録値 (`/github/callback`) と一致させる必要がある。
+    """
     callback_base = get_callback_base_url() or build_external_base_url(request)
-    redirect_uri = f"{callback_base}/auth/github/callback"
+    redirect_uri = f"{callback_base}{GITHUB_CALLBACK_PATH}"
     token_response = await authenticate_github_user(db, payload.code, redirect_uri)
     set_auth_cookies(response, token_response.username, db)
-    clear_github_oauth_session(response)
     return token_response

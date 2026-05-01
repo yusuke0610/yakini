@@ -60,8 +60,12 @@ export default function AppRoutes({
         </Route>
       </Route>
 
+      {/*
+        GitHub OAuth コールバック: Firebase Hosting の /auth/** rewrite に巻き込まれて
+        Cloud Run へ転送されないように、/github/callback で受け取る。
+      */}
       <Route
-        path="/auth/github/callback"
+        path="/github/callback"
         element={<GitHubCallbackPage onLoginSuccess={onLoginSuccess} />}
       />
 

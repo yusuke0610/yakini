@@ -54,6 +54,7 @@ test.describe("未認証ユーザー", () => {
         contentType: "application/json",
         body: JSON.stringify({
           authorization_url: "http://localhost:5173/mock-github-oauth",
+          state: "mock-state",
         }),
       });
     });
