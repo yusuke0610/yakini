@@ -82,6 +82,10 @@ resource "google_cloud_run_v2_service" "app" {
         value = var.cors_origins
       }
       env {
+        name  = "CALLBACK_BASE_URL"
+        value = var.callback_base_url
+      }
+      env {
         name  = "ENVIRONMENT"
         value = var.environment
       }

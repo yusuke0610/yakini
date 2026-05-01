@@ -24,6 +24,12 @@ variable "cors_origins" {
   type        = string
 }
 
+variable "callback_base_url" {
+  description = "OAuth callback の base URL（Firebase Hosting の URL）。"
+  type        = string
+  default     = ""
+}
+
 variable "enable_github_oauth" {
   description = "Whether to inject GitHub OAuth secrets into Cloud Run."
   type        = bool

@@ -87,7 +87,7 @@ resource "google_monitoring_alert_policy" "task_failed_alert" {
   conditions {
     display_name = "Task failure detected"
     condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/devforge/task_failed\""
+      filter          = "metric.type=\"logging.googleapis.com/user/devforge/task_failed\" AND resource.type=\"cloud_run_revision\""
       comparison      = "COMPARISON_GT"
       threshold_value = 0
       duration        = "0s"
@@ -144,7 +144,7 @@ resource "google_monitoring_alert_policy" "auth_failed_alert" {
   conditions {
     display_name = "auth_failed > 1000 / 5min"
     condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/devforge/auth_failed\""
+      filter          = "metric.type=\"logging.googleapis.com/user/devforge/auth_failed\" AND resource.type=\"cloud_run_revision\""
       comparison      = "COMPARISON_GT"
       threshold_value = 1000
       duration        = "60s"
@@ -213,7 +213,7 @@ resource "google_monitoring_alert_policy" "rate_limit_exceeded_alert" {
   conditions {
     display_name = "rate_limit_exceeded > 500 / 5min"
     condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/devforge/rate_limit_exceeded\""
+      filter          = "metric.type=\"logging.googleapis.com/user/devforge/rate_limit_exceeded\" AND resource.type=\"cloud_run_revision\""
       comparison      = "COMPARISON_GT"
       threshold_value = 500
       duration        = "60s"
