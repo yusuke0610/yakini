@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -263,7 +264,7 @@ def test_github_login_url_sets_state_cookie(client) -> None:
 
     assert response.status_code == 200
     assert "https://github.com/login/oauth/authorize" in response.json()["authorization_url"]
-    assert "github_oauth_state=" in response.headers["set-cookie"]
+    assert "__session=" in response.headers["set-cookie"]
 
 
 def test_github_login_url_uses_forwarded_https_scheme(client) -> None:
@@ -313,15 +314,17 @@ def test_github_login_redirect_sets_cookies_and_redirects(client) -> None:
 
     assert response.status_code == 303
     assert "https://github.com/login/oauth/authorize" in response.headers["location"]
-    assert "github_oauth_state=" in response.headers["set-cookie"]
+    assert "__session=" in response.headers["set-cookie"]
     parsed = urlparse(response.headers["location"])
     redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
     assert redirect_uri == "https://devforge-dev-nktebahhoq-an.a.run.app/auth/github/callback"
 
 
 def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
-    client.cookies.set("github_oauth_state", "expected-state")
-    client.cookies.set("github_oauth_redirect", "http://localhost:5173/index.html")
+    client.cookies.set(
+        "__session",
+        json.dumps({"state": "expected-state", "redirect": "http://localhost:5173/index.html"}),
+    )
 
     with patch("httpx.AsyncClient") as mock_async_client:
         response = client.get(
@@ -337,8 +340,10 @@ def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
 
 
 def test_github_callback_redirect_sets_auth_cookie(client) -> None:
-    client.cookies.set("github_oauth_state", "expected-state")
-    client.cookies.set("github_oauth_redirect", "http://localhost:5173/index.html")
+    client.cookies.set(
+        "__session",
+        json.dumps({"state": "expected-state", "redirect": "http://localhost:5173/index.html"}),
+    )
 
     token_response = MagicMock()
     token_response.json.return_value = {"access_token": "github-access-token"}
@@ -374,7 +379,7 @@ def test_begin_github_oauth_state_cookie_is_httponly(client) -> None:
     assert response.status_code == 200
     # Set-Cookie ヘッダーに HttpOnly が含まれていることを確認する
     set_cookie_header = response.headers.get("set-cookie", "")
-    assert "github_oauth_state=" in set_cookie_header
+    assert "__session=" in set_cookie_header
     assert "httponly" in set_cookie_header.lower()
 
 
@@ -387,7 +392,7 @@ def test_begin_github_oauth_state_cookie_has_samesite(client) -> None:
 
     assert response.status_code == 200
     set_cookie_header = response.headers.get("set-cookie", "")
-    assert "github_oauth_state=" in set_cookie_header
+    assert "__session=" in set_cookie_header
     assert "samesite=" in set_cookie_header.lower()
 
 
