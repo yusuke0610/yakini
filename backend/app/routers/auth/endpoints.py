@@ -179,6 +179,13 @@ async def github_callback_redirect(
     Firebase Hosting rewrite 経由では 303 の Set-Cookie が転送されないため
     200 + HTML リダイレクトで Cookie を確実にセットする。
     """
+
+    # ===== 一時デバッグログ =====
+    logger.warning("DEBUG callback cookies: %s", dict(request.cookies))
+    logger.warning("DEBUG callback state_param: %s", state)
+    logger.warning("DEBUG callback code: %s", code[:8] if code else None)
+    # ===========================
+
     frontend_url = resolve_frontend_url_from_cookie(
         request.cookies.get(GITHUB_OAUTH_REDIRECT_COOKIE)
     )

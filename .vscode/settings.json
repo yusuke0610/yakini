@@ -65,7 +65,6 @@
         "tailwind-merge",
         "lucide-react",
         "zod",
-        "axios",
         "tanstack",
         "react-query",
         "react-router",
@@ -174,7 +173,9 @@
         "devShells",
         "shellHook"
     ],
-    "flake8.args": ["--max-line-length=100"],
+    "flake8.args": [
+        "--max-line-length=100"
+    ],
     "editor.linkedEditing": true,
     "html.autoClosingTags": true,
     "js/ts.autoClosingTags.enabled": true,
