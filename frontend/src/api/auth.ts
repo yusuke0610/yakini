@@ -22,15 +22,21 @@ export async function handleGitHubCallback(code: string, state: string): Promise
   });
 }
 
-/** Firebase Hosting proxy 経由では 303 の Set-Cookie が除去されるため、
- *  200 JSON エンドポイントを fetch して state cookie をセットしてから GitHub へ遷移する。 */
+/** sessionStorage の key。CSRF 検証用に GitHub OAuth state を保持する。 */
+export const GITHUB_OAUTH_STATE_STORAGE_KEY = "github_oauth_state";
+
+/** Firebase Hosting は __session 以外の Cookie を Cloud Run に転送せず、
+ *  さらに /auth/** rewrite の影響でフロントの React ルートにも到達できないため、
+ *  state は sessionStorage で管理し、コールバック URL は /github/callback に揃える。 */
 export async function initiateGitHubLogin(returnTo: string): Promise<void> {
   const params = new URLSearchParams({ return_to: returnTo });
   const response = await fetch(`${API_BASE_URL}/auth/github/login-url?${params.toString()}`, {
     credentials: "include",
   });
   if (!response.ok) throw new Error("GitHub OAuth の開始に失敗しました");
-  const data = (await response.json()) as { authorization_url: string };
+  const data = (await response.json()) as { authorization_url: string; state: string };
+  // CSRF 検証用に state を sessionStorage へ保存する（コールバックで照合）
+  sessionStorage.setItem(GITHUB_OAUTH_STATE_STORAGE_KEY, data.state);
   window.location.assign(data.authorization_url);
 }
 

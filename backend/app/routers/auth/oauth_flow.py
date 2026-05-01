@@ -6,7 +6,7 @@ import logging
 import secrets
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from fastapi import HTTPException, Request, Response, status
+from fastapi import HTTPException, Request, status
 
 from ...core.errors import ErrorCode, raise_app_error
 from ...core.messages import get_error
@@ -14,7 +14,6 @@ from ...core.settings import get_callback_base_url, get_cors_origins, get_github
 from .token_manager import (
     GITHUB_OAUTH_REDIRECT_COOKIE,
     GITHUB_OAUTH_STATE_COOKIE,
-    set_github_oauth_session,
 )
 
 logger = logging.getLogger(__name__)
@@ -200,15 +199,25 @@ def build_github_authorization_url(
 
 def begin_github_oauth(
     request: Request,
-    response: Response,
     frontend_url: str,
-) -> str:
+) -> tuple[str, str]:
     """
     GitHub OAuth フローを開始する。
 
-    state と redirect URL を Cookie に保存し、GitHub 認可 URL を返す。
+    state は Cookie に保存せず、呼び出し側でフロント (sessionStorage) に渡す。
+    Firebase Hosting の `/auth/**` rewrite を回避するため、コールバック URL は
+    `/github/callback` (フロントの React ルート) に揃える。
+
     GITHUB_CLIENT_ID が未設定の場合は503を発生させる。
+
+    Args:
+        frontend_url: 認証完了後の遷移先（現状は `state` 検証のフロント実装で利用）
+
+    Returns:
+        (authorization_url, state) のタプル
     """
+    # frontend_url は将来の拡張用に受け取る（現状は使用しない）
+    del frontend_url
     client_id = get_github_client_id()
     if not client_id:
         raise_app_error(
@@ -219,13 +228,12 @@ def begin_github_oauth(
         )
 
     callback_base = get_callback_base_url() or build_external_base_url(request)
-    redirect_uri = f"{callback_base}/auth/github/callback"
+    redirect_uri = f"{callback_base}/github/callback"
     state = secrets.token_urlsafe(32)
 
-    set_github_oauth_session(response, state, frontend_url)
-
-    return build_github_authorization_url(
+    authorization_url = build_github_authorization_url(
         client_id=client_id,
         redirect_uri=redirect_uri,
         state=state,
     )
+    return authorization_url, state
