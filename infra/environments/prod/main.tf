@@ -86,6 +86,7 @@ module "cloud_run" {
   enable_github_oauth         = var.enable_github_oauth
   db_backup_bucket_name       = module.storage.db_backup_bucket_name
   cors_origins                = var.cors_origins
+  callback_base_url           = var.callback_base_url
   environment                 = "prod"
   task_runner                 = "cloud_tasks"
   cloud_tasks_queue           = module.cloud_tasks.queue_name
