@@ -169,51 +169,50 @@ async def collect_repos(
         ) as client:
             # 1. リポジトリリストの取得
             raw_repos = await fetch_repos_raw(client, username, max_pages)
-
-        # 2. 各リポジトリについて、言語の内訳と構造を取得
-        cutoff = datetime.now(timezone.utc).replace(
-            year=datetime.now(timezone.utc).year - _REPO_MAX_AGE_YEARS,
-        )
-        cutoff_date_str = cutoff.strftime("%Y-%m-%d")
-        filtered_raws = [r for r in raw_repos if _passes_filter(r, include_forks, cutoff_date_str)]
-        total = len(filtered_raws)
-
-        for i, raw in enumerate(filtered_raws):
-            owner_login = raw["owner"]["login"]
-            repo_name = raw["name"]
-
-            languages = await fetch_languages(client, owner_login, repo_name)
-            root_files = await fetch_root_files(client, owner_login, repo_name)
-            dependencies = await _parse_dependencies(
-                client, owner_login, repo_name, root_files
+            # 2. 各リポジトリについて、言語の内訳と構造を取得
+            cutoff = datetime.now(timezone.utc).replace(
+                year=datetime.now(timezone.utc).year - _REPO_MAX_AGE_YEARS,
             )
-            # root files 由来（Docker/CI/Terraform 等）と依存関係由来（React/Django/FastAPI 等）
-            # のフレームワークをマージする
-            detected_frameworks = _merge_frameworks(
-                _detect_from_root_files(root_files),
-                _detect_from_dependencies(dependencies),
-            )
+            cutoff_date_str = cutoff.strftime("%Y-%m-%d")
+            filtered_raws = [r for r in raw_repos if _passes_filter(r, include_forks, cutoff_date_str)]
+            total = len(filtered_raws)
 
-            repos.append(
-                RepoData(
-                    name=repo_name,
-                    owner=owner_login,
-                    description=raw.get("description") or "",
-                    languages=languages,
-                    topics=raw.get("topics") or [],
-                    created_at=raw.get("created_at", ""),
-                    pushed_at=raw.get("pushed_at", ""),
-                    fork=raw.get("fork", False),
-                    stargazers_count=raw.get("stargazers_count", 0),
-                    default_branch=raw.get("default_branch", "main"),
-                    dependencies=dependencies,
-                    root_files=root_files,
-                    detected_frameworks=detected_frameworks,
+            for i, raw in enumerate(filtered_raws):
+                owner_login = raw["owner"]["login"]
+                repo_name = raw["name"]
+
+                languages = await fetch_languages(client, owner_login, repo_name)
+                root_files = await fetch_root_files(client, owner_login, repo_name)
+                dependencies = await _parse_dependencies(
+                    client, owner_login, repo_name, root_files
                 )
-            )
+                # root files 由来（Docker/CI/Terraform 等）と依存関係由来（React/Django/FastAPI 等）
+                # のフレームワークをマージする
+                detected_frameworks = _merge_frameworks(
+                    _detect_from_root_files(root_files),
+                    _detect_from_dependencies(dependencies),
+                )
 
-            if on_repo_fetched is not None:
-                await on_repo_fetched(i + 1, total)
+                repos.append(
+                    RepoData(
+                        name=repo_name,
+                        owner=owner_login,
+                        description=raw.get("description") or "",
+                        languages=languages,
+                        topics=raw.get("topics") or [],
+                        created_at=raw.get("created_at", ""),
+                        pushed_at=raw.get("pushed_at", ""),
+                        fork=raw.get("fork", False),
+                        stargazers_count=raw.get("stargazers_count", 0),
+                        default_branch=raw.get("default_branch", "main"),
+                        dependencies=dependencies,
+                        root_files=root_files,
+                        detected_frameworks=detected_frameworks,
+                    )
+                )
+
+                if on_repo_fetched is not None:
+                    await on_repo_fetched(i + 1, total)
     except (httpx.TimeoutException, httpx.ConnectError) as exc:
         raise RetryableError(f"GitHub ネットワーク障害: {exc}") from exc
 

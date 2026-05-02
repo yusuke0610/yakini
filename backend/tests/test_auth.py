@@ -276,7 +276,7 @@ def test_github_login_url_returns_state(client) -> None:
     assert "/auth/github/callback" not in redirect_uri
 
 
-def test_github_login_url_uses_forwarded_https_scheme(client) -> None:
+def test_github_login_url_uses_frontend_origin_when_callback_base_url_unset(client) -> None:
     response = client.get(
         "/auth/github/login-url",
         headers={
@@ -289,7 +289,7 @@ def test_github_login_url_uses_forwarded_https_scheme(client) -> None:
     assert response.status_code == 200
     parsed = urlparse(response.json()["authorization_url"])
     redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
-    assert redirect_uri == "https://devforge-dev-nktebahhoq-an.a.run.app/github/callback"
+    assert redirect_uri == "http://localhost:5173/github/callback"
 
 
 def test_github_login_url_uses_callback_base_url_when_set(client) -> None:
@@ -326,7 +326,7 @@ def test_github_login_redirect_to_github(client) -> None:
     assert "https://github.com/login/oauth/authorize" in response.headers["location"]
     parsed = urlparse(response.headers["location"])
     redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
-    assert redirect_uri == "https://devforge-dev-nktebahhoq-an.a.run.app/github/callback"
+    assert redirect_uri == "http://localhost:5173/github/callback"
 
 
 def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
@@ -414,6 +414,35 @@ def test_github_callback_post_does_not_require_cookie(client) -> None:
     posted_kwargs = mock_http.post.call_args.kwargs
     assert posted_kwargs["json"]["redirect_uri"].endswith("/github/callback")
     assert "/auth/github/callback" not in posted_kwargs["json"]["redirect_uri"]
+
+
+def test_github_callback_post_uses_frontend_origin_when_callback_base_url_unset(client) -> None:
+    """ローカル開発では frontend の Origin を redirect_uri の base に使うことを確認する。"""
+    token_response = MagicMock()
+    token_response.json.return_value = {"access_token": "github-access-token"}
+    user_response = MagicMock()
+    user_response.json.return_value = {"id": 24680, "login": "octo-local"}
+
+    with patch("httpx.AsyncClient") as mock_cls:
+        mock_http = AsyncMock()
+        mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+        mock_http.__aexit__ = AsyncMock(return_value=False)
+        mock_http.post.return_value = token_response
+        mock_http.get.return_value = user_response
+        mock_cls.return_value = mock_http
+
+        response = client.post(
+            "/auth/github/callback",
+            json={"code": "test-code", "state": "state-from-frontend"},
+            headers={
+                "Origin": "http://localhost:5173",
+                "Host": "localhost:8000",
+            },
+        )
+
+    assert response.status_code == 200
+    posted_kwargs = mock_http.post.call_args.kwargs
+    assert posted_kwargs["json"]["redirect_uri"] == "http://localhost:5173/github/callback"
 
 
 # ── 不正アクセス追跡: 認証失敗ログ ────────────────────────────────

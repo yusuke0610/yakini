@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from app.services.blog.collector import (
+    BlogAccountNotFoundError,
     UnsupportedBlogPlatformError,
     fetch_articles,
     fetch_zenn_articles,
@@ -59,6 +60,8 @@ class TestFetchZennArticles:
                     "published_at": "2026-01-01T12:00:00.000Z",
                     "liked_count": 20,
                     "topics": [{"display_name": "Python"}, {"display_name": "FastAPI"}],
+                    "path": "/testuser/articles/abc123",
+                    "user": {"username": "testuser"},
                 }
             ],
             "next_page": None,
@@ -98,6 +101,8 @@ class TestFetchZennArticles:
                     "published_at": "2026-01-01T00:00:00Z",
                     "liked_count": 5,
                     "topics": [],
+                    "path": "/testuser/articles/slug1",
+                    "user": {"username": "testuser"},
                 }
             ],
             "next_page": 2,
@@ -110,6 +115,8 @@ class TestFetchZennArticles:
                     "published_at": "2026-02-01T00:00:00Z",
                     "liked_count": 10,
                     "topics": [],
+                    "path": "/testuser/articles/slug2",
+                    "user": {"username": "testuser"},
                 }
             ],
             "next_page": None,
@@ -134,6 +141,8 @@ class TestFetchZennArticles:
                     "published_at": None,
                     "liked_count": 0,
                     "topics": [],
+                    "path": "/testuser/articles/draft",
+                    "user": {"username": "testuser"},
                 }
             ],
             "next_page": None,
@@ -158,6 +167,8 @@ class TestFetchZennArticles:
                         {"display_name": "Go"},
                         {"name": "Docker"},  # display_name なしのケース
                     ],
+                    "path": "/testuser/articles/s1",
+                    "user": {"username": "testuser"},
                 }
             ],
             "next_page": None,
@@ -169,6 +180,28 @@ class TestFetchZennArticles:
 
         assert "Go" in articles[0]["tags"]
         assert "Docker" in articles[0]["tags"]
+
+    def test_unexpected_user_articles_raise_not_found(self):
+        """Zenn が別ユーザーの記事を返した場合は異常として扱うこと。"""
+        api_json = {
+            "articles": [
+                {
+                    "slug": "s1",
+                    "title": "記事",
+                    "published_at": "2026-01-01T00:00:00Z",
+                    "liked_count": 0,
+                    "topics": [],
+                    "path": "/other-user/articles/s1",
+                    "user": {"username": "other-user"},
+                }
+            ],
+            "next_page": None,
+        }
+        mock_client = _make_mock_client([api_json])
+
+        with patch("app.services.blog.collector.httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(BlogAccountNotFoundError):
+                _run(fetch_zenn_articles("testuser"))
 
 
 # ── fetch_articles ────────────────────────────────────────────────────────

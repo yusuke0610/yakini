@@ -68,43 +68,42 @@ describe("api/client request", () => {
     await expect(request("/api/test")).rejects.toThrow("認証が必要です");
   });
 
-  /**
-   * 複数の 401 が同時に発生した場合、リフレッシュが 1 回だけ呼ばれること。
-   * _isRefreshing フラグにより二重リフレッシュを防ぐ。
-   */
-  it("複数の同時 401 でリフレッシュは 1 回だけ実行される", async () => {
+  /** 複数の同時 401 が来ても、同じ refresh を待って両方リトライされること */
+  it("複数の同時 401 は 1 回のリフレッシュを共有して両方成功する", async () => {
     let refreshCallCount = 0;
+    const attempts = new Map<string, number>();
+    let resolveRefresh!: (response: Response) => void;
+    const refreshPromise = new Promise<Response>((resolve) => {
+      resolveRefresh = resolve;
+    });
 
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       if ((url as string).includes("/auth/refresh")) {
         refreshCallCount++;
-        // 1回目のリフレッシュは成功、2回目以降は呼ばれないはず
-        return Promise.resolve(makeResponse(200, {}));
+        return refreshPromise;
       }
-      // 最初の2リクエストは 401
-      if (refreshCallCount === 0) {
+
+      const attempt = attempts.get(url) ?? 0;
+      attempts.set(url, attempt + 1);
+      if (attempt === 0) {
         return Promise.resolve(makeResponse(401));
       }
-      // リトライは成功
-      return Promise.resolve(makeResponse(200, { id: "ok" }));
+      return Promise.resolve(makeResponse(200, { id: new URL(url, "http://localhost").pathname }));
     });
 
     vi.stubGlobal("fetch", fetchMock);
 
-    // 2つのリクエストを同時に発行
-    // 注: _isRefreshing はモジュールレベルのフラグのため、
-    //     実際には最初の401でリフレッシュが走り、2回目はエラーになる
-    const [r1] = await Promise.allSettled([
-      request("/api/test1"),
-      request("/api/test2"),
-    ]);
+    const req1 = request<{ id: string }>("/api/test1");
+    const req2 = request<{ id: string }>("/api/test2");
 
-    // 少なくとも1回のリクエストが処理されていること
-    expect(fetchMock).toHaveBeenCalled();
-    // リフレッシュは最大1回
-    expect(refreshCallCount).toBeLessThanOrEqual(1);
-    // 1つ目はリトライで成功する
-    expect(r1.status).toBe("fulfilled");
+    await Promise.resolve();
+    expect(refreshCallCount).toBe(1);
+
+    resolveRefresh(makeResponse(200, {}));
+
+    await expect(req1).resolves.toEqual({ id: "/api/test1" });
+    await expect(req2).resolves.toEqual({ id: "/api/test2" });
+    expect(refreshCallCount).toBe(1);
   });
 
   /** 500 系のレスポンスでエラーがスローされること */

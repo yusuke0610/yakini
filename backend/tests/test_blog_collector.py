@@ -11,6 +11,7 @@ from app.services.blog.collector import (
     fetch_note_articles,
     fetch_qiita_articles,
     fetch_zenn_articles,
+    normalize_username,
     verify_user_exists,
 )
 
@@ -25,6 +26,26 @@ def _run(coro):
 
 
 # ── fetch_note_articles テスト ───────────────────────────────────────────
+
+
+def test_normalize_username_accepts_plain_username() -> None:
+    assert normalize_username("zenn", "testuser") == "testuser"
+
+
+def test_normalize_username_extracts_from_article_url() -> None:
+    assert (
+        normalize_username("zenn", "https://zenn.dev/testuser/articles/test-article")
+        == "testuser"
+    )
+
+
+def test_normalize_username_extracts_from_note_article_url() -> None:
+    assert normalize_username("note", "https://note.com/testuser/n/n123") == "testuser"
+
+
+def test_normalize_username_rejects_invalid_platform_url() -> None:
+    with pytest.raises(ValueError):
+        normalize_username("zenn", "https://example.com/testuser")
 
 
 def _note_api_response(contents: list[dict], *, is_last_page: bool = True) -> dict:
@@ -178,6 +199,23 @@ def test_verify_user_exists_zenn_user_found() -> None:
     assert result is True
 
 
+def test_verify_user_exists_normalizes_before_request() -> None:
+    """URL 入力でも正規化された username で存在確認すること。"""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.services.blog.collector.httpx.AsyncClient", return_value=mock_client):
+        result = _run(verify_user_exists("zenn", "https://zenn.dev/testuser/articles/test"))
+
+    assert result is True
+    mock_client.get.assert_awaited_once_with("https://zenn.dev/api/users/testuser")
+
+
 def test_verify_user_exists_zenn_user_not_found() -> None:
     """Zenn ユーザーが存在しない場合は False を返すこと。"""
     mock_resp = MagicMock()
@@ -192,6 +230,11 @@ def test_verify_user_exists_zenn_user_not_found() -> None:
         result = _run(verify_user_exists("zenn", "nonexistent"))
 
     assert result is False
+
+
+def test_verify_user_exists_invalid_url_returns_false() -> None:
+    """対応外 URL 形式は False を返すこと。"""
+    assert _run(verify_user_exists("zenn", "https://example.com/testuser")) is False
 
 
 def test_verify_user_exists_timeout_raises_blog_platform_request_error() -> None:

@@ -1,5 +1,7 @@
 from unittest.mock import AsyncMock, patch
 
+from app.models import BlogAccount
+from app.repositories import BlogAccountRepository
 from fastapi.testclient import TestClient
 from sqlalchemy.orm.session import Session
 
@@ -28,6 +30,25 @@ def test_add_blog_account(client: TestClient) -> None:
     assert "id" in data
 
 
+def test_add_blog_account_normalizes_article_url(client: TestClient) -> None:
+    """記事 URL 入力でも username に正規化して登録できること。"""
+    headers = auth_header(client)
+    with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True) as mock_verify:
+        resp = client.post(
+            "/api/blog/accounts",
+            json={
+                "platform": "zenn",
+                "username": "https://zenn.dev/testuser/articles/sample-post",
+            },
+            headers=headers,
+        )
+
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["username"] == "testuser"
+    mock_verify.assert_awaited_once_with("zenn", "testuser")
+
+
 def test_add_account_user_not_found(client: TestClient) -> None:
     """存在しないユーザー名で登録すると 404。"""
     headers = auth_header(client)
@@ -40,6 +61,24 @@ def test_add_account_user_not_found(client: TestClient) -> None:
             },
             headers=headers,
         )
+    assert resp.status_code == 404
+    body = resp.json()
+    assert body["message"] == "指定されたアカウントが見つかりません。ユーザー名を確認してください。"
+    assert body["code"] == "VALIDATION_ERROR"
+
+
+def test_add_account_invalid_url_returns_404(client: TestClient) -> None:
+    """対応外ドメインの URL は 404 扱いで弾くこと。"""
+    headers = auth_header(client)
+    resp = client.post(
+        "/api/blog/accounts",
+        json={
+            "platform": "zenn",
+            "username": "https://example.com/testuser",
+        },
+        headers=headers,
+    )
+
     assert resp.status_code == 404
     body = resp.json()
     assert body["message"] == "指定されたアカウントが見つかりません。ユーザー名を確認してください。"
@@ -127,6 +166,92 @@ def test_sync_requires_auth(client: TestClient) -> None:
     """認証なしで sync → 401。"""
     resp = client.post("/api/blog/accounts/dummy-id/sync")
     assert resp.status_code == 401
+
+
+def test_sync_account_returns_404_when_user_not_found(client: TestClient) -> None:
+    """同期時の再検証で対象が見つからなければ 404 を返すこと。"""
+    headers = auth_header(client)
+    with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True):
+        resp = client.post(
+            "/api/blog/accounts",
+            json={
+                "platform": "zenn",
+                "username": "testuser",
+            },
+            headers=headers,
+        )
+    account_id = resp.json()["id"]
+
+    with patch(
+        "app.services.blog.sync_service.verify_user_exists",
+        new_callable=AsyncMock,
+        return_value=False,
+    ):
+        resp = client.post(f"/api/blog/accounts/{account_id}/sync", headers=headers)
+
+    assert resp.status_code == 404
+    body = resp.json()
+    assert body["message"] == "指定されたアカウントが見つかりません。ユーザー名を確認してください。"
+    assert body["code"] == "VALIDATION_ERROR"
+
+
+def test_sync_account_normalizes_saved_username_and_removes_stale_articles(
+    client: TestClient, db_session: Session
+) -> None:
+    """保存済み URL を正規化し、同期結果に含まれない古い記事を削除すること。"""
+    headers = auth_header(client)
+
+    from app.repositories import BlogArticleRepository, UserRepository
+
+    user = UserRepository(db_session).get_by_username("testuser")
+    account = BlogAccount(
+        user_id=user.id,
+        platform="zenn",
+        username="https://zenn.dev/testuser/articles/legacy-post",
+    )
+    db_session.add(account)
+    db_session.commit()
+    db_session.refresh(account)
+
+    repo = BlogArticleRepository(db_session, user.id)
+    repo.upsert_many(
+        [
+            {
+                "account_id": account.id,
+                "platform": "zenn",
+                "external_id": "legacy-post",
+                "title": "古い記事",
+                "url": "https://zenn.dev/legacy/articles/legacy-post",
+                "published_at": "2026-03-01",
+                "likes_count": 10,
+                "summary": "",
+                "tags": ["Python"],
+            },
+        ]
+    )
+
+    with (
+        patch(
+            "app.services.blog.sync_service.verify_user_exists",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(
+            "app.services.blog.sync_service.fetch_articles",
+            new_callable=AsyncMock,
+            return_value=[],
+        ) as mock_fetch_articles,
+    ):
+        resp = client.post(f"/api/blog/accounts/{account.id}/sync", headers=headers)
+
+    assert resp.status_code == 200
+    assert resp.json() == {"synced_count": 0, "total_count": 0}
+    mock_fetch_articles.assert_awaited_once_with("zenn", "testuser")
+
+    refreshed_account = BlogAccountRepository(db_session, user.id).get_by_id(account.id)
+    assert refreshed_account is not None
+    assert refreshed_account.username == "testuser"
+    assert repo.count_by_user() == 0
 
 
 def test_upsert_articles_no_duplicates(client: TestClient, db_session: Session) -> None:

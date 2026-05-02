@@ -36,8 +36,10 @@ from ..schemas import (
 )
 from ..schemas.career_analysis import TaskStatusResponse
 from ..services.blog.collector import (
+    BlogAccountNotFoundError,
     BlogPlatformRequestError,
     UnsupportedBlogPlatformError,
+    normalize_username,
     verify_user_exists,
 )
 from ..services.blog.scorer import blog_articles_to_score_dicts, calculate_blog_score
@@ -79,9 +81,22 @@ async def add_account(
             detail=get_error("blog.account_already_registered"),
         )
 
+    try:
+        normalized_username = normalize_username(body.platform, body.username)
+    except UnsupportedBlogPlatformError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=get_error("blog.platform_not_supported"),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("blog.account_not_found"),
+        ) from exc
+
     # 外部プラットフォーム上にユーザーが存在するか検証
     try:
-        user_exists = await verify_user_exists(body.platform, body.username)
+        user_exists = await verify_user_exists(body.platform, normalized_username)
     except UnsupportedBlogPlatformError as exc:
         raise HTTPException(
             status_code=400,
@@ -99,7 +114,7 @@ async def add_account(
             detail=get_error("blog.account_not_found"),
         )
 
-    account = repo.upsert(body.platform, body.username)
+    account = repo.upsert(body.platform, normalized_username)
     return account
 
 
@@ -141,6 +156,11 @@ async def sync_account(
 
     try:
         return await service.sync(account_id)
+    except BlogAccountNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("blog.account_not_found"),
+        ) from exc
     except UnsupportedBlogPlatformError as exc:
         raise HTTPException(
             status_code=400,
