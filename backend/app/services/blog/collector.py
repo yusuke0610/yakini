@@ -1,6 +1,7 @@
 """Zenn / note からブログ記事を取得するサービス。"""
 
 import asyncio
+from urllib.parse import urlparse
 
 import httpx
 
@@ -13,8 +14,74 @@ class UnsupportedBlogPlatformError(ValueError):
     """未対応プラットフォームが指定された場合の例外。"""
 
 
+class BlogAccountNotFoundError(ValueError):
+    """対象アカウントが見つからない場合の例外。"""
+
+
 class BlogPlatformRequestError(RuntimeError):
     """外部プラットフォームへの接続失敗を表す例外。"""
+
+
+_BLOG_PLATFORM_HOSTS = {
+    "zenn": {"zenn.dev", "www.zenn.dev"},
+    "note": {"note.com", "www.note.com"},
+    "qiita": {"qiita.com", "www.qiita.com"},
+}
+
+
+def _parse_platform_url(raw_username: str, allowed_hosts: set[str]):
+    if raw_username.startswith(("http://", "https://")):
+        parsed = urlparse(raw_username)
+    elif any(raw_username == host or raw_username.startswith(f"{host}/") for host in allowed_hosts):
+        parsed = urlparse(f"https://{raw_username}")
+    else:
+        return None
+
+    if parsed.netloc.lower() not in allowed_hosts:
+        raise ValueError(raw_username)
+    return parsed
+
+
+def _path_segments(path: str) -> list[str]:
+    return [segment for segment in path.split("/") if segment]
+
+
+def normalize_username(platform: str, username: str) -> str:
+    """ユーザー入力からプラットフォーム固有の username を抽出する。"""
+    value = username.strip().rstrip("/")
+    if not value:
+        raise ValueError(username)
+
+    if platform not in _BLOG_PLATFORM_HOSTS:
+        raise UnsupportedBlogPlatformError(platform)
+
+    parsed = _parse_platform_url(value, _BLOG_PLATFORM_HOSTS[platform])
+    if parsed is None:
+        if "/" in value:
+            raise ValueError(username)
+        return value
+
+    segments = _path_segments(parsed.path)
+    if not segments:
+        raise ValueError(username)
+
+    first_segment = segments[0]
+    if platform == "zenn" and first_segment in {"api", "p"}:
+        raise ValueError(username)
+    if platform in {"note", "qiita"} and first_segment == "api":
+        raise ValueError(username)
+    return first_segment
+
+
+def _zenn_article_belongs_to_username(item: dict, username: str) -> bool:
+    path = item.get("path")
+    if isinstance(path, str) and path.startswith(f"/{username}/articles/"):
+        return True
+
+    user = item.get("user")
+    if isinstance(user, dict) and user.get("username") == username:
+        return True
+    return False
 
 
 async def fetch_zenn_articles(username: str) -> list[dict]:
@@ -30,8 +97,16 @@ async def fetch_zenn_articles(username: str) -> list[dict]:
             )
             resp.raise_for_status()
             data = resp.json()
+            items = data.get("articles", [])
 
-            for item in data.get("articles", []):
+            if items and any(not _zenn_article_belongs_to_username(item, username) for item in items):
+                logger.warning(
+                    "Zenn API returned articles for an unexpected user: requested=%s",
+                    username,
+                )
+                raise BlogAccountNotFoundError(username)
+
+            for item in items:
                 slug = item.get("slug", "")
                 topics = item.get("topics", [])
                 tag_names = [
@@ -163,20 +238,27 @@ async def fetch_qiita_articles(username: str) -> list[dict]:
 async def verify_user_exists(platform: str, username: str) -> bool:
     """プラットフォーム上にユーザーが存在するか検証する。"""
     try:
+        normalized_username = normalize_username(platform, username)
+    except UnsupportedBlogPlatformError:
+        raise
+    except ValueError:
+        return False
+
+    try:
         if platform == "zenn":
             async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(f"https://zenn.dev/api/users/{username}")
+                resp = await client.get(f"https://zenn.dev/api/users/{normalized_username}")
                 return resp.status_code == 200
         if platform == "note":
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(
-                    f"https://note.com/api/v2/creators/{username}/contents",
+                    f"https://note.com/api/v2/creators/{normalized_username}/contents",
                     params={"kind": "note", "page": 1},
                 )
                 return resp.status_code == 200
         if platform == "qiita":
             async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(f"https://qiita.com/api/v2/users/{username}")
+                resp = await client.get(f"https://qiita.com/api/v2/users/{normalized_username}")
                 return resp.status_code == 200
         raise UnsupportedBlogPlatformError(platform)
     except (httpx.ConnectError, httpx.TimeoutException):

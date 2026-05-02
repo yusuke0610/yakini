@@ -108,9 +108,15 @@ class TestPassesFilter:
 def _mock_http_client():
     """httpx.AsyncClient のコンテキストマネージャをモック化するヘルパー。"""
     mock_client = MagicMock()
+    mock_client.closed = False
     mock_http = MagicMock()
     mock_http.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_http.__aexit__ = AsyncMock(return_value=False)
+
+    async def _aexit(*_args, **_kwargs):
+        mock_client.closed = True
+        return False
+
+    mock_http.__aexit__ = AsyncMock(side_effect=_aexit)
     return mock_http, mock_client
 
 
@@ -236,6 +242,38 @@ class TestCollectRepos:
         assert len(calls) == 3
         assert calls[0] == (1, 3)
         assert calls[2] == (3, 3)
+
+    def test_repo_detail_fetch_happens_before_client_is_closed(self):
+        """詳細取得は AsyncClient のコンテキスト内で行われること。"""
+        raw = [_make_raw_repo()]
+        mock_http, mock_client = _mock_http_client()
+
+        async def _fetch_languages(client, *_args, **_kwargs):
+            if getattr(client, "closed", False):
+                raise RuntimeError("client already closed")
+            return {"Python": 1234}
+
+        with (
+            patch("app.services.intelligence.github_collector.httpx.AsyncClient", return_value=mock_http),
+            patch(
+                "app.services.intelligence.github_collector.fetch_repos_raw",
+                new_callable=AsyncMock,
+                return_value=raw,
+            ),
+            patch(
+                "app.services.intelligence.github_collector.fetch_languages",
+                side_effect=_fetch_languages,
+            ),
+            patch(
+                "app.services.intelligence.github_collector.fetch_root_files",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+        ):
+            repos = _run(collect_repos("testuser"))
+
+        assert len(repos) == 1
+        assert mock_client.closed is True
 
     def test_private_repo_excluded(self):
         """プライベートリポジトリは除外されること。"""

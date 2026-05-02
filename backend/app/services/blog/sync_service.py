@@ -10,9 +10,11 @@ from sqlalchemy.orm import Session
 from ...repositories import BlogAccountRepository, BlogArticleRepository
 from ...schemas import BlogSyncResponse
 from .collector import (
-    BlogPlatformRequestError,
+    BlogAccountNotFoundError,
     UnsupportedBlogPlatformError,
     fetch_articles,
+    normalize_username,
+    verify_user_exists,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,9 +45,21 @@ class BlogSyncService:
             raise ValueError(f"アカウントが見つかりません: {account_id}")
 
         try:
-            raw_articles = await fetch_articles(account.platform, account.username)
+            normalized_username = normalize_username(account.platform, account.username)
+            user_exists = await verify_user_exists(account.platform, normalized_username)
+            if not user_exists:
+                raise BlogAccountNotFoundError(
+                    f"アカウントが見つかりません: {account.platform}/{account.username}"
+                )
+            raw_articles = await fetch_articles(account.platform, normalized_username)
+        except BlogAccountNotFoundError:
+            raise
         except UnsupportedBlogPlatformError:
             raise
+        except ValueError as exc:
+            raise BlogAccountNotFoundError(
+                f"アカウントが見つかりません: {account.platform}/{account.username}"
+            ) from exc
         except Exception:
             logger.exception(
                 "ブログ記事の取得に失敗しました: %s/%s",
@@ -59,7 +73,12 @@ class BlogSyncService:
         for art in raw_articles:
             art["account_id"] = account.id
 
-        synced = self._article_repo.upsert_many(raw_articles)
+        if normalized_username != account.username:
+            account.username = normalized_username
+            self._db.commit()
+            self._db.refresh(account)
+
+        synced = self._article_repo.sync_many(account.id, raw_articles)
         total = self._article_repo.count_by_user()
 
         return BlogSyncResponse(synced_count=synced, total_count=total)

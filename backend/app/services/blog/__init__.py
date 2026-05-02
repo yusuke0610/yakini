@@ -1,11 +1,13 @@
 """ブログ関連サービス。"""
 
 from .collector import (
+    BlogAccountNotFoundError,
     BlogPlatformRequestError,
     UnsupportedBlogPlatformError,
     fetch_articles,
     fetch_note_articles,
     fetch_zenn_articles,
+    normalize_username,
     verify_user_exists,
 )
 from .scorer import (
@@ -18,6 +20,7 @@ from .scorer import (
 
 __all__ = [
     "ArticleWithTechFlag",
+    "BlogAccountNotFoundError",
     "BlogPlatformRequestError",
     "BlogScore",
     "UnsupportedBlogPlatformError",
@@ -27,5 +30,6 @@ __all__ = [
     "fetch_note_articles",
     "fetch_zenn_articles",
     "is_tech_article",
+    "normalize_username",
     "verify_user_exists",
 ]

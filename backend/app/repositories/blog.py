@@ -122,6 +122,40 @@ class BlogArticleRepository:
         self.db.commit()
         return added
 
+    def sync_many(self, account_id: str, articles: list[dict]) -> int:
+        normalized_articles = [self._normalize_article(article) for article in articles]
+
+        existing_statement = (
+            select(BlogArticle)
+            .join(BlogArticle.account)
+            .where(BlogAccount.user_id == self.user_id)
+            .where(BlogArticle.account_id == account_id)
+            .options(selectinload(BlogArticle.tag_rows))
+        )
+        existing_articles = list(self.db.scalars(existing_statement).all())
+        existing_map = {article.external_id: article for article in existing_articles}
+        incoming_external_ids = {article["external_id"] for article in normalized_articles}
+
+        for external_id, article in existing_map.items():
+            if external_id not in incoming_external_ids:
+                self.db.delete(article)
+
+        added = 0
+        for article in normalized_articles:
+            existing = existing_map.get(article["external_id"])
+            if existing:
+                self._apply_article_payload(existing, article)
+                continue
+
+            entity = BlogArticle(account_id=account_id)
+            self._apply_article_payload(entity, article)
+            self.db.add(entity)
+            existing_map[article["external_id"]] = entity
+            added += 1
+
+        self.db.commit()
+        return added
+
     def count_by_user(self) -> int:
         return (
             self.db.scalar(
