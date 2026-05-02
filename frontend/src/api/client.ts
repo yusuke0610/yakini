@@ -16,24 +16,30 @@ function getCsrfToken(): string {
   return match ? match[1] : "";
 }
 
-/** リフレッシュ中フラグ（複数の 401 が同時に来た場合の競合防止）。 */
-let _isRefreshing = false;
+/** 進行中のリフレッシュ処理。複数の 401 は同じ Promise を待ち合わせる。 */
+let _refreshPromise: Promise<boolean> | null = null;
 
 /** リフレッシュ試行後のリトライかどうかを示すフラグ。 */
 async function _tryRefresh(): Promise<boolean> {
-  if (_isRefreshing) return false;
-  _isRefreshing = true;
-  try {
-    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-    });
-    return res.ok;
-  } catch {
-    return false;
-  } finally {
-    _isRefreshing = false;
+  if (_refreshPromise) {
+    return _refreshPromise;
   }
+
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
 }
 
 type ErrorResponseBody = {

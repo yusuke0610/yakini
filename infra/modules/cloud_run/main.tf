@@ -5,6 +5,8 @@ locals {
     "admin-token",
     "github-client-id",
     "github-client-secret",
+    "jwt-private-key",
+    "jwt-public-key",
     # 棚卸し TODO: "field-encryption-key"（FIELD_ENCRYPTION_KEY / Fernet 鍵）は
     # PII 削除対応（Rirekisho 個人情報フィールドの暗号化廃止）が完了した場合、
     # このリストから除外し対応する Secret Manager シークレットを削除すること。
@@ -14,6 +16,8 @@ locals {
     SECRET_KEY           = "secret-key"
     FIELD_ENCRYPTION_KEY = "field-encryption-key"
     ADMIN_TOKEN          = "admin-token"
+    JWT_PRIVATE_KEY      = "jwt-private-key"
+    JWT_PUBLIC_KEY       = "jwt-public-key"
   }
   github_secret_env = var.enable_github_oauth ? {
     GITHUB_CLIENT_ID     = "github-client-id"

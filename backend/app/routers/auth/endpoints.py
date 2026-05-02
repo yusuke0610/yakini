@@ -29,6 +29,7 @@ from .oauth_flow import (
     begin_github_oauth,
     build_external_base_url,
     build_frontend_redirect_url,
+    get_frontend_origin,
     resolve_frontend_url_from_cookie,
     resolve_frontend_url_from_request,
     validate_github_oauth_state,
@@ -228,7 +229,8 @@ async def github_callback(
     state はフロントの sessionStorage で検証済みのためサーバー側では再検証しない。
     redirect_uri は GitHub OAuth App の登録値 (`/github/callback`) と一致させる必要がある。
     """
-    callback_base = get_callback_base_url() or build_external_base_url(request)
+    frontend_url = resolve_frontend_url_from_request(request)
+    callback_base = get_callback_base_url() or get_frontend_origin(frontend_url)
     redirect_uri = f"{callback_base}{GITHUB_CALLBACK_PATH}"
     token_response = await authenticate_github_user(db, payload.code, redirect_uri)
     set_auth_cookies(response, token_response.username, db)

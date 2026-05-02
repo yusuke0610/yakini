@@ -24,6 +24,7 @@ __all__ = [
     "GITHUB_OAUTH_REDIRECT_COOKIE",
     "get_default_frontend_origin",
     "get_default_frontend_url",
+    "get_frontend_origin",
     "normalize_frontend_url",
     "resolve_frontend_url_from_request",
     "resolve_frontend_url_from_cookie",
@@ -51,6 +52,13 @@ def get_default_frontend_origin() -> str:
 def get_default_frontend_url() -> str:
     """デフォルトのフロントエンド URL を返す。"""
     return f"{get_default_frontend_origin().rstrip('/')}/"
+
+
+def get_frontend_origin(frontend_url: str) -> str:
+    """許可済み frontend_url からオリジンだけを取り出す。"""
+    normalized = normalize_frontend_url(frontend_url)
+    parsed = urlsplit(normalized)
+    return f"{parsed.scheme}://{parsed.netloc}"
 
 
 def normalize_frontend_url(frontend_url: str) -> str:
@@ -216,8 +224,6 @@ def begin_github_oauth(
     Returns:
         (authorization_url, state) のタプル
     """
-    # frontend_url は将来の拡張用に受け取る（現状は使用しない）
-    del frontend_url
     client_id = get_github_client_id()
     if not client_id:
         raise_app_error(
@@ -227,7 +233,7 @@ def begin_github_oauth(
             action="システム管理者に連絡してください",
         )
 
-    callback_base = get_callback_base_url() or build_external_base_url(request)
+    callback_base = get_callback_base_url() or get_frontend_origin(frontend_url)
     redirect_uri = f"{callback_base}/github/callback"
     state = secrets.token_urlsafe(32)
 
