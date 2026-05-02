@@ -72,7 +72,7 @@ describe("api/client request", () => {
   it("複数の同時 401 は 1 回のリフレッシュを共有して両方成功する", async () => {
     let refreshCallCount = 0;
     const attempts = new Map<string, number>();
-    let resolveRefresh: ((response: Response) => void) | null = null;
+    let resolveRefresh!: (response: Response) => void;
     const refreshPromise = new Promise<Response>((resolve) => {
       resolveRefresh = resolve;
     });
@@ -99,7 +99,7 @@ describe("api/client request", () => {
     await Promise.resolve();
     expect(refreshCallCount).toBe(1);
 
-    resolveRefresh?.(makeResponse(200, {}));
+    resolveRefresh(makeResponse(200, {}));
 
     await expect(req1).resolves.toEqual({ id: "/api/test1" });
     await expect(req2).resolves.toEqual({ id: "/api/test2" });

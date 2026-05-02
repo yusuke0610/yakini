@@ -11,6 +11,7 @@ from ...repositories import BlogAccountRepository, BlogArticleRepository
 from ...schemas import BlogSyncResponse
 from .collector import (
     BlogAccountNotFoundError,
+    BlogPlatformRequestError,
     UnsupportedBlogPlatformError,
     fetch_articles,
     normalize_username,
