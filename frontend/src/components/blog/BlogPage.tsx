@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { useBlogAccountManager } from "../../hooks/useBlogAccountManager";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { ZennIcon } from "../icons/ZennIcon";
 import { NoteIcon } from "../icons/NoteIcon";
 import { QiitaIcon } from "../icons/QiitaIcon";
@@ -11,6 +12,7 @@ import shared from "../../styles/shared.module.css";
 import styles from "./BlogPage.module.css";
 
 type PlatformFilter = "all" | "zenn" | "note" | "qiita";
+type PlatformKey = "zenn" | "note" | "qiita";
 
 const ARTICLES_PER_PAGE = 5;
 
@@ -41,6 +43,9 @@ const PLATFORMS = [
  */
 export function BlogPage() {
   const [filter, setFilter] = useState<PlatformFilter>("all");
+  const [editingPlatform, setEditingPlatform] = useState<PlatformKey | null>(null);
+  const [confirmingPlatform, setConfirmingPlatform] = useState<PlatformKey | null>(null);
+  const [deletingConfirmPlatform, setDeletingConfirmPlatform] = useState<PlatformKey | null>(null);
   const [pageByFilter, setPageByFilter] = useState<Record<PlatformFilter, number>>({
     all: 1,
     zenn: 1,
@@ -58,12 +63,15 @@ export function BlogPage() {
     setDraftUsernames,
     savingPlatform,
     syncingPlatform,
+    updatingPlatform,
+    deletingPlatform,
     summary,
     summaryLoading,
     accountMap,
     handleSave,
     handleSync,
     handleDelete,
+    handleUpdate,
     handleSummarize,
   } = useBlogAccountManager(filter);
 
@@ -75,6 +83,39 @@ export function BlogPage() {
     pageStartIndex,
     pageStartIndex + ARTICLES_PER_PAGE,
   );
+
+  const startEditing = (platform: PlatformKey, username: string) => {
+    setDraftUsernames((prev) => ({ ...prev, [platform]: username }));
+    setEditingPlatform(platform);
+  };
+
+  const cancelEditing = (platform: PlatformKey) => {
+    setDraftUsernames((prev) => ({ ...prev, [platform]: "" }));
+    if (editingPlatform === platform) {
+      setEditingPlatform(null);
+    }
+    if (confirmingPlatform === platform) {
+      setConfirmingPlatform(null);
+    }
+  };
+
+  const confirmUpdate = async () => {
+    if (!confirmingPlatform) return;
+    const updated = await handleUpdate(
+      confirmingPlatform,
+      draftUsernames[confirmingPlatform] ?? "",
+    );
+    if (updated) {
+      setConfirmingPlatform(null);
+      setEditingPlatform(null);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingConfirmPlatform) return;
+    await handleDelete(deletingConfirmPlatform);
+    setDeletingConfirmPlatform(null);
+  };
 
   if (loading) {
     return (
@@ -91,6 +132,34 @@ export function BlogPage() {
 
   return (
     <>
+      {confirmingPlatform && (
+        <ConfirmDialog
+          message="usernameを変更すると、同期済みのブログ記事が削除され、新しいusernameで再同期されます。よろしいですか？"
+          confirmLabel="変更して再同期"
+          confirmingLabel="更新・同期中..."
+          onConfirm={confirmUpdate}
+          onCancel={() => {
+            if (updatingPlatform !== confirmingPlatform) {
+              setConfirmingPlatform(null);
+            }
+          }}
+          confirming={updatingPlatform === confirmingPlatform}
+        />
+      )}
+      {deletingConfirmPlatform && (
+        <ConfirmDialog
+          message={`${PLATFORMS.find((p) => p.key === deletingConfirmPlatform)?.label ?? deletingConfirmPlatform} の連携を解除すると、同期済みのブログ記事がすべて削除されます。よろしいですか？`}
+          confirmLabel="解除する"
+          confirmingLabel="解除中..."
+          onConfirm={confirmDelete}
+          onCancel={() => {
+            if (deletingPlatform !== deletingConfirmPlatform) {
+              setDeletingConfirmPlatform(null);
+            }
+          }}
+          confirming={deletingPlatform === deletingConfirmPlatform}
+        />
+      )}
       <div className={shared.pageHeader}>
         <h1>ブログ連携</h1>
         <div className={shared.pageHeaderActions}>
@@ -115,6 +184,7 @@ export function BlogPage() {
           <div className={styles.platformList}>
             {PLATFORMS.map((pf) => {
               const linked = accountMap.get(pf.key);
+              const isEditing = editingPlatform === pf.key;
               return (
                 <div key={pf.key} className={styles.platformRow}>
                   <div className={styles.platformIcon}>{pf.icon}</div>
@@ -124,25 +194,84 @@ export function BlogPage() {
                     /* ── 連携済み ── */
                     <>
                       <span className={styles.urlPrefix}>{pf.urlPrefix}</span>
-                      <span className={styles.linkedUsername}>
-                        {linked.username}
-                      </span>
-                      <span className={styles.linkedBadge}>連携済み</span>
-                      <button
-                        type="button"
-                        className={styles.actionButton}
-                        disabled={syncingPlatform === pf.key}
-                        onClick={() => handleSync(pf.key)}
-                      >
-                        {syncingPlatform === pf.key ? "同期中..." : "同期"}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.unlinkButton}
-                        onClick={() => handleDelete(pf.key)}
-                      >
-                        解除
-                      </button>
+                      {isEditing ? (
+                        <>
+                          <input
+                            type="text"
+                            className={styles.usernameInput}
+                            placeholder="ユーザー名"
+                            value={draftUsernames[pf.key]}
+                            onChange={(e) =>
+                              setDraftUsernames((prev) => ({
+                                ...prev,
+                                [pf.key]: e.target.value,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && draftUsernames[pf.key]?.trim()) {
+                                setConfirmingPlatform(pf.key);
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className={styles.saveButton}
+                            disabled={
+                              updatingPlatform === pf.key ||
+                              !draftUsernames[pf.key]?.trim()
+                            }
+                            onClick={() => setConfirmingPlatform(pf.key)}
+                          >
+                            {updatingPlatform === pf.key ? "更新中..." : "更新"}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.actionButton}
+                            disabled={updatingPlatform === pf.key}
+                            onClick={() => cancelEditing(pf.key)}
+                          >
+                            キャンセル
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className={styles.linkedUsername}>
+                            {linked.username}
+                          </span>
+                          <span
+                            className={
+                              linked.last_synced_at
+                                ? styles.linkedBadge
+                                : styles.unsyncedBadge
+                            }
+                          >
+                            {linked.last_synced_at ? "同期済み" : "未同期"}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.actionButton}
+                            disabled={syncingPlatform === pf.key}
+                            onClick={() => handleSync(pf.key)}
+                          >
+                            {syncingPlatform === pf.key ? "同期中..." : "同期"}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.actionButton}
+                            disabled={syncingPlatform === pf.key}
+                            onClick={() => startEditing(pf.key, linked.username)}
+                          >
+                            編集
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.unlinkButton}
+                            onClick={() => setDeletingConfirmPlatform(pf.key)}
+                          >
+                            解除
+                          </button>
+                        </>
+                      )}
                     </>
                   ) : (
                     /* ── 未連携 ── */

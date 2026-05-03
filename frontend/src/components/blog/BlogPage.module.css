@@ -22,6 +22,7 @@
 .platformRow {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.7rem;
   padding: 0.8rem 0;
   border-top: 1px solid var(--border);
@@ -99,6 +100,16 @@
   font-weight: 600;
   color: var(--success);
   background: color-mix(in srgb, var(--success) 12%, transparent);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.unsyncedBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
   white-space: nowrap;

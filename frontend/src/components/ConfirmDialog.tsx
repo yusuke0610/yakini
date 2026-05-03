@@ -3,12 +3,14 @@ import styles from "./ConfirmDialog.module.css";
 export function ConfirmDialog({
   message,
   confirmLabel,
+  confirmingLabel,
   onConfirm,
   onCancel,
   confirming,
 }: {
   message: string;
   confirmLabel: string;
+  confirmingLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
   confirming?: boolean;
@@ -19,7 +21,7 @@ export function ConfirmDialog({
         <p className={styles.message}>{message}</p>
         <div className={styles.actions}>
           <button type="button" className="danger" onClick={onConfirm} disabled={confirming}>
-            {confirming ? "削除中..." : confirmLabel}
+            {confirming ? (confirmingLabel ?? "削除中...") : confirmLabel}
           </button>
           <button type="button" onClick={onCancel} disabled={confirming}>
             キャンセル

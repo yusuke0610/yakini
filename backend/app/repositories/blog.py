@@ -1,10 +1,11 @@
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from ..core.date_utils import parse_iso_date
-from ..models import BlogAccount, BlogArticle, BlogArticleTag
+from ..models import BlogAccount, BlogArticle, BlogArticleTag, BlogSummaryCache
 
 
 class BlogAccountRepository:
@@ -42,6 +43,7 @@ class BlogAccountRepository:
         existing = self.get_by_platform(platform)
         if existing:
             existing.username = username
+            existing.last_synced_at = None
             self.db.commit()
             self.db.refresh(existing)
             return existing
@@ -167,7 +169,7 @@ class BlogArticleRepository:
             or 0
         )
 
-    def delete_by_account(self, account_id: str) -> int:
+    def delete_by_account(self, account_id: str, *, commit: bool = True) -> int:
         articles = list(
             self.db.scalars(
                 select(BlogArticle)
@@ -179,7 +181,8 @@ class BlogArticleRepository:
         count = len(articles)
         for article in articles:
             self.db.delete(article)
-        self.db.commit()
+        if commit:
+            self.db.commit()
         return count
 
     def _normalize_article(self, article: dict[str, Any]) -> dict[str, Any]:
@@ -200,3 +203,30 @@ class BlogArticleRepository:
             BlogArticleTag(sort_order=index, name=tag)
             for index, tag in enumerate(payload.get("tags", []))
         ]
+
+
+class BlogSummaryCacheRepository:
+    """ブログ AI 分析キャッシュのリポジトリ。"""
+
+    def __init__(self, db, user_id: str):
+        self.db = db
+        self.user_id = user_id
+
+    def get(self) -> BlogSummaryCache | None:
+        """キャッシュを取得する。expires_at を過ぎていれば削除して None を返す。"""
+        statement = select(BlogSummaryCache).where(BlogSummaryCache.user_id == self.user_id)
+        cache = self.db.scalar(statement)
+        if cache and cache.expires_at and cache.expires_at <= datetime.now(timezone.utc):
+            self.db.delete(cache)
+            self.db.commit()
+            return None
+        return cache
+
+    def invalidate(self, *, commit: bool = True) -> bool:
+        cache = self.get()
+        if not cache:
+            return False
+        self.db.delete(cache)
+        if commit:
+            self.db.commit()
+        return True

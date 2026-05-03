@@ -22,6 +22,7 @@ class BlogAccount(Base):
     )
     platform: Mapped[str] = mapped_column(String(20), nullable=False)
     username: Mapped[str] = mapped_column(String(120), nullable=False)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     article_rows: Mapped[list["BlogArticle"]] = relationship(
         back_populates="account",
         cascade="all, delete-orphan",

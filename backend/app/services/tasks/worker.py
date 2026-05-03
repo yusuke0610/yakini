@@ -7,7 +7,7 @@ Cloud: /internal/tasks/{type} エンドポイント経由で呼ばれる（Cloud
 
 import json
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,7 @@ from ...core.messages import get_notification
 from ...db.database import SessionLocal
 from ...models import BlogSummaryCache, GitHubAnalysisCache
 from ...models.career_analysis import CareerAnalysis
+from ...repositories import BlogArticleRepository
 from ...repositories.notification import NotificationRepository
 from ...services.intelligence.llm import get_llm_client
 from .base import TaskType
@@ -314,7 +315,26 @@ async def _run_blog_summarize(db: Session, payload: dict) -> None:
     cache.started_at = _now()
     db.commit()
 
-    articles_data = payload.get("articles", [])
+    article_rows = BlogArticleRepository(db, user_id).list_by_user()
+    if not article_rows:
+        cache.status = "dead_letter"
+        cache.error_message = "分析対象の記事がありません"
+        cache.completed_at = _now()
+        db.commit()
+        return
+
+    articles_data = [
+        {
+            "title": art.title,
+            "url": art.url,
+            "published_at": art.published_at,
+            "likes_count": art.likes_count,
+            "summary": art.summary,
+            "tags": art.tags,
+            "platform": art.platform,
+        }
+        for art in article_rows
+    ]
     llm_client = get_llm_client()
     if not await llm_client.check_available():
         cache.status = "dead_letter"
@@ -335,6 +355,7 @@ async def _run_blog_summarize(db: Session, payload: dict) -> None:
     cache.status = "completed"
     cache.error_message = None
     cache.completed_at = _now()
+    cache.expires_at = _now() + timedelta(days=7)
     db.commit()
 
 

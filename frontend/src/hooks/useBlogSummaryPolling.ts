@@ -60,7 +60,7 @@ export function useBlogSummaryPolling(articles: BlogArticle[]) {
     setSummary(null);
     setSummaryError(null);
     try {
-      const result = await summarizeBlogArticles(articles);
+      const result = await summarizeBlogArticles();
       if (!result.available && result.status !== "pending") {
         setSummaryError("AI分析サーバーに接続できません");
         setSummaryLoading(false);
