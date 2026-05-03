@@ -321,11 +321,8 @@ async def summarize_blog(
             background_tasks,
             TaskType.BLOG_SUMMARIZE,
             {"user_id": user.id},
-<<<<<<< HEAD
             failure_message="タスクの再実行に失敗しました",
             logger=logger,
-=======
->>>>>>> 4fcedba (blog anarize remove update fix)
         )
     except Exception:
         raise HTTPException(

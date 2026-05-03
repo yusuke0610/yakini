@@ -257,5 +257,7 @@ async def github_callback(
     callback_base = get_callback_base_url() or get_frontend_origin(frontend_url)
     redirect_uri = f"{callback_base}{GITHUB_CALLBACK_PATH}"
     token_response = await authenticate_github_user(db, payload.code, redirect_uri)
+    # __session を共用するため OAuth state を先にクリアしてからトークンを書き込む
+    clear_github_oauth_session(response)
     set_auth_cookies(response, token_response.username, db)
     return token_response

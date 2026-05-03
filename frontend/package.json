@@ -17,7 +17,12 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
+<<<<<<< HEAD
     "deploy": "wrangler pages deploy dist --project-name=devforge"
+=======
+    "dev:proxy": "node ../scripts/firebase-proxy.mjs",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:proxy\""
+>>>>>>> 0a550f7 (set cokkie bug fix)
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
