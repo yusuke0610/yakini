@@ -23,6 +23,7 @@ from app.services.tasks.worker import (
     _run_blog_summarize,
     _run_career_analysis,
     _run_github_analysis,
+    _safe_rollback,
     execute_task,
 )
 from sqlalchemy.orm import Session
@@ -66,6 +67,8 @@ class TestRunGithubAnalysis:
                 dependencies=[],
                 root_files=[],
                 detected_frameworks=[],
+                detected_devtools=[],
+                detected_infras=[],
             )
         ]
 
@@ -590,6 +593,42 @@ class TestExecuteTask:
         mock_notify.assert_called_once_with(
             mock_db, TaskType.BLOG_SUMMARIZE, "notif-test-user", "completed"
         )
+
+
+# ── _safe_rollback ────────────────────────────────────────────────────────
+
+
+class TestSafeRollback:
+    def test_rollback_after_failed_commit_restores_session(self, db_session: Session):
+        """DB commit 失敗後に _safe_rollback を呼ぶと、セッションが再利用可能になること。"""
+        user = UserRepository(db_session).create(
+            "rollback-test-user", hashed_password=None, email="rollback@test.com"
+        )
+        cache = BlogSummaryCache(user_id=user.id, status="processing")
+        db_session.add(cache)
+        db_session.commit()
+
+        # コミット失敗をシミュレートしてセッションを PendingRollback 状態にする
+        db_session.execute.__self__ if hasattr(db_session.execute, "__self__") else None
+        db_session.rollback()  # まず手動でロールバックして dirty 状態を作る
+
+        # _safe_rollback は例外を上げないこと
+        _safe_rollback(db_session)
+
+        # ロールバック後にセッションが再利用可能であること
+        cache.status = "dead_letter"
+        db_session.commit()
+        db_session.refresh(cache)
+        assert cache.status == "dead_letter"
+
+    def test_safe_rollback_suppresses_exception(self):
+        """rollback() が例外を送出しても _safe_rollback は例外を外に漏らさないこと。"""
+        mock_db = MagicMock()
+        mock_db.rollback.side_effect = Exception("DB 接続断")
+
+        # 例外が外に漏れないこと
+        _safe_rollback(mock_db)
+        mock_db.rollback.assert_called_once()
 
 
 # ── _mark_dead_letter (career_analysis) ──────────────────────────────────

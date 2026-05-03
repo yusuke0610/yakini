@@ -42,6 +42,8 @@ def _make_repo(
     dependencies=None,
     root_files=None,
     detected_frameworks=None,
+    detected_devtools=None,
+    detected_infras=None,
 ):
     return RepoData(
         name=name,
@@ -57,6 +59,8 @@ def _make_repo(
         dependencies=dependencies or [],
         root_files=root_files or [],
         detected_frameworks=detected_frameworks or [],
+        detected_devtools=detected_devtools or [],
+        detected_infras=detected_infras or [],
     )
 
 
@@ -186,10 +190,11 @@ class TestSkillExtractor:
         assert "FastAPI" in names
         assert "SQLAlchemy" in names
 
-    def test_extracts_from_detected_frameworks(self):
+    def test_extracts_from_detected_devtools_and_infras(self):
         repos = [
             _make_repo(
-                detected_frameworks=["Docker", "GitHub Actions", "Terraform"],
+                detected_devtools=["Docker", "GitHub Actions"],
+                detected_infras=["Terraform"],
             )
         ]
         result = extract_skills(repos)
@@ -205,7 +210,7 @@ class TestSkillExtractor:
         assert "dependency" in sources
 
     def test_root_file_source_label(self):
-        repos = [_make_repo(detected_frameworks=["Docker"])]
+        repos = [_make_repo(detected_devtools=["Docker"])]
         result = extract_skills(repos)
         sources = {s.source for s in result.skills}
         assert "root_file" in sources
@@ -227,7 +232,7 @@ class TestSkillExtractor:
         repos = [
             _make_repo(
                 languages={"Dockerfile": 500},
-                detected_frameworks=["Docker"],
+                detected_devtools=["Docker"],
             )
         ]
         result = extract_skills(repos)
@@ -244,7 +249,8 @@ class TestSkillExtractor:
                 description="Backend API",
                 dependencies=["fastapi", "sqlalchemy", "boto3"],
                 root_files=["Dockerfile", ".github", "terraform"],
-                detected_frameworks=["Docker", "GitHub Actions", "Terraform"],
+                detected_devtools=["Docker", "GitHub Actions"],
+                detected_infras=["Terraform"],
             )
         ]
         result = extract_skills(repos)
@@ -771,6 +777,8 @@ def _make_pipeline_repo(name: str, languages: dict | None = None) -> RepoData:
         dependencies=[],
         root_files=[],
         detected_frameworks=[],
+        detected_devtools=[],
+        detected_infras=[],
     )
 
 

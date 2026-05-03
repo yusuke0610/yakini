@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 from unittest.mock import AsyncMock
@@ -130,8 +131,8 @@ def auth_header(client, username: str = "testuser") -> dict:
         user.refresh_jti = jti
         db.commit()
 
-    client.cookies.set("access_token", access_token)
-    client.cookies.set("refresh_token", refresh_token)
+    session_payload = json.dumps({"access_token": access_token, "refresh_token": refresh_token})
+    client.cookies.set("__session", session_payload)
     client.cookies.set("csrf_token", csrf_token)
 
     return {"X-CSRF-Token": csrf_token}

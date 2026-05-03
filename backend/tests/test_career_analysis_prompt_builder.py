@@ -14,7 +14,7 @@ def _make_cache(analysis_result: dict) -> SimpleNamespace:
 
 
 def test_detected_frameworks_section_included():
-    """analysis_result に detected_frameworks が含まれる場合、
+    """analysis_result に detected_frameworks（新形式 dict）が含まれる場合、
     「検出フレームワーク」行がプロンプトに含まれること。"""
     cache = _make_cache(
         {
@@ -27,7 +27,9 @@ def test_detected_frameworks_section_included():
                 "missing_skills": [],
             },
             "languages": {"TypeScript": 80000, "Python": 20000},
-            "detected_frameworks": ["React", "Next.js", "FastAPI"],
+            "detected_frameworks": {"React": 3, "Next.js": 2, "FastAPI": 1},
+            "detected_devtools": {},
+            "detected_infras": {},
             "repositories": [],
         }
     )
@@ -41,13 +43,37 @@ def test_detected_frameworks_section_included():
     assert "検出フレームワーク: React, Next.js, FastAPI" in prompt
 
 
+def test_detected_devtools_section_included():
+    """detected_devtools が含まれる場合、「DevTools:」行がプロンプトに含まれること。"""
+    cache = _make_cache(
+        {
+            "position_scores": {},
+            "languages": {"Python": 1000},
+            "detected_frameworks": {},
+            "detected_devtools": {"Docker": 5, "GitHub Actions": 3},
+            "detected_infras": {},
+            "repositories": [],
+        }
+    )
+    prompt = build_user_prompt(
+        target_position="バックエンドエンジニア",
+        resume=None,
+        analysis_cache=cache,
+        blog_cache=None,
+        merged_stacks_text="",
+    )
+    assert "DevTools: Docker, GitHub Actions" in prompt
+
+
 def test_empty_frameworks_does_not_emit_line():
     """detected_frameworks が空の場合は「検出フレームワーク:」行が出力されないこと。"""
     cache = _make_cache(
         {
             "position_scores": {},
             "languages": {"Python": 1000},
-            "detected_frameworks": [],
+            "detected_frameworks": {},
+            "detected_devtools": {},
+            "detected_infras": {},
             "repositories": [],
         }
     )
@@ -79,3 +105,23 @@ def test_missing_detected_frameworks_key_is_safe():
         merged_stacks_text="",
     )
     assert "検出フレームワーク:" not in prompt
+
+
+def test_legacy_list_format_still_works():
+    """旧形式（リスト）の detected_frameworks でも例外にならないこと（後方互換性）。"""
+    cache = _make_cache(
+        {
+            "position_scores": {},
+            "languages": {"Python": 1000},
+            "detected_frameworks": ["React", "FastAPI"],
+            "repositories": [],
+        }
+    )
+    prompt = build_user_prompt(
+        target_position="バックエンドエンジニア",
+        resume=None,
+        analysis_cache=cache,
+        blog_cache=None,
+        merged_stacks_text="",
+    )
+    assert "検出フレームワーク: React, FastAPI" in prompt

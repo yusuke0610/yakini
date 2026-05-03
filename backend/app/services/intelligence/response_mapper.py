@@ -25,5 +25,7 @@ def map_pipeline_result(result: IntelligenceResult) -> AnalysisResponse:
         analyzed_at=result.analyzed_at,
         languages=result.languages,
         detected_frameworks=result.detected_frameworks,
+        detected_devtools=result.detected_devtools,
+        detected_infras=result.detected_infras,
         position_scores=position_scores,
     )

@@ -66,6 +66,9 @@ def calculate_position_scores(repos: List[RepoData]) -> PositionScores:
         all_topics.update(t.lower() for t in repo.topics)
         all_files.update(repo.root_files)
         all_frameworks.update(repo.detected_frameworks)
+        all_frameworks.update(repo.detected_devtools)
+        all_frameworks.update(repo.detected_infras)
+
 
     # 検出フレームワークを等価なトピックに展開してスコア算出に反映させる
     # （リポジトリに topic タグが無くても依存関係から推定できるようにする）

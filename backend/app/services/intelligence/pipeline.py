@@ -30,7 +30,9 @@ class IntelligenceResult:
     unique_skills: int
     analyzed_at: str
     languages: Dict[str, int] = field(default_factory=dict)
-    detected_frameworks: List[str] = field(default_factory=list)
+    detected_frameworks: Dict[str, int] = field(default_factory=dict)  # フレームワーク名 → 使用リポジトリ数
+    detected_devtools: Dict[str, int] = field(default_factory=dict)   # DevTools 名 → 使用リポジトリ数
+    detected_infras: Dict[str, int] = field(default_factory=dict)     # インフラツール名 → 使用リポジトリ数
     position_scores: Optional[PositionScores] = None
 
 
@@ -64,14 +66,17 @@ async def run_pipeline(
         for lang, byte_count in repo.languages.items():
             lang_totals[lang] += byte_count
 
-    # 全リポジトリの検出フレームワークをユニーク化（最初の出現順を保持）
-    all_frameworks: List[str] = []
-    seen_frameworks: set = set()
+    # 全リポジトリのフレームワーク・DevTools・インフラをリポジトリ数でカウント
+    framework_counts: Dict[str, int] = defaultdict(int)
+    devtool_counts: Dict[str, int] = defaultdict(int)
+    infra_counts: Dict[str, int] = defaultdict(int)
     for repo in repos:
         for fw in repo.detected_frameworks:
-            if fw not in seen_frameworks:
-                seen_frameworks.add(fw)
-                all_frameworks.append(fw)
+            framework_counts[fw] += 1
+        for dt in repo.detected_devtools:
+            devtool_counts[dt] += 1
+        for inf in repo.detected_infras:
+            infra_counts[inf] += 1
 
     # ステージ 2: スキルを抽出
     extraction: ExtractionResult = extract_skills(repos)
@@ -92,6 +97,8 @@ async def run_pipeline(
         unique_skills=len(extraction.unique_skills),
         analyzed_at=datetime.now().isoformat(),
         languages=dict(lang_totals),
-        detected_frameworks=all_frameworks,
+        detected_frameworks=dict(framework_counts),
+        detected_devtools=dict(devtool_counts),
+        detected_infras=dict(infra_counts),
         position_scores=scores,
     )

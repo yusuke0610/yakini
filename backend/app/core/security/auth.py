@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -92,10 +93,22 @@ def get_current_user(
     request: Request,
     db: Session = Depends(get_db),
 ) -> User:
-    token = request.cookies.get(_COOKIE_NAME)
-    if not token:
+    # Firebase Hosting は __session のみ Cloud Run に転送するため、JSON 形式で格納した値を取り出す
+    raw = request.cookies.get("__session")
+    if not raw:
         _raise_auth_failed(
             "missing_cookie",
+            code=ErrorCode.AUTH_REQUIRED,
+            message_key="auth.login_required",
+        )
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        _raise_auth_failed("invalid_session_cookie")
+    token = data.get("access_token") if isinstance(data, dict) else None
+    if not token:
+        _raise_auth_failed(
+            "missing_access_token",
             code=ErrorCode.AUTH_REQUIRED,
             message_key="auth.login_required",
         )

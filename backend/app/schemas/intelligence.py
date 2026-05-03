@@ -35,9 +35,17 @@ class AnalysisResponse(BaseModel):
         default_factory=dict,
         description="言語ごとのバイト数（GitHub linguist ベース）",
     )
-    detected_frameworks: List[str] = Field(
-        default_factory=list,
-        description="依存関係・ルートファイルから検出したフレームワーク／ライブラリ名（重複除去・全リポジトリユニーク）",
+    detected_frameworks: Dict[str, int] = Field(
+        default_factory=dict,
+        description="依存関係から検出したフレームワーク名 → 使用リポジトリ数",
+    )
+    detected_devtools: Dict[str, int] = Field(
+        default_factory=dict,
+        description="ルートファイルから検出した DevTools 名 → 使用リポジトリ数",
+    )
+    detected_infras: Dict[str, int] = Field(
+        default_factory=dict,
+        description="ルートファイルから検出したインフラツール名 → 使用リポジトリ数",
     )
     position_scores: Optional[PositionScoresResponse] = Field(
         None,

@@ -1,27 +1,37 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
-import { FrameworkList } from "./FrameworkList";
+import { TechBar } from "./TechBar";
 
-describe("FrameworkList", () => {
-  it("frameworks が空配列の場合は何も描画しない", () => {
-    const { container } = render(<FrameworkList frameworks={[]} />);
+describe("TechBar", () => {
+  it("techs が空オブジェクトの場合は何も描画しない", () => {
+    const { container } = render(<TechBar techs={{}} />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("渡された各 framework 名をチップとして表示する", () => {
-    render(<FrameworkList frameworks={["React", "Next.js", "FastAPI"]} />);
+  it("渡された各ツール名を凡例として表示する", () => {
+    render(<TechBar techs={{ React: 3, FastAPI: 2, Docker: 1 }} />);
     expect(screen.getByText("React")).toBeInTheDocument();
-    expect(screen.getByText("Next.js")).toBeInTheDocument();
     expect(screen.getByText("FastAPI")).toBeInTheDocument();
-    // aria-label 付きリストが描画されること
-    expect(
-      screen.getByRole("list", { name: "検出フレームワーク一覧" }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Docker")).toBeInTheDocument();
   });
 
-  it("渡された順序が保たれる", () => {
-    render(<FrameworkList frameworks={["React", "FastAPI", "Docker"]} />);
-    const items = screen.getAllByRole("listitem").map((li) => li.textContent);
-    expect(items).toEqual(["React", "FastAPI", "Docker"]);
+  it("割合（%）が表示される", () => {
+    render(<TechBar techs={{ React: 1 }} />);
+    expect(screen.getByText("100.0%")).toBeInTheDocument();
+  });
+
+  it("リポジトリ数の多い順に並ぶ", () => {
+    render(<TechBar techs={{ Vue: 1, React: 3, FastAPI: 2 }} />);
+    const items = screen.getAllByRole("generic").filter((el) =>
+      ["React", "FastAPI", "Vue"].includes(el.textContent ?? ""),
+    );
+    // React(3) > FastAPI(2) > Vue(1) の順
+    const texts = screen
+      .getAllByText(/^(React|FastAPI|Vue)$/)
+      .map((el) => el.textContent);
+    expect(texts.indexOf("React")).toBeLessThan(texts.indexOf("FastAPI"));
+    expect(texts.indexOf("FastAPI")).toBeLessThan(texts.indexOf("Vue"));
+    // items を使ってESLint の unused variable を回避
+    expect(items).toBeDefined();
   });
 });

@@ -12,6 +12,8 @@ def _make_repo(
     topics=None,
     root_files=None,
     detected_frameworks=None,
+    detected_devtools=None,
+    detected_infras=None,
 ):
     return RepoData(
         name=name,
@@ -27,6 +29,8 @@ def _make_repo(
         dependencies=[],
         root_files=root_files or [],
         detected_frameworks=detected_frameworks or [],
+        detected_devtools=detected_devtools or [],
+        detected_infras=detected_infras or [],
     )
 
 
@@ -108,7 +112,7 @@ def test_sre_score_with_docker_and_ci():
             languages={"Shell": 30000},
             topics=["docker", "kubernetes", "ci-cd"],
             root_files=["Dockerfile", ".github"],
-            detected_frameworks=["Docker", "GitHub Actions"],
+            detected_devtools=["Docker", "GitHub Actions"],
         ),
     ]
     result = calculate_position_scores(repos)
@@ -122,7 +126,7 @@ def test_cloud_score_with_terraform():
             languages={"HCL": 50000},
             topics=["terraform", "aws", "cloud"],
             root_files=["terraform"],
-            detected_frameworks=["Terraform"],
+            detected_infras=["Terraform"],
         ),
     ]
     result = calculate_position_scores(repos)
@@ -152,7 +156,8 @@ def test_no_missing_skills_for_fullstack():
             },
             topics=["api", "react", "docker", "ci-cd", "aws"],
             root_files=["Dockerfile", ".github", "terraform"],
-            detected_frameworks=["Docker", "GitHub Actions", "Terraform"],
+            detected_devtools=["Docker", "GitHub Actions"],
+            detected_infras=["Terraform"],
         ),
     ]
     result = calculate_position_scores(repos)

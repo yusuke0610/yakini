@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 from ...core.errors import ErrorCode, raise_app_error
 from ...core.messages import get_error
 from ...core.security.auth import (
-    _REFRESH_COOKIE_NAME,
     _decode_token,
     get_current_user,
     verify_refresh_token,
@@ -75,7 +74,16 @@ def refresh(
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """リフレッシュトークンで新しいアクセストークンを発行する。"""
-    token = request.cookies.get(_REFRESH_COOKIE_NAME)
+    # Firebase Hosting は __session のみ転送するため JSON パースして refresh_token を取り出す
+    raw = request.cookies.get("__session")
+    token: str | None = None
+    if raw:
+        try:
+            data = _json.loads(raw)
+            if isinstance(data, dict):
+                token = data.get("refresh_token")
+        except (ValueError, TypeError):
+            pass
     if not token:
         raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -120,7 +128,16 @@ def logout(
     """ログアウト処理。DB の refresh_jti を無効化し Cookie を削除する。
     トークン解析が失敗した場合でも必ず Cookie を削除して 204 を返す。
     """
-    token = request.cookies.get(_REFRESH_COOKIE_NAME)
+    # Firebase Hosting は __session のみ転送するため JSON パースして refresh_token を取り出す
+    raw = request.cookies.get("__session")
+    token: str | None = None
+    if raw:
+        try:
+            data = _json.loads(raw)
+            if isinstance(data, dict):
+                token = data.get("refresh_token")
+        except (ValueError, TypeError):
+            logger.debug("ログアウト時の __session パースに失敗（Cookie 削除を継続）", exc_info=True)
     if token:
         try:
             payload = _decode_token(token)
@@ -211,8 +228,9 @@ async def github_callback_redirect(
         return response
 
     response = HTMLResponse(content=_html_redirect(build_frontend_redirect_url(frontend_url)))
-    set_auth_cookies(response, token_response.username, db)
+    # __session を共用するため OAuth state を先にクリアしてからトークンを書き込む
     clear_github_oauth_session(response)
+    set_auth_cookies(response, token_response.username, db)
     return response
 
 
@@ -233,5 +251,7 @@ async def github_callback(
     callback_base = get_callback_base_url() or get_frontend_origin(frontend_url)
     redirect_uri = f"{callback_base}{GITHUB_CALLBACK_PATH}"
     token_response = await authenticate_github_user(db, payload.code, redirect_uri)
+    # __session を共用するため OAuth state を先にクリアしてからトークンを書き込む
+    clear_github_oauth_session(response)
     set_auth_cookies(response, token_response.username, db)
     return token_response

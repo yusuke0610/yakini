@@ -9,10 +9,7 @@ from fastapi import Request, Response
 from sqlalchemy.orm import Session
 
 from ...core.security.auth import (
-    _COOKIE_MAX_AGE,
-    _COOKIE_NAME,
     _REFRESH_COOKIE_MAX_AGE,
-    _REFRESH_COOKIE_NAME,
     create_access_token,
     create_refresh_token,
 )
@@ -93,19 +90,13 @@ def set_auth_cookies(response: Response, username: str, db: Session) -> None:
     refresh_token, jti = create_refresh_token(username)
     csrf_token = secrets.token_urlsafe(32)
 
-    # アクセストークン（15分, path="/"）
-    set_cookie(response, _COOKIE_NAME, access_token, _COOKIE_MAX_AGE)
+    # 旧 Cookie の残留削除（移行期の互換）
+    delete_cookie(response, "access_token")
+    delete_cookie(response, "refresh_token")
 
-    # リフレッシュトークン（7日, path="/auth/" に限定: /auth/refresh と /auth/logout の両方で読み取れるようにする）
-    response.set_cookie(
-        key=_REFRESH_COOKIE_NAME,
-        value=refresh_token,
-        httponly=True,
-        secure=get_cookie_secure(),
-        samesite=get_cookie_samesite(),
-        max_age=_REFRESH_COOKIE_MAX_AGE,
-        path="/auth/",
-    )
+    # Firebase Hosting は __session のみ Cloud Run に転送するため、両トークンを JSON で1つにまとめる（7日）
+    session_payload = json.dumps({"access_token": access_token, "refresh_token": refresh_token})
+    set_cookie(response, GITHUB_OAUTH_SESSION_COOKIE, session_payload, _REFRESH_COOKIE_MAX_AGE)
 
     # CSRF トークン（httpOnly=False: JS から読み取れる）
     set_csrf_cookie(response, csrf_token)
@@ -118,8 +109,9 @@ def set_auth_cookies(response: Response, username: str, db: Session) -> None:
 
 def clear_auth_cookies(response: Response) -> None:
     """認証関連の Cookie をすべて削除する。"""
-    delete_cookie(response, _COOKIE_NAME, path="/")
-    # path="/auth/" と旧 path="/auth/refresh" の両方を削除して移行期の互換を保つ
-    delete_cookie(response, _REFRESH_COOKIE_NAME, path="/auth/")
-    delete_cookie(response, _REFRESH_COOKIE_NAME, path="/auth/refresh")
+    delete_cookie(response, GITHUB_OAUTH_SESSION_COOKIE, path="/")
+    # 旧 Cookie の削除（移行期の互換）
+    delete_cookie(response, "access_token", path="/")
+    delete_cookie(response, "refresh_token", path="/auth/")
+    delete_cookie(response, "refresh_token", path="/auth/refresh")
     delete_cookie(response, CSRF_COOKIE_NAME, path="/")
