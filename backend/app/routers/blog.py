@@ -16,7 +16,7 @@ GET    /api/blog/score                 — ブログスコアリング
 import logging
 from dataclasses import asdict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from ..core.errors import resolve_async_error_code
@@ -32,6 +32,7 @@ from ..schemas import (
     BlogAccountUpdate,
     BlogArticleResponse,
     BlogScoreResponse,
+    BlogSummaryRequest,
     BlogSummaryResponse,
     BlogSyncResponse,
 )
