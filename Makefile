@@ -1,10 +1,6 @@
 .PHONY: help \
 	setup install-hooks install-backend install-frontend generate-keys \
-<<<<<<< HEAD
 	dev dev-build dev-down dev-frontend preview-frontend \
-=======
-	dev dev-build dev-down dev-frontend dev-backend dev-proxy dev-proxy-only \
->>>>>>> 0a550f7 (set cokkie bug fix)
 	test test-backend test-frontend \
 	lint lint-backend lint-frontend lint-fix \
 	format format-check \
@@ -30,15 +26,8 @@ help:
 	@echo "  dev               docker-compose で API + Ollama を起動"
 	@echo "  dev-build         再ビルドして起動"
 	@echo "  dev-down          docker-compose を停止"
-<<<<<<< HEAD
 	@echo "  dev-frontend      Frontend 開発サーバーを起動 (Vite / localhost:5173)"
 	@echo "  preview-frontend  ビルド済みを wrangler でローカル提供 (HMR なし / localhost:8788)"
-=======
-	@echo "  dev-frontend      Vite dev server を起動"
-	@echo "  dev-backend       uvicorn で Backend を直接起動"
-	@echo "  dev-proxy         Vite + Firebase Cookie 再現プロキシを起動 (localhost:3000)"
-	@echo "  dev-proxy-only    プロキシのみ起動 (Vite が起動済みの場合)"
->>>>>>> 0a550f7 (set cokkie bug fix)
 	@echo ""
 	@echo "テスト・リント"
 	@echo "  ci                lint + test + build-frontend を一括実行 (CI 相当)"
@@ -109,6 +98,12 @@ dev-frontend:
 
 preview-frontend:
 	nix develop --command bash -c "cd frontend && CLOUD_RUN_URL='http://localhost:8000' npm run build && npx wrangler pages dev dist --port 8788"
+
+dev-proxy:
+	cd frontend && npm run dev:all
+
+dev-proxy-only:
+	cd frontend && npm run dev:proxy
 
 dev-proxy:
 	cd frontend && npm run dev:all
