@@ -7,7 +7,7 @@ Cloud: /internal/tasks/{type} エンドポイント経由で呼ばれる（Cloud
 
 import json
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,7 @@ from ...core.messages import get_notification
 from ...db.database import SessionLocal
 from ...models import BlogSummaryCache, GitHubAnalysisCache
 from ...models.career_analysis import CareerAnalysis
+from ...repositories import BlogArticleRepository
 from ...repositories.notification import NotificationRepository
 from ...services.intelligence.llm import get_llm_client
 from .base import TaskType
@@ -107,6 +108,7 @@ async def execute_task(
             },
             exc_info=True,
         )
+        _safe_rollback(db)
         _mark_dead_letter(db, task_type, payload, error=exc)
         if isinstance(user_id, str) and user_id != "unknown":
             _create_notification(db, task_type, user_id, "failed")
@@ -129,6 +131,7 @@ async def execute_task(
                 },
                 exc_info=True,
             )
+            _safe_rollback(db)
             _mark_dead_letter(db, task_type, payload, error=exc)
             if isinstance(user_id, str) and user_id != "unknown":
                 _create_notification(db, task_type, user_id, "failed")
@@ -147,6 +150,7 @@ async def execute_task(
                 },
                 exc_info=True,
             )
+            _safe_rollback(db)
             _mark_retrying(db, task_type, payload, retry_count, max_attempts, error=exc)
         raise
     finally:
@@ -226,14 +230,17 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
         for lang, byte_count in repo.languages.items():
             lang_totals[lang] += byte_count
 
-    # 全リポジトリの検出フレームワークをユニーク化（最初の出現順を保持）
-    all_frameworks: list[str] = []
-    seen_frameworks: set[str] = set()
+    # 全リポジトリのフレームワーク・DevTools・インフラをリポジトリ数でカウント
+    framework_counts: dict[str, int] = defaultdict(int)
+    devtool_counts: dict[str, int] = defaultdict(int)
+    infra_counts: dict[str, int] = defaultdict(int)
     for repo in repos:
         for fw in repo.detected_frameworks:
-            if fw not in seen_frameworks:
-                seen_frameworks.add(fw)
-                all_frameworks.append(fw)
+            framework_counts[fw] += 1
+        for dt in repo.detected_devtools:
+            devtool_counts[dt] += 1
+        for inf in repo.detected_infras:
+            infra_counts[inf] += 1
 
     # ステップ 4: スコア算出
     await set_progress(task_id, 4, _TOTAL_STEPS, "スコア算出中...")
@@ -245,7 +252,9 @@ async def _run_github_analysis(db: Session, payload: dict) -> None:
         unique_skills=len(extraction.unique_skills),
         analyzed_at=datetime.now().isoformat(),
         languages=dict(lang_totals),
-        detected_frameworks=all_frameworks,
+        detected_frameworks=dict(framework_counts),
+        detected_devtools=dict(devtool_counts),
+        detected_infras=dict(infra_counts),
         position_scores=scores,
     )
 
@@ -314,7 +323,26 @@ async def _run_blog_summarize(db: Session, payload: dict) -> None:
     cache.started_at = _now()
     db.commit()
 
-    articles_data = payload.get("articles", [])
+    article_rows = BlogArticleRepository(db, user_id).list_by_user()
+    if not article_rows:
+        cache.status = "dead_letter"
+        cache.error_message = "分析対象の記事がありません"
+        cache.completed_at = _now()
+        db.commit()
+        return
+
+    articles_data = [
+        {
+            "title": art.title,
+            "url": art.url,
+            "published_at": art.published_at,
+            "likes_count": art.likes_count,
+            "summary": art.summary,
+            "tags": art.tags,
+            "platform": art.platform,
+        }
+        for art in article_rows
+    ]
     llm_client = get_llm_client()
     if not await llm_client.check_available():
         cache.status = "dead_letter"
@@ -335,6 +363,7 @@ async def _run_blog_summarize(db: Session, payload: dict) -> None:
     cache.status = "completed"
     cache.error_message = None
     cache.completed_at = _now()
+    cache.expires_at = _now() + timedelta(days=7)
     db.commit()
 
 
@@ -381,6 +410,19 @@ async def _run_career_analysis(db: Session, payload: dict) -> None:
 
 
 # ---------- 共通 ----------
+
+
+def _safe_rollback(db: Session) -> None:
+    """タスク失敗時にセッションをロールバックする。
+
+    DB コミット失敗後はセッションが PendingRollbackError 状態になり、
+    後続の _mark_dead_letter/_mark_retrying が commit できなくなる。
+    ロールバックで状態をリセットしてから status 更新を実行するために呼ぶ。
+    """
+    try:
+        db.rollback()
+    except Exception:
+        logger.warning("セッションのロールバックに失敗しました", exc_info=True)
 
 
 def _create_notification(db: Session, task_type: TaskType, user_id: str, status: str) -> None:

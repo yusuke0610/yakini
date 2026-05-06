@@ -43,7 +43,7 @@ describe("GitHubAnalysisPage", () => {
     expect(screen.getByText("リポジトリ")).toBeInTheDocument();
   });
 
-  it("検出フレームワークがあるとき Frameworks セクションに各 framework が表示される（Issue #203）", async () => {
+  it("検出フレームワークがあるとき Frameworks セクションにバーが表示される", async () => {
     renderPage();
 
     await waitFor(() => {
@@ -53,7 +53,26 @@ describe("GitHubAnalysisPage", () => {
     expect(screen.getByText("FastAPI")).toBeInTheDocument();
   });
 
-  it("検出フレームワークが空配列のとき Frameworks セクションが描画されない", async () => {
+  it("DevTools があるとき DevTools セクションが表示される", async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("DevTools")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Docker")).toBeInTheDocument();
+    expect(screen.getByText("GitHub Actions")).toBeInTheDocument();
+  });
+
+  it("Infra があるとき Infra セクションが表示される", async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Infra")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Terraform")).toBeInTheDocument();
+  });
+
+  it("検出フレームワークが空のとき Frameworks セクションが描画されない", async () => {
     server.use(
       http.get("*/api/intelligence/cache", () =>
         HttpResponse.json({
@@ -64,7 +83,9 @@ describe("GitHubAnalysisPage", () => {
             unique_skills: 0,
             analyzed_at: "2026-01-01T00:00:00Z",
             languages: { TypeScript: 100 },
-            detected_frameworks: [],
+            detected_frameworks: {},
+            detected_devtools: {},
+            detected_infras: {},
             position_scores: null,
           },
           position_advice: null,

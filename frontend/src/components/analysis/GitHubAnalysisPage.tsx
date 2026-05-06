@@ -11,8 +11,8 @@ import { ErrorToast } from "../ui/ErrorToast";
 import { InlineSpinner } from "../ui/InlineSpinner";
 import { useAsyncAnalysisPage } from "../../hooks/analysis/useAsyncAnalysisPage";
 import { TaskProgressStepper } from "../TaskProgressStepper";
-import { FrameworkList } from "./FrameworkList";
 import { LanguageBar } from "./LanguageBar";
+import { TechBar } from "./TechBar";
 import { PositionRadarChart } from "./PositionRadarChart";
 import shared from "../../styles/shared.module.css";
 import styles from "./GitHubAnalysisPage.module.css";
@@ -190,13 +190,32 @@ export function GitHubAnalysisPage() {
           </div>
         )}
 
-        {/* 検出フレームワーク（Issue #203） */}
-        {result.detected_frameworks && result.detected_frameworks.length > 0 && (
-          <div className={styles.section}>
-            <h2>Frameworks</h2>
-            <FrameworkList frameworks={result.detected_frameworks} />
-          </div>
-        )}
+        {/* 検出フレームワーク */}
+        {result.detected_frameworks &&
+          Object.keys(result.detected_frameworks).length > 0 && (
+            <div className={styles.section}>
+              <h2>Frameworks</h2>
+              <TechBar techs={result.detected_frameworks} ariaLabel="検出フレームワーク一覧" />
+            </div>
+          )}
+
+        {/* DevTools */}
+        {result.detected_devtools &&
+          Object.keys(result.detected_devtools).length > 0 && (
+            <div className={styles.section}>
+              <h2>DevTools</h2>
+              <TechBar techs={result.detected_devtools} />
+            </div>
+          )}
+
+        {/* インフラ */}
+        {result.detected_infras &&
+          Object.keys(result.detected_infras).length > 0 && (
+            <div className={styles.section}>
+              <h2>Infra</h2>
+              <TechBar techs={result.detected_infras} />
+            </div>
+          )}
 
         {/* ポジションスコア */}
         {result.position_scores && (

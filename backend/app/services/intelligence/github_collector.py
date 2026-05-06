@@ -25,6 +25,7 @@ from .github.api_client import (
     fetch_languages,
     fetch_repos_raw,
     fetch_root_files,
+    fetch_subdirectory_dep_files,
 )
 from .github.repo_analyzer import (
     DEPENDENCY_FILES as _DEPENDENCY_FILES,
@@ -33,13 +34,16 @@ from .github.repo_analyzer import (
     DEPENDENCY_TO_FRAMEWORK,
 )
 from .github.repo_analyzer import (
+    detect_devtools_from_root_files as _detect_devtools_from_root_files,
+)
+from .github.repo_analyzer import (
     detect_from_dependencies as _detect_from_dependencies,
 )
 from .github.repo_analyzer import (
-    detect_from_root_files as _detect_from_root_files,
+    detect_infras_from_dependencies as _detect_infras_from_dependencies,
 )
 from .github.repo_analyzer import (
-    merge_frameworks as _merge_frameworks,
+    detect_infras_from_root_files as _detect_infras_from_root_files,
 )
 from .github.repo_analyzer import (
     parse_go_mod as _parse_go_mod,
@@ -66,6 +70,9 @@ __all__ = [
     "GitHubUserNotFoundError",
     "DEPENDENCY_TO_FRAMEWORK",
     "_detect_from_root_files",
+    "_detect_devtools_from_root_files",
+    "_detect_infras_from_root_files",
+    "_detect_infras_from_dependencies",
     "_parse_requirements_txt",
     "_parse_pyproject_toml",
     "_parse_package_json",
@@ -73,6 +80,17 @@ __all__ = [
     "_parse_go_mod",
     "GITHUB_API",
 ]
+
+
+def _detect_from_root_files(root_files: List[str]) -> List[str]:
+    """ルートファイルからdevtools・インフラを重複なく検出して返す。"""
+    seen: set[str] = set()
+    result: List[str] = []
+    for item in _detect_devtools_from_root_files(root_files) + _detect_infras_from_root_files(root_files):
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
 
 
 @dataclass
@@ -91,7 +109,9 @@ class RepoData:
     default_branch: str
     dependencies: List[str] = field(default_factory=list)
     root_files: List[str] = field(default_factory=list)
-    detected_frameworks: List[str] = field(default_factory=list)
+    detected_frameworks: List[str] = field(default_factory=list)  # 依存関係由来のフレームワーク
+    detected_devtools: List[str] = field(default_factory=list)   # ルートファイル由来の DevTools
+    detected_infras: List[str] = field(default_factory=list)     # ルートファイル由来のインフラツール
 
 
 async def _parse_dependencies(
@@ -100,28 +120,46 @@ async def _parse_dependencies(
     repo: str,
     root_files: List[str],
 ) -> List[str]:
-    """依存関係ファイルを解析し、検出されたフレームワーク/ライブラリ名を返す。"""
+    """依存関係ファイルを解析し、パッケージ名リストを返す。
+
+    ルートファイルにない場合はサブディレクトリ（backend/ 等）もフォールバック探索する。
+    """
     deps: List[str] = []
 
+    # ルートの dep ファイルを解析
     for fname in root_files:
         if fname not in _DEPENDENCY_FILES:
             continue
         content = await fetch_file_content(client, owner, repo, fname)
         if not content:
             continue
+        deps.extend(_parse_dep_content(fname, content))
 
-        if fname == "requirements.txt":
-            deps.extend(_parse_requirements_txt(content))
-        elif fname == "pyproject.toml":
-            deps.extend(_parse_pyproject_toml(content))
-        elif fname == "package.json":
-            deps.extend(_parse_package_json(content))
-        elif fname == "pom.xml":
-            deps.extend(_parse_pom_xml(content))
-        elif fname == "go.mod":
-            deps.extend(_parse_go_mod(content))
+    # モノレポ等でルートに dep ファイルがない場合のフォールバック
+    subdir_paths = await fetch_subdirectory_dep_files(client, owner, repo, root_files)
+    for path in subdir_paths:
+        fname = path.split("/")[-1]
+        content = await fetch_file_content(client, owner, repo, path)
+        if not content:
+            continue
+        deps.extend(_parse_dep_content(fname, content))
 
     return list(set(deps))
+
+
+def _parse_dep_content(filename: str, content: str) -> List[str]:
+    """ファイル名に応じたパーサーでパッケージ名リストを返す。"""
+    if filename == "requirements.txt":
+        return _parse_requirements_txt(content)
+    if filename == "pyproject.toml":
+        return _parse_pyproject_toml(content)
+    if filename == "package.json":
+        return _parse_package_json(content)
+    if filename == "pom.xml":
+        return _parse_pom_xml(content)
+    if filename == "go.mod":
+        return _parse_go_mod(content)
+    return []
 
 
 def _passes_filter(raw: dict, include_forks: bool, cutoff_date_str: str) -> bool:
@@ -186,12 +224,15 @@ async def collect_repos(
                 dependencies = await _parse_dependencies(
                     client, owner_login, repo_name, root_files
                 )
-                # root files 由来（Docker/CI/Terraform 等）と依存関係由来（React/Django/FastAPI 等）
-                # のフレームワークをマージする
-                detected_frameworks = _merge_frameworks(
-                    _detect_from_root_files(root_files),
-                    _detect_from_dependencies(dependencies),
-                )
+                detected_frameworks = _detect_from_dependencies(dependencies)
+                detected_devtools = _detect_devtools_from_root_files(root_files)
+                # インフラ: ルートファイル由来 + 依存関係由来（AWS/GCP/Azure 等）をマージ
+                _infras_root = _detect_infras_from_root_files(root_files)
+                _infras_deps = _detect_infras_from_dependencies(dependencies)
+                _seen_infras: set = set(_infras_root)
+                detected_infras = _infras_root + [
+                    inf for inf in _infras_deps if inf not in _seen_infras
+                ]
 
                 repos.append(
                     RepoData(
@@ -208,6 +249,8 @@ async def collect_repos(
                         dependencies=dependencies,
                         root_files=root_files,
                         detected_frameworks=detected_frameworks,
+                        detected_devtools=detected_devtools,
+                        detected_infras=detected_infras,
                     )
                 )
 

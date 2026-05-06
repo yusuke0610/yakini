@@ -4,10 +4,11 @@
 """
 
 import logging
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from ...repositories import BlogAccountRepository, BlogArticleRepository
+from ...repositories import BlogAccountRepository, BlogArticleRepository, BlogSummaryCacheRepository
 from ...schemas import BlogSyncResponse
 from .collector import (
     BlogAccountNotFoundError,
@@ -29,6 +30,7 @@ class BlogSyncService:
         self._user_id = user_id
         self._account_repo = BlogAccountRepository(db, user_id)
         self._article_repo = BlogArticleRepository(db, user_id)
+        self._summary_cache_repo = BlogSummaryCacheRepository(db, user_id)
 
     def get_account_or_none(self, account_id: str):
         """指定 ID のアカウントを返す。存在しない場合は None。"""
@@ -76,10 +78,11 @@ class BlogSyncService:
 
         if normalized_username != account.username:
             account.username = normalized_username
-            self._db.commit()
-            self._db.refresh(account)
+
+        account.last_synced_at = datetime.now(timezone.utc)
 
         synced = self._article_repo.sync_many(account.id, raw_articles)
         total = self._article_repo.count_by_user()
+        self._summary_cache_repo.invalidate()
 
         return BlogSyncResponse(synced_count=synced, total_count=total)

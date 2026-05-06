@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   getBlogAccounts,
   addBlogAccount,
+  updateBlogAccount,
   deleteBlogAccount,
   getBlogArticles,
   syncBlogAccount,
@@ -33,6 +34,10 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
   const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
   /** 同期中のプラットフォーム */
   const [syncingPlatform, setSyncingPlatform] = useState<string | null>(null);
+  /** 更新中のプラットフォーム */
+  const [updatingPlatform, setUpdatingPlatform] = useState<string | null>(null);
+  /** 解除中のプラットフォーム */
+  const [deletingPlatform, setDeletingPlatform] = useState<string | null>(null);
 
   /** アカウント map（platform → account） */
   const accountMap = new Map(accounts.map((a) => [a.platform, a]));
@@ -127,6 +132,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
   const handleDelete = async (platform: PlatformKey) => {
     const account = accountMap.get(platform);
     if (!account) return;
+    setDeletingPlatform(platform);
     setError(null);
     setSuccess(null);
     try {
@@ -135,6 +141,47 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
       setSuccess("アカウントを解除しました");
     } catch (e) {
       setError(e instanceof Error ? e.message : "アカウントの解除に失敗しました");
+    } finally {
+      setDeletingPlatform(null);
+    }
+  };
+
+  /**
+   * 連携済みアカウントの username を更新し、自動で記事を再同期する。
+   */
+  const handleUpdate = async (platform: PlatformKey, username: string) => {
+    const account = accountMap.get(platform);
+    if (!account) return false;
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) return false;
+    setUpdatingPlatform(platform);
+    setError(null);
+    setSuccess(null);
+    try {
+      await updateBlogAccount(platform, trimmedUsername);
+      setDraftUsernames((prev) => ({ ...prev, [platform]: "" }));
+      await loadData();
+      // 更新後に自動同期
+      try {
+        const result = await syncBlogAccount(account.id);
+        await loadData();
+        setSuccess(
+          `usernameを更新し、${result.synced_count}件の記事を取得しました（合計: ${result.total_count}件）`,
+        );
+      } catch (syncErr) {
+        setSuccess("usernameを更新しました。再同期してください。");
+        setError(
+          syncErr instanceof Error
+            ? syncErr.message
+            : "記事の同期に失敗しました。「同期」ボタンで再試行してください。",
+        );
+      }
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "usernameの更新に失敗しました");
+      return false;
+    } finally {
+      setUpdatingPlatform(null);
     }
   };
 
@@ -148,12 +195,15 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     setDraftUsernames,
     savingPlatform,
     syncingPlatform,
+    updatingPlatform,
+    deletingPlatform,
     summary,
     summaryLoading,
     accountMap,
     handleSave,
     handleSync,
     handleDelete,
+    handleUpdate,
     handleSummarize,
   };
 }

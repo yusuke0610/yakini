@@ -171,7 +171,9 @@
         "glib",
         "libffi",
         "devShells",
-        "shellHook"
+        "shellHook",
+        "dyld",
+        "DYLD"
     ],
     "flake8.args": [
         "--max-line-length=100"

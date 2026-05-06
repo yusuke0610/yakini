@@ -23,6 +23,7 @@ from app.services.tasks.worker import (
     _run_blog_summarize,
     _run_career_analysis,
     _run_github_analysis,
+    _safe_rollback,
     execute_task,
 )
 from sqlalchemy.orm import Session
@@ -66,6 +67,8 @@ class TestRunGithubAnalysis:
                 dependencies=[],
                 root_files=[],
                 detected_frameworks=[],
+                detected_devtools=[],
+                detected_infras=[],
             )
         ]
 
@@ -203,6 +206,20 @@ class TestRunBlogSummarize:
         db.commit()
         return user, cache
 
+    def _make_mock_repo(self, articles=None):
+        """BlogArticleRepository のモックを返す。articles 省略時は記事1件。"""
+        art = MagicMock()
+        art.title = "テスト記事"
+        art.url = "https://zenn.dev/test/articles/test"
+        art.published_at = "2024-01-01"
+        art.likes_count = 5
+        art.summary = "要約"
+        art.tags = ["Python"]
+        art.platform = "zenn"
+        mock_repo = MagicMock()
+        mock_repo.list_by_user.return_value = articles if articles is not None else [art]
+        return mock_repo
+
     def test_success_status_completed(self, db_session: Session):
         """正常系: LLM が要約を返し、status が completed になること。"""
         user, cache = self._make_user_and_cache(db_session)
@@ -210,6 +227,7 @@ class TestRunBlogSummarize:
         mock_llm.check_available = AsyncMock(return_value=True)
 
         with (
+            patch("app.services.tasks.worker.BlogArticleRepository", return_value=self._make_mock_repo()),
             patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm),
             patch(
                 "app.services.intelligence.llm_summarizer.summarize_blog_articles",
@@ -220,7 +238,7 @@ class TestRunBlogSummarize:
             _run(
                 _run_blog_summarize(
                     db_session,
-                    {"user_id": user.id, "articles": [{"title": "記事1"}]},
+                    {"user_id": user.id},
                 )
             )
 
@@ -228,6 +246,7 @@ class TestRunBlogSummarize:
         assert cache.status == "completed"
         assert cache.summary == "AI 要約テキスト"
         assert cache.completed_at is not None
+        assert cache.expires_at is not None
 
     def test_llm_unavailable_sets_dead_letter(self, db_session: Session):
         """LLM が利用不可の場合に status が dead_letter になること。"""
@@ -235,11 +254,14 @@ class TestRunBlogSummarize:
         mock_llm = MagicMock()
         mock_llm.check_available = AsyncMock(return_value=False)
 
-        with patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm):
+        with (
+            patch("app.services.tasks.worker.BlogArticleRepository", return_value=self._make_mock_repo()),
+            patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm),
+        ):
             _run(
                 _run_blog_summarize(
                     db_session,
-                    {"user_id": user.id, "articles": []},
+                    {"user_id": user.id},
                 )
             )
 
@@ -254,6 +276,7 @@ class TestRunBlogSummarize:
         mock_llm.check_available = AsyncMock(return_value=True)
 
         with (
+            patch("app.services.tasks.worker.BlogArticleRepository", return_value=self._make_mock_repo()),
             patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm),
             patch(
                 "app.services.intelligence.llm_summarizer.summarize_blog_articles",
@@ -264,19 +287,35 @@ class TestRunBlogSummarize:
             _run(
                 _run_blog_summarize(
                     db_session,
-                    {"user_id": user.id, "articles": []},
+                    {"user_id": user.id},
                 )
             )
 
         db_session.refresh(cache)
         assert cache.status == "dead_letter"
 
+    def test_no_articles_sets_dead_letter(self, db_session: Session):
+        """記事が 0 件の場合に status が dead_letter になること。"""
+        user, cache = self._make_user_and_cache(db_session, "blog-no-articles")
+
+        with patch("app.services.tasks.worker.BlogArticleRepository", return_value=self._make_mock_repo(articles=[])):
+            _run(
+                _run_blog_summarize(
+                    db_session,
+                    {"user_id": user.id},
+                )
+            )
+
+        db_session.refresh(cache)
+        assert cache.status == "dead_letter"
+        assert cache.error_message == "分析対象の記事がありません"
+
     def test_no_cache_returns_early(self, db_session: Session):
         """キャッシュが見つからない場合、例外なく早期リターンすること。"""
         _run(
             _run_blog_summarize(
                 db_session,
-                {"user_id": "ghost-user", "articles": []},
+                {"user_id": "ghost-user"},
             )
         )
 
@@ -293,11 +332,14 @@ class TestRunBlogSummarize:
 
         mock_llm.check_available = _fake_check_available
 
-        with patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm):
+        with (
+            patch("app.services.tasks.worker.BlogArticleRepository", return_value=self._make_mock_repo()),
+            patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm),
+        ):
             _run(
                 _run_blog_summarize(
                     db_session,
-                    {"user_id": user.id, "articles": []},
+                    {"user_id": user.id},
                 )
             )
 
@@ -551,6 +593,42 @@ class TestExecuteTask:
         mock_notify.assert_called_once_with(
             mock_db, TaskType.BLOG_SUMMARIZE, "notif-test-user", "completed"
         )
+
+
+# ── _safe_rollback ────────────────────────────────────────────────────────
+
+
+class TestSafeRollback:
+    def test_rollback_after_failed_commit_restores_session(self, db_session: Session):
+        """DB commit 失敗後に _safe_rollback を呼ぶと、セッションが再利用可能になること。"""
+        user = UserRepository(db_session).create(
+            "rollback-test-user", hashed_password=None, email="rollback@test.com"
+        )
+        cache = BlogSummaryCache(user_id=user.id, status="processing")
+        db_session.add(cache)
+        db_session.commit()
+
+        # コミット失敗をシミュレートしてセッションを PendingRollback 状態にする
+        db_session.execute.__self__ if hasattr(db_session.execute, "__self__") else None
+        db_session.rollback()  # まず手動でロールバックして dirty 状態を作る
+
+        # _safe_rollback は例外を上げないこと
+        _safe_rollback(db_session)
+
+        # ロールバック後にセッションが再利用可能であること
+        cache.status = "dead_letter"
+        db_session.commit()
+        db_session.refresh(cache)
+        assert cache.status == "dead_letter"
+
+    def test_safe_rollback_suppresses_exception(self):
+        """rollback() が例外を送出しても _safe_rollback は例外を外に漏らさないこと。"""
+        mock_db = MagicMock()
+        mock_db.rollback.side_effect = Exception("DB 接続断")
+
+        # 例外が外に漏れないこと
+        _safe_rollback(mock_db)
+        mock_db.rollback.assert_called_once()
 
 
 # ── _mark_dead_letter (career_analysis) ──────────────────────────────────

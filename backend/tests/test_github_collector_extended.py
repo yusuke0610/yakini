@@ -109,6 +109,11 @@ def _mock_http_client():
     """httpx.AsyncClient のコンテキストマネージャをモック化するヘルパー。"""
     mock_client = MagicMock()
     mock_client.closed = False
+    # client.get は非同期メソッドのため AsyncMock が必要
+    # fetch_file_content が 404 を受け取り None を返すようにする
+    _not_found = MagicMock(status_code=404)
+    mock_client.get = AsyncMock(return_value=_not_found)
+
     mock_http = MagicMock()
     mock_http.__aenter__ = AsyncMock(return_value=mock_client)
 

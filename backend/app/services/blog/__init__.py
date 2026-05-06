@@ -1,5 +1,6 @@
 """ブログ関連サービス。"""
 
+from .account_service import BlogAccountService
 from .collector import (
     BlogAccountNotFoundError,
     BlogPlatformRequestError,
@@ -20,6 +21,7 @@ from .scorer import (
 
 __all__ = [
     "ArticleWithTechFlag",
+    "BlogAccountService",
     "BlogAccountNotFoundError",
     "BlogPlatformRequestError",
     "BlogScore",

@@ -119,10 +119,24 @@ def build_user_prompt(
             lang_strs = [f"{name}: {b * 100 // total}%" for name, b in sorted_langs]
             parts.append(f"主要言語: {', '.join(lang_strs)}")
 
-        # 検出フレームワークは設計思想・フレームワーク成熟度の評価根拠として別行で明示する
-        detected_frameworks = ar.get("detected_frameworks") or []
-        if detected_frameworks:
-            parts.append(f"検出フレームワーク: {', '.join(detected_frameworks)}")
+        # 検出フレームワーク・DevTools・インフラは設計思想・成熟度の評価根拠として別行で明示する
+        def _extract_names(value: object) -> list[str]:
+            """新形式（Dict[str, int]）・旧形式（List[str]）のどちらにも対応する。"""
+            if isinstance(value, dict):
+                return list(value.keys())
+            if isinstance(value, list):
+                return list(value)
+            return []
+
+        fw_names = _extract_names(ar.get("detected_frameworks"))
+        if fw_names:
+            parts.append(f"検出フレームワーク: {', '.join(fw_names)}")
+        dt_names = _extract_names(ar.get("detected_devtools"))
+        if dt_names:
+            parts.append(f"DevTools: {', '.join(dt_names)}")
+        inf_names = _extract_names(ar.get("detected_infras"))
+        if inf_names:
+            parts.append(f"インフラ: {', '.join(inf_names)}")
 
         all_skills: set[str] = set()
         for repo in ar.get("repositories", []):

@@ -96,6 +96,7 @@ export type BlogAccount = {
   id: string;
   platform: "zenn" | "note" | "qiita";
   username: string;
+  last_synced_at: string | null;
   created_at: string;
 };
 

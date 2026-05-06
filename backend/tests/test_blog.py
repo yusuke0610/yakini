@@ -1,6 +1,8 @@
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
-from app.models import BlogAccount
+import pytest
+from app.models import BlogAccount, BlogSummaryCache
 from app.repositories import BlogAccountRepository
 from fastapi.testclient import TestClient
 from sqlalchemy.orm.session import Session
@@ -146,6 +148,155 @@ def test_delete_blog_account(client: TestClient) -> None:
     assert resp.json() == []
 
 
+def test_update_blog_account_resets_articles_sync_state_and_summary_cache(
+    client: TestClient, db_session: Session
+) -> None:
+    """PATCH で username を更新し、記事・同期状態・サマリキャッシュを初期化する。"""
+    headers = auth_header(client)
+    with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True):
+        resp = client.post(
+            "/api/blog/accounts",
+            json={
+                "platform": "note",
+                "username": "old-user",
+            },
+            headers=headers,
+        )
+    account_id = resp.json()["id"]
+
+    from app.repositories import BlogArticleRepository, UserRepository
+
+    user = UserRepository(db_session).get_by_username("testuser")
+    account_repo = BlogAccountRepository(db_session, user.id)
+    account = account_repo.get_by_id(account_id)
+    assert account is not None
+    account.last_synced_at = datetime.now(timezone.utc)
+    db_session.add(
+        BlogSummaryCache(
+            user_id=user.id,
+            summary="既存の分析結果",
+            status="completed",
+        )
+    )
+    db_session.commit()
+
+    repo = BlogArticleRepository(db_session, user.id)
+    repo.upsert_many(
+        [
+            {
+                "account_id": account.id,
+                "platform": "note",
+                "external_id": "note-1",
+                "title": "記事1",
+                "url": "https://note.com/old-user/n/note-1",
+                "published_at": "2026-04-01",
+                "likes_count": 3,
+                "summary": "要約",
+                "tags": ["note"],
+            },
+        ]
+    )
+
+    with patch(
+        "app.services.blog.account_service.verify_user_exists",
+        new_callable=AsyncMock,
+        return_value=True,
+    ) as mock_verify:
+        resp = client.patch(
+            "/api/blog/accounts/note",
+            json={"username": "new-user"},
+            headers=headers,
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["username"] == "new-user"
+    assert data["last_synced_at"] is None
+    mock_verify.assert_awaited_once_with("note", "new-user")
+
+    refreshed_account = account_repo.get_by_id(account_id)
+    assert refreshed_account is not None
+    assert refreshed_account.username == "new-user"
+    assert refreshed_account.last_synced_at is None
+    assert repo.count_by_user() == 0
+    assert db_session.query(BlogSummaryCache).filter_by(user_id=user.id).first() is None
+
+
+def test_update_blog_account_rolls_back_when_invalidation_fails(
+    client: TestClient, db_session: Session
+) -> None:
+    """キャッシュ無効化で失敗した場合、記事削除と username 更新がロールバックされる。"""
+    headers = auth_header(client)
+    with patch(_VERIFY_PATCH, new_callable=AsyncMock, return_value=True):
+        resp = client.post(
+            "/api/blog/accounts",
+            json={
+                "platform": "note",
+                "username": "old-user",
+            },
+            headers=headers,
+        )
+    account_id = resp.json()["id"]
+
+    from app.repositories import BlogArticleRepository, UserRepository
+
+    user = UserRepository(db_session).get_by_username("testuser")
+    account_repo = BlogAccountRepository(db_session, user.id)
+    account = account_repo.get_by_id(account_id)
+    assert account is not None
+    account.last_synced_at = datetime.now(timezone.utc)
+    db_session.add(
+        BlogSummaryCache(
+            user_id=user.id,
+            summary="既存の分析結果",
+            status="completed",
+        )
+    )
+    db_session.commit()
+
+    repo = BlogArticleRepository(db_session, user.id)
+    repo.upsert_many(
+        [
+            {
+                "account_id": account.id,
+                "platform": "note",
+                "external_id": "note-1",
+                "title": "記事1",
+                "url": "https://note.com/old-user/n/note-1",
+                "published_at": "2026-04-01",
+                "likes_count": 3,
+                "summary": "要約",
+                "tags": ["note"],
+            },
+        ]
+    )
+
+    with (
+        patch(
+            "app.services.blog.account_service.verify_user_exists",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(
+            "app.services.blog.account_service.BlogSummaryCacheRepository.invalidate",
+            side_effect=RuntimeError("cache invalidate failed"),
+        ),
+        pytest.raises(RuntimeError, match="cache invalidate failed"),
+    ):
+        client.patch(
+            "/api/blog/accounts/note",
+            json={"username": "new-user"},
+            headers=headers,
+        )
+
+    refreshed_account = account_repo.get_by_id(account_id)
+    assert refreshed_account is not None
+    assert refreshed_account.username == "old-user"
+    assert refreshed_account.last_synced_at is not None
+    assert repo.count_by_user() == 1
+    assert db_session.query(BlogSummaryCache).filter_by(user_id=user.id).first() is not None
+
+
 def test_list_blog_articles(client: TestClient) -> None:
     """GET で記事一覧取得。"""
     auth_header(client)
@@ -251,6 +402,7 @@ def test_sync_account_normalizes_saved_username_and_removes_stale_articles(
     refreshed_account = BlogAccountRepository(db_session, user.id).get_by_id(account.id)
     assert refreshed_account is not None
     assert refreshed_account.username == "testuser"
+    assert refreshed_account.last_synced_at is not None
     assert repo.count_by_user() == 0
 
 
@@ -348,22 +500,7 @@ def test_summarize_blog_returns_202_when_llm_available(client: TestClient) -> No
     """LLM 利用可能時は 202 で pending を返す。"""
     headers = auth_header(client)
     with patch("app.routers.blog.check_llm_available", new_callable=AsyncMock, return_value=True):
-        resp = client.post(
-            "/api/blog/summarize",
-            json={
-                "articles": [
-                    {
-                        "platform": "zenn",
-                        "title": "記事",
-                        "url": "https://zenn.dev/example/articles/test",
-                        "summary": "要約",
-                        "tags": ["Python"],
-                        "likes_count": 0,
-                    }
-                ]
-            },
-            headers=headers,
-        )
+        resp = client.post("/api/blog/summarize", headers=headers)
     assert resp.status_code == 202
     data = resp.json()
     assert data["status"] == "pending"
@@ -374,21 +511,92 @@ def test_summarize_blog_returns_unavailable_when_llm_not_available(client: TestC
     """LLM 利用不可なら available=false を返す。"""
     headers = auth_header(client)
     with patch("app.routers.blog.check_llm_available", new_callable=AsyncMock, return_value=False):
-        resp = client.post(
-            "/api/blog/summarize",
-            json={
-                "articles": [
-                    {
-                        "platform": "zenn",
-                        "title": "記事",
-                        "url": "https://zenn.dev/example/articles/test",
-                        "summary": "要約",
-                        "tags": ["Python"],
-                        "likes_count": 0,
-                    }
-                ]
-            },
-            headers=headers,
-        )
+        resp = client.post("/api/blog/summarize", headers=headers)
     assert resp.status_code == 202
     assert resp.json()["available"] is False
+
+
+# ── キャッシュ TTL ─────────────────────────────────────────────────────────
+
+
+def test_get_summary_cache_returns_unavailable_when_expired(
+    client: TestClient, db_session: Session
+) -> None:
+    """expires_at が過去のキャッシュは無効と見なし available=false を返す。"""
+    from datetime import timedelta
+
+    from app.repositories import UserRepository
+
+    headers = auth_header(client)
+    user = UserRepository(db_session).get_by_username("testuser")
+    db_session.add(
+        BlogSummaryCache(
+            user_id=user.id,
+            summary="古い分析結果",
+            status="completed",
+            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+    )
+    db_session.commit()
+
+    resp = client.get("/api/blog/summary-cache", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["available"] is False
+    assert data["summary"] == ""
+
+    # レコードが削除されていること
+    assert db_session.query(BlogSummaryCache).filter_by(user_id=user.id).first() is None
+
+
+def test_get_summary_cache_returns_data_when_not_expired(
+    client: TestClient, db_session: Session
+) -> None:
+    """expires_at が未来のキャッシュは有効と見なし summary を返す。"""
+    from datetime import timedelta
+
+    from app.repositories import UserRepository
+
+    headers = auth_header(client)
+    user = UserRepository(db_session).get_by_username("testuser")
+    db_session.add(
+        BlogSummaryCache(
+            user_id=user.id,
+            summary="有効な分析結果",
+            status="completed",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        )
+    )
+    db_session.commit()
+
+    resp = client.get("/api/blog/summary-cache", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["available"] is True
+    assert data["summary"] == "有効な分析結果"
+
+
+def test_summarize_blog_allows_regenration_when_cache_expired(
+    client: TestClient, db_session: Session
+) -> None:
+    """期限切れキャッシュは pending/processing 扱いにならず再生成を許可する。"""
+    from datetime import timedelta
+
+    from app.repositories import UserRepository
+
+    headers = auth_header(client)
+    user = UserRepository(db_session).get_by_username("testuser")
+    db_session.add(
+        BlogSummaryCache(
+            user_id=user.id,
+            summary="古い要約",
+            status="completed",
+            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+    )
+    db_session.commit()
+
+    with patch("app.routers.blog.check_llm_available", new_callable=AsyncMock, return_value=True):
+        resp = client.post("/api/blog/summarize", headers=headers)
+    assert resp.status_code == 202
+    assert resp.json()["status"] == "pending"

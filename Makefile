@@ -1,6 +1,6 @@
 .PHONY: help \
 	setup install-hooks install-backend install-frontend generate-keys \
-	dev dev-build dev-down dev-frontend dev-backend \
+	dev dev-build dev-down dev-frontend dev-backend dev-proxy dev-proxy-only \
 	test test-backend test-frontend \
 	lint lint-backend lint-frontend lint-fix \
 	format format-check \
@@ -26,6 +26,8 @@ help:
 	@echo "  dev-down          docker-compose を停止"
 	@echo "  dev-frontend      Vite dev server を起動"
 	@echo "  dev-backend       uvicorn で Backend を直接起動"
+	@echo "  dev-proxy         Vite + Firebase Cookie 再現プロキシを起動 (localhost:3000)"
+	@echo "  dev-proxy-only    プロキシのみ起動 (Vite が起動済みの場合)"
 	@echo ""
 	@echo "テスト・リント"
 	@echo "  ci                lint + test + build-frontend を一括実行 (CI 相当)"
@@ -86,6 +88,12 @@ dev-frontend:
 
 dev-backend:
 	cd backend && .venv/bin/python -m uvicorn app.main:app --reload
+
+dev-proxy:
+	cd frontend && npm run dev:all
+
+dev-proxy-only:
+	cd frontend && npm run dev:proxy
 
 # ------------------------------------------------------------------ #
 # テスト・リント

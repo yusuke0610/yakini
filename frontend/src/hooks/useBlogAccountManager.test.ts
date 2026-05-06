@@ -9,6 +9,7 @@ const dummyAccounts: BlogAccount[] = [
     id: "acc-1",
     platform: "zenn",
     username: "testuser",
+    last_synced_at: "2024-01-02T00:00:00",
     created_at: "2024-01-01T00:00:00",
   },
 ];
@@ -32,6 +33,7 @@ vi.mock("../api", () => ({
   getBlogAccounts: vi.fn(),
   getBlogArticles: vi.fn(),
   addBlogAccount: vi.fn(),
+  updateBlogAccount: vi.fn(),
   deleteBlogAccount: vi.fn(),
   syncBlogAccount: vi.fn(),
   summarizeBlogArticles: vi.fn(),
@@ -151,5 +153,44 @@ describe("useBlogAccountManager", () => {
     expect(result.current.success).toBe("アカウントを連携しました");
     // 同期失敗エラーが出ること
     expect(result.current.error).toBe("同期に失敗しました");
+  });
+
+  it("handleUpdate を呼ぶと updateBlogAccount が呼ばれ未同期状態に更新される", async () => {
+    api.getBlogAccounts
+      .mockResolvedValueOnce(dummyAccounts)
+      .mockResolvedValueOnce([
+        {
+          ...dummyAccounts[0],
+          username: "updated-user",
+          last_synced_at: null,
+        },
+      ]);
+    api.getBlogArticles
+      .mockResolvedValueOnce(dummyArticles)
+      .mockResolvedValueOnce([]);
+    api.updateBlogAccount.mockResolvedValue({
+      ...dummyAccounts[0],
+      username: "updated-user",
+      last_synced_at: null,
+    });
+
+    const { result } = renderHook(() => useBlogAccountManager("all"));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let updated = false;
+    await act(async () => {
+      updated = await result.current.handleUpdate("zenn", "updated-user");
+    });
+
+    expect(updated).toBe(true);
+    expect(api.updateBlogAccount).toHaveBeenCalledWith("zenn", "updated-user");
+    await waitFor(() => {
+      expect(result.current.accounts[0]?.username).toBe("updated-user");
+    });
+    expect(result.current.accounts[0]?.last_synced_at).toBeNull();
+    expect(result.current.success).toBe("usernameを更新しました。再同期してください。");
   });
 });

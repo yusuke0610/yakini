@@ -26,7 +26,7 @@ test.describe("GitHub 分析 - 検出フレームワーク表示", () => {
             unique_skills: 5,
             analyzed_at: "2026-04-24T00:00:00Z",
             languages: { TypeScript: 60000, Python: 40000 },
-            detected_frameworks: ["React", "Next.js", "FastAPI"],
+            detected_frameworks: { React: 5, "Next.js": 3, FastAPI: 2 },
             position_scores: null,
           },
           position_advice: null,
