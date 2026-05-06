@@ -8,6 +8,8 @@ from .blog import (
     BlogArticleResponse,
     BlogScoreArticleResponse,
     BlogScoreResponse,
+    BlogSummaryArticleItem,
+    BlogSummaryRequest,
     BlogSummaryResponse,
     BlogSyncResponse,
 )
@@ -60,6 +62,8 @@ __all__ = [
     "BlogArticleResponse",
     "BlogScoreArticleResponse",
     "BlogScoreResponse",
+    "BlogSummaryArticleItem",
+    "BlogSummaryRequest",
     "BlogSummaryResponse",
     "BlogSyncResponse",
     "CachedAnalysisResponse",

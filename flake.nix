@@ -18,6 +18,10 @@
           glib
           gobject-introspection
           libffi
+          gdk-pixbuf
+          fontconfig
+          freetype
+          harfbuzz
         ];
       in
       {
@@ -38,6 +42,8 @@
             libffi
             fontconfig
             freetype
+            harfbuzz
+            gdk-pixbuf
 
             # --- ミドルウェア ---
             redis              # Redis 7（ローカル開発用）
