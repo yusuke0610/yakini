@@ -113,23 +113,37 @@ def test_blog_summarize_timeout_propagates(db_session: Session) -> None:
     mock_llm = MagicMock()
     mock_llm.check_available = AsyncMock(return_value=True)
 
+    # DB に記事がないと worker が early return するため、記事リストをモックで返す
+    mock_article = MagicMock()
+    mock_article.title = "テスト記事"
+    mock_article.url = "https://example.com"
+    mock_article.published_at = "2026-01-01"
+    mock_article.likes_count = 0
+    mock_article.summary = ""
+    mock_article.tags = []
+    mock_article.platform = "zenn"
+
     with patch(
         "app.services.tasks.worker.get_llm_client",
         return_value=mock_llm,
     ):
-        # ローカルインポートされる summarize_blog_articles を patch する
         with patch(
-            "app.services.intelligence.llm_summarizer.summarize_blog_articles",
-            new_callable=AsyncMock,
-            side_effect=asyncio.TimeoutError,
-        ):
-            with pytest.raises(asyncio.TimeoutError):
-                _run(
-                    _run_blog_summarize(
-                        db_session,
-                        {"user_id": user.id, "articles": []},
+            "app.services.tasks.worker.BlogArticleRepository",
+        ) as mock_repo_cls:
+            mock_repo_cls.return_value.list_by_user.return_value = [mock_article]
+            # ローカルインポートされる summarize_blog_articles を patch する
+            with patch(
+                "app.services.intelligence.llm_summarizer.summarize_blog_articles",
+                new_callable=AsyncMock,
+                side_effect=asyncio.TimeoutError,
+            ):
+                with pytest.raises(asyncio.TimeoutError):
+                    _run(
+                        _run_blog_summarize(
+                            db_session,
+                            {"user_id": user.id, "articles": []},
+                        )
                     )
-                )
 
     db_session.refresh(cache)
     assert cache.status == "processing"

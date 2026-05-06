@@ -69,6 +69,7 @@ __all__ = [
     "collect_repos",
     "GitHubUserNotFoundError",
     "DEPENDENCY_TO_FRAMEWORK",
+    "_detect_from_root_files",
     "_detect_devtools_from_root_files",
     "_detect_infras_from_root_files",
     "_detect_infras_from_dependencies",
@@ -79,6 +80,17 @@ __all__ = [
     "_parse_go_mod",
     "GITHUB_API",
 ]
+
+
+def _detect_from_root_files(root_files: List[str]) -> List[str]:
+    """ルートファイルからdevtools・インフラを重複なく検出して返す。"""
+    seen: set[str] = set()
+    result: List[str] = []
+    for item in _detect_devtools_from_root_files(root_files) + _detect_infras_from_root_files(root_files):
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
 
 
 @dataclass

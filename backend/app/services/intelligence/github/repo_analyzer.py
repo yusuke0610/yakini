@@ -67,6 +67,8 @@ DEPENDENCY_TO_FRAMEWORK: Dict[str, str] = {
     "github.com/gin-gonic/gin": "Gin",
     "github.com/labstack/echo": "Echo",
     "github.com/gofiber/fiber": "Fiber",
+    # クラウド SDK（フレームワーク扱い）
+    "boto3": "AWS",
 }
 
 # 依存関係 → インフラ・クラウドプロバイダー名のマッピング
@@ -91,7 +93,7 @@ _DEVTOOL_ROOT_FILES: Dict[str, str] = {
     "docker-compose.yml": "Docker Compose",
     "docker-compose.yaml": "Docker Compose",
     ".github": "GitHub Actions",
-    "Makefile": "Make",
+    "Makefile": "Build Automation",
     "Jenkinsfile": "Jenkins",
     ".gitlab-ci.yml": "GitLab CI",
     ".circleci": "CircleCI",

@@ -478,7 +478,7 @@ def test_auth_failed_logged_when_cookie_missing(client, caplog) -> None:
 def test_auth_failed_logged_for_invalid_jwt(client, caplog) -> None:
     """不正な JWT で 401 + reason=jwt_decode_error がログされることを確認する。"""
     client.cookies.clear()
-    client.cookies.set("access_token", "not-a-valid-jwt")
+    client.cookies.set("__session", json.dumps({"access_token": "not-a-valid-jwt"}))
     with caplog.at_level(logging.WARNING, logger="devforge"):
         response = client.get("/auth/me")
 
@@ -491,7 +491,7 @@ def test_auth_failed_logged_for_user_not_found(client, caplog) -> None:
     """DB に存在しないユーザー名のトークンで reason=user_not_found がログされることを確認する。"""
     token = create_access_token("nonexistent-user-xyz")
     client.cookies.clear()
-    client.cookies.set("access_token", token)
+    client.cookies.set("__session", json.dumps({"access_token": token}))
     with caplog.at_level(logging.WARNING, logger="devforge"):
         response = client.get("/auth/me")
 
