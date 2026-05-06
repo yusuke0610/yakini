@@ -67,7 +67,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # セッション Cookie がない場合は CSRF チェック不要（Bearer 認証など）
-        if not request.cookies.get("access_token"):
+        if not request.cookies.get("__session"):
             return await call_next(request)
 
         cookie_token = request.cookies.get(CSRF_COOKIE_NAME, "")

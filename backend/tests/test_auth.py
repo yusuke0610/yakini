@@ -59,10 +59,12 @@ def test_hs256_token_rejected_by_rs256_verification() -> None:
 def test_access_token_cannot_be_used_as_refresh(client) -> None:
     """アクセストークンでリフレッシュエンドポイントを叩いて拒否されることを確認する。"""
     auth_header(client, "rftest")
-    # 既存の有効なリフレッシュトークンを削除してアクセストークンで置き換える
-    access_token = client.cookies.get("access_token", "")
-    del client.cookies["refresh_token"]
-    client.cookies.set("refresh_token", access_token)
+    # __session から access_token を取り出し、refresh_token として上書きする
+    import json as _json
+    raw = client.cookies.get("__session", "{}")
+    data = _json.loads(raw)
+    data["refresh_token"] = data.get("access_token", "")
+    client.cookies.set("__session", _json.dumps(data))
 
     response = client.post("/auth/refresh")
 
@@ -71,9 +73,14 @@ def test_access_token_cannot_be_used_as_refresh(client) -> None:
 
 def test_refresh_token_cannot_access_api(client) -> None:
     """リフレッシュトークンで通常 API を叩いて拒否されることを確認する。"""
+    import json as _json
     auth_header(client, "apitest")
+    # __session の access_token をリフレッシュトークンで上書きする
     refresh_token, _ = create_refresh_token("apitest")
-    client.cookies.set("access_token", refresh_token)
+    raw = client.cookies.get("__session", "{}")
+    data = _json.loads(raw)
+    data["access_token"] = refresh_token
+    client.cookies.set("__session", _json.dumps(data))
 
     response = client.get("/auth/me")
 
@@ -117,10 +124,14 @@ def test_logout_invalidates_refresh_token(client) -> None:
 
 def test_refresh_rejects_revoked_jti(client) -> None:
     """DB の refresh_jti と一致しないトークンでリフレッシュが拒否されることを確認する。"""
+    import json as _json
     auth_header(client, "revokeduser")
-    # jti が DB と一致しない別トークンを発行してセット
+    # jti が DB と一致しない別トークンを発行し、__session の refresh_token を上書きする
     stale_token, _ = create_refresh_token("revokeduser")
-    client.cookies.set("refresh_token", stale_token)
+    raw = client.cookies.get("__session", "{}")
+    data = _json.loads(raw)
+    data["refresh_token"] = stale_token
+    client.cookies.set("__session", _json.dumps(data))
 
     response = client.post("/auth/refresh")
 
