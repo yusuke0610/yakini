@@ -216,7 +216,8 @@ class BlogSummaryCacheRepository:
         """キャッシュを取得する。expires_at を過ぎていれば削除して None を返す。"""
         statement = select(BlogSummaryCache).where(BlogSummaryCache.user_id == self.user_id)
         cache = self.db.scalar(statement)
-        if cache and cache.expires_at and cache.expires_at <= datetime.now(timezone.utc):
+        # SQLite は timezone を保持しないため naive UTC と比較する
+        if cache and cache.expires_at and cache.expires_at <= datetime.now(timezone.utc).replace(tzinfo=None):
             self.db.delete(cache)
             self.db.commit()
             return None

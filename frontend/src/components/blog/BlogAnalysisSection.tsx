@@ -1,3 +1,4 @@
+import { marked } from "marked";
 import styles from "./BlogPage.module.css";
 
 /** BlogAnalysisSection のプロパティ型 */
@@ -15,6 +16,8 @@ type BlogAnalysisSectionProps = {
 export function BlogAnalysisSection({ summaryLoading, summary }: BlogAnalysisSectionProps) {
   if (!summaryLoading && !summary) return null;
 
+  const summaryHtml = summary ? (marked.parse(summary, { async: false }) as string) : "";
+
   return (
     <div className={styles.aiSection}>
       <h2>AI 分析結果</h2>
@@ -26,7 +29,7 @@ export function BlogAnalysisSection({ summaryLoading, summary }: BlogAnalysisSec
           </p>
         </>
       ) : (
-        <p className={styles.summaryText}>{summary}</p>
+        <div className={styles.summaryText} dangerouslySetInnerHTML={{ __html: summaryHtml }} />
       )}
     </div>
   );

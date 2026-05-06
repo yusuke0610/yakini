@@ -49,9 +49,12 @@
             gnumake
           ];
 
-          # WeasyPrint が共有ライブラリを発見できるよう LD_LIBRARY_PATH を設定
+          # WeasyPrint が共有ライブラリを発見できるよう動的リンカーのパスを設定
+          # macOS の dyld は LD_LIBRARY_PATH を無視するため DYLD_* も設定する
           shellHook = ''
             export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath weasyPrintLibs}:$LD_LIBRARY_PATH"
+            export DYLD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath weasyPrintLibs}:''${DYLD_LIBRARY_PATH:-}"
+            export DYLD_FALLBACK_LIBRARY_PATH="${pkgs.lib.makeLibraryPath weasyPrintLibs}:''${DYLD_FALLBACK_LIBRARY_PATH:-}"
 
             # uv が Python 3.13 を使うよう明示
             export UV_PYTHON="${pkgs.python313}/bin/python3"
