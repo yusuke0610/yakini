@@ -195,7 +195,7 @@ export function GitHubAnalysisPage() {
           Object.keys(result.detected_frameworks).length > 0 && (
             <div className={styles.section}>
               <h2>Frameworks</h2>
-              <TechBar techs={result.detected_frameworks} />
+              <TechBar techs={result.detected_frameworks} ariaLabel="検出フレームワーク一覧" />
             </div>
           )}
 

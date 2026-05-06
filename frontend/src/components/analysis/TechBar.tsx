@@ -62,12 +62,14 @@ const FALLBACK_COLORS = [
 interface TechBarProps {
   /** ツール名 → 使用リポジトリ数 */
   techs: Record<string, number>;
+  /** リスト要素の aria-label */
+  ariaLabel?: string;
 }
 
 /**
  * フレームワーク・DevTools・インフラを使用リポジトリ数の割合バーで表示するコンポーネント。
  */
-export function TechBar({ techs }: TechBarProps) {
+export function TechBar({ techs, ariaLabel }: TechBarProps) {
   const [hoveredTech, setHoveredTech] = useState<string | null>(null);
 
   const items = useMemo(() => {
@@ -131,9 +133,9 @@ export function TechBar({ techs }: TechBarProps) {
         </div>
       </div>
 
-      <div className={styles.legend}>
+      <ul className={styles.legend} aria-label={ariaLabel}>
         {items.map(({ name, percentage, color }) => (
-          <span
+          <li
             key={name}
             className={`${styles.legendItem} ${hoveredTech === name ? styles.legendItemHovered : ""}`}
             onMouseEnter={() => setHoveredTech(name)}
@@ -144,9 +146,9 @@ export function TechBar({ techs }: TechBarProps) {
             <span className={styles.techPercent}>
               {percentage < 0.1 ? "<0.1" : percentage.toFixed(1)}%
             </span>
-          </span>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }
