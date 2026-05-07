@@ -152,7 +152,7 @@ def test_cookie_secure_defaults_false_for_localhost(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("COOKIE_SECURE", raising=False)
-    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173")
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000")
 
     assert get_cookie_secure() is False
 
@@ -163,7 +163,7 @@ def test_cookie_secure_defaults_true_when_non_local_origin_exists(
     monkeypatch.delenv("COOKIE_SECURE", raising=False)
     monkeypatch.setenv(
         "CORS_ORIGINS",
-        "http://localhost:5173,https://app.example.com",
+        "http://localhost:3000,https://app.example.com",
     )
 
     assert get_cookie_secure() is True
@@ -173,7 +173,7 @@ def test_cookie_samesite_defaults_lax_for_localhost(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("COOKIE_SAMESITE", raising=False)
-    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173")
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000")
 
     assert get_cookie_samesite() == "lax"
 
@@ -271,7 +271,7 @@ def test_github_login_url_returns_state(client) -> None:
     """login-url エンドポイントが authorization_url と state を JSON で返すことを確認する。"""
     response = client.get(
         "/auth/github/login-url",
-        headers={"Origin": "http://localhost:5173"},
+        headers={"Origin": "http://localhost:3000"},
     )
 
     assert response.status_code == 200
@@ -291,7 +291,7 @@ def test_github_login_url_uses_frontend_origin_when_callback_base_url_unset(clie
     response = client.get(
         "/auth/github/login-url",
         headers={
-            "Origin": "http://localhost:5173",
+            "Origin": "http://localhost:3000",
             "Host": "devforge-dev-nktebahhoq-an.a.run.app",
             "X-Forwarded-Proto": "https",
         },
@@ -300,7 +300,7 @@ def test_github_login_url_uses_frontend_origin_when_callback_base_url_unset(clie
     assert response.status_code == 200
     parsed = urlparse(response.json()["authorization_url"])
     redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
-    assert redirect_uri == "http://localhost:5173/github/callback"
+    assert redirect_uri == "http://localhost:3000/github/callback"
 
 
 def test_github_login_url_uses_callback_base_url_when_set(client) -> None:
@@ -309,7 +309,7 @@ def test_github_login_url_uses_callback_base_url_when_set(client) -> None:
         response = client.get(
             "/auth/github/login-url",
             headers={
-                "Origin": "http://localhost:5173",
+                "Origin": "http://localhost:3000",
                 "Host": "devforge-dev-nktebahhoq-an.a.run.app",
                 "X-Forwarded-Proto": "https",
             },
@@ -325,7 +325,7 @@ def test_github_login_redirect_to_github(client) -> None:
     """GET /auth/github/login が GitHub の認可 URL に 303 リダイレクトすることを確認する。"""
     response = client.get(
         "/auth/github/login",
-        params={"return_to": "http://localhost:5173/index.html"},
+        params={"return_to": "http://localhost:3000/index.html"},
         headers={
             "Host": "devforge-dev-nktebahhoq-an.a.run.app",
             "X-Forwarded-Proto": "https",
@@ -337,13 +337,13 @@ def test_github_login_redirect_to_github(client) -> None:
     assert "https://github.com/login/oauth/authorize" in response.headers["location"]
     parsed = urlparse(response.headers["location"])
     redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
-    assert redirect_uri == "http://localhost:5173/github/callback"
+    assert redirect_uri == "http://localhost:3000/github/callback"
 
 
 def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
     client.cookies.set(
         "__session",
-        json.dumps({"state": "expected-state", "redirect": "http://localhost:5173/index.html"}),
+        json.dumps({"state": "expected-state", "redirect": "http://localhost:3000/index.html"}),
     )
 
     with patch("httpx.AsyncClient") as mock_async_client:
@@ -355,14 +355,14 @@ def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
     assert response.status_code == 200
     assert mock_async_client.call_count == 0
     # 200 + HTML リダイレクト: URL が HTML 本文に含まれていることを確認する
-    assert "localhost:5173" in response.text
+    assert "localhost:3000" in response.text
     assert "github_error=" in response.text
 
 
 def test_github_callback_redirect_sets_auth_cookie(client) -> None:
     client.cookies.set(
         "__session",
-        json.dumps({"state": "expected-state", "redirect": "http://localhost:5173/index.html"}),
+        json.dumps({"state": "expected-state", "redirect": "http://localhost:3000/index.html"}),
     )
 
     token_response = MagicMock()
@@ -385,7 +385,7 @@ def test_github_callback_redirect_sets_auth_cookie(client) -> None:
 
     assert response.status_code == 200
     # 200 + HTML リダイレクト: フロントエンド URL が HTML 本文に含まれていることを確認する
-    assert "localhost:5173/index.html" in response.text
+    assert "localhost:3000/index.html" in response.text
     assert "access_token=" in response.headers["set-cookie"]
 
 
@@ -446,14 +446,14 @@ def test_github_callback_post_uses_frontend_origin_when_callback_base_url_unset(
             "/auth/github/callback",
             json={"code": "test-code", "state": "state-from-frontend"},
             headers={
-                "Origin": "http://localhost:5173",
+                "Origin": "http://localhost:3000",
                 "Host": "localhost:8000",
             },
         )
 
     assert response.status_code == 200
     posted_kwargs = mock_http.post.call_args.kwargs
-    assert posted_kwargs["json"]["redirect_uri"] == "http://localhost:5173/github/callback"
+    assert posted_kwargs["json"]["redirect_uri"] == "http://localhost:3000/github/callback"
 
 
 # ── 不正アクセス追跡: 認証失敗ログ ────────────────────────────────

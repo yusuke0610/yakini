@@ -99,12 +99,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ```bash
 cd frontend
-cp .env.example .env
 npm install
-npm run dev
+make dev-proxy
 ```
 
-ブラウザで `http://localhost:5173` を開きます。
+ブラウザで `http://localhost:3000` を開きます。
 
 #### Docker起動（FastAPI + Ollama）
 
