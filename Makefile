@@ -105,12 +105,6 @@ dev-proxy:
 dev-proxy-only:
 	cd frontend && npm run dev:proxy
 
-dev-proxy:
-	cd frontend && npm run dev:all
-
-dev-proxy-only:
-	cd frontend && npm run dev:proxy
-
 # ------------------------------------------------------------------ #
 # テスト・リント
 # ------------------------------------------------------------------ #

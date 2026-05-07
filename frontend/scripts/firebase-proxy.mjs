@@ -56,29 +56,56 @@ function stripCookies(req, _res, next) {
   next();
 }
 
+/**
+ * 3xx レスポンスから Set-Cookie を除去する。
+ *
+ * Firebase Hosting CDN は 303 等のリダイレクトレスポンスに付いた Set-Cookie を転送しない。
+ * この挙動をローカルで再現することで、HTML リダイレクト方式の修正が正しく機能するか検証できる。
+ */
+function stripRedirectSetCookie(proxyRes) {
+  if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400) {
+    const cookies = proxyRes.headers["set-cookie"];
+    if (cookies) {
+      console.log(
+        `[proxy] ${proxyRes.statusCode} response: Set-Cookie を除去 (${cookies.length} 件) — Firebase CDN 挙動の再現`
+      );
+      delete proxyRes.headers["set-cookie"];
+    }
+  }
+}
+
 // バックエンドへのプロキシ（Cookie strip あり）
 const backendProxy = createProxyMiddleware({
   target: BACKEND_URL,
   changeOrigin: true,
+  on: {
+    proxyRes: stripRedirectSetCookie,
+  },
 });
 
-app.use("/auth", stripCookies, backendProxy);
-app.use("/api", stripCookies, backendProxy);
-app.use("/health", stripCookies, backendProxy);
+const frontendProxy = createProxyMiddleware({
+  target: FRONTEND_URL,
+  changeOrigin: true,
+  ws: true,
+});
 
-// フロントエンドへのプロキシ（Cookie strip なし）
-app.use(
-  "/",
-  createProxyMiddleware({
-    target: FRONTEND_URL,
-    changeOrigin: true,
-    ws: true,
-  })
-);
+// app.use("/auth", ...) のような Express prefix matching は req.url から /auth を除去するため、
+// バックエンドに /github/login-url のような不完全なパスが届く。
+// catch-all で受けて req.url を自前でチェックし、パス全体を保持したままルーティングする。
+const BACKEND_PREFIXES = ["/auth", "/api", "/health"];
+
+app.use((req, res, next) => {
+  if (BACKEND_PREFIXES.some((prefix) => req.url.startsWith(prefix))) {
+    stripCookies(req, res, () => backendProxy(req, res, next));
+  } else {
+    frontendProxy(req, res, next);
+  }
+});
 
 app.listen(PROXY_PORT, () => {
   console.log(`[proxy] Firebase Cookie 再現プロキシ起動`);
   console.log(`[proxy]   http://localhost:${PROXY_PORT}  → frontend: ${FRONTEND_URL}`);
   console.log(`[proxy]   /auth /api /health              → backend:  ${BACKEND_URL}`);
-  console.log(`[proxy]   __session 以外の Cookie を除去して転送`);
+  console.log(`[proxy]   リクエスト: __session 以外の Cookie を除去して転送`);
+  console.log(`[proxy]   レスポンス: 3xx リダイレクトの Set-Cookie を除去 (Firebase CDN 挙動の再現)`);
 });
