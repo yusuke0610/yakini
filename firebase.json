@@ -1,4 +1,10 @@
 {
+  "emulators": {
+    "hosting": {
+      "port": 4000,
+      "host": "localhost"
+    }
+  },
   "hosting": [
     {
       "target": "dev",

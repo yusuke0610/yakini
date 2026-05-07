@@ -13,6 +13,7 @@ node_modules/
 dist/
 frontend/.test-dist/
 frontend/tsconfig.app.tsbuildinfo
+frontend/vite.config.js
 
 # Terraform
 .terraform/
@@ -34,7 +35,6 @@ backend/local.sqlite-wal
 
 # Env files
 .env
-frontend/.env
 frontend/.env.local
 backend/.env
 
@@ -43,3 +43,4 @@ backend/.env
 
 # OS
 .DS_Store
+.direnv/

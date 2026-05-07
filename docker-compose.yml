@@ -10,7 +10,7 @@ services:
         condition: service_healthy
     environment:
       SQLITE_DB_PATH: /data/devforge.sqlite
-      CORS_ORIGINS: http://localhost:5173
+      CORS_ORIGINS: http://localhost:3000
       SECRET_KEY: ${SECRET_KEY}
       FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
       JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}

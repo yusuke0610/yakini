@@ -42,7 +42,7 @@ def get_sqlite_db_path() -> Path:
 
 
 def get_cors_origins() -> list[str]:
-    cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+    cors_origins = os.getenv("CORS_ORIGINS", "")
     return [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
 
 
