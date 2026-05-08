@@ -1,3 +1,15 @@
+# firebase モジュール廃止に伴い、deployer IAM を service_account モジュールへ移設
+# deployer_service_account_email が設定されている環境でのみ有効
+moved {
+  from = module.firebase.google_project_iam_member.deployer_artifact_registry_writer[0]
+  to   = module.service_account.google_project_iam_member.deployer_artifact_registry_writer[0]
+}
+
+moved {
+  from = module.firebase.google_project_iam_member.deployer_run_developer[0]
+  to   = module.service_account.google_project_iam_member.deployer_run_developer[0]
+}
+
 moved {
   from = module.resume_stack.google_service_account.app
   to   = module.service_account.google_service_account.app
