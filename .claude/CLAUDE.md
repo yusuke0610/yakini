@@ -70,6 +70,7 @@ COOKIE_SAMESITE      # lax / strict / none
 ```
 GITHUB_CLIENT_ID     # GitHub OAuth Client ID
 GITHUB_CLIENT_SECRET # GitHub OAuth Client Secret
+CALLBACK_BASE_URL    # GitHub OAuth redirect_uri のベース URL（例: https://app.devforge.app）。未設定時は x-forwarded-host から自動検出
 LLM_PROVIDER         # ollama / vertex
 VERTEX_PROJECT_ID    # Vertex AI 用
 VERTEX_LOCATION      # 例: asia-northeast1

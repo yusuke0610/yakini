@@ -35,7 +35,7 @@ variable "cors_origins" {
 }
 
 variable "callback_base_url" {
-  description = "OAuth callback の base URL（例: https://devforge-dev-20260311.web.app）。Firebase Hosting 経由の redirect_uri を固定するために使用する。未設定の場合は build_external_base_url にフォールバック。"
+  description = "OAuth callback の base URL（例: https://app.devforge.app）。Cloudflare Pages 経由の redirect_uri を固定するために使用する。未設定の場合は build_external_base_url にフォールバック。"
   type        = string
   default     = ""
 }

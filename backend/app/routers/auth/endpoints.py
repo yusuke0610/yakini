@@ -41,8 +41,9 @@ from .token_manager import (
 )
 
 # GitHub OAuth Callback URL のパス
-# 旧: /auth/github/callback (Firebase Hosting の /auth/** rewrite に巻き込まれて Cookie が剥落するため不可)
-# 新: /github/callback (フロントの React ルートで受け取り、POST /auth/github/callback でトークン交換)
+# /github/callback はフロントの React ルートで受け取り、POST /auth/github/callback でトークン交換する。
+# Cloudflare Pages の _redirects は /auth/* のみ Cloud Run に転送するため、
+# GitHub がリダイレクトする /github/callback は SPA フォールバックで React が処理する。
 GITHUB_CALLBACK_PATH = "/github/callback"
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -50,10 +51,10 @@ logger = logging.getLogger(__name__)
 
 
 def _html_redirect(url: str) -> str:
-    """Firebase Hosting proxy 経由でも Set-Cookie が失われないよう 200 + HTML リダイレクトを返す。
+    """200 + HTML リダイレクトを返す。
 
-    303 レスポンスの Set-Cookie は Firebase Hosting CDN 層で除去されるため、
-    200 の HTML で meta refresh + JS リダイレクトを使う。
+    一部の CDN / リバースプロキシは 303 レスポンスの Set-Cookie を除去することがあるため、
+    200 の HTML で meta refresh + JS リダイレクトを使い Cookie の欠落を回避する。
     """
     js_url = _json.dumps(url)
     safe_url = url.replace('"', "&quot;")

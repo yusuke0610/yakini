@@ -25,7 +25,7 @@ variable "cors_origins" {
 }
 
 variable "callback_base_url" {
-  description = "OAuth callback の base URL（Firebase Hosting の URL）。"
+  description = "OAuth callback の base URL（例: https://app.devforge.app）。GitHub OAuth の redirect_uri を固定する。"
   type        = string
   default     = ""
 }
