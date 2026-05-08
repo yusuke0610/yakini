@@ -93,8 +93,8 @@ def get_current_user(
     request: Request,
     db: Session = Depends(get_db),
 ) -> User:
-    # Firebase Hosting は __session のみ Cloud Run に転送するため、JSON 形式で格納した値を取り出す
-    raw = request.cookies.get("__session")
+    # session Cookie に JSON 形式で格納したアクセストークンを取り出す
+    raw = request.cookies.get("session")
     if not raw:
         _raise_auth_failed(
             "missing_cookie",

@@ -59,12 +59,12 @@ def test_hs256_token_rejected_by_rs256_verification() -> None:
 def test_access_token_cannot_be_used_as_refresh(client) -> None:
     """アクセストークンでリフレッシュエンドポイントを叩いて拒否されることを確認する。"""
     auth_header(client, "rftest")
-    # __session から access_token を取り出し、refresh_token として上書きする
+    # session から access_token を取り出し、refresh_token として上書きする
     import json as _json
-    raw = client.cookies.get("__session", "{}")
+    raw = client.cookies.get("session", "{}")
     data = _json.loads(raw)
     data["refresh_token"] = data.get("access_token", "")
-    client.cookies.set("__session", _json.dumps(data))
+    client.cookies.set("session", _json.dumps(data))
 
     response = client.post("/auth/refresh")
 
@@ -75,12 +75,12 @@ def test_refresh_token_cannot_access_api(client) -> None:
     """リフレッシュトークンで通常 API を叩いて拒否されることを確認する。"""
     import json as _json
     auth_header(client, "apitest")
-    # __session の access_token をリフレッシュトークンで上書きする
+    # session の access_token をリフレッシュトークンで上書きする
     refresh_token, _ = create_refresh_token("apitest")
-    raw = client.cookies.get("__session", "{}")
+    raw = client.cookies.get("session", "{}")
     data = _json.loads(raw)
     data["access_token"] = refresh_token
-    client.cookies.set("__session", _json.dumps(data))
+    client.cookies.set("session", _json.dumps(data))
 
     response = client.get("/auth/me")
 
@@ -126,12 +126,12 @@ def test_refresh_rejects_revoked_jti(client) -> None:
     """DB の refresh_jti と一致しないトークンでリフレッシュが拒否されることを確認する。"""
     import json as _json
     auth_header(client, "revokeduser")
-    # jti が DB と一致しない別トークンを発行し、__session の refresh_token を上書きする
+    # jti が DB と一致しない別トークンを発行し、session の refresh_token を上書きする
     stale_token, _ = create_refresh_token("revokeduser")
-    raw = client.cookies.get("__session", "{}")
+    raw = client.cookies.get("session", "{}")
     data = _json.loads(raw)
     data["refresh_token"] = stale_token
-    client.cookies.set("__session", _json.dumps(data))
+    client.cookies.set("session", _json.dumps(data))
 
     response = client.post("/auth/refresh")
 
@@ -342,7 +342,7 @@ def test_github_login_redirect_to_github(client) -> None:
 
 def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
     client.cookies.set(
-        "__session",
+        "session",
         json.dumps({"state": "expected-state", "redirect": "http://localhost:3000/index.html"}),
     )
 
@@ -361,7 +361,7 @@ def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
 
 def test_github_callback_redirect_sets_auth_cookie(client) -> None:
     client.cookies.set(
-        "__session",
+        "session",
         json.dumps({"state": "expected-state", "redirect": "http://localhost:3000/index.html"}),
     )
 
@@ -478,7 +478,7 @@ def test_auth_failed_logged_when_cookie_missing(client, caplog) -> None:
 def test_auth_failed_logged_for_invalid_jwt(client, caplog) -> None:
     """不正な JWT で 401 + reason=jwt_decode_error がログされることを確認する。"""
     client.cookies.clear()
-    client.cookies.set("__session", json.dumps({"access_token": "not-a-valid-jwt"}))
+    client.cookies.set("session", json.dumps({"access_token": "not-a-valid-jwt"}))
     with caplog.at_level(logging.WARNING, logger="devforge"):
         response = client.get("/auth/me")
 
@@ -491,7 +491,7 @@ def test_auth_failed_logged_for_user_not_found(client, caplog) -> None:
     """DB に存在しないユーザー名のトークンで reason=user_not_found がログされることを確認する。"""
     token = create_access_token("nonexistent-user-xyz")
     client.cookies.clear()
-    client.cookies.set("__session", json.dumps({"access_token": token}))
+    client.cookies.set("session", json.dumps({"access_token": token}))
     with caplog.at_level(logging.WARNING, logger="devforge"):
         response = client.get("/auth/me")
 

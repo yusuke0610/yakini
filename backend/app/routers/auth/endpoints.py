@@ -74,8 +74,8 @@ def refresh(
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """リフレッシュトークンで新しいアクセストークンを発行する。"""
-    # Firebase Hosting は __session のみ転送するため JSON パースして refresh_token を取り出す
-    raw = request.cookies.get("__session")
+    # session Cookie に JSON 形式で格納した refresh_token を取り出す
+    raw = request.cookies.get("session")
     token: str | None = None
     if raw:
         try:
@@ -128,8 +128,8 @@ def logout(
     """ログアウト処理。DB の refresh_jti を無効化し Cookie を削除する。
     トークン解析が失敗した場合でも必ず Cookie を削除して 204 を返す。
     """
-    # Firebase Hosting は __session のみ転送するため JSON パースして refresh_token を取り出す
-    raw = request.cookies.get("__session")
+    # session Cookie に JSON 形式で格納した refresh_token を取り出す
+    raw = request.cookies.get("session")
     token: str | None = None
     if raw:
         try:
@@ -137,7 +137,7 @@ def logout(
             if isinstance(data, dict):
                 token = data.get("refresh_token")
         except (ValueError, TypeError):
-            logger.debug("ログアウト時の __session パースに失敗（Cookie 削除を継続）", exc_info=True)
+            logger.debug("ログアウト時の session Cookie パースに失敗（Cookie 削除を継続）", exc_info=True)
     if token:
         try:
             payload = _decode_token(token)

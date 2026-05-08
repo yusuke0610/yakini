@@ -133,7 +133,7 @@ def auth_header(client, username: str = "testuser") -> dict:
         db.commit()
 
     session_payload = json.dumps({"access_token": access_token, "refresh_token": refresh_token})
-    client.cookies.set("__session", session_payload)
+    client.cookies.set("session", session_payload)
     client.cookies.set("csrf_token", csrf_token)
 
     return {"X-CSRF-Token": csrf_token}
