@@ -13,7 +13,10 @@ node_modules/
 dist/
 frontend/.test-dist/
 frontend/tsconfig.app.tsbuildinfo
+frontend/tsconfig.node.tsbuildinfo
 frontend/vite.config.js
+# Cloudflare Pages _redirects はビルド時に gen-redirects.mjs で生成する
+frontend/public/_redirects
 
 # Terraform
 .terraform/
