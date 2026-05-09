@@ -199,7 +199,7 @@ async def github_callback_redirect(
 ) -> HTMLResponse:
     """GitHub OAuth コールバックを処理し、フロントエンドへリダイレクトする。
 
-    Firebase Hosting rewrite 経由では 303 の Set-Cookie が転送されないため
+    一部の CDN / リバースプロキシは 303 レスポンスの Set-Cookie を除去することがあるため、
     200 + HTML リダイレクトで Cookie を確実にセットする。
     """
 

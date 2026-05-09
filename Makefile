@@ -1,6 +1,6 @@
 .PHONY: help \
 	setup install-hooks install-backend install-frontend generate-keys \
-	dev dev-build dev-down dev-proxy \
+	dev dev-build dev-down \
 	test test-backend test-frontend \
 	lint lint-backend lint-frontend lint-fix \
 	format format-check \
@@ -24,7 +24,6 @@ help:
 	@echo "  dev               docker-compose で API + Ollama を起動"
 	@echo "  dev-build         再ビルドして起動"
 	@echo "  dev-down          docker-compose を停止"
-	@echo "  dev-proxy         Vite + Firebase Cookie 再現プロキシを起動 (localhost:3000)"
 	@echo ""
 	@echo "テスト・リント"
 	@echo "  ci                lint + test + build-frontend を一括実行 (CI 相当)"
@@ -79,9 +78,6 @@ dev-build:
 
 dev-down:
 	docker compose down
-
-dev-proxy:
-	cd frontend && npm run dev:all
 
 # ------------------------------------------------------------------ #
 # テスト・リント

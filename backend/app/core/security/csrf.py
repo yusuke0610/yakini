@@ -35,7 +35,7 @@ def set_csrf_cookie(response: Response, token: str) -> None:
     """CSRF トークンを httpOnly=False Cookie にセットする（JS から読み取り可能）。
 
     samesite は他の認証 Cookie（access_token / refresh_token）と揃える。
-    フロントエンドとバックエンドが別オリジン（dev: Firebase Hosting と Cloud Run）の場合、
+    フロントエンド（Cloudflare Pages）とバックエンド（Cloud Run）が別オリジンの場合、
     ``strict`` 固定では cross-site リクエストで Cookie が送信されず CSRF 検証に失敗する。
     ダブルサブミット Cookie パターンの本質は「Cookie 値とヘッダー値の一致」であり、
     CSRF 対策は成立する。

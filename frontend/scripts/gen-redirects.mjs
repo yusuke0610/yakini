@@ -29,13 +29,13 @@ if (!cloudRunUrl) {
   process.exit(0);
 }
 
-// firebase.json の rewrites と同等のルールを生成する。
-// 差分メモ:
-//   - firebase.json の /health rewrite も含める（同等）
-//   - firebase.json の index.html Cache-Control ヘッダーは _redirects では設定不可。
+// Cloudflare Pages の _redirects ルールを生成する。
+// メモ:
+//   - /health も Cloud Run へプロキシする
+//   - index.html の Cache-Control ヘッダーは _redirects では設定不可。
 //     wrangler.toml の [[headers]] または Cloudflare ダッシュボードで別途設定が必要。
 const rules = [
-  "# Cloud Run へのプロキシ（firebase.json の rewrites と同等）",
+  "# Cloud Run へのプロキシ",
   `/auth/* ${cloudRunUrl}/auth/:splat 200`,
   `/api/* ${cloudRunUrl}/api/:splat 200`,
   `/health ${cloudRunUrl}/health 200`,

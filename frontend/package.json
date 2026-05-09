@@ -17,8 +17,7 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
-    "dev:proxy": "node scripts/firebase-proxy.mjs",
-    "dev:all": "concurrently \"npm run dev\" \"npm run dev:proxy\""
+    "deploy": "wrangler pages deploy dist --project-name=devforge"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
