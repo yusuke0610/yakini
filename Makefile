@@ -92,7 +92,7 @@ ci: lint test build-frontend
 test: test-backend test-frontend
 
 test-backend:
-	cd backend && .venv/bin/python -m pytest -q tests
+	nix develop --command bash -c "cd backend && .venv/bin/python -m pytest -q tests"
 
 test-frontend:
 	cd frontend && npm test
@@ -100,13 +100,13 @@ test-frontend:
 lint: lint-backend lint-frontend
 
 lint-backend:
-	cd backend && .venv/bin/python -m ruff check app tests alembic_migrations
+	nix develop --command bash -c "cd backend && .venv/bin/python -m ruff check app tests alembic_migrations"
 
 lint-frontend:
 	cd frontend && npm run lint
 
 lint-fix:
-	cd backend && .venv/bin/python -m ruff check --fix app tests alembic_migrations
+	nix develop --command bash -c "cd backend && .venv/bin/python -m ruff check --fix app tests alembic_migrations"
 	cd frontend && npm run lint:fix
 
 format:

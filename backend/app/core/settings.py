@@ -126,6 +126,22 @@ def get_environment() -> str:
     return os.getenv("ENVIRONMENT", "local").strip()
 
 
+def get_internal_secret() -> str:
+    """Cloudflare Pages → Cloud Run 間の秘密ヘッダー値を取得する。
+
+    local 環境以外では必須。未設定の場合は起動時に RuntimeError を送出する。
+    値はログや例外メッセージに含めないこと。
+    """
+    env = get_environment()
+    secret = os.getenv("INTERNAL_SECRET", "").strip()
+    if env != "local" and not secret:
+        raise RuntimeError(
+            "INTERNAL_SECRET が設定されていません。"
+            "Secret Manager で internal-secret を登録し、Cloud Run 環境変数に追加してください。"
+        )
+    return secret
+
+
 def get_llm_provider() -> str:
     return os.environ.get("LLM_PROVIDER", "ollama")
 
