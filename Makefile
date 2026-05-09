@@ -6,6 +6,7 @@
 	format format-check \
 	ci \
 	build-frontend build-backend \
+	gen-redirects \
 	migrate migrate-create \
 	clean
 
@@ -40,6 +41,7 @@ help:
 	@echo "ビルド"
 	@echo "  build-frontend    Vite ビルド"
 	@echo "  build-backend     Docker イメージビルド"
+	@echo "  gen-redirects     Cloudflare Pages 用 _redirects を生成 (CLOUD_RUN_URL=... 指定可)"
 	@echo ""
 	@echo "マイグレーション"
 	@echo "  migrate           alembic upgrade head"
@@ -58,13 +60,13 @@ install-hooks:
 	./scripts/setup-git-hooks.sh
 
 install-backend:
-	cd backend && (.venv/bin/python --version > /dev/null 2>&1 || (rm -rf .venv && uv venv)) && uv pip install --python .venv/bin/python -r requirements.txt
+	nix develop --command bash -c "cd backend && (.venv/bin/python --version > /dev/null 2>&1 || (rm -rf .venv && uv venv)) && uv pip install --python .venv/bin/python -r requirements.txt"
 
 install-frontend:
-	cd frontend && npm ci
+	nix develop --command bash -c "cd frontend && npm ci"
 
 generate-keys:
-	cd backend && python scripts/generate_keys.py
+	nix develop --command bash -c "cd backend && python scripts/generate_keys.py"
 
 # ------------------------------------------------------------------ #
 # ローカル開発
@@ -120,6 +122,9 @@ build-frontend:
 
 build-backend:
 	docker build ./backend -t devforge-api
+
+gen-redirects:
+	nix develop --command bash -c "cd frontend && CLOUD_RUN_URL='$(CLOUD_RUN_URL)' node scripts/gen-redirects.mjs"
 
 # ------------------------------------------------------------------ #
 # マイグレーション
