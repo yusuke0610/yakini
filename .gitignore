@@ -45,6 +45,9 @@ backend/.env
 .firebase/
 firebase-debug.log
 
+# Wrangler
+.wrangler/
+
 # OS
 .DS_Store
 .direnv/

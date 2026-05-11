@@ -36,10 +36,14 @@ def _generate_test_rsa_keys() -> tuple[str, str]:
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption(),
     ).decode()
-    pem_public = private_key.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    ).decode()
+    pem_public = (
+        private_key.public_key()
+        .public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        .decode()
+    )
     return pem_private, pem_public
 
 
@@ -54,7 +58,7 @@ os.environ.setdefault("APP_BOOTSTRAPPED", "1")
 os.environ.setdefault("GITHUB_CLIENT_ID", "test-github-client-id")
 os.environ.setdefault("GITHUB_CLIENT_SECRET", "test-github-client-secret")
 os.environ.setdefault("FIELD_ENCRYPTION_KEY", "pVo6M_raAWEpAv25F4p4RziywsjfPENokI10DZbNO7E=")
-os.environ.setdefault("CORS_ORIGINS", "http://localhost:3000")
+os.environ.setdefault("CORS_ORIGINS", "http://localhost:8788")
 
 from app.main import app, limiter  # noqa: E402
 
@@ -96,8 +100,7 @@ def client(db_session):
     # 参照を保持している全モジュールを同じ AsyncMock に揃える。
     mock_execute_task = AsyncMock(return_value=None)
     originals = {
-        module: module.execute_task
-        for module in (_worker, _internal_router, _tasks_local)
+        module: module.execute_task for module in (_worker, _internal_router, _tasks_local)
     }
     for module in originals:
         module.execute_task = mock_execute_task

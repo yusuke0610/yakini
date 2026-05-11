@@ -103,7 +103,7 @@ npm install
 make dev-proxy
 ```
 
-ブラウザで `http://localhost:3000` を開きます。
+ブラウザで `http://localhost:8788` を開きます。
 
 #### Docker起動（FastAPI + Ollama）
 
