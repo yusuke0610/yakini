@@ -1,11 +1,12 @@
 .PHONY: help \
 	setup install-hooks install-backend install-frontend generate-keys \
-	dev dev-build dev-down dev-frontend dev-backend \
+	dev dev-build dev-down dev-frontend preview-frontend \
 	test test-backend test-frontend \
 	lint lint-backend lint-frontend lint-fix \
 	format format-check \
 	ci \
-	build-frontend build-backend \
+	build-frontend build-backend deploy-frontend \
+	gen-redirects \
 	migrate migrate-create \
 	clean
 
@@ -24,8 +25,8 @@ help:
 	@echo "  dev               docker-compose で API + Ollama を起動"
 	@echo "  dev-build         再ビルドして起動"
 	@echo "  dev-down          docker-compose を停止"
-	@echo "  dev-frontend      Vite dev server を起動"
-	@echo "  dev-backend       uvicorn で Backend を直接起動"
+	@echo "  dev-frontend      Frontend 開発サーバーを起動 (Vite / localhost:5173)"
+	@echo "  preview-frontend  ビルド済みを wrangler でローカル提供 (HMR なし / localhost:8788)"
 	@echo ""
 	@echo "テスト・リント"
 	@echo "  ci                lint + test + build-frontend を一括実行 (CI 相当)"
@@ -42,6 +43,8 @@ help:
 	@echo "ビルド"
 	@echo "  build-frontend    Vite ビルド"
 	@echo "  build-backend     Docker イメージビルド"
+	@echo "  deploy-frontend   Cloudflare Pages へビルド＆デプロイ (CLOUD_RUN_URL=... 指定可)"
+	@echo "  gen-redirects     Cloudflare Pages 用 _redirects を生成 (CLOUD_RUN_URL=... 指定可)"
 	@echo ""
 	@echo "マイグレーション"
 	@echo "  migrate           alembic upgrade head"
@@ -60,13 +63,13 @@ install-hooks:
 	./scripts/setup-git-hooks.sh
 
 install-backend:
-	cd backend && uv pip install -r requirements.txt
+	nix develop --command bash -c "cd backend && (.venv/bin/python --version > /dev/null 2>&1 || (rm -rf .venv && uv venv)) && uv pip install --python .venv/bin/python -r requirements.txt"
 
 install-frontend:
-	cd frontend && npm ci
+	nix develop --command bash -c "cd frontend && npm ci"
 
 generate-keys:
-	cd backend && python scripts/generate_keys.py
+	nix develop --command bash -c "cd backend && python scripts/generate_keys.py"
 
 # ------------------------------------------------------------------ #
 # ローカル開発
@@ -82,10 +85,10 @@ dev-down:
 	docker compose down
 
 dev-frontend:
-	cd frontend && npm run dev
+	nix develop --command bash -c "cd frontend && npm run dev"
 
-dev-backend:
-	cd backend && .venv/bin/python -m uvicorn app.main:app --reload
+preview-frontend:
+	nix develop --command bash -c "cd frontend && CLOUD_RUN_URL='http://localhost:8000' npm run build && npx wrangler pages dev dist --port 8788"
 
 # ------------------------------------------------------------------ #
 # テスト・リント
@@ -96,21 +99,21 @@ ci: lint test build-frontend
 test: test-backend test-frontend
 
 test-backend:
-	cd backend && .venv/bin/python -m pytest -q tests
+	nix develop --command bash -c "cd backend && .venv/bin/python -m pytest -q tests"
 
 test-frontend:
-	cd frontend && npm test
+	nix develop --command bash -c "cd frontend && npm test"
 
 lint: lint-backend lint-frontend
 
 lint-backend:
-	cd backend && .venv/bin/python -m ruff check app tests alembic_migrations
+	nix develop --command bash -c "cd backend && .venv/bin/python -m ruff check app tests alembic_migrations"
 
 lint-frontend:
-	cd frontend && npm run lint
+	nix develop --command bash -c "cd frontend && npm run lint"
 
 lint-fix:
-	cd backend && .venv/bin/python -m ruff check --fix app tests alembic_migrations
+	nix develop --command bash -c "cd backend && .venv/bin/python -m ruff check --fix app tests alembic_migrations"
 	cd frontend && npm run lint:fix
 
 format:
@@ -128,6 +131,12 @@ build-frontend:
 
 build-backend:
 	docker build ./backend -t devforge-api
+
+deploy-frontend:
+	nix develop --command bash -c "cd frontend && CLOUD_RUN_URL='$(CLOUD_RUN_URL)' npm run build && npm run deploy"
+
+gen-redirects:
+	nix develop --command bash -c "cd frontend && CLOUD_RUN_URL='$(CLOUD_RUN_URL)' node scripts/gen-redirects.mjs"
 
 # ------------------------------------------------------------------ #
 # マイグレーション

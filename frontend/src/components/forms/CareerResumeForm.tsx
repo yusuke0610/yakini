@@ -19,7 +19,7 @@ import type { ResumeQualification } from "../../types";
 import { blankResumeQualification } from "../../constants";
 import shared from "../../styles/shared.module.css";
 import { ConfirmDialog } from "../ConfirmDialog";
-import { LoadingOverlay } from "../LoadingOverlay";
+import { Skeleton } from "../ui/Skeleton";
 import { Combobox } from "./Combobox";
 import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
@@ -51,8 +51,8 @@ export function CareerResumeForm() {
     cacheKey: "career",
   });
 
-  const { items: techStackOptions } = useTechnologyStacks();
-  const { items: qualificationOptions } = useQualifications();
+  const { items: techStackOptions, loading: techLoading } = useTechnologyStacks();
+  const { items: qualificationOptions, loading: qualLoading } = useQualifications();
   const qualificationNames = qualificationOptions.map((item) => item.name);
 
   const {
@@ -73,6 +73,9 @@ export function CareerResumeForm() {
   /** PDF アクションまたはフォーム保存のエラー・成功メッセージを統合して表示する */
   const error = pdfError ?? formError;
   const success = pdfSuccess ?? formSuccess;
+
+  /** フォームデータ・技術スタック・資格の3つが揃ってから送信可能 */
+  const canSubmit = !loading && !techLoading && !qualLoading;
 
   const onChangeField = (key: CareerTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -121,8 +124,6 @@ export function CareerResumeForm() {
     setShowDeleteConfirm(false);
   };
 
-  if (loading) return <LoadingOverlay />;
-
   return (
     <>
       {showDeleteConfirm && (
@@ -139,13 +140,13 @@ export function CareerResumeForm() {
         <div className={shared.pageHeader}>
           <h1>職務経歴書</h1>
           <div className={shared.pageHeaderActions}>
-            <button type="submit" className="primary" disabled={saving}>
+            <button type="submit" className="primary" disabled={!canSubmit || saving}>
               {saveButtonText}
             </button>
             <button
               type="button"
               onClick={() => resumeId && onPreviewPdf(resumeId)}
-              disabled={!resumeId}
+              disabled={!resumeId || loading}
             >
               プレビュー
             </button>
@@ -155,14 +156,14 @@ export function CareerResumeForm() {
                 resumeId &&
                 onDownloadPdf(resumeId, "職務経歴書PDFをダウンロードしました。")
               }
-              disabled={!resumeId || downloading}
+              disabled={!resumeId || downloading || loading}
             >
               {downloading ? "ダウンロード中..." : "PDF出力"}
             </button>
             <button
               type="button"
               onClick={() => resumeId && onDownloadMarkdown(resumeId)}
-              disabled={!resumeId}
+              disabled={!resumeId || loading}
             >
               Markdown出力
             </button>
@@ -170,7 +171,7 @@ export function CareerResumeForm() {
               type="button"
               className="danger"
               onClick={() => setShowDeleteConfirm(true)}
-              disabled={!resumeId}
+              disabled={!resumeId || loading}
             >
               データを削除
             </button>
@@ -182,76 +183,112 @@ export function CareerResumeForm() {
             {error && <p className={shared.error}>{error}</p>}
             {success && <p className={shared.success}>{success}</p>}
 
+            {/* 基本情報: 氏名・職務要約 */}
             <section className={shared.section}>
               <label>
-                <span className={shared.labelText}>氏名<span className={shared.requiredBadge}>必須</span></span>
-                <input
-                  type="text"
-                  value={form.full_name}
-                  onChange={(e) => onChangeField("full_name", e.target.value)}
-                  placeholder="例: 山田 太郎"
+                <span className={shared.labelText}>
+                  氏名<span className={shared.requiredBadge}>必須</span>
+                </span>
+                {loading ? (
+                  <Skeleton height="38px" />
+                ) : (
+                  <input
+                    type="text"
+                    value={form.full_name}
+                    onChange={(e) => onChangeField("full_name", e.target.value)}
+                    placeholder="例: 山田 太郎"
+                    required
+                  />
+                )}
+              </label>
+              {loading ? (
+                <Skeleton height="110px" />
+              ) : (
+                <MarkdownTextarea
+                  label="職務要約"
+                  value={form.career_summary}
+                  onChange={(v) => onChangeField("career_summary", v)}
+                  rows={4}
                   required
                 />
-              </label>
-              <MarkdownTextarea
-                label="職務要約"
-                value={form.career_summary}
-                onChange={(v) => onChangeField("career_summary", v)}
-                rows={4}
-                required
-              />
+              )}
             </section>
 
-            {/* 職務経歴セクション: experiences 操作・モーダル管理を委譲 */}
-            <CareerExperienceSection
-              experiences={form.experiences}
-              setForm={setForm}
-              techStackOptions={techStackOptions}
-            />
+            {/* 職務経歴セクション */}
+            {loading ? (
+              <section className={shared.section}>
+                <Skeleton height="20px" width="80px" borderRadius="4px" />
+                <div className={shared.entry} style={{ marginTop: "0.8rem" }}>
+                  <Skeleton height="120px" />
+                </div>
+                <div className={shared.entry}>
+                  <Skeleton height="120px" />
+                </div>
+              </section>
+            ) : (
+              <CareerExperienceSection
+                experiences={form.experiences}
+                setForm={setForm}
+                techStackOptions={techStackOptions}
+              />
+            )}
 
+            {/* 資格セクション */}
             <section className={shared.section}>
               <h2>資格</h2>
-              {form.qualifications.map((qualification, index) => (
-                <div key={`qualification-${index}`} className={shared.entry}>
-                  <div className={shared.inline}>
-                    <label>
-                      資格名 ※プルダウンにないものはテキストで入力できます。
-                      <Combobox
-                        value={qualification.name}
-                        onChange={(val) => updateQualificationField(index, "name", val)}
-                        options={qualificationNames}
-                        placeholder="例: 基本情報技術者試験"
-                        allowCustom
-                      />
-                    </label>
-                    <label>
-                      取得日
-                      <input
-                        type="date"
-                        value={qualification.acquired_date}
-                        onChange={(e) => updateQualificationField(index, "acquired_date", e.target.value)}
-                      />
-                    </label>
-                  </div>
-                  <button type="button" className="danger" onClick={() => removeQualification(index)}>
-                    資格を削除
-                  </button>
+              {loading ? (
+                <div className={shared.entry}>
+                  <Skeleton height="56px" />
                 </div>
-              ))}
-
-              <button type="button" className="ghost" onClick={addQualification}>
-                資格を追加
-              </button>
+              ) : (
+                <>
+                  {form.qualifications.map((qualification, index) => (
+                    <div key={`qualification-${index}`} className={shared.entry}>
+                      <div className={shared.inline}>
+                        <label>
+                          資格名 ※プルダウンにないものはテキストで入力できます。
+                          <Combobox
+                            value={qualification.name}
+                            onChange={(val) => updateQualificationField(index, "name", val)}
+                            options={qualificationNames}
+                            placeholder="例: 基本情報技術者試験"
+                            allowCustom
+                          />
+                        </label>
+                        <label>
+                          取得日
+                          <input
+                            type="date"
+                            value={qualification.acquired_date}
+                            onChange={(e) => updateQualificationField(index, "acquired_date", e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <button type="button" className="danger" onClick={() => removeQualification(index)}>
+                        資格を削除
+                      </button>
+                    </div>
+                  ))}
+                  <button type="button" className="ghost" onClick={addQualification}>
+                    資格を追加
+                  </button>
+                </>
+              )}
             </section>
 
+            {/* 自己PR */}
             <section className={shared.section}>
-              <MarkdownTextarea
-                label="自己PR"
-                value={form.self_pr}
-                onChange={(v) => onChangeField("self_pr", v)}
-                rows={4}
-                required
-              />
+              {loading ? (
+                <Skeleton height="110px" />
+              ) : (
+                <MarkdownTextarea
+                  label="自己PR"
+                  value={form.self_pr}
+                  onChange={(v) => onChangeField("self_pr", v)}
+                  rows={4}
+                  required
+                />
+              )}
             </section>
           </div>
         </div>

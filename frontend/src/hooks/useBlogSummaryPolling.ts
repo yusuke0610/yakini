@@ -35,7 +35,11 @@ export function useBlogSummaryPolling(articles: BlogArticle[]) {
   useEffect(() => {
     getBlogSummaryCache()
       .then((cached) => {
-        if (cached.status === "pending" || cached.status === "processing") {
+        if (
+          cached.status === "pending" ||
+          cached.status === "processing" ||
+          cached.status === "retrying"
+        ) {
           setSummaryLoading(true);
           startPolling();
           return;
@@ -56,7 +60,7 @@ export function useBlogSummaryPolling(articles: BlogArticle[]) {
     setSummary(null);
     setSummaryError(null);
     try {
-      const result = await summarizeBlogArticles(articles);
+      const result = await summarizeBlogArticles();
       if (!result.available && result.status !== "pending") {
         setSummaryError("AI分析サーバーに接続できません");
         setSummaryLoading(false);

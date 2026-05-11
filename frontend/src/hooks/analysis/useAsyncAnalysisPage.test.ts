@@ -66,13 +66,13 @@ describe("useAsyncAnalysisPage", () => {
     });
   });
 
-  /** ポーリングで status: "failed" を返した場合、input フェーズに戻ること */
-  it("ポーリングで status が failed の場合 input フェーズに戻る", async () => {
+  /** ポーリングで status: "dead_letter" を返した場合、input フェーズに戻ること */
+  it("ポーリングで status が dead_letter の場合 input フェーズに戻る", async () => {
     // 初回は pending → polling フェーズに遷移
     mockLoadCache.mockResolvedValue({ result: null, status: "pending" });
-    // ポーリング中に failed を返す
+    // ポーリング中に dead_letter を返す
     mockCheckStatus.mockResolvedValue({
-      status: "failed",
+      status: "dead_letter",
       error_message: "分析に失敗しました",
     });
 

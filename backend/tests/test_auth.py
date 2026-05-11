@@ -1,3 +1,5 @@
+import json
+import logging
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.parse import parse_qs, urlparse
@@ -8,6 +10,7 @@ from app.core.security.auth import (
     create_refresh_token,
 )
 from app.core.settings import get_cookie_samesite, get_cookie_secure
+from app.main import limiter
 from jose import jwt
 
 from conftest import _test_public_key, auth_header
@@ -37,11 +40,12 @@ def test_create_access_token_type_is_access() -> None:
 
 
 def test_create_refresh_token_type_is_refresh() -> None:
-    token = create_refresh_token("alice")
+    token, jti = create_refresh_token("alice")
     payload = jwt.decode(token, _test_public_key, algorithms=["RS256"])
 
     assert payload["type"] == "refresh"
     assert payload["sub"] == "alice"
+    assert payload["jti"] == jti
 
 
 def test_hs256_token_rejected_by_rs256_verification() -> None:
@@ -55,10 +59,13 @@ def test_hs256_token_rejected_by_rs256_verification() -> None:
 def test_access_token_cannot_be_used_as_refresh(client) -> None:
     """アクセストークンでリフレッシュエンドポイントを叩いて拒否されることを確認する。"""
     auth_header(client, "rftest")
-    # 既存の有効なリフレッシュトークンを削除してアクセストークンで置き換える
-    access_token = client.cookies.get("access_token", "")
-    del client.cookies["refresh_token"]
-    client.cookies.set("refresh_token", access_token)
+    # session から access_token を取り出し、refresh_token として上書きする
+    import json as _json
+
+    raw = client.cookies.get("session", "{}")
+    data = _json.loads(raw)
+    data["refresh_token"] = data.get("access_token", "")
+    client.cookies.set("session", _json.dumps(data))
 
     response = client.post("/auth/refresh")
 
@@ -67,9 +74,15 @@ def test_access_token_cannot_be_used_as_refresh(client) -> None:
 
 def test_refresh_token_cannot_access_api(client) -> None:
     """リフレッシュトークンで通常 API を叩いて拒否されることを確認する。"""
+    import json as _json
+
     auth_header(client, "apitest")
-    refresh_token = create_refresh_token("apitest")
-    client.cookies.set("access_token", refresh_token)
+    # session の access_token をリフレッシュトークンで上書きする
+    refresh_token, _ = create_refresh_token("apitest")
+    raw = client.cookies.get("session", "{}")
+    data = _json.loads(raw)
+    data["access_token"] = refresh_token
+    client.cookies.set("session", _json.dumps(data))
 
     response = client.get("/auth/me")
 
@@ -87,6 +100,54 @@ def test_refresh_issues_new_access_token(client) -> None:
     assert "access_token=" in response.headers.get("set-cookie", "")
 
 
+# ── ログアウト ────────────────────────────────────────────────────
+
+
+def test_logout_clears_cookies(client) -> None:
+    """ログアウト後に認証 Cookie が削除されることを確認する。"""
+    auth_header(client, "logoutuser")
+
+    response = client.post("/auth/logout")
+
+    assert response.status_code == 204
+    set_cookie = response.headers.get("set-cookie", "")
+    assert "access_token=" in set_cookie
+
+
+def test_logout_invalidates_refresh_token(client) -> None:
+    """ログアウト後にリフレッシュトークンで再認証できないことを確認する。"""
+    auth_header(client, "logoutuser2")
+
+    client.post("/auth/logout")
+    response = client.post("/auth/refresh")
+
+    assert response.status_code == 401
+
+
+def test_refresh_rejects_revoked_jti(client) -> None:
+    """DB の refresh_jti と一致しないトークンでリフレッシュが拒否されることを確認する。"""
+    import json as _json
+
+    auth_header(client, "revokeduser")
+    # jti が DB と一致しない別トークンを発行し、session の refresh_token を上書きする
+    stale_token, _ = create_refresh_token("revokeduser")
+    raw = client.cookies.get("session", "{}")
+    data = _json.loads(raw)
+    data["refresh_token"] = stale_token
+    client.cookies.set("session", _json.dumps(data))
+
+    response = client.post("/auth/refresh")
+
+    assert response.status_code == 401
+
+
+def test_logout_without_token_returns_204(client) -> None:
+    """リフレッシュトークンなしでもログアウトが 204 を返すことを確認する。"""
+    response = client.post("/auth/logout")
+
+    assert response.status_code == 204
+
+
 # ── Cookie 設定 ───────────────────────────────────────────────────
 
 
@@ -94,7 +155,7 @@ def test_cookie_secure_defaults_false_for_localhost(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("COOKIE_SECURE", raising=False)
-    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173")
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:8788")
 
     assert get_cookie_secure() is False
 
@@ -105,7 +166,7 @@ def test_cookie_secure_defaults_true_when_non_local_origin_exists(
     monkeypatch.delenv("COOKIE_SECURE", raising=False)
     monkeypatch.setenv(
         "CORS_ORIGINS",
-        "http://localhost:5173,https://app.example.com",
+        "http://localhost:8788,https://app.example.com",
     )
 
     assert get_cookie_secure() is True
@@ -115,7 +176,7 @@ def test_cookie_samesite_defaults_lax_for_localhost(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("COOKIE_SAMESITE", raising=False)
-    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173")
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:8788")
 
     assert get_cookie_samesite() == "lax"
 
@@ -209,22 +270,31 @@ def test_get_request_skips_csrf_check(client) -> None:
 # ── GitHub OAuth ──────────────────────────────────────────────────
 
 
-def test_github_login_url_sets_state_cookie(client) -> None:
+def test_github_login_url_returns_state(client) -> None:
+    """login-url エンドポイントが authorization_url と state を JSON で返すことを確認する。"""
     response = client.get(
         "/auth/github/login-url",
-        headers={"Origin": "http://localhost:5173"},
+        headers={"Origin": "http://localhost:8788"},
     )
 
     assert response.status_code == 200
-    assert "https://github.com/login/oauth/authorize" in response.json()["authorization_url"]
-    assert "github_oauth_state=" in response.headers["set-cookie"]
+    data = response.json()
+    assert "https://github.com/login/oauth/authorize" in data["authorization_url"]
+    # state はフロントの sessionStorage に保存して CSRF 検証する
+    assert isinstance(data["state"], str)
+    assert len(data["state"]) > 0
+    # /auth/** rewrite を回避するため redirect_uri は /github/callback でなければならない
+    parsed = urlparse(data["authorization_url"])
+    redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
+    assert redirect_uri.endswith("/github/callback")
+    assert "/auth/github/callback" not in redirect_uri
 
 
-def test_github_login_url_uses_forwarded_https_scheme(client) -> None:
+def test_github_login_url_uses_frontend_origin_when_callback_base_url_unset(client) -> None:
     response = client.get(
         "/auth/github/login-url",
         headers={
-            "Origin": "http://localhost:5173",
+            "Origin": "http://localhost:8788",
             "Host": "devforge-dev-nktebahhoq-an.a.run.app",
             "X-Forwarded-Proto": "https",
         },
@@ -233,13 +303,32 @@ def test_github_login_url_uses_forwarded_https_scheme(client) -> None:
     assert response.status_code == 200
     parsed = urlparse(response.json()["authorization_url"])
     redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
-    assert redirect_uri == "https://devforge-dev-nktebahhoq-an.a.run.app/auth/github/callback"
+    assert redirect_uri == "http://localhost:8788/github/callback"
 
 
-def test_github_login_redirect_sets_cookies_and_redirects(client) -> None:
+def test_github_login_url_uses_callback_base_url_when_set(client) -> None:
+    """CALLBACK_BASE_URL が設定されている場合、x-forwarded-host より優先されることを確認する。"""
+    with patch.dict(os.environ, {"CALLBACK_BASE_URL": "https://devforge-dev-20260311.web.app"}):
+        response = client.get(
+            "/auth/github/login-url",
+            headers={
+                "Origin": "http://localhost:8788",
+                "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+                "X-Forwarded-Proto": "https",
+            },
+        )
+
+    assert response.status_code == 200
+    parsed = urlparse(response.json()["authorization_url"])
+    redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
+    assert redirect_uri == "https://devforge-dev-20260311.web.app/github/callback"
+
+
+def test_github_login_redirect_to_github(client) -> None:
+    """GET /auth/github/login が GitHub の認可 URL に 303 リダイレクトすることを確認する。"""
     response = client.get(
         "/auth/github/login",
-        params={"return_to": "http://localhost:5173/index.html"},
+        params={"return_to": "http://localhost:8788/index.html"},
         headers={
             "Host": "devforge-dev-nktebahhoq-an.a.run.app",
             "X-Forwarded-Proto": "https",
@@ -249,15 +338,16 @@ def test_github_login_redirect_sets_cookies_and_redirects(client) -> None:
 
     assert response.status_code == 303
     assert "https://github.com/login/oauth/authorize" in response.headers["location"]
-    assert "github_oauth_state=" in response.headers["set-cookie"]
     parsed = urlparse(response.headers["location"])
     redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
-    assert redirect_uri == "https://devforge-dev-nktebahhoq-an.a.run.app/auth/github/callback"
+    assert redirect_uri == "http://localhost:8788/github/callback"
 
 
 def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
-    client.cookies.set("github_oauth_state", "expected-state")
-    client.cookies.set("github_oauth_redirect", "http://localhost:5173/index.html")
+    client.cookies.set(
+        "session",
+        json.dumps({"state": "expected-state", "redirect": "http://localhost:8788/index.html"}),
+    )
 
     with patch("httpx.AsyncClient") as mock_async_client:
         response = client.get(
@@ -265,18 +355,18 @@ def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
             follow_redirects=False,
         )
 
-    assert response.status_code == 303
+    assert response.status_code == 200
     assert mock_async_client.call_count == 0
-    parsed = urlparse(response.headers["location"])
-    assert parsed.scheme == "http"
-    assert parsed.netloc == "localhost:5173"
-    assert parsed.path == "/index.html"
-    assert parse_qs(parsed.query)["github_error"] == ["OAuth state の検証に失敗しました。"]
+    # 200 + HTML リダイレクト: URL が HTML 本文に含まれていることを確認する
+    assert "localhost:8788" in response.text
+    assert "github_error=" in response.text
 
 
 def test_github_callback_redirect_sets_auth_cookie(client) -> None:
-    client.cookies.set("github_oauth_state", "expected-state")
-    client.cookies.set("github_oauth_redirect", "http://localhost:5173/index.html")
+    client.cookies.set(
+        "session",
+        json.dumps({"state": "expected-state", "redirect": "http://localhost:8788/index.html"}),
+    )
 
     token_response = MagicMock()
     token_response.json.return_value = {"access_token": "github-access-token"}
@@ -296,36 +386,191 @@ def test_github_callback_redirect_sets_auth_cookie(client) -> None:
             follow_redirects=False,
         )
 
-    assert response.status_code == 303
-    assert response.headers["location"] == "http://localhost:5173/index.html"
+    assert response.status_code == 200
+    # 200 + HTML リダイレクト: フロントエンド URL が HTML 本文に含まれていることを確認する
+    assert "localhost:8788/index.html" in response.text
     assert "access_token=" in response.headers["set-cookie"]
 
 
-def test_begin_github_oauth_state_cookie_is_httponly(client) -> None:
-    """begin_github_oauth が設定する state Cookie が HttpOnly であることを確認する。"""
-    response = client.get(
-        "/auth/github/login-url",
-        headers={"Origin": "http://localhost:5173"},
-    )
+def test_github_callback_post_does_not_require_cookie(client) -> None:
+    """POST /auth/github/callback は Cookie の state を検証せずトークン交換に進むことを確認する。
+
+    state はフロントの sessionStorage で検証済みのためサーバー側では Cookie を見ない。
+    """
+    token_response = MagicMock()
+    token_response.json.return_value = {"access_token": "github-access-token"}
+    user_response = MagicMock()
+    user_response.json.return_value = {"id": 67890, "login": "octo-post"}
+
+    client.cookies.clear()  # Cookie が無くても通ることを確認する
+
+    with patch("httpx.AsyncClient") as mock_cls:
+        mock_http = AsyncMock()
+        mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+        mock_http.__aexit__ = AsyncMock(return_value=False)
+        mock_http.post.return_value = token_response
+        mock_http.get.return_value = user_response
+        mock_cls.return_value = mock_http
+
+        response = client.post(
+            "/auth/github/callback",
+            json={"code": "test-code", "state": "any-state-from-frontend"},
+            headers={
+                "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+                "X-Forwarded-Proto": "https",
+            },
+        )
 
     assert response.status_code == 200
-    # Set-Cookie ヘッダーに HttpOnly が含まれていることを確認する
-    set_cookie_header = response.headers.get("set-cookie", "")
-    assert "github_oauth_state=" in set_cookie_header
-    assert "httponly" in set_cookie_header.lower()
+    assert response.json()["username"] == "github:octo-post"
+    assert "access_token=" in response.headers["set-cookie"]
+    # GitHub への redirect_uri も /github/callback でトークン交換していることを確認する
+    posted_kwargs = mock_http.post.call_args.kwargs
+    assert posted_kwargs["json"]["redirect_uri"].endswith("/github/callback")
+    assert "/auth/github/callback" not in posted_kwargs["json"]["redirect_uri"]
 
 
-def test_begin_github_oauth_state_cookie_has_samesite(client) -> None:
-    """begin_github_oauth が設定する state Cookie に SameSite 属性が含まれることを確認する。"""
-    response = client.get(
-        "/auth/github/login-url",
-        headers={"Origin": "http://localhost:5173"},
-    )
+def test_github_callback_post_uses_frontend_origin_when_callback_base_url_unset(client) -> None:
+    """ローカル開発では frontend の Origin を redirect_uri の base に使うことを確認する。"""
+    token_response = MagicMock()
+    token_response.json.return_value = {"access_token": "github-access-token"}
+    user_response = MagicMock()
+    user_response.json.return_value = {"id": 24680, "login": "octo-local"}
+
+    with patch("httpx.AsyncClient") as mock_cls:
+        mock_http = AsyncMock()
+        mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+        mock_http.__aexit__ = AsyncMock(return_value=False)
+        mock_http.post.return_value = token_response
+        mock_http.get.return_value = user_response
+        mock_cls.return_value = mock_http
+
+        response = client.post(
+            "/auth/github/callback",
+            json={"code": "test-code", "state": "state-from-frontend"},
+            headers={
+                "Origin": "http://localhost:8788",
+                "Host": "localhost:8000",
+            },
+        )
 
     assert response.status_code == 200
-    set_cookie_header = response.headers.get("set-cookie", "")
-    assert "github_oauth_state=" in set_cookie_header
-    assert "samesite=" in set_cookie_header.lower()
+    posted_kwargs = mock_http.post.call_args.kwargs
+    assert posted_kwargs["json"]["redirect_uri"] == "http://localhost:8788/github/callback"
+
+
+# ── 不正アクセス追跡: 認証失敗ログ ────────────────────────────────
+
+
+def _auth_failed_records(records: list[logging.LogRecord]) -> list[logging.LogRecord]:
+    """auth_failed イベント (devforge ロガー WARNING) のみ抽出する。"""
+    return [r for r in records if r.name == "devforge" and r.message == "auth_failed"]
+
+
+def test_auth_failed_logged_when_cookie_missing(client, caplog) -> None:
+    """Cookie 無しで保護 API を叩くと reason=missing_cookie の WARNING が出ることを確認する。"""
+    client.cookies.clear()
+    with caplog.at_level(logging.WARNING, logger="devforge"):
+        response = client.get("/auth/me")
+
+    assert response.status_code == 401
+    records = _auth_failed_records(caplog.records)
+    assert any(getattr(r, "reason", None) == "missing_cookie" for r in records)
+
+
+def test_auth_failed_logged_for_invalid_jwt(client, caplog) -> None:
+    """不正な JWT で 401 + reason=jwt_decode_error がログされることを確認する。"""
+    client.cookies.clear()
+    client.cookies.set("session", json.dumps({"access_token": "not-a-valid-jwt"}))
+    with caplog.at_level(logging.WARNING, logger="devforge"):
+        response = client.get("/auth/me")
+
+    assert response.status_code == 401
+    records = _auth_failed_records(caplog.records)
+    assert any(getattr(r, "reason", None) == "jwt_decode_error" for r in records)
+
+
+def test_auth_failed_logged_for_user_not_found(client, caplog) -> None:
+    """DB に存在しないユーザー名のトークンで reason=user_not_found がログされることを確認する。"""
+    token = create_access_token("nonexistent-user-xyz")
+    client.cookies.clear()
+    client.cookies.set("session", json.dumps({"access_token": token}))
+    with caplog.at_level(logging.WARNING, logger="devforge"):
+        response = client.get("/auth/me")
+
+    assert response.status_code == 401
+    records = _auth_failed_records(caplog.records)
+    assert any(getattr(r, "reason", None) == "user_not_found" for r in records)
+
+
+# ── レートリミット ──────────────────────────────────────────────
+
+
+def test_auth_me_rate_limited_after_threshold(client) -> None:
+    """/auth/me が 60/分の上限を超えると 429 を返すことを確認する。"""
+    auth_header(client, "rl-user")
+    limiter.reset()
+    statuses: list[int] = []
+    for _i in range(65):
+        resp = client.get("/auth/me")
+        statuses.append(resp.status_code)
+        if resp.status_code == 429:
+            break
+    assert 429 in statuses
+    # 上限到達前に少なくとも数件は 200 を返している
+    assert statuses.count(200) >= 50
+    limiter.reset()
+
+
+# ── Cookie 属性検証（session Cookie の名称・HttpOnly・SameSite）──────────────
+
+
+def test_github_callback_post_sets_session_cookie_with_httponly(client) -> None:
+    """POST /auth/github/callback が HttpOnly の session Cookie を設定することを確認する。"""
+    token_response = MagicMock()
+    token_response.json.return_value = {"access_token": "github-access-token"}
+    user_response = MagicMock()
+    user_response.json.return_value = {"id": 11111, "login": "cookie-test-user"}
+
+    with patch("httpx.AsyncClient") as mock_cls:
+        mock_http = AsyncMock()
+        mock_http.__aenter__ = AsyncMock(return_value=mock_http)
+        mock_http.__aexit__ = AsyncMock(return_value=False)
+        mock_http.post.return_value = token_response
+        mock_http.get.return_value = user_response
+        mock_cls.return_value = mock_http
+
+        response = client.post(
+            "/auth/github/callback",
+            json={"code": "test-code", "state": "state-from-frontend"},
+            headers={"Origin": "http://localhost:8788"},
+        )
+
+    assert response.status_code == 200
+    all_set_cookie = response.headers.get("set-cookie", "")
+    # session Cookie が設定されていること
+    assert "session=" in all_set_cookie
+    # HttpOnly 属性が付与されていること
+    assert "HttpOnly" in all_set_cookie
+    # SameSite 属性が付与されていること（ローカルでは lax）
+    assert "samesite=lax" in all_set_cookie.lower()
+    # Firebase 時代の __session Cookie 名が使われていないこと
+    assert "__session=" not in all_set_cookie
+
+
+def test_logout_clears_session_cookie_with_max_age_zero(client) -> None:
+    """POST /auth/logout が session Cookie を Max-Age=0 で削除することを確認する。"""
+    auth_header(client, "logout-cookie-attr-user")
+
+    response = client.post("/auth/logout")
+
+    assert response.status_code == 204
+    all_set_cookie = response.headers.get("set-cookie", "")
+    # session Cookie が削除されていること（max-age=0 で上書き）
+    assert "session=" in all_set_cookie
+    assert "max-age=0" in all_set_cookie.lower()
+    # Firebase 時代の __session Cookie 名が使われていないこと
+    assert "__session=" not in all_set_cookie
 
 
 # 使用しない環境変数を参照するだけのプレースホルダー（lint 対策）

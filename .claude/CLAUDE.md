@@ -11,7 +11,7 @@
 - ruff に準拠すること
 - PEP8を守るな、PEP8を理解した上で抽象化しろ
 - ruff の設定は `backend/pyproject.toml` に定義済み
-- コード変更後は `cd backend && .venv/bin/python -m ruff check app tests alembic_migrations` を実行し、違反がないことを確認すること
+- コード変更後は `make lint-backend` を実行し、違反がないことを確認すること
 - 未使用の import を残さないこと（F401）
 
 ### TypeScript/React (frontend)
@@ -23,8 +23,8 @@
 アプリケーションの改修を行った場合、以下のコマンドで CI 相当のチェックをローカルで実行し、パスすることを確認すること:
 
 ```bash
-# backend
-cd backend && .venv/bin/python -m ruff check app tests alembic_migrations && .venv/bin/python -m pytest -q tests
+# backend（nix develop 経由でシステムライブラリを解決する。Makefile が自動でラップする）
+make lint-backend && make test-backend
 
 # frontend（ユニット・ビルド）
 cd frontend && npm run lint && npm test && npm run build
@@ -64,12 +64,14 @@ ADMIN_TOKEN          # /admin/backup エンドポイント用
 CORS_ORIGINS         # 例: https://devforge-dev.example.com
 COOKIE_SECURE        # 例: true
 COOKIE_SAMESITE      # lax / strict / none
+INTERNAL_SECRET      # Cloudflare Pages → Cloud Run 間の秘密ヘッダー値（local 環境では省略可）
 ```
 
 ### オプション
 ```
 GITHUB_CLIENT_ID     # GitHub OAuth Client ID
 GITHUB_CLIENT_SECRET # GitHub OAuth Client Secret
+CALLBACK_BASE_URL    # GitHub OAuth redirect_uri のベース URL（例: https://app.devforge.app）。未設定時は x-forwarded-host から自動検出
 LLM_PROVIDER         # ollama / vertex
 VERTEX_PROJECT_ID    # Vertex AI 用
 VERTEX_LOCATION      # 例: asia-northeast1

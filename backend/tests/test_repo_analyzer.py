@@ -2,8 +2,13 @@
 
 from app.services.intelligence.github.repo_analyzer import (
     compute_language_ratios,
-    detect_from_root_files,
+    detect_devtools_from_root_files,
+    detect_from_dependencies,
+    detect_infras_from_dependencies,
+    detect_infras_from_root_files,
+    merge_frameworks,
     parse_package_json,
+    parse_pyproject_toml,
     parse_requirements_txt,
 )
 
@@ -53,39 +58,137 @@ def test_detect_from_root_files_package_json_react() -> None:
     assert "react" in packages
 
 
-def test_detect_from_root_files_dockerfile() -> None:
-    """Dockerfile があれば Docker が検出されること。"""
-    result = detect_from_root_files(["Dockerfile"])
+def test_detect_devtools_dockerfile() -> None:
+    """Dockerfile があれば Docker が DevTools として検出されること。"""
+    result = detect_devtools_from_root_files(["Dockerfile"])
     assert "Docker" in result
 
 
-def test_detect_from_root_files_github_actions() -> None:
-    """.github があれば GitHub Actions が検出されること。"""
-    result = detect_from_root_files([".github"])
+def test_detect_devtools_github_actions() -> None:
+    """.github があれば GitHub Actions が DevTools として検出されること。"""
+    result = detect_devtools_from_root_files([".github"])
     assert "GitHub Actions" in result
 
 
-def test_detect_from_root_files_terraform() -> None:
-    """terraform があれば Terraform が検出されること。"""
-    result = detect_from_root_files(["terraform"])
+def test_detect_devtools_docker_compose_no_duplicates() -> None:
+    """docker-compose.yml と docker-compose.yaml は両方 Docker Compose に対応し重複しないこと。"""
+    result = detect_devtools_from_root_files(["docker-compose.yml", "docker-compose.yaml"])
+    assert result.count("Docker Compose") == 1
+
+
+def test_detect_infras_terraform() -> None:
+    """terraform があれば Terraform がインフラとして検出されること。"""
+    result = detect_infras_from_root_files(["terraform"])
     assert "Terraform" in result
 
 
-def test_detect_from_root_files_no_duplicates() -> None:
-    """同一スキルを示す複数のファイルがあっても重複しないこと。"""
-    result = detect_from_root_files(["terraform", ".terraform"])
+def test_detect_infras_no_duplicates() -> None:
+    """terraform と .terraform は両方 Terraform に対応し重複しないこと。"""
+    result = detect_infras_from_root_files(["terraform", ".terraform"])
     assert result.count("Terraform") == 1
 
 
-def test_detect_from_root_files_empty_input() -> None:
-    """空リストを渡した場合は空リストが返ること。"""
-    result = detect_from_root_files([])
+def test_detect_infras_infra_directory() -> None:
+    """infra/ ディレクトリがあれば Terraform として検出されること。"""
+    result = detect_infras_from_root_files(["infra"])
+    assert "Terraform" in result
+
+
+def test_detect_infras_kubernetes_directories() -> None:
+    """k8s / kubernetes ディレクトリがあれば Kubernetes として検出されること。"""
+    assert "Kubernetes" in detect_infras_from_root_files(["k8s"])
+    assert "Kubernetes" in detect_infras_from_root_files(["kubernetes"])
+
+
+# ── detect_infras_from_dependencies テスト ──────────────────────────────
+
+
+def test_detect_infras_from_dependencies_aws() -> None:
+    """boto3 があれば AWS として検出されること。"""
+    result = detect_infras_from_dependencies(["boto3"])
+    assert "AWS" in result
+
+
+def test_detect_infras_from_dependencies_gcp() -> None:
+    """google-cloud-storage があれば GCP として検出されること。"""
+    result = detect_infras_from_dependencies(["google-cloud-storage"])
+    assert "GCP" in result
+
+
+def test_detect_infras_from_dependencies_azure() -> None:
+    """azure-storage-blob があれば Azure として検出されること。"""
+    result = detect_infras_from_dependencies(["azure-storage-blob"])
+    assert "Azure" in result
+
+
+def test_detect_infras_from_dependencies_no_duplicate() -> None:
+    """boto3 と botocore は両方 AWS にマップされ重複しないこと。"""
+    result = detect_infras_from_dependencies(["boto3", "botocore"])
+    assert result.count("AWS") == 1
+
+
+def test_detect_infras_from_dependencies_frameworks_excluded() -> None:
+    """fastapi など通常フレームワークはインフラとして検出されないこと。"""
+    result = detect_infras_from_dependencies(["fastapi", "react"])
     assert result == []
 
 
-def test_detect_from_root_files_unknown_file() -> None:
+# ── parse_pyproject_toml テスト ─────────────────────────────────────────
+
+
+def test_parse_pyproject_toml_pep621() -> None:
+    """PEP 621 形式の dependencies = [...] から依存名が抽出されること。"""
+    content = '[project]\ndependencies = [\n    "fastapi>=0.100",\n    "uvicorn[standard]",\n]\n'
+    result = parse_pyproject_toml(content)
+    assert "fastapi" in result
+    assert "uvicorn" in result
+
+
+def test_parse_pyproject_toml_poetry_simple() -> None:
+    """Poetry の name = "version" 形式から依存名が抽出されること。"""
+    content = "[tool.poetry.dependencies]\npython = \"^3.11\"\nfastapi = \"^0.109.0\"\n"
+    result = parse_pyproject_toml(content)
+    assert "fastapi" in result
+    assert "python" not in result
+
+
+def test_parse_pyproject_toml_poetry_extras_inline_table() -> None:
+    """Poetry の extras インラインテーブル形式が正しく解析されること。"""
+    content = '[tool.poetry.dependencies]\nfastapi = {extras = ["standard"], version = "^0.109.0"}\n'
+    result = parse_pyproject_toml(content)
+    assert "fastapi" in result
+
+
+def test_parse_pyproject_toml_section_restart_stops_parsing() -> None:
+    """新しいセクション開始で deps 解析が終了し、dev deps が混入しないこと。"""
+    content = (
+        "[tool.poetry.dependencies]\n"
+        "fastapi = \"^0.109.0\"\n"
+        "\n"
+        "[tool.poetry.dev-dependencies]\n"
+        "pytest = \"^7.0\"\n"
+    )
+    result = parse_pyproject_toml(content)
+    assert "fastapi" in result
+    assert "pytest" not in result
+
+
+def test_parse_pyproject_toml_no_deps_section() -> None:
+    """deps セクションが存在しない pyproject.toml では空リストが返ること。"""
+    content = "[tool.ruff]\nline-length = 100\n"
+    result = parse_pyproject_toml(content)
+    assert result == []
+
+
+def test_detect_devtools_empty_input() -> None:
+    """空リストを渡した場合は空リストが返ること。"""
+    result = detect_devtools_from_root_files([])
+    assert result == []
+
+
+def test_detect_devtools_unknown_file() -> None:
     """未知のファイル名は無視されること。"""
-    result = detect_from_root_files(["unknown_file.xyz"])
+    result = detect_devtools_from_root_files(["unknown_file.xyz"])
     assert result == []
 
 
@@ -136,3 +239,59 @@ def test_parse_package_json_empty_deps() -> None:
     """依存関係が空の場合は空リストが返ること。"""
     result = parse_package_json('{"name": "my-app"}')
     assert result == []
+
+
+# ── detect_from_dependencies テスト（Issue #203） ────────────────────────
+
+
+def test_detect_from_dependencies_react_and_nextjs() -> None:
+    """react と next が React / Next.js として検出されること。"""
+    result = detect_from_dependencies(["react", "react-dom", "next"])
+    assert "React" in result
+    assert "Next.js" in result
+    # react と react-dom はどちらも React にマップされ重複しないこと
+    assert result.count("React") == 1
+
+
+def test_detect_from_dependencies_fastapi() -> None:
+    """fastapi が FastAPI として検出されること。"""
+    result = detect_from_dependencies(["fastapi", "uvicorn"])
+    assert "FastAPI" in result
+
+
+def test_detect_from_dependencies_case_insensitive() -> None:
+    """大文字混じりの依存名でも検出できること。"""
+    result = detect_from_dependencies(["Django", "Spring-Boot"])
+    assert "Django" in result
+    assert "Spring Boot" in result
+
+
+def test_detect_from_dependencies_unknown_ignored() -> None:
+    """マッピングに無い依存は無視されること。"""
+    result = detect_from_dependencies(["unknown-lib", "my-internal-pkg"])
+    assert result == []
+
+
+def test_detect_from_dependencies_empty() -> None:
+    """空リストでは空リストが返ること。"""
+    assert detect_from_dependencies([]) == []
+
+
+# ── merge_frameworks テスト ─────────────────────────────────────────────
+
+
+def test_merge_frameworks_preserves_order_and_dedupes() -> None:
+    """複数ソースの framework リストを順序保持してマージ・重複除去できること。"""
+    root_fw = ["Docker", "GitHub Actions"]
+    dep_fw = ["React", "Docker", "FastAPI"]
+    result = merge_frameworks(root_fw, dep_fw)
+    # root 側の順序が先
+    assert result.index("Docker") < result.index("React")
+    # 重複は 1 回だけ
+    assert result.count("Docker") == 1
+    assert set(result) == {"Docker", "GitHub Actions", "React", "FastAPI"}
+
+
+def test_merge_frameworks_empty_inputs() -> None:
+    """空リストのみでも空リストが返ること。"""
+    assert merge_frameworks([], []) == []

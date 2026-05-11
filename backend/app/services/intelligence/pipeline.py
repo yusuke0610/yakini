@@ -7,17 +7,18 @@ GitHub のデータから以下の分析を順次実行します：
 オプションの LLM 要約を除き、各ステージは決定論的です。
 """
 
-import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from ...core.logging_utils import get_logger
+from ...core.metrics import measure_time_async
 from .github_collector import RepoData, collect_repos
 from .position_scorer import PositionScores, calculate_position_scores
 from .skill_extractor import ExtractionResult, extract_skills
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -29,9 +30,13 @@ class IntelligenceResult:
     unique_skills: int
     analyzed_at: str
     languages: Dict[str, int] = field(default_factory=dict)
+    detected_frameworks: Dict[str, int] = field(default_factory=dict)  # フレームワーク名 → 使用リポジトリ数
+    detected_devtools: Dict[str, int] = field(default_factory=dict)   # DevTools 名 → 使用リポジトリ数
+    detected_infras: Dict[str, int] = field(default_factory=dict)     # インフラツール名 → 使用リポジトリ数
     position_scores: Optional[PositionScores] = None
 
 
+@measure_time_async("intelligence.pipeline")
 async def run_pipeline(
     username: str,
     token: Optional[str] = None,
@@ -61,6 +66,18 @@ async def run_pipeline(
         for lang, byte_count in repo.languages.items():
             lang_totals[lang] += byte_count
 
+    # 全リポジトリのフレームワーク・DevTools・インフラをリポジトリ数でカウント
+    framework_counts: Dict[str, int] = defaultdict(int)
+    devtool_counts: Dict[str, int] = defaultdict(int)
+    infra_counts: Dict[str, int] = defaultdict(int)
+    for repo in repos:
+        for fw in repo.detected_frameworks:
+            framework_counts[fw] += 1
+        for dt in repo.detected_devtools:
+            devtool_counts[dt] += 1
+        for inf in repo.detected_infras:
+            infra_counts[inf] += 1
+
     # ステージ 2: スキルを抽出
     extraction: ExtractionResult = extract_skills(repos)
 
@@ -80,5 +97,8 @@ async def run_pipeline(
         unique_skills=len(extraction.unique_skills),
         analyzed_at=datetime.now().isoformat(),
         languages=dict(lang_totals),
+        detected_frameworks=dict(framework_counts),
+        detected_devtools=dict(devtool_counts),
+        detected_infras=dict(infra_counts),
         position_scores=scores,
     )

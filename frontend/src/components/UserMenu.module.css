@@ -123,6 +123,15 @@
   transform: translateX(16px);
 }
 
+.logoutItem {
+  color: rgba(255, 100, 100, 0.85);
+}
+
+.logoutItem:hover {
+  background: rgba(255, 80, 80, 0.12);
+  color: #ff6b6b;
+}
+
 @media (max-width: 768px) {
   .menu {
     bottom: auto;

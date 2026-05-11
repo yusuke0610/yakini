@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getBlogScore, type BlogScoreResponse } from "../../api/blog";
+import { InlineSpinner } from "../ui/InlineSpinner";
 import styles from "./BlogScoreCard.module.css";
 
 interface StatItemProps {
@@ -41,7 +42,7 @@ export function BlogScoreCard() {
   if (loading) {
     return (
       <div className={styles.card}>
-        <p className={styles.loading}>集計中...</p>
+        <InlineSpinner label="集計中..." size="sm" />
       </div>
     );
   }

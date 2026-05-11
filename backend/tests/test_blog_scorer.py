@@ -1,5 +1,8 @@
 """ブログスコアリングのユニットテスト。"""
 
+from datetime import date
+from unittest.mock import patch
+
 from app.services.blog.scorer import (
     calculate_blog_score,
     is_tech_article,
@@ -75,7 +78,10 @@ def test_avg_monthly_posts():
         }
         for i in range(4)
     ]
-    result = calculate_blog_score(articles)
+    with patch("app.services.blog.scorer.date") as mock_date:
+        mock_date.fromisoformat.side_effect = date.fromisoformat
+        mock_date.today.return_value = date(2026, 3, 31)
+        result = calculate_blog_score(articles)
     assert result.avg_monthly_posts == 4.0
 
 

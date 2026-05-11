@@ -26,7 +26,11 @@ def _run(coro):
 
 
 def test_github_analysis_timeout_propagates(db_session: Session) -> None:
-    """run_pipeline で asyncio.TimeoutError が発生した場合に例外が伝播することを確認する。"""
+    """collect_repos で asyncio.TimeoutError が発生した場合に例外が伝播することを確認する。
+
+    _run_github_analysis は run_pipeline を呼ばず collect_repos を直接呼ぶため、
+    パッチ対象は collect_repos が正しい。set_progress（Redis）もモックが必要。
+    """
     user = UserRepository(db_session).create(
         "github:timeout-user",
         hashed_password=None,
@@ -36,11 +40,16 @@ def test_github_analysis_timeout_propagates(db_session: Session) -> None:
     db_session.add(cache)
     db_session.commit()
 
-    # ローカルインポートされる run_pipeline を patch する
-    with patch(
-        "app.services.intelligence.pipeline.run_pipeline",
-        new_callable=AsyncMock,
-        side_effect=asyncio.TimeoutError,
+    with (
+        patch(
+            "app.services.intelligence.github_collector.collect_repos",
+            new_callable=AsyncMock,
+            side_effect=asyncio.TimeoutError,
+        ),
+        patch(
+            "app.services.progress_service.set_progress",
+            new_callable=AsyncMock,
+        ),
     ):
         with pytest.raises(asyncio.TimeoutError):
             _run(
@@ -57,14 +66,14 @@ def test_github_analysis_timeout_propagates(db_session: Session) -> None:
 
     db_session.refresh(cache)
     # _run_github_analysis はタイムアウトで例外を再 raise する
-    # ステータスは processing のまま（_mark_failed は execute_task 層が担う）
+    # ステータスは processing のまま（_mark_dead_letter は execute_task 層が担う）
     assert cache.status == "processing"
 
 
-def test_github_analysis_mark_failed_on_unexpected_error(db_session: Session) -> None:
-    """予期しないエラー発生時に _mark_failed でステータスが failed になることを確認する。"""
+def test_github_analysis_mark_dead_letter_on_unexpected_error(db_session: Session) -> None:
+    """予期しないエラー発生時に _mark_dead_letter でステータスが dead_letter になることを確認する。"""
     from app.services.tasks.base import TaskType
-    from app.services.tasks.worker import _mark_failed
+    from app.services.tasks.worker import _mark_dead_letter
 
     user = UserRepository(db_session).create(
         "github:markfailed-user",
@@ -75,14 +84,14 @@ def test_github_analysis_mark_failed_on_unexpected_error(db_session: Session) ->
     db_session.add(cache)
     db_session.commit()
 
-    _mark_failed(
+    _mark_dead_letter(
         db_session,
         TaskType.GITHUB_ANALYSIS,
         {"user_id": user.id},
     )
 
     db_session.refresh(cache)
-    assert cache.status == "failed"
+    assert cache.status == "dead_letter"
     assert cache.error_message == "予期しないエラーが発生しました"
 
 
@@ -104,32 +113,46 @@ def test_blog_summarize_timeout_propagates(db_session: Session) -> None:
     mock_llm = MagicMock()
     mock_llm.check_available = AsyncMock(return_value=True)
 
+    # DB に記事がないと worker が early return するため、記事リストをモックで返す
+    mock_article = MagicMock()
+    mock_article.title = "テスト記事"
+    mock_article.url = "https://example.com"
+    mock_article.published_at = "2026-01-01"
+    mock_article.likes_count = 0
+    mock_article.summary = ""
+    mock_article.tags = []
+    mock_article.platform = "zenn"
+
     with patch(
         "app.services.tasks.worker.get_llm_client",
         return_value=mock_llm,
     ):
-        # ローカルインポートされる summarize_blog_articles を patch する
         with patch(
-            "app.services.intelligence.llm_summarizer.summarize_blog_articles",
-            new_callable=AsyncMock,
-            side_effect=asyncio.TimeoutError,
-        ):
-            with pytest.raises(asyncio.TimeoutError):
-                _run(
-                    _run_blog_summarize(
-                        db_session,
-                        {"user_id": user.id, "articles": []},
+            "app.services.tasks.worker.BlogArticleRepository",
+        ) as mock_repo_cls:
+            mock_repo_cls.return_value.list_by_user.return_value = [mock_article]
+            # ローカルインポートされる summarize_blog_articles を patch する
+            with patch(
+                "app.services.intelligence.llm_summarizer.summarize_blog_articles",
+                new_callable=AsyncMock,
+                side_effect=asyncio.TimeoutError,
+            ):
+                with pytest.raises(asyncio.TimeoutError):
+                    _run(
+                        _run_blog_summarize(
+                            db_session,
+                            {"user_id": user.id, "articles": []},
+                        )
                     )
-                )
 
     db_session.refresh(cache)
     assert cache.status == "processing"
 
 
-def test_blog_summarize_mark_failed_on_unexpected_error(db_session: Session) -> None:
-    """予期しないエラー発生時に _mark_failed でブログサマリのステータスが failed になることを確認する。"""
+def test_blog_summarize_mark_dead_letter_on_unexpected_error(db_session: Session) -> None:
+    """予期しないエラー発生時に _mark_dead_letter でブログサマリのステータスが dead_letter になることを確認する。"""
     from app.services.tasks.base import TaskType
-    from app.services.tasks.worker import _mark_failed
+    from app.services.tasks.worker import _mark_dead_letter
 
     user = UserRepository(db_session).create(
         "blog-markfailed-user",
@@ -140,12 +163,12 @@ def test_blog_summarize_mark_failed_on_unexpected_error(db_session: Session) -> 
     db_session.add(cache)
     db_session.commit()
 
-    _mark_failed(
+    _mark_dead_letter(
         db_session,
         TaskType.BLOG_SUMMARIZE,
         {"user_id": user.id},
     )
 
     db_session.refresh(cache)
-    assert cache.status == "failed"
+    assert cache.status == "dead_letter"
     assert cache.error_message == "予期しないエラーが発生しました"

@@ -3,6 +3,7 @@
 
 GET    /api/blog/accounts              — 連携アカウント一覧
 POST   /api/blog/accounts              — 連携アカウント登録
+PATCH  /api/blog/accounts/{platform}   — 連携アカウント更新
 DELETE /api/blog/accounts/{id}         — 連携アカウント解除
 GET    /api/blog/articles              — 記事一覧
 POST   /api/blog/accounts/{id}/sync   — 手動同期
@@ -15,7 +16,7 @@ GET    /api/blog/score                 — ブログスコアリング
 import logging
 from dataclasses import asdict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from ..core.errors import resolve_async_error_code
@@ -24,10 +25,11 @@ from ..core.security.auth import get_current_user
 from ..core.security.dependencies import limiter
 from ..db import get_db
 from ..models import BlogSummaryCache, User
-from ..repositories import BlogAccountRepository, BlogArticleRepository
+from ..repositories import BlogAccountRepository, BlogArticleRepository, BlogSummaryCacheRepository
 from ..schemas import (
     BlogAccountCreate,
     BlogAccountResponse,
+    BlogAccountUpdate,
     BlogArticleResponse,
     BlogScoreResponse,
     BlogSummaryRequest,
@@ -35,9 +37,12 @@ from ..schemas import (
     BlogSyncResponse,
 )
 from ..schemas.career_analysis import TaskStatusResponse
+from ..services.blog.account_service import BlogAccountService
 from ..services.blog.collector import (
+    BlogAccountNotFoundError,
     BlogPlatformRequestError,
     UnsupportedBlogPlatformError,
+    normalize_username,
     verify_user_exists,
 )
 from ..services.blog.scorer import blog_articles_to_score_dicts, calculate_blog_score
@@ -79,9 +84,22 @@ async def add_account(
             detail=get_error("blog.account_already_registered"),
         )
 
+    try:
+        normalized_username = normalize_username(body.platform, body.username)
+    except UnsupportedBlogPlatformError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=get_error("blog.platform_not_supported"),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("blog.account_not_found"),
+        ) from exc
+
     # 外部プラットフォーム上にユーザーが存在するか検証
     try:
-        user_exists = await verify_user_exists(body.platform, body.username)
+        user_exists = await verify_user_exists(body.platform, normalized_username)
     except UnsupportedBlogPlatformError as exc:
         raise HTTPException(
             status_code=400,
@@ -99,8 +117,46 @@ async def add_account(
             detail=get_error("blog.account_not_found"),
         )
 
-    account = repo.upsert(body.platform, body.username)
+    account = repo.upsert(body.platform, normalized_username)
     return account
+
+
+@router.patch("/accounts/{platform}", response_model=BlogAccountResponse)
+@limiter.limit("10/minute")
+async def update_account(
+    request: Request,
+    platform: str,
+    body: BlogAccountUpdate,
+    user: User = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """連携アカウントの username を更新し、同期状態を未同期に戻す。"""
+    service = BlogAccountService(db, user.id)
+    if not service.get_by_platform(platform):
+        raise HTTPException(status_code=404, detail=get_error("blog.account_link_not_found"))
+
+    try:
+        return await service.update_username(platform, body.username)
+    except BlogAccountNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("blog.account_not_found"),
+        ) from exc
+    except UnsupportedBlogPlatformError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=get_error("blog.platform_not_supported"),
+        ) from exc
+    except BlogPlatformRequestError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=get_error("blog.account_check_failed"),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("blog.account_not_found"),
+        ) from exc
 
 
 @router.delete("/accounts/{account_id}", status_code=204)
@@ -141,6 +197,11 @@ async def sync_account(
 
     try:
         return await service.sync(account_id)
+    except BlogAccountNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=get_error("blog.account_not_found"),
+        ) from exc
     except UnsupportedBlogPlatformError as exc:
         raise HTTPException(
             status_code=400,
@@ -159,8 +220,8 @@ def get_summary_cache(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """保存済みのブログ AI 分析結果を取得する。"""
-    cache = db.query(BlogSummaryCache).filter_by(user_id=user.id).first()
+    """保存済みのブログ AI 分析結果を取得する。期限切れキャッシュは無効扱いにする。"""
+    cache = BlogSummaryCacheRepository(db, user.id).get()
     if cache and cache.summary:
         return BlogSummaryResponse(
             summary=cache.summary,
@@ -186,7 +247,7 @@ def get_summary_cache_status(
     db: Session = Depends(get_db),
 ):
     """サマリ生成ステータスを返す（軽量ポーリング用）。"""
-    cache = db.query(BlogSummaryCache).filter_by(user_id=user.id).first()
+    cache = BlogSummaryCacheRepository(db, user.id).get()
     if not cache:
         return TaskStatusResponse(status="completed")
     return TaskStatusResponse(
@@ -200,14 +261,13 @@ def get_summary_cache_status(
 @limiter.limit("5/minute")
 async def summarize_blog(
     request: Request,
-    body: BlogSummaryRequest,
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """ブログ記事の AI サマリをバックグラウンドで生成する。"""
-    # 進行中のタスクがあればそのステータスを返す
-    cache = db.query(BlogSummaryCache).filter_by(user_id=user.id).first()
+    # 進行中のタスクがあればそのステータスを返す（期限切れキャッシュは None が返るため再生成を許可）
+    cache = BlogSummaryCacheRepository(db, user.id).get()
     if cache and cache.status in ("pending", "processing"):
         return BlogSummaryResponse(
             summary=cache.summary or "",
@@ -227,21 +287,79 @@ async def summarize_blog(
     cache.error_message = None
     db.commit()
 
-    articles_data = [art.model_dump() for art in body.articles]
+    try:
+        dispatcher = get_task_dispatcher(background_tasks)
+        await dispatcher.dispatch(
+            TaskType.BLOG_SUMMARIZE,
+            {"user_id": user.id},
+        )
+    except Exception:
+        logger.exception("ブログサマリタスクのディスパッチに失敗しました")
+        cache.status = "dead_letter"
+        cache.error_message = "タスクの開始に失敗しました"
+        db.commit()
+        raise HTTPException(
+            status_code=500,
+            detail=get_error("task.dispatch_failed"),
+        )
+
+    return BlogSummaryResponse(
+        summary="",
+        available=False,
+        status="pending",
+    )
+
+
+# リトライ可能な終端ステータス（リトライ枯渇 or リトライ不可エラー）
+_RETRYABLE_TERMINAL_STATUSES = {"dead_letter"}
+
+
+@router.post("/summarize/retry", response_model=BlogSummaryResponse, status_code=202)
+@limiter.limit("5/minute")
+async def retry_summarize_blog(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    body: BlogSummaryRequest = Body(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """失敗したブログサマリタスクを手動で再実行する。
+
+    ``dead_letter`` 状態のキャッシュのみ再実行可能。
+    """
+    cache = BlogSummaryCacheRepository(db, user.id).get()
+    if not cache:
+        raise HTTPException(
+            status_code=404,
+            detail="サマリキャッシュが見つかりません",
+        )
+    if cache.status not in _RETRYABLE_TERMINAL_STATUSES:
+        raise HTTPException(
+            status_code=409,
+            detail=f"このタスクはリトライできない状態です（現在: {cache.status}）",
+        )
+
+    available = await check_llm_available()
+    if not available:
+        return BlogSummaryResponse(summary="", available=False)
+
+    cache.status = "pending"
+    cache.error_message = None
+    cache.retry_count = 0
+    cache.started_at = None
+    cache.completed_at = None
+    db.commit()
 
     try:
         dispatcher = get_task_dispatcher(background_tasks)
         await dispatcher.dispatch(
             TaskType.BLOG_SUMMARIZE,
-            {
-                "user_id": user.id,
-                "articles": articles_data,
-            },
+            {"user_id": user.id},
         )
     except Exception:
-        logger.exception("ブログサマリタスクのディスパッチに失敗しました")
-        cache.status = "failed"
-        cache.error_message = "タスクの開始に失敗しました"
+        logger.exception("ブログサマリタスクの再実行に失敗しました")
+        cache.status = "dead_letter"
+        cache.error_message = "タスクの再実行に失敗しました"
         db.commit()
         raise HTTPException(
             status_code=500,

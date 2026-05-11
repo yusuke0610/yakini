@@ -5,16 +5,31 @@ locals {
     "admin-token",
     "github-client-id",
     "github-client-secret",
+    "jwt-private-key",
+    "jwt-public-key",
+    "internal-secret",
+    # 棚卸し TODO: "field-encryption-key"（FIELD_ENCRYPTION_KEY / Fernet 鍵）は
+    # PII 削除対応（Rirekisho 個人情報フィールドの暗号化廃止）が完了した場合、
+    # このリストから除外し対応する Secret Manager シークレットを削除すること。
+    # 削除前に全環境（dev/stg/prod）の Cloud Run 設定から環境変数を外すこと。
   ]
   required_secret_env = {
     SECRET_KEY           = "secret-key"
     FIELD_ENCRYPTION_KEY = "field-encryption-key"
     ADMIN_TOKEN          = "admin-token"
+    JWT_PRIVATE_KEY      = "jwt-private-key"
+    JWT_PUBLIC_KEY       = "jwt-public-key"
+    INTERNAL_SECRET      = "internal-secret"
   }
   github_secret_env = var.enable_github_oauth ? {
     GITHUB_CLIENT_ID     = "github-client-id"
     GITHUB_CLIENT_SECRET = "github-client-secret"
   } : {}
+
+  # 初回 apply 時のブートストラップ用イメージ。
+  # AR にアプリイメージが push される前でも Cloud Run リソース作成を成立させるための公開 hello イメージ。
+  # 以後は ignore_changes により CI のデプロイが image を上書きする。
+  bootstrap_image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 }
 
 resource "google_secret_manager_secret" "app" {
@@ -44,7 +59,7 @@ resource "google_cloud_run_v2_service" "app" {
     service_account = var.service_account_email
 
     containers {
-      image = var.bootstrap_image != "" ? var.bootstrap_image : "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/${var.stack_name}:${var.container_image_tag}"
+      image = local.bootstrap_image
 
       resources {
         limits = {
@@ -73,13 +88,17 @@ resource "google_cloud_run_v2_service" "app" {
         value = var.cors_origins
       }
       env {
+        name  = "CALLBACK_BASE_URL"
+        value = var.callback_base_url
+      }
+      env {
         name  = "ENVIRONMENT"
         value = var.environment
       }
 
       env {
         name  = "LLM_PROVIDER"
-        value = var.llm_provider
+        value = "vertex"
       }
       env {
         name  = "VERTEX_PROJECT_ID"
@@ -91,7 +110,7 @@ resource "google_cloud_run_v2_service" "app" {
       }
       env {
         name  = "VERTEX_MODEL"
-        value = var.vertex_model
+        value = "gemini-2.5-flash-lite"
       }
 
       env {
@@ -117,6 +136,24 @@ resource "google_cloud_run_v2_service" "app" {
       env {
         name  = "CLOUD_TASKS_SERVICE_ACCOUNT"
         value = var.cloud_tasks_service_account
+      }
+      env {
+        name  = "UPSTASH_REDIS_URL"
+        value = var.upstash_redis_url
+      }
+      env {
+        name  = "UPSTASH_REDIS_TOKEN"
+        value = var.upstash_redis_token
+      }
+      env {
+        # Cloud Logging 向け JSON フォーマットを有効化
+        name  = "LOG_FORMAT"
+        value = "json"
+      }
+      env {
+        # 通常運用は INFO。パフォーマンス分析時のみ DEBUG に変更する
+        name  = "LOG_LEVEL"
+        value = "INFO"
       }
 
       dynamic "env" {

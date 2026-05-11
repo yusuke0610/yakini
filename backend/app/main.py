@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
+from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
 from .core.errors import (  # noqa: E402
@@ -23,8 +24,9 @@ from .core.logging_utils import setup_logging  # noqa: E402
 from .core.messages import get_error, load_messages  # noqa: E402
 from .core.security.csrf import CSRFMiddleware  # noqa: E402
 from .core.security.dependencies import limiter  # noqa: E402
-from .core.settings import get_cors_origins  # noqa: E402
+from .core.settings import get_cors_origins, get_environment, get_internal_secret  # noqa: E402
 from .db.bootstrap import bootstrap  # noqa: E402
+from .middleware.request_id import RequestIDMiddleware  # noqa: E402
 from .routers import (  # noqa: E402
     admin_router,
     auth_router,
@@ -55,10 +57,11 @@ logger = logging.getLogger(__name__)
 
 @app.exception_handler(RateLimitExceeded)
 async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    retry_after = getattr(exc, "headers", {}).get("Retry-After") if hasattr(exc, "headers") else None
+    # exc.headers は属性自体は存在するが None の場合があるため `or {}` で吸収する
+    retry_after = (getattr(exc, "headers", None) or {}).get("Retry-After")
     error_id = generate_error_id()
     logger.warning(
-        "リクエストレート制限",
+        "rate_limit_exceeded",
         extra={"http_status": 429, "error_id": error_id, "status": "failed"},
     )
     return JSONResponse(
@@ -130,6 +133,37 @@ async def _unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
+_INTERNAL_SECRET_SKIP_PATHS = {"/health"}
+_INTERNAL_SECRET_HEADER = "x-internal-secret"
+
+
+class InternalSecretMiddleware(BaseHTTPMiddleware):
+    """Cloudflare Pages 以外からの直接アクセスを遮断するミドルウェア。
+
+    CF Pages の Functions が X-Internal-Secret ヘッダーを付与し、
+    Cloud Run 側で値を照合することで多層防御を実現する。
+    local 環境（ENVIRONMENT=local）では検証をスキップする。
+    """
+
+    def __init__(self, app, secret: str, env: str) -> None:
+        super().__init__(app)
+        self._secret = secret
+        self._skip = env == "local"
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        if self._skip or request.url.path in _INTERNAL_SECRET_SKIP_PATHS:
+            return await call_next(request)
+
+        incoming = request.headers.get(_INTERNAL_SECRET_HEADER, "")
+        # secrets.compare_digest で timing-safe 比較する
+        import secrets as _secrets
+
+        if not self._secret or not _secrets.compare_digest(incoming, self._secret):
+            return JSONResponse(status_code=403, content={"detail": "forbidden"})
+
+        return await call_next(request)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """レスポンスにセキュリティヘッダーを付与するミドルウェア。"""
 
@@ -155,12 +189,22 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CSRFMiddleware)
 app.add_middleware(
+    InternalSecretMiddleware,
+    secret=get_internal_secret(),
+    env=get_environment(),
+)
+# SlowAPIMiddleware: limiter の default_limits を全ルートに適用する
+# （個別 @limiter.limit デコレータは付与されたルートのみ上書き）
+app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID", "X-Internal-Secret"],
 )
+# RequestIDMiddleware は最後に追加することで最初に実行される（ミドルウェアは逆順）
+app.add_middleware(RequestIDMiddleware)
 
 app.include_router(health_router)
 app.include_router(career_analysis_router)
