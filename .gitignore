@@ -13,7 +13,10 @@ node_modules/
 dist/
 frontend/.test-dist/
 frontend/tsconfig.app.tsbuildinfo
+frontend/tsconfig.node.tsbuildinfo
 frontend/vite.config.js
+# Cloudflare Pages _redirects はビルド時に gen-redirects.mjs で生成する
+frontend/public/_redirects
 
 # Terraform
 .terraform/
@@ -38,8 +41,12 @@ backend/local.sqlite-wal
 frontend/.env.local
 backend/.env
 
-# Firebase
+# Firebase（削除済みだが生成物の混入を防ぐために保持）
 .firebase/
+firebase-debug.log
+
+# Wrangler
+.wrangler/
 
 # OS
 .DS_Store

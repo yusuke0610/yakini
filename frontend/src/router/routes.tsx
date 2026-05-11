@@ -61,8 +61,8 @@ export default function AppRoutes({
       </Route>
 
       {/*
-        GitHub OAuth コールバック: Firebase Hosting の /auth/** rewrite に巻き込まれて
-        Cloud Run へ転送されないように、/github/callback で受け取る。
+        GitHub OAuth コールバック: Cloudflare Pages の /auth/** プロキシに巻き込まれないよう、
+        SPA ルートの /github/callback で React が受け取り、POST で認証を完了する。
       */}
       <Route
         path="/github/callback"

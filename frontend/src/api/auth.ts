@@ -25,9 +25,9 @@ export async function handleGitHubCallback(code: string, state: string): Promise
 /** sessionStorage の key。CSRF 検証用に GitHub OAuth state を保持する。 */
 export const GITHUB_OAUTH_STATE_STORAGE_KEY = "github_oauth_state";
 
-/** Firebase Hosting は __session 以外の Cookie を Cloud Run に転送せず、
- *  さらに /auth/** rewrite の影響でフロントの React ルートにも到達できないため、
- *  state は sessionStorage で管理し、コールバック URL は /github/callback に揃える。 */
+/** Cloudflare Pages は /auth/** を Cloud Run にプロキシするため、GitHub の
+ *  リダイレクト先は SPA ルートの /github/callback に揃え、React で受け取る。
+ *  state は sessionStorage で管理し、コールバック時に CSRF 検証する。 */
 export async function initiateGitHubLogin(returnTo: string): Promise<void> {
   const params = new URLSearchParams({ return_to: returnTo });
   const response = await fetch(`${API_BASE_URL}/auth/github/login-url?${params.toString()}`, {

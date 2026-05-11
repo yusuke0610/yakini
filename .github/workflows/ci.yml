@@ -44,7 +44,7 @@ jobs:
               - 'frontend/**'
               - 'backend/**'
               - '.github/workflows/ci.yml'
-              - 'firebase.json'
+              - 'frontend/wrangler.toml'
 
   test-frontend:
     runs-on: ubuntu-latest
@@ -210,16 +210,14 @@ jobs:
         run: npm run build --prefix frontend
         env:
           VITE_APP_VERSION: ${{ env.APP_VERSION }}
+          CLOUD_RUN_URL: ${{ secrets.CLOUD_RUN_URL_DEV }}
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
+      - name: Deploy to Cloudflare Pages (dev)
+        uses: cloudflare/wrangler-action@v3
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Deploy to Firebase Hosting
-        run: |
-          npm install -g firebase-tools
-          firebase deploy --only hosting:dev --project devforge-dev-20260311
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy frontend/dist --project-name=devforge-dev --branch=dev
 
   deploy-backend:
     runs-on: ubuntu-latest
@@ -310,16 +308,14 @@ jobs:
         run: npm run build --prefix frontend
         env:
           VITE_APP_VERSION: ${{ env.APP_VERSION }}
+          CLOUD_RUN_URL: ${{ secrets.CLOUD_RUN_URL_STG }}
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
+      - name: Deploy to Cloudflare Pages (stg)
+        uses: cloudflare/wrangler-action@v3
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY_STG }}
-
-      - name: Deploy to Firebase Hosting (stg)
-        run: |
-          npm install -g firebase-tools
-          firebase deploy --only hosting:stg --project devforge-stg-20260404
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy frontend/dist --project-name=devforge-stg --branch=stg
 
   # stg バックエンドデプロイ（stg ブランチ push 時）
   deploy-backend-stg:
@@ -411,16 +407,14 @@ jobs:
         run: npm run build --prefix frontend
         env:
           VITE_APP_VERSION: ${{ env.APP_VERSION }}
+          CLOUD_RUN_URL: ${{ secrets.CLOUD_RUN_URL_PROD }}
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
+      - name: Deploy to Cloudflare Pages (prod)
+        uses: cloudflare/wrangler-action@v3
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY_PROD }}
-
-      - name: Deploy to Firebase Hosting (prod)
-        run: |
-          npm install -g firebase-tools
-          firebase deploy --only hosting:prod --project devforge-prod-20260404
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy frontend/dist --project-name=devforge --branch=main
 
   # prod バックエンドデプロイ（main ブランチ push 時）
   deploy-backend-prod:

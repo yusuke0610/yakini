@@ -20,9 +20,8 @@ from ...repositories import UserRepository
 # GitHub OAuth 用 Cookie 名
 GITHUB_OAUTH_STATE_COOKIE = "github_oauth_state"
 GITHUB_OAUTH_REDIRECT_COOKIE = "github_oauth_redirect"
-# Firebase Hosting は __session という名前の Cookie のみ Cloud Run に転送するため、
 # state と redirect_url を JSON で1つの Cookie にまとめて格納する
-GITHUB_OAUTH_SESSION_COOKIE = "__session"
+GITHUB_OAUTH_SESSION_COOKIE = "session"
 GITHUB_OAUTH_COOKIE_MAX_AGE = 10 * 60
 
 
@@ -53,9 +52,8 @@ def clear_github_oauth_cookies(response: Response) -> None:
 def set_github_oauth_session(
     response: Response, state: str, redirect_url: str
 ) -> None:
-    """GitHub OAuth 用の state と redirect_url を __session cookie に格納する。
+    """GitHub OAuth 用の state と redirect_url を session cookie に格納する。
 
-    Firebase Hosting は __session という名前の Cookie のみ Cloud Run に転送するため、
     state と redirect_url を JSON で1つの Cookie にまとめる。
     """
     payload = json.dumps({"state": state, "redirect": redirect_url})
@@ -63,7 +61,7 @@ def set_github_oauth_session(
 
 
 def get_github_oauth_session(request: Request) -> tuple[str | None, str | None]:
-    """__session cookie から (state, redirect_url) を取り出す。
+    """session cookie から (state, redirect_url) を取り出す。
 
     取得できない場合は (None, None) を返す。
     """
@@ -80,7 +78,7 @@ def get_github_oauth_session(request: Request) -> tuple[str | None, str | None]:
 
 
 def clear_github_oauth_session(response: Response) -> None:
-    """__session cookie を削除する。"""
+    """session cookie を削除する。"""
     delete_cookie(response, GITHUB_OAUTH_SESSION_COOKIE)
 
 
@@ -94,7 +92,7 @@ def set_auth_cookies(response: Response, username: str, db: Session) -> None:
     delete_cookie(response, "access_token")
     delete_cookie(response, "refresh_token")
 
-    # Firebase Hosting は __session のみ Cloud Run に転送するため、両トークンを JSON で1つにまとめる（7日）
+    # アクセストークン・リフレッシュトークンを JSON で1つの session Cookie にまとめる（7日）
     session_payload = json.dumps({"access_token": access_token, "refresh_token": refresh_token})
     set_cookie(response, GITHUB_OAUTH_SESSION_COOKIE, session_payload, _REFRESH_COOKIE_MAX_AGE)
 

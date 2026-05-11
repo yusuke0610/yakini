@@ -213,8 +213,9 @@ def begin_github_oauth(
     GitHub OAuth フローを開始する。
 
     state は Cookie に保存せず、呼び出し側でフロント (sessionStorage) に渡す。
-    Firebase Hosting の `/auth/**` rewrite を回避するため、コールバック URL は
-    `/github/callback` (フロントの React ルート) に揃える。
+    コールバック URL は `/github/callback` (フロントの React ルート) に揃える。
+    CALLBACK_BASE_URL が設定されている場合は redirect_uri を固定し、
+    未設定の場合は frontend_url のオリジンからフォールバックする。
 
     GITHUB_CLIENT_ID が未設定の場合は503を発生させる。
 

@@ -100,9 +100,9 @@ def get_jwt_public_key() -> str:
 def get_callback_base_url() -> str:
     """OAuth callback の base URL を取得する。環境変数が設定されていれば優先する。
 
-    Firebase Hosting → Cloud Run 構成では x-forwarded-host が伝播しないため、
-    CALLBACK_BASE_URL に Firebase Hosting の URL を明示することで redirect_uri を固定できる。
-    空の場合は呼び出し元が build_external_base_url にフォールバックする。
+    Cloudflare Pages → Cloud Run 構成では x-forwarded-host が正しく伝播しない場合があるため、
+    CALLBACK_BASE_URL に Cloudflare Pages の URL（例: https://app.devforge.app）を明示することで
+    redirect_uri を固定できる。空の場合は呼び出し元が build_external_base_url にフォールバックする。
     """
     url = os.getenv("CALLBACK_BASE_URL", "").strip()
     return url.rstrip("/") if url else ""
@@ -124,6 +124,22 @@ def get_app_version() -> str:
 def get_environment() -> str:
     """実行環境を取得する（local / dev / stg / prod）。"""
     return os.getenv("ENVIRONMENT", "local").strip()
+
+
+def get_internal_secret() -> str:
+    """Cloudflare Pages → Cloud Run 間の秘密ヘッダー値を取得する。
+
+    local 環境以外では必須。未設定の場合は起動時に RuntimeError を送出する。
+    値はログや例外メッセージに含めないこと。
+    """
+    env = get_environment()
+    secret = os.getenv("INTERNAL_SECRET", "").strip()
+    if env != "local" and not secret:
+        raise RuntimeError(
+            "INTERNAL_SECRET が設定されていません。"
+            "Secret Manager で internal-secret を登録し、Cloud Run 環境変数に追加してください。"
+        )
+    return secret
 
 
 def get_llm_provider() -> str:

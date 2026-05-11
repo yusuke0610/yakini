@@ -3,9 +3,8 @@ provider "google" {
   region  = local.region
 }
 
-provider "google-beta" {
-  project = var.project_id
-  region  = local.region
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
 }
 
 locals {
@@ -19,8 +18,6 @@ locals {
     "secretmanager.googleapis.com",
     "cloudtasks.googleapis.com",
     "storage.googleapis.com",
-    "firebase.googleapis.com",
-    "firebasehosting.googleapis.com",
     "monitoring.googleapis.com",
     "logging.googleapis.com",
   ]
@@ -108,17 +105,14 @@ module "monitoring" {
   depends_on = [google_project_service.apis]
 }
 
-module "firebase" {
-  source = "../../modules/firebase"
+module "cloudflare" {
+  source = "../../modules/cloudflare"
 
-  providers = {
-    google-beta = google-beta
-  }
-
-  project_id                     = var.project_id
-  deployer_service_account_email = var.deployer_service_account_email
-
-  depends_on = [google_project_service.apis]
+  cloudflare_account_id = var.cloudflare_account_id
+  cloudflare_zone_id    = var.cloudflare_zone_id
+  project_name          = var.cloudflare_pages_project_name
+  subdomain             = var.cloudflare_subdomain
+  production_branch     = "stg"
 }
 
 output "stack_name" {
@@ -133,10 +127,10 @@ output "artifact_registry_url" {
   value = module.artifact_registry.url
 }
 
-output "firebase_site_id" {
-  value = module.firebase.site_id
+output "cloudflare_pages_subdomain" {
+  value = module.cloudflare.pages_subdomain
 }
 
-output "firebase_default_url" {
-  value = module.firebase.default_url
+output "cloudflare_pages_project_name" {
+  value = module.cloudflare.pages_project_name
 }

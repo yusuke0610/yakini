@@ -12,6 +12,23 @@ resource "google_service_account_iam_member" "deployer_act_as" {
   member             = "serviceAccount:${var.deployer_service_account_email}"
 }
 
+# firebase モジュールから移設（Cloudflare Pages 移行に伴う整理）
+resource "google_project_iam_member" "deployer_artifact_registry_writer" {
+  count = var.deployer_service_account_email != "" ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${var.deployer_service_account_email}"
+}
+
+resource "google_project_iam_member" "deployer_run_developer" {
+  count = var.deployer_service_account_email != "" ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/run.developer"
+  member  = "serviceAccount:${var.deployer_service_account_email}"
+}
+
 resource "google_project_iam_member" "aiplatform_user" {
   project = var.project_id
   role    = "roles/aiplatform.user"

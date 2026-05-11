@@ -1,6 +1,10 @@
-provider "google-beta" {
+provider "google" {
   project = var.project_id
   region  = local.region
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
 }
 
 locals {
@@ -69,15 +73,14 @@ module "monitoring" {
   alert_email      = var.alert_email
 }
 
-module "firebase" {
-  source = "../../modules/firebase"
+module "cloudflare" {
+  source = "../../modules/cloudflare"
 
-  providers = {
-    google-beta = google-beta
-  }
-
-  project_id                     = var.project_id
-  deployer_service_account_email = var.deployer_service_account_email
+  cloudflare_account_id = var.cloudflare_account_id
+  cloudflare_zone_id    = var.cloudflare_zone_id
+  project_name          = var.cloudflare_pages_project_name
+  subdomain             = var.cloudflare_subdomain
+  production_branch     = "dev"
 }
 
 output "stack_name" {
@@ -92,10 +95,10 @@ output "artifact_registry_url" {
   value = module.artifact_registry.url
 }
 
-output "firebase_site_id" {
-  value = module.firebase.site_id
+output "cloudflare_pages_subdomain" {
+  value = module.cloudflare.pages_subdomain
 }
 
-output "firebase_default_url" {
-  value = module.firebase.default_url
+output "cloudflare_pages_project_name" {
+  value = module.cloudflare.pages_project_name
 }

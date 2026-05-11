@@ -41,8 +41,9 @@ from .token_manager import (
 )
 
 # GitHub OAuth Callback URL のパス
-# 旧: /auth/github/callback (Firebase Hosting の /auth/** rewrite に巻き込まれて Cookie が剥落するため不可)
-# 新: /github/callback (フロントの React ルートで受け取り、POST /auth/github/callback でトークン交換)
+# /github/callback はフロントの React ルートで受け取り、POST /auth/github/callback でトークン交換する。
+# Cloudflare Pages の _redirects は /auth/* のみ Cloud Run に転送するため、
+# GitHub がリダイレクトする /github/callback は SPA フォールバックで React が処理する。
 GITHUB_CALLBACK_PATH = "/github/callback"
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -50,10 +51,10 @@ logger = logging.getLogger(__name__)
 
 
 def _html_redirect(url: str) -> str:
-    """Firebase Hosting proxy 経由でも Set-Cookie が失われないよう 200 + HTML リダイレクトを返す。
+    """200 + HTML リダイレクトを返す。
 
-    303 レスポンスの Set-Cookie は Firebase Hosting CDN 層で除去されるため、
-    200 の HTML で meta refresh + JS リダイレクトを使う。
+    一部の CDN / リバースプロキシは 303 レスポンスの Set-Cookie を除去することがあるため、
+    200 の HTML で meta refresh + JS リダイレクトを使い Cookie の欠落を回避する。
     """
     js_url = _json.dumps(url)
     safe_url = url.replace('"', "&quot;")
@@ -74,8 +75,8 @@ def refresh(
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """リフレッシュトークンで新しいアクセストークンを発行する。"""
-    # Firebase Hosting は __session のみ転送するため JSON パースして refresh_token を取り出す
-    raw = request.cookies.get("__session")
+    # session Cookie に JSON 形式で格納した refresh_token を取り出す
+    raw = request.cookies.get("session")
     token: str | None = None
     if raw:
         try:
@@ -128,8 +129,8 @@ def logout(
     """ログアウト処理。DB の refresh_jti を無効化し Cookie を削除する。
     トークン解析が失敗した場合でも必ず Cookie を削除して 204 を返す。
     """
-    # Firebase Hosting は __session のみ転送するため JSON パースして refresh_token を取り出す
-    raw = request.cookies.get("__session")
+    # session Cookie に JSON 形式で格納した refresh_token を取り出す
+    raw = request.cookies.get("session")
     token: str | None = None
     if raw:
         try:
@@ -137,7 +138,7 @@ def logout(
             if isinstance(data, dict):
                 token = data.get("refresh_token")
         except (ValueError, TypeError):
-            logger.debug("ログアウト時の __session パースに失敗（Cookie 削除を継続）", exc_info=True)
+            logger.debug("ログアウト時の session Cookie パースに失敗（Cookie 削除を継続）", exc_info=True)
     if token:
         try:
             payload = _decode_token(token)
@@ -198,7 +199,7 @@ async def github_callback_redirect(
 ) -> HTMLResponse:
     """GitHub OAuth コールバックを処理し、フロントエンドへリダイレクトする。
 
-    Firebase Hosting rewrite 経由では 303 の Set-Cookie が転送されないため
+    一部の CDN / リバースプロキシは 303 レスポンスの Set-Cookie を除去することがあるため、
     200 + HTML リダイレクトで Cookie を確実にセットする。
     """
 

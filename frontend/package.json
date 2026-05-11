@@ -1,12 +1,12 @@
 {
-  "name": "resume-builder-frontend",
+  "name": "devforge-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
+    "build": "node scripts/gen-redirects.mjs && tsc -b && vite build",
+    "preview": "vite build && wrangler pages dev dist --proxy 8080",
     "test": "npm run test:unit && npm run test:vitest",
     "test:unit": "tsc --target ES2020 --module CommonJS --moduleResolution Node --strict --skipLibCheck --outDir .test-dist --rootDir src src/payloadBuilders.ts src/types.ts && node -e \"require('node:fs').writeFileSync('.test-dist/package.json', '{\\\"type\\\":\\\"commonjs\\\"}')\" && node --test tests/payloadBuilders.test.cjs",
     "test:vitest": "vitest run",
@@ -17,15 +17,13 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
-    "dev:proxy": "node scripts/firebase-proxy.mjs",
-    "dev:all": "concurrently \"npm run dev\" \"npm run dev:proxy\""
+    "deploy": "wrangler pages deploy dist --project-name=devforge"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
     "marked": "^17.0.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-error-boundary": "^4.1.2",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.13.1",
     "recharts": "^3.8.0",
@@ -56,6 +54,7 @@
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.57.0",
     "vite": "^6.0.5",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.2",
+    "wrangler": "^4.90.0"
   }
 }
