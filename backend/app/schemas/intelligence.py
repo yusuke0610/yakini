@@ -35,6 +35,18 @@ class AnalysisResponse(BaseModel):
         default_factory=dict,
         description="言語ごとのバイト数（GitHub linguist ベース）",
     )
+    detected_frameworks: Dict[str, int] = Field(
+        default_factory=dict,
+        description="依存関係から検出したフレームワーク名 → 使用リポジトリ数",
+    )
+    detected_devtools: Dict[str, int] = Field(
+        default_factory=dict,
+        description="ルートファイルから検出した DevTools 名 → 使用リポジトリ数",
+    )
+    detected_infras: Dict[str, int] = Field(
+        default_factory=dict,
+        description="ルートファイルから検出したインフラツール名 → 使用リポジトリ数",
+    )
     position_scores: Optional[PositionScoresResponse] = Field(
         None,
         description="エンジニアポジションスコア（5軸）",
@@ -56,3 +68,22 @@ class CachedAnalysisResponse(BaseModel):
     status: Optional[str] = None
     error_message: Optional[str] = None
     error_code: Optional[str] = None
+
+
+class SubProgress(BaseModel):
+    """ステップ内の細粒度な進捗（リポジトリ詳細取得ステップ専用）。"""
+
+    done: int
+    total: int
+
+
+class ProgressResponse(BaseModel):
+    """GitHub 分析タスクの進捗情報。"""
+
+    task_id: str
+    step_index: int = Field(0, description="現在のステップ番号（0 は未開始）")
+    total_steps: int = Field(6, description="全ステップ数")
+    step_label: Optional[str] = Field(None, description="現在のステップラベル")
+    sub_progress: Optional[SubProgress] = Field(
+        None, description="リポジトリ詳細取得ステップの細粒度進捗"
+    )

@@ -1,7 +1,10 @@
+import json
 import os
 import secrets
 from unittest.mock import AsyncMock
 
+import app.routers.internal as _internal_router
+import app.services.tasks.local as _tasks_local
 import app.services.tasks.worker as _worker
 import pytest
 from app.core.security.auth import create_access_token, create_refresh_token
@@ -33,10 +36,14 @@ def _generate_test_rsa_keys() -> tuple[str, str]:
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption(),
     ).decode()
-    pem_public = private_key.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    ).decode()
+    pem_public = (
+        private_key.public_key()
+        .public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        .decode()
+    )
     return pem_private, pem_public
 
 
@@ -51,6 +58,7 @@ os.environ.setdefault("APP_BOOTSTRAPPED", "1")
 os.environ.setdefault("GITHUB_CLIENT_ID", "test-github-client-id")
 os.environ.setdefault("GITHUB_CLIENT_SECRET", "test-github-client-secret")
 os.environ.setdefault("FIELD_ENCRYPTION_KEY", "pVo6M_raAWEpAv25F4p4RziywsjfPENokI10DZbNO7E=")
+os.environ.setdefault("CORS_ORIGINS", "http://localhost:8788")
 
 from app.main import app, limiter  # noqa: E402
 
@@ -82,19 +90,28 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = _override_get_db
 
-    # worker.execute_task をノーオペレーションに差し替える。
+    # execute_task をノーオペレーションに差し替える。
     # テスト用のインメモリDBとLLMを持たない環境でバックグラウンドタスクが
     # 実際に実行されると例外が発生し TestClient が伝播させてしまうため。
     # バックグラウンドタスクの動作を検証したいテストはワーカー関数を直接呼ぶこと。
-    original_execute_task = _worker.execute_task
-    _worker.execute_task = AsyncMock(return_value=None)
+    #
+    # ``from ... import execute_task`` で各モジュールに束縛されたシンボルは
+    # 元モジュール (_worker) への再代入では差し変わらないため、
+    # 参照を保持している全モジュールを同じ AsyncMock に揃える。
+    mock_execute_task = AsyncMock(return_value=None)
+    originals = {
+        module: module.execute_task for module in (_worker, _internal_router, _tasks_local)
+    }
+    for module in originals:
+        module.execute_task = mock_execute_task
 
     limiter.reset()
     with TestClient(app) as c:
         c._db_session = db_session  # auth_header から参照するためセッションを保持
         yield c
     app.dependency_overrides.clear()
-    _worker.execute_task = original_execute_task
+    for module, original in originals.items():
+        module.execute_task = original
 
 
 def auth_header(client, username: str = "testuser") -> dict:
@@ -109,11 +126,17 @@ def auth_header(client, username: str = "testuser") -> dict:
         repo.create(username, hashed_password=None, email=f"{username}@example.com")
 
     access_token = create_access_token(username)
-    refresh_token = create_refresh_token(username)
+    refresh_token, jti = create_refresh_token(username)
     csrf_token = secrets.token_urlsafe(32)
 
-    client.cookies.set("access_token", access_token)
-    client.cookies.set("refresh_token", refresh_token)
+    # refresh_jti を DB に保存（/auth/refresh の jti 照合テストで必要）
+    user = repo.get_by_username(username)
+    if user:
+        user.refresh_jti = jti
+        db.commit()
+
+    session_payload = json.dumps({"access_token": access_token, "refresh_token": refresh_token})
+    client.cookies.set("session", session_payload)
     client.cookies.set("csrf_token", csrf_token)
 
     return {"X-CSRF-Token": csrf_token}

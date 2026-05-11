@@ -3,12 +3,16 @@ import {
   analyzeGitHub,
   getAnalysisCache,
   getAnalysisCacheStatus,
+  getAnalysisProgress,
   toAppError,
   type AnalysisResponse,
 } from "../../api";
 import { ErrorToast } from "../ui/ErrorToast";
+import { InlineSpinner } from "../ui/InlineSpinner";
 import { useAsyncAnalysisPage } from "../../hooks/analysis/useAsyncAnalysisPage";
+import { TaskProgressStepper } from "../TaskProgressStepper";
 import { LanguageBar } from "./LanguageBar";
+import { TechBar } from "./TechBar";
 import { PositionRadarChart } from "./PositionRadarChart";
 import shared from "../../styles/shared.module.css";
 import styles from "./GitHubAnalysisPage.module.css";
@@ -22,6 +26,8 @@ export function GitHubAnalysisPage() {
   const [includeForks, setIncludeForks] = useState(false);
   /** ポジションアドバイス（GitHub 固有のキャッシュデータ） */
   const [positionAdvice, setPositionAdvice] = useState<string | null>(null);
+  /** LLM 処理が失敗した場合のエラーコード（部分成功ケース） */
+  const [llmErrorCode, setLlmErrorCode] = useState<string | null>(null);
 
   const {
     phase,
@@ -31,6 +37,7 @@ export function GitHubAnalysisPage() {
     setError,
     transitionToPolling,
     backToInput,
+    progress,
   } = useAsyncAnalysisPage<AnalysisResponse>({
     loadCache: async () => {
       const cache = await getAnalysisCache();
@@ -38,9 +45,12 @@ export function GitHubAnalysisPage() {
       if (cache.position_advice) {
         setPositionAdvice(cache.position_advice);
       }
+      // LLM 処理失敗のエラーコードを保持する（部分成功ケース）
+      setLlmErrorCode(cache.error_code ?? null);
       return { result: cache.analysis_result, status: cache.status };
     },
     checkStatus: getAnalysisCacheStatus,
+    fetchProgress: getAnalysisProgress,
   });
 
   /**
@@ -49,6 +59,7 @@ export function GitHubAnalysisPage() {
   const handleAnalyze = async () => {
     setError(null);
     setPositionAdvice(null);
+    setLlmErrorCode(null);
     try {
       await analyzeGitHub({ include_forks: includeForks });
       transitionToPolling();
@@ -62,6 +73,7 @@ export function GitHubAnalysisPage() {
    */
   const handleBack = () => {
     setPositionAdvice(null);
+    setLlmErrorCode(null);
     setResult(null);
     backToInput();
   };
@@ -70,10 +82,7 @@ export function GitHubAnalysisPage() {
   if (phase === "loading-cache") {
     return (
       <div className={shared.pageBody}>
-        <div className={styles.loading}>
-          <div className={styles.spinner} />
-          <p>読み込み中...</p>
-        </div>
+        <InlineSpinner label="読み込み中..." />
       </div>
     );
   }
@@ -125,13 +134,7 @@ export function GitHubAnalysisPage() {
   if (phase === "polling") {
     return (
       <div className={shared.pageBody}>
-        <div className={styles.loading}>
-          <div className={styles.spinner} />
-          <p>GitHubプロフィールを分析中...</p>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-            他の画面に移動しても処理は継続されます
-          </p>
-        </div>
+        <TaskProgressStepper progress={progress} />
       </div>
     );
   }
@@ -162,6 +165,8 @@ export function GitHubAnalysisPage() {
           />
         )}
 
+        {llmErrorCode && <ErrorToast code={llmErrorCode} />}
+
         {/* 概要 */}
         <div className={styles.section}>
           <h2>Overview</h2>
@@ -184,6 +189,33 @@ export function GitHubAnalysisPage() {
             <LanguageBar languages={result.languages} />
           </div>
         )}
+
+        {/* 検出フレームワーク */}
+        {result.detected_frameworks &&
+          Object.keys(result.detected_frameworks).length > 0 && (
+            <div className={styles.section}>
+              <h2>Frameworks</h2>
+              <TechBar techs={result.detected_frameworks} ariaLabel="検出フレームワーク一覧" />
+            </div>
+          )}
+
+        {/* DevTools */}
+        {result.detected_devtools &&
+          Object.keys(result.detected_devtools).length > 0 && (
+            <div className={styles.section}>
+              <h2>DevTools</h2>
+              <TechBar techs={result.detected_devtools} />
+            </div>
+          )}
+
+        {/* インフラ */}
+        {result.detected_infras &&
+          Object.keys(result.detected_infras).length > 0 && (
+            <div className={styles.section}>
+              <h2>Infra</h2>
+              <TechBar techs={result.detected_infras} />
+            </div>
+          )}
 
         {/* ポジションスコア */}
         {result.position_scores && (

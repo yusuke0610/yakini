@@ -4,47 +4,87 @@
 各関数は薄いラッパーとして実装し、ロジックはサブモジュールに委譲する。
 """
 
+import json as _json
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from ...core.errors import ErrorCode, raise_app_error
 from ...core.messages import get_error
 from ...core.security.auth import (
-    _REFRESH_COOKIE_NAME,
+    _decode_token,
     get_current_user,
     verify_refresh_token,
 )
 from ...core.security.dependencies import limiter
+from ...core.settings import get_callback_base_url
 from ...db import get_db
 from ...repositories import UserRepository
 from ...schemas import GitHubCallbackRequest, TokenResponse
 from .github_auth import authenticate_github_user
 from .oauth_flow import (
-    GITHUB_OAUTH_REDIRECT_COOKIE,
-    GITHUB_OAUTH_STATE_COOKIE,
     begin_github_oauth,
+    build_external_base_url,
     build_frontend_redirect_url,
+    get_frontend_origin,
     resolve_frontend_url_from_cookie,
     resolve_frontend_url_from_request,
     validate_github_oauth_state,
 )
 from .token_manager import (
-    clear_github_oauth_cookies,
+    clear_auth_cookies,
+    clear_github_oauth_session,
+    get_github_oauth_session,
     set_auth_cookies,
 )
 
+# GitHub OAuth Callback URL のパス
+# /github/callback はフロントの React ルートで受け取り、POST /auth/github/callback でトークン交換する。
+# Cloudflare Pages の _redirects は /auth/* のみ Cloud Run に転送するため、
+# GitHub がリダイレクトする /github/callback は SPA フォールバックで React が処理する。
+GITHUB_CALLBACK_PATH = "/github/callback"
+
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
+
+
+def _html_redirect(url: str) -> str:
+    """200 + HTML リダイレクトを返す。
+
+    一部の CDN / リバースプロキシは 303 レスポンスの Set-Cookie を除去することがあるため、
+    200 の HTML で meta refresh + JS リダイレクトを使い Cookie の欠落を回避する。
+    """
+    js_url = _json.dumps(url)
+    safe_url = url.replace('"', "&quot;")
+    return (
+        "<!DOCTYPE html><html><head>"
+        f'<meta http-equiv="refresh" content="0;url={safe_url}">'
+        "</head><body>"
+        f"<script>window.location.replace({js_url});</script>"
+        "</body></html>"
+    )
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("20/minute")
 def refresh(
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """リフレッシュトークンで新しいアクセストークンを発行する。"""
-    token = request.cookies.get(_REFRESH_COOKIE_NAME)
+    # session Cookie に JSON 形式で格納した refresh_token を取り出す
+    raw = request.cookies.get("session")
+    token: str | None = None
+    if raw:
+        try:
+            data = _json.loads(raw)
+            if isinstance(data, dict):
+                token = data.get("refresh_token")
+        except (ValueError, TypeError):
+            pass
     if not token:
         raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -52,7 +92,7 @@ def refresh(
             message=get_error("auth.login_required"),
             action="ログインし直してください",
         )
-    username = verify_refresh_token(token)
+    username, jti = verify_refresh_token(token)
 
     user = UserRepository(db).get_by_username(username)
     if not user:
@@ -63,15 +103,58 @@ def refresh(
             action="ログインし直してください",
         )
 
-    set_auth_cookies(response, user.username)
+    # DB の refresh_jti と一致しない場合は失効済みとして拒否する
+    if user.refresh_jti != jti:
+        raise_app_error(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            code=ErrorCode.AUTH_EXPIRED,
+            message=get_error("auth.invalid_token"),
+            action="ログインし直してください",
+        )
+
+    set_auth_cookies(response, user.username, db)
     return TokenResponse(
         username=user.username,
         is_github_user=user.username.startswith("github:"),
     )
 
 
+@router.post("/logout", status_code=204)
+@limiter.limit("20/minute")
+def logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> None:
+    """ログアウト処理。DB の refresh_jti を無効化し Cookie を削除する。
+    トークン解析が失敗した場合でも必ず Cookie を削除して 204 を返す。
+    """
+    # session Cookie に JSON 形式で格納した refresh_token を取り出す
+    raw = request.cookies.get("session")
+    token: str | None = None
+    if raw:
+        try:
+            data = _json.loads(raw)
+            if isinstance(data, dict):
+                token = data.get("refresh_token")
+        except (ValueError, TypeError):
+            logger.debug("ログアウト時の session Cookie パースに失敗（Cookie 削除を継続）", exc_info=True)
+    if token:
+        try:
+            payload = _decode_token(token)
+            username: str | None = payload.get("sub")
+            if username:
+                user = UserRepository(db).get_by_username(username)
+                if user:
+                    UserRepository(db).update_refresh_jti(user, None)
+        except HTTPException:
+            logger.debug("ログアウト時のトークン解析に失敗（Cookie 削除を継続）", exc_info=True)
+    clear_auth_cookies(response)
+
+
 @router.get("/me", response_model=TokenResponse)
-def me(current_user=Depends(get_current_user)) -> TokenResponse:
+@limiter.limit("60/minute")
+def me(request: Request, current_user=Depends(get_current_user)) -> TokenResponse:
     """現在のログインユーザー情報を返す。"""
     return TokenResponse(
         username=current_user.username,
@@ -83,13 +166,15 @@ def me(current_user=Depends(get_current_user)) -> TokenResponse:
 @limiter.limit("10/minute")
 def github_login_url(
     request: Request,
-    response: Response,
     return_to: str | None = None,
 ) -> dict[str, str]:
-    """GitHub OAuth 認可 URL を返す。"""
+    """GitHub OAuth 認可 URL と state を返す。
+
+    state はフロントが sessionStorage に保持し、コールバック時に CSRF 検証する。
+    """
     frontend_url = resolve_frontend_url_from_request(request, return_to)
-    authorization_url = begin_github_oauth(request, response, frontend_url)
-    return {"authorization_url": authorization_url}
+    authorization_url, state = begin_github_oauth(request, frontend_url)
+    return {"authorization_url": authorization_url, "state": state}
 
 
 @router.get("/github/login")
@@ -100,10 +185,8 @@ def github_login(
 ) -> RedirectResponse:
     """GitHub OAuth 認可 URL へリダイレクトする。"""
     frontend_url = resolve_frontend_url_from_request(request, return_to)
-    redirect = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
-    redirect_url = begin_github_oauth(request, redirect, frontend_url)
-    redirect.headers["location"] = redirect_url
-    return redirect
+    authorization_url, _state = begin_github_oauth(request, frontend_url)
+    return RedirectResponse(url=authorization_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/github/callback")
@@ -113,11 +196,15 @@ async def github_callback_redirect(
     code: str | None = None,
     state: str | None = None,
     db: Session = Depends(get_db),
-) -> RedirectResponse:
-    """GitHub OAuth コールバックを処理し、フロントエンドへリダイレクトする。"""
-    frontend_url = resolve_frontend_url_from_cookie(
-        request.cookies.get(GITHUB_OAUTH_REDIRECT_COOKIE)
-    )
+) -> HTMLResponse:
+    """GitHub OAuth コールバックを処理し、フロントエンドへリダイレクトする。
+
+    一部の CDN / リバースプロキシは 303 レスポンスの Set-Cookie を除去することがあるため、
+    200 + HTML リダイレクトで Cookie を確実にセットする。
+    """
+
+    stored_state, stored_redirect = get_github_oauth_session(request)
+    frontend_url = resolve_frontend_url_from_cookie(stored_redirect)
 
     try:
         if not code:
@@ -127,29 +214,23 @@ async def github_callback_redirect(
                 message=get_error("auth.github_code_missing"),
                 action="GitHub ログインをやり直してください",
             )
-        validate_github_oauth_state(
-            request.cookies.get(GITHUB_OAUTH_STATE_COOKIE),
-            state,
-        )
-        token_response = await authenticate_github_user(db, code)
+        validate_github_oauth_state(stored_state, state)
+        callback_base = get_callback_base_url() or build_external_base_url(request)
+        redirect_uri = f"{callback_base}/auth/github/callback"
+        token_response = await authenticate_github_user(db, code, redirect_uri)
     except HTTPException as error:
         # error.detail は AppErrorResponse の dict 形式なので message フィールドを取り出す
         detail = error.detail
         error_message = detail.get("message") if isinstance(detail, dict) else str(detail)
-        redirect = RedirectResponse(
-            url=build_frontend_redirect_url(frontend_url, error_message),
-            status_code=status.HTTP_303_SEE_OTHER,
+        response = HTMLResponse(
+            content=_html_redirect(build_frontend_redirect_url(frontend_url, error_message))
         )
-        clear_github_oauth_cookies(redirect)
-        return redirect
+        clear_github_oauth_session(response)
+        return response
 
-    redirect = RedirectResponse(
-        url=build_frontend_redirect_url(frontend_url),
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
-    set_auth_cookies(redirect, token_response.username)
-    clear_github_oauth_cookies(redirect)
-    return redirect
+    response = HTMLResponse(content=_html_redirect(build_frontend_redirect_url(frontend_url)))
+    set_auth_cookies(response, token_response.username, db)
+    return response
 
 
 @router.post("/github/callback", response_model=TokenResponse)
@@ -160,12 +241,14 @@ async def github_callback(
     payload: GitHubCallbackRequest,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    """GitHub OAuth コードを受け取り、認証 Cookie を発行する。"""
-    validate_github_oauth_state(
-        request.cookies.get(GITHUB_OAUTH_STATE_COOKIE),
-        payload.state,
-    )
-    token_response = await authenticate_github_user(db, payload.code)
-    set_auth_cookies(response, token_response.username)
-    clear_github_oauth_cookies(response)
+    """GitHub OAuth コードを受け取り、認証 Cookie を発行する。
+
+    state はフロントの sessionStorage で検証済みのためサーバー側では再検証しない。
+    redirect_uri は GitHub OAuth App の登録値 (`/github/callback`) と一致させる必要がある。
+    """
+    frontend_url = resolve_frontend_url_from_request(request)
+    callback_base = get_callback_base_url() or get_frontend_origin(frontend_url)
+    redirect_uri = f"{callback_base}{GITHUB_CALLBACK_PATH}"
+    token_response = await authenticate_github_user(db, payload.code, redirect_uri)
+    set_auth_cookies(response, token_response.username, db)
     return token_response

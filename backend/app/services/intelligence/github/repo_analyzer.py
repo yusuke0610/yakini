@@ -17,7 +17,7 @@ DEPENDENCY_FILES = {
     "go.mod",
 }
 
-# 依存関係 → フレームワーク名のマッピング
+# 依存関係 → フレームワーク名のマッピング（フレームワーク・ライブラリのみ）
 DEPENDENCY_TO_FRAMEWORK: Dict[str, str] = {
     # Python 系
     "fastapi": "FastAPI",
@@ -38,9 +38,6 @@ DEPENDENCY_TO_FRAMEWORK: Dict[str, str] = {
     "mlflow": "MLflow",
     "sentry-sdk": "Sentry",
     "prometheus-client": "Prometheus",
-    "boto3": "AWS",
-    "google-cloud-storage": "GCP",
-    "azure-storage-blob": "Azure",
     # Node 系
     "react": "React",
     "react-dom": "React",
@@ -70,22 +67,49 @@ DEPENDENCY_TO_FRAMEWORK: Dict[str, str] = {
     "github.com/gin-gonic/gin": "Gin",
     "github.com/labstack/echo": "Echo",
     "github.com/gofiber/fiber": "Fiber",
+    # クラウド SDK（フレームワーク扱い）
+    "boto3": "AWS",
 }
 
-# ルートファイル → スキル名のマッピング
-_ROOT_FILE_SKILLS: Dict[str, str] = {
+# 依存関係 → インフラ・クラウドプロバイダー名のマッピング
+INFRA_FROM_DEPENDENCIES: Dict[str, str] = {
+    "boto3": "AWS",
+    "botocore": "AWS",
+    "google-cloud-storage": "GCP",
+    "google-cloud-run": "GCP",
+    "google-cloud-bigquery": "GCP",
+    "google-cloud-pubsub": "GCP",
+    "azure-storage-blob": "Azure",
+    "azure-identity": "Azure",
+    "azure-mgmt-compute": "Azure",
+    "pulumi": "Pulumi",
+    "aws-cdk-lib": "AWS CDK",
+    "constructs": "AWS CDK",
+}
+
+# ルートファイル → DevTools 名のマッピング
+_DEVTOOL_ROOT_FILES: Dict[str, str] = {
     "Dockerfile": "Docker",
     "docker-compose.yml": "Docker Compose",
     "docker-compose.yaml": "Docker Compose",
     ".github": "GitHub Actions",
-    "terraform": "Terraform",
-    ".terraform": "Terraform",
     "Makefile": "Build Automation",
     "Jenkinsfile": "Jenkins",
     ".gitlab-ci.yml": "GitLab CI",
     ".circleci": "CircleCI",
-    "go.mod": "Go",
-    "Gemfile": "Ruby",
+}
+
+# ルートファイル → インフラツール名のマッピング
+_INFRA_ROOT_FILES: Dict[str, str] = {
+    "terraform": "Terraform",
+    ".terraform": "Terraform",
+    "infra": "Terraform",
+    "k8s": "Kubernetes",
+    "kubernetes": "Kubernetes",
+    "helm": "Helm",
+    "cdk.json": "AWS CDK",
+    "pulumi.yaml": "Pulumi",
+    "pulumi.yml": "Pulumi",
 }
 
 
@@ -101,16 +125,70 @@ def compute_language_ratios(languages: Dict[str, int]) -> Dict[str, float]:
     return {lang: count / total for lang, count in languages.items()}
 
 
-def detect_from_root_files(root_files: List[str]) -> List[str]:
-    """ルートレベルのファイル/ディレクトリ名からスキルを検出する。重複は除去する。"""
+def detect_devtools_from_root_files(root_files: List[str]) -> List[str]:
+    """ルートレベルのファイル/ディレクトリ名から DevTools を検出する。重複は除去する。"""
     detected: List[str] = []
     seen: set = set()
     for fname in root_files:
-        skill = _ROOT_FILE_SKILLS.get(fname)
-        if skill and skill not in seen:
-            seen.add(skill)
-            detected.append(skill)
+        tool = _DEVTOOL_ROOT_FILES.get(fname)
+        if tool and tool not in seen:
+            seen.add(tool)
+            detected.append(tool)
     return detected
+
+
+def detect_infras_from_root_files(root_files: List[str]) -> List[str]:
+    """ルートレベルのファイル/ディレクトリ名からインフラツールを検出する。重複は除去する。"""
+    detected: List[str] = []
+    seen: set = set()
+    for fname in root_files:
+        tool = _INFRA_ROOT_FILES.get(fname)
+        if tool and tool not in seen:
+            seen.add(tool)
+            detected.append(tool)
+    return detected
+
+
+def detect_infras_from_dependencies(dependencies: List[str]) -> List[str]:
+    """依存関係名のリストから INFRA_FROM_DEPENDENCIES でインフラ名を検出する。
+
+    重複を除去し、最初に出現した順序を保つ。
+    """
+    detected: List[str] = []
+    seen: set = set()
+    for dep in dependencies:
+        infra = INFRA_FROM_DEPENDENCIES.get(dep.lower())
+        if infra and infra not in seen:
+            seen.add(infra)
+            detected.append(infra)
+    return detected
+
+
+def detect_from_dependencies(dependencies: List[str]) -> List[str]:
+    """依存関係名のリストから DEPENDENCY_TO_FRAMEWORK でフレームワーク名を検出する。
+
+    重複を除去し、最初に出現した順序を保つ。
+    """
+    detected: List[str] = []
+    seen: set = set()
+    for dep in dependencies:
+        framework = DEPENDENCY_TO_FRAMEWORK.get(dep.lower())
+        if framework and framework not in seen:
+            seen.add(framework)
+            detected.append(framework)
+    return detected
+
+
+def merge_frameworks(*framework_lists: List[str]) -> List[str]:
+    """複数のフレームワークリストを順序を保ったままマージし、重複を除去する。"""
+    merged: List[str] = []
+    seen: set = set()
+    for fw_list in framework_lists:
+        for fw in fw_list:
+            if fw not in seen:
+                seen.add(fw)
+                merged.append(fw)
+    return merged
 
 
 def parse_requirements_txt(content: str) -> List[str]:
@@ -130,7 +208,13 @@ def parse_requirements_txt(content: str) -> List[str]:
 
 
 def parse_pyproject_toml(content: str) -> List[str]:
-    """pyproject.toml から依存関係名を抽出する（単純な行ベース）。"""
+    """pyproject.toml から依存関係名を抽出する（単純な行ベース）。
+
+    以下の形式に対応:
+    - PEP 621: dependencies = ["fastapi>=0.100"]
+    - Poetry 単純値: fastapi = "^0.100"
+    - Poetry インラインテーブル: fastapi = {extras = ["standard"], version = "^0.109.0"}
+    """
     packages: List[str] = []
     in_deps = False
     for line in content.splitlines():
@@ -143,20 +227,16 @@ def parse_pyproject_toml(content: str) -> List[str]:
             in_deps = True
             continue
         if in_deps:
-            if stripped.startswith("[") or (
-                not stripped.startswith('"')
-                and not stripped.startswith("'")
-                and "=" in stripped
-                and not stripped.startswith("#")
-                and "]" not in stripped
-            ):
-                # poetry 形式: name = "^1.0"
-                name = stripped.split("=")[0].strip().lower()
-                if name and name != "python":
-                    packages.append(name)
+            # 新セクション開始: deps 解析を終了
+            if stripped.startswith("["):
+                in_deps = False
                 continue
+            # PEP 621 配列の終端
+            if stripped == "]":
+                in_deps = False
+                continue
+            # PEP 621 形式: "fastapi>=0.100"
             if stripped.startswith('"') or stripped.startswith("'"):
-                # PEP 621 形式: "fastapi>=0.100"
                 name = stripped.strip("\"', ")
                 name = name.split(">=")[0].split("<=")[0].split("==")[0]
                 name = name.split("!=")[0].split("~=")[0].split(">")[0]
@@ -164,8 +244,11 @@ def parse_pyproject_toml(content: str) -> List[str]:
                 if name:
                     packages.append(name.lower())
                 continue
-            if stripped == "]" or (stripped.startswith("[") and stripped != "]"):
-                in_deps = False
+            # Poetry 形式: name = "^1.0" または name = {extras = [...], version = "..."}
+            if "=" in stripped and not stripped.startswith("#"):
+                name = stripped.split("=")[0].strip().lower()
+                if name and name != "python":
+                    packages.append(name)
     return packages
 
 

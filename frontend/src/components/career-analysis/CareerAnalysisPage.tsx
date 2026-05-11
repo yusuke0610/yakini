@@ -4,8 +4,40 @@ import {
   type CareerAnalysisResult,
   type EvidenceSource,
 } from "../../api";
+
+/** スキル名 → 公式ドキュメント URL のキュレーション済みマップ */
+const OFFICIAL_DOCS: Record<string, string> = {
+  TypeScript: "https://www.typescriptlang.org/docs/",
+  Python: "https://docs.python.org/ja/3/",
+  Go: "https://go.dev/doc/",
+  Rust: "https://doc.rust-lang.org/book/",
+  Java: "https://docs.oracle.com/javase/",
+  "C#": "https://learn.microsoft.com/ja-jp/dotnet/csharp/",
+  Kotlin: "https://kotlinlang.org/docs/",
+  Swift: "https://docs.swift.org/swift-book/",
+  React: "https://react.dev/learn",
+  "Next.js": "https://nextjs.org/docs",
+  Vue: "https://ja.vuejs.org/guide/",
+  Angular: "https://angular.jp/docs",
+  FastAPI: "https://fastapi.tiangolo.com/ja/",
+  Django: "https://docs.djangoproject.com/ja/",
+  "Spring Boot": "https://spring.io/guides",
+  "Node.js": "https://nodejs.org/ja/docs/",
+  Docker: "https://docs.docker.com/",
+  Kubernetes: "https://kubernetes.io/ja/docs/",
+  Terraform: "https://developer.hashicorp.com/terraform/docs",
+  "GitHub Actions": "https://docs.github.com/ja/actions",
+  AWS: "https://docs.aws.amazon.com/",
+  GCP: "https://cloud.google.com/docs?hl=ja",
+  Azure: "https://learn.microsoft.com/ja-jp/azure/",
+  PostgreSQL: "https://www.postgresql.org/docs/",
+  MySQL: "https://dev.mysql.com/doc/",
+  Redis: "https://redis.io/docs/",
+  MongoDB: "https://www.mongodb.com/docs/",
+};
 import { useCareerAnalysisPage } from "../../hooks/useCareerAnalysisPage";
 import { ErrorToast } from "../ui/ErrorToast";
+import { InlineSpinner } from "../ui/InlineSpinner";
 import styles from "./CareerAnalysisPage.module.css";
 
 /**
@@ -13,7 +45,7 @@ import styles from "./CareerAnalysisPage.module.css";
  * 分析生成・履歴管理・結果表示を1画面で行う。
  */
 export function CareerAnalysisPage() {
-  const { phase, setPhase, error, analyses, handleGenerate, handleDelete } =
+  const { phase, setPhase, error, analyses, handleGenerate, handleDelete, handleRetry } =
     useCareerAnalysisPage();
   const [selected, setSelected] = useState<CareerAnalysisResponse | null>(null);
   const [targetPosition, setTargetPosition] = useState("");
@@ -34,23 +66,15 @@ export function CareerAnalysisPage() {
   // ── レンダリング ──────────────────────────────────────────
 
   if (phase === "loading") {
-    return (
-      <div className={styles.loading}>
-        <div className={styles.spinner} />
-        <p>読み込み中...</p>
-      </div>
-    );
+    return <InlineSpinner label="読み込み中..." />;
   }
 
   if (phase === "polling") {
     return (
-      <div className={styles.loading}>
-        <div className={styles.spinner} />
-        <p>AI がキャリアを分析中です...</p>
-        <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-          他の画面に移動しても処理は継続されます
-        </p>
-      </div>
+      <InlineSpinner
+        label="AI がキャリアを分析中です..."
+        sublabel="他の画面に移動しても処理は継続されます"
+      />
     );
   }
 
@@ -101,13 +125,21 @@ export function CareerAnalysisPage() {
                     <span className={styles.versionDate}>
                       {new Date(a.created_at).toLocaleDateString("ja-JP")}
                     </span>
-                    {a.status === "failed" && (
+                    {a.status === "dead_letter" && (
                       <span style={{ color: "var(--error)", fontSize: "0.8rem" }}>失敗</span>
+                    )}
+                    {a.status === "retrying" && (
+                      <span style={{ color: "var(--warning)", fontSize: "0.8rem" }}>
+                        再試行中
+                      </span>
                     )}
                   </div>
                   <div className={styles.versionActions}>
                     {a.status === "completed" && a.result && (
                       <button onClick={() => handleSelect(a)}>表示</button>
+                    )}
+                    {a.status === "dead_letter" && (
+                      <button onClick={() => handleRetry(a.id)}>再実行</button>
                     )}
                     <button className={styles.deleteButton} onClick={() => handleDeleteWithSelected(a.id)}>
                       削除
@@ -142,6 +174,7 @@ export function CareerAnalysisPage() {
         <StrengthsSection result={r} />
         <CareerPathsSection result={r} />
         <ActionItemsSection result={r} />
+        <LearningResourcesSection result={r} />
       </div>
     );
   }
@@ -288,6 +321,53 @@ function ActionItemsSection({ result }: { result: CareerAnalysisResult }) {
             <div className={styles.actionReason}>{a.reason}</div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function LearningResourcesSection({ result }: { result: CareerAnalysisResult }) {
+  const gapSkills = [...new Set(result.career_paths.flatMap((cp) => cp.gap_skills))];
+  if (gapSkills.length === 0) return null;
+
+  return (
+    <div className={styles.resultCard}>
+      <div className={styles.resultHeader}>学習リソース</div>
+      <div className={styles.resultBody}>
+        <p className={styles.resourceDescription}>
+          キャリアパス実現に向けて習得が推奨されるスキルの学習リソースです。
+        </p>
+        <div className={styles.resourceList}>
+          {gapSkills.map((skill) => {
+            const officialUrl = OFFICIAL_DOCS[skill];
+            const udemyUrl = `https://www.udemy.com/courses/search/?q=${encodeURIComponent(skill)}&lang=ja`;
+            return (
+              <div key={skill} className={styles.resourceItem}>
+                <span className={styles.resourceSkill}>{skill}</span>
+                <div className={styles.resourceLinks}>
+                  {officialUrl && (
+                    <a
+                      href={officialUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.resourceLink}
+                    >
+                      公式ドキュメント
+                    </a>
+                  )}
+                  <a
+                    href={udemyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.resourceLink}
+                  >
+                    Udemy で検索
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

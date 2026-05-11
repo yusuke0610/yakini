@@ -1,10 +1,11 @@
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from ..core.date_utils import parse_iso_date
-from ..models import BlogAccount, BlogArticle, BlogArticleTag
+from ..models import BlogAccount, BlogArticle, BlogArticleTag, BlogSummaryCache
 
 
 class BlogAccountRepository:
@@ -42,6 +43,7 @@ class BlogAccountRepository:
         existing = self.get_by_platform(platform)
         if existing:
             existing.username = username
+            existing.last_synced_at = None
             self.db.commit()
             self.db.refresh(existing)
             return existing
@@ -122,6 +124,40 @@ class BlogArticleRepository:
         self.db.commit()
         return added
 
+    def sync_many(self, account_id: str, articles: list[dict]) -> int:
+        normalized_articles = [self._normalize_article(article) for article in articles]
+
+        existing_statement = (
+            select(BlogArticle)
+            .join(BlogArticle.account)
+            .where(BlogAccount.user_id == self.user_id)
+            .where(BlogArticle.account_id == account_id)
+            .options(selectinload(BlogArticle.tag_rows))
+        )
+        existing_articles = list(self.db.scalars(existing_statement).all())
+        existing_map = {article.external_id: article for article in existing_articles}
+        incoming_external_ids = {article["external_id"] for article in normalized_articles}
+
+        for external_id, article in existing_map.items():
+            if external_id not in incoming_external_ids:
+                self.db.delete(article)
+
+        added = 0
+        for article in normalized_articles:
+            existing = existing_map.get(article["external_id"])
+            if existing:
+                self._apply_article_payload(existing, article)
+                continue
+
+            entity = BlogArticle(account_id=account_id)
+            self._apply_article_payload(entity, article)
+            self.db.add(entity)
+            existing_map[article["external_id"]] = entity
+            added += 1
+
+        self.db.commit()
+        return added
+
     def count_by_user(self) -> int:
         return (
             self.db.scalar(
@@ -133,7 +169,7 @@ class BlogArticleRepository:
             or 0
         )
 
-    def delete_by_account(self, account_id: str) -> int:
+    def delete_by_account(self, account_id: str, *, commit: bool = True) -> int:
         articles = list(
             self.db.scalars(
                 select(BlogArticle)
@@ -145,7 +181,8 @@ class BlogArticleRepository:
         count = len(articles)
         for article in articles:
             self.db.delete(article)
-        self.db.commit()
+        if commit:
+            self.db.commit()
         return count
 
     def _normalize_article(self, article: dict[str, Any]) -> dict[str, Any]:
@@ -166,3 +203,31 @@ class BlogArticleRepository:
             BlogArticleTag(sort_order=index, name=tag)
             for index, tag in enumerate(payload.get("tags", []))
         ]
+
+
+class BlogSummaryCacheRepository:
+    """ブログ AI 分析キャッシュのリポジトリ。"""
+
+    def __init__(self, db, user_id: str):
+        self.db = db
+        self.user_id = user_id
+
+    def get(self) -> BlogSummaryCache | None:
+        """キャッシュを取得する。expires_at を過ぎていれば削除して None を返す。"""
+        statement = select(BlogSummaryCache).where(BlogSummaryCache.user_id == self.user_id)
+        cache = self.db.scalar(statement)
+        # SQLite は timezone を保持しないため naive UTC と比較する
+        if cache and cache.expires_at and cache.expires_at <= datetime.now(timezone.utc).replace(tzinfo=None):
+            self.db.delete(cache)
+            self.db.commit()
+            return None
+        return cache
+
+    def invalidate(self, *, commit: bool = True) -> bool:
+        cache = self.get()
+        if not cache:
+            return False
+        self.db.delete(cache)
+        if commit:
+            self.db.commit()
+        return True

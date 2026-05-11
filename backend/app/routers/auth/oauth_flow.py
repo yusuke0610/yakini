@@ -6,16 +6,14 @@ import logging
 import secrets
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from fastapi import HTTPException, Request, Response, status
+from fastapi import HTTPException, Request, status
 
 from ...core.errors import ErrorCode, raise_app_error
 from ...core.messages import get_error
-from ...core.settings import get_cors_origins, get_github_client_id
+from ...core.settings import get_callback_base_url, get_cors_origins, get_github_client_id
 from .token_manager import (
-    GITHUB_OAUTH_COOKIE_MAX_AGE,
     GITHUB_OAUTH_REDIRECT_COOKIE,
     GITHUB_OAUTH_STATE_COOKIE,
-    set_cookie,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,6 +24,7 @@ __all__ = [
     "GITHUB_OAUTH_REDIRECT_COOKIE",
     "get_default_frontend_origin",
     "get_default_frontend_url",
+    "get_frontend_origin",
     "normalize_frontend_url",
     "resolve_frontend_url_from_request",
     "resolve_frontend_url_from_cookie",
@@ -53,6 +52,13 @@ def get_default_frontend_origin() -> str:
 def get_default_frontend_url() -> str:
     """デフォルトのフロントエンド URL を返す。"""
     return f"{get_default_frontend_origin().rstrip('/')}/"
+
+
+def get_frontend_origin(frontend_url: str) -> str:
+    """許可済み frontend_url からオリジンだけを取り出す。"""
+    normalized = normalize_frontend_url(frontend_url)
+    parsed = urlsplit(normalized)
+    return f"{parsed.scheme}://{parsed.netloc}"
 
 
 def normalize_frontend_url(frontend_url: str) -> str:
@@ -201,14 +207,23 @@ def build_github_authorization_url(
 
 def begin_github_oauth(
     request: Request,
-    response: Response,
     frontend_url: str,
-) -> str:
+) -> tuple[str, str]:
     """
     GitHub OAuth フローを開始する。
 
-    state と redirect URL を Cookie に保存し、GitHub 認可 URL を返す。
+    state は Cookie に保存せず、呼び出し側でフロント (sessionStorage) に渡す。
+    コールバック URL は `/github/callback` (フロントの React ルート) に揃える。
+    CALLBACK_BASE_URL が設定されている場合は redirect_uri を固定し、
+    未設定の場合は frontend_url のオリジンからフォールバックする。
+
     GITHUB_CLIENT_ID が未設定の場合は503を発生させる。
+
+    Args:
+        frontend_url: 認証完了後の遷移先（現状は `state` 検証のフロント実装で利用）
+
+    Returns:
+        (authorization_url, state) のタプル
     """
     client_id = get_github_client_id()
     if not client_id:
@@ -219,24 +234,13 @@ def begin_github_oauth(
             action="システム管理者に連絡してください",
         )
 
-    redirect_uri = f"{build_external_base_url(request)}/auth/github/callback"
+    callback_base = get_callback_base_url() or get_frontend_origin(frontend_url)
+    redirect_uri = f"{callback_base}/github/callback"
     state = secrets.token_urlsafe(32)
 
-    set_cookie(
-        response,
-        GITHUB_OAUTH_STATE_COOKIE,
-        state,
-        GITHUB_OAUTH_COOKIE_MAX_AGE,
-    )
-    set_cookie(
-        response,
-        GITHUB_OAUTH_REDIRECT_COOKIE,
-        frontend_url,
-        GITHUB_OAUTH_COOKIE_MAX_AGE,
-    )
-
-    return build_github_authorization_url(
+    authorization_url = build_github_authorization_url(
         client_id=client_id,
         redirect_uri=redirect_uri,
         state=state,
     )
+    return authorization_url, state

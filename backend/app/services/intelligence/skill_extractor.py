@@ -153,14 +153,14 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
                 )
             )
 
-    # 5. ルートファイル / ディレクトリ検出
-    for framework in repo.detected_frameworks:
-        if framework not in seen:
-            seen.add(framework)
+    # 5. ルートファイル / ディレクトリ検出（devtools・infra）
+    for tech in [*repo.detected_devtools, *repo.detected_infras]:
+        if tech not in seen:
+            seen.add(tech)
             skills.append(
                 ExtractedSkill(
-                    skill_name=framework,
-                    category=get_skill_category(framework),
+                    skill_name=tech,
+                    category=get_skill_category(tech),
                     source="root_file",
                     repo_name=repo.name,
                     repo_created_at=repo.created_at,

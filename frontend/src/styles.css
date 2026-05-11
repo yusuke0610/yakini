@@ -59,6 +59,8 @@
 
   /* Misc */
   --spinner-track: #e5ddd3;
+  --skeleton-base: #ede8e2;
+  --skeleton-highlight: #f7f4f0;
   --github-bg: #24292e;
   --github-hover: #3b4249;
   --photo-placeholder-bg: #f5f0ea;
@@ -114,6 +116,8 @@
   --sidebar-username: #a8a29e;
 
   --spinner-track: #44403c;
+  --skeleton-base: #3a3633;
+  --skeleton-highlight: #4a4643;
   --github-bg: #1a1a1a;
   --github-hover: #2d2d2d;
   --photo-placeholder-bg: #292524;

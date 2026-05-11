@@ -29,10 +29,10 @@ def bootstrap() -> None:
 
 
 def _reset_orphaned_tasks(db) -> None:
-    """サーバ再起動で宙吊りになった pending/processing タスクを failed にリセットする。
+    """サーバ再起動で宙吊りになった pending/processing タスクを dead_letter にリセットする。
 
     BackgroundTasks はプロセス内コルーチンのため、サーバが強制終了されると
-    _mark_failed() が呼ばれずに DB ステータスが pending/processing のまま残る。
+    _mark_dead_letter() が呼ばれずに DB ステータスが pending/processing のまま残る。
     放置すると次回起動時にフロントエンドが無限ポーリングに陥るため、起動時に掃除する。
     """
     from ..models.cache import BlogSummaryCache, GitHubAnalysisCache
@@ -50,7 +50,7 @@ def _reset_orphaned_tasks(db) -> None:
         .all()
     )
     for row in ca_rows:
-        row.status = "failed"
+        row.status = "dead_letter"
         row.error_message = error_message
         row.completed_at = now
     if ca_rows:
@@ -66,7 +66,7 @@ def _reset_orphaned_tasks(db) -> None:
         .all()
     )
     for row in gh_rows:
-        row.status = "failed"
+        row.status = "dead_letter"
         row.error_message = error_message
         row.completed_at = now
     if gh_rows:
@@ -82,7 +82,7 @@ def _reset_orphaned_tasks(db) -> None:
         .all()
     )
     for row in blog_rows:
-        row.status = "failed"
+        row.status = "dead_letter"
         row.error_message = error_message
         row.completed_at = now
     if blog_rows:

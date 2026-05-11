@@ -42,7 +42,7 @@ def get_sqlite_db_path() -> Path:
 
 
 def get_cors_origins() -> list[str]:
-    cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+    cors_origins = os.getenv("CORS_ORIGINS", "")
     return [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
 
 
@@ -81,13 +81,6 @@ def get_admin_token() -> str:
     return os.getenv("ADMIN_TOKEN", "").strip()
 
 
-def get_secret_key() -> str:
-    key = os.getenv("SECRET_KEY", "").strip()
-    if not key:
-        raise RuntimeError("SECRET_KEY is not configured")
-    return key
-
-
 def get_jwt_private_key() -> str:
     """RS256署名用秘密鍵（PEM形式）を取得する。"""
     key = os.getenv("JWT_PRIVATE_KEY", "").replace("\\n", "\n").strip()
@@ -102,6 +95,17 @@ def get_jwt_public_key() -> str:
     if not key:
         raise RuntimeError("JWT_PUBLIC_KEY is not configured")
     return key
+
+
+def get_callback_base_url() -> str:
+    """OAuth callback の base URL を取得する。環境変数が設定されていれば優先する。
+
+    Cloudflare Pages → Cloud Run 構成では x-forwarded-host が正しく伝播しない場合があるため、
+    CALLBACK_BASE_URL に Cloudflare Pages の URL（例: https://app.devforge.app）を明示することで
+    redirect_uri を固定できる。空の場合は呼び出し元が build_external_base_url にフォールバックする。
+    """
+    url = os.getenv("CALLBACK_BASE_URL", "").strip()
+    return url.rstrip("/") if url else ""
 
 
 def get_github_client_id() -> str:
@@ -122,6 +126,22 @@ def get_environment() -> str:
     return os.getenv("ENVIRONMENT", "local").strip()
 
 
+def get_internal_secret() -> str:
+    """Cloudflare Pages → Cloud Run 間の秘密ヘッダー値を取得する。
+
+    local 環境以外では必須。未設定の場合は起動時に RuntimeError を送出する。
+    値はログや例外メッセージに含めないこと。
+    """
+    env = get_environment()
+    secret = os.getenv("INTERNAL_SECRET", "").strip()
+    if env != "local" and not secret:
+        raise RuntimeError(
+            "INTERNAL_SECRET が設定されていません。"
+            "Secret Manager で internal-secret を登録し、Cloud Run 環境変数に追加してください。"
+        )
+    return secret
+
+
 def get_llm_provider() -> str:
     return os.environ.get("LLM_PROVIDER", "ollama")
 
@@ -132,3 +152,18 @@ def get_vertex_project_id() -> str:
 
 def get_vertex_location() -> str:
     return os.environ.get("VERTEX_LOCATION", "asia-northeast1")
+
+
+def get_vertex_model(default: str) -> str:
+    """Vertex AI のモデル名を取得する。default は呼び出し元（Vertex クライアント）の既定値を渡す。"""
+    return os.environ.get("VERTEX_MODEL", default)
+
+
+def get_log_format() -> str:
+    """ログフォーマット指定（json / text / 空）を小文字で取得する。"""
+    return os.getenv("LOG_FORMAT", "").strip().lower()
+
+
+def get_log_level() -> str:
+    """ログレベル名（DEBUG / INFO / WARNING / ERROR / CRITICAL）を大文字で取得する。"""
+    return os.getenv("LOG_LEVEL", "INFO").strip().upper()

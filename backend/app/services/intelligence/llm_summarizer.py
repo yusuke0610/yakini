@@ -3,14 +3,15 @@
 システムプロンプトは backend/prompts/ 配下の MD ファイルから都度読み込む。
 """
 
-import logging
 from typing import Any, Dict, List, Optional
 
+from ...core.logging_utils import get_logger
+from ...core.metrics import measure_time_async
 from ...utils.prompt_loader import load_prompt
 from ..llm.sanitizer import SanitizeContext, sanitize_text
 from .llm import get_llm_client
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _client = get_llm_client()
 
@@ -47,14 +48,15 @@ def _build_blog_prompt(
     return "\n".join(parts)
 
 
+@measure_time_async("llm.blog_summarize")
 async def summarize_blog_articles(
     articles: List[Dict[str, Any]],
     context: Optional[SanitizeContext] = None,
-) -> str:
+) -> str | None:
     """ブログ記事一覧から LLM で AI サマリを生成する。
 
     context が指定された場合、記事タイトル・要約を sanitize_text() でマスキングする。
-    LLM に接続できない場合は空文字列を返す。
+    LLM に接続できない場合は None を返す。
     """
     system_prompt = load_prompt("blog_analysis.md")
     prompt = _build_blog_prompt(articles, context)
@@ -104,13 +106,14 @@ def _build_learning_advice_prompt(
     return "\n".join(parts)
 
 
+@measure_time_async("llm.learning_advice")
 async def generate_learning_advice(
     analysis: Dict[str, Any],
     scores: Dict[str, Any],
-) -> str:
+) -> str | None:
     """分析結果とポジションスコアから現状分析+学習アドバイスを LLM で生成する。
 
-    LLM に接続できない場合は空文字列を返す。
+    LLM に接続できない場合は None を返す。
     """
     system_prompt = load_prompt("github_analysis.md")
     prompt = _build_learning_advice_prompt(analysis, scores)

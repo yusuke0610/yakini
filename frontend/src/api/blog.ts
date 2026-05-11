@@ -49,6 +49,19 @@ export function addBlogAccount(
 }
 
 /**
+ * 連携アカウントの username を更新する。
+ */
+export function updateBlogAccount(
+  platform: "zenn" | "note" | "qiita",
+  username: string,
+): Promise<BlogAccount> {
+  return request<BlogAccount>(`/api/blog/accounts/${platform}`, {
+    method: "PATCH",
+    body: JSON.stringify({ username }),
+  });
+}
+
+/**
  * 連携アカウントを解除する。
  */
 export async function deleteBlogAccount(id: string): Promise<void> {
@@ -79,17 +92,18 @@ export function syncBlogAccount(
 
 /**
  * ブログ記事の AI サマリを生成する（202 非同期）。
+ * 分析対象記事はサーバー側で DB から取得する。
  */
-export function summarizeBlogArticles(
-  articles: BlogArticle[],
-): Promise<BlogSummaryResponse> {
-  return request<BlogSummaryResponse>(
-    "/api/blog/summarize",
-    {
-      method: "POST",
-      body: JSON.stringify({ articles }),
-    },
-  );
+export function summarizeBlogArticles(): Promise<BlogSummaryResponse> {
+  return request<BlogSummaryResponse>("/api/blog/summarize", { method: "POST" });
+}
+
+/**
+ * 失敗したブログサマリタスクを手動で再実行する（202 非同期）。
+ * 分析対象記事はサーバー側で DB から取得する。
+ */
+export function retrySummarizeBlogArticles(): Promise<BlogSummaryResponse> {
+  return request<BlogSummaryResponse>("/api/blog/summarize/retry", { method: "POST" });
 }
 
 /**

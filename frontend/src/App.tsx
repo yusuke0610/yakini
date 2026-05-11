@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-import { getCurrentUser, setOnUnauthorized } from "./api";
+import { getCurrentUser, logout, setOnUnauthorized } from "./api";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { useTheme } from "./hooks/useTheme";
 import { AppRoutes, type AuthUser } from "./router";
+
+// 認証チェック不要なパス（未認証が正常な画面）
+const PUBLIC_PATHS = new Set(["/", "/login", "/github/callback"]);
 
 /**
  * アプリケーションのメインエントリーポイントコンポーネント。
@@ -25,12 +28,18 @@ export default function App() {
     }
     return null;
   });
-  const [authLoading, setAuthLoading] = useState(user === null);
+  const [authLoading, setAuthLoading] = useState(
+    user === null && !PUBLIC_PATHS.has(location.pathname),
+  );
   const [githubError, setGithubError] = useState<string | null>(null);
+  // ログアウト直後の /auth/me 呼び出しを防ぐフラグ。
+  // setUser(null) 前にセットし、effect が pathname より先に発火してもスキップできるようにする。
+  const justLoggedOut = useRef(false);
 
   useEffect(() => {
     setOnUnauthorized(() => {
       sessionStorage.removeItem("auth_user");
+      justLoggedOut.current = true;
       setUser(null);
     });
   }, []);
@@ -47,7 +56,8 @@ export default function App() {
   useEffect(() => {
     let active = true;
 
-    if (user) {
+    if (user || PUBLIC_PATHS.has(location.pathname) || justLoggedOut.current) {
+      justLoggedOut.current = false;
       setAuthLoading(false);
       return () => {
         active = false;
@@ -76,7 +86,23 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, location.pathname]);
+
+  const handleLogout = async () => {
+    await logout();
+    sessionStorage.removeItem("auth_user");
+    justLoggedOut.current = true;
+    setUser(null);
+  };
+
+  const handleLoginSuccess = (rawUser: { username: string; is_github_user: boolean }) => {
+    const authUser: AuthUser = {
+      username: rawUser.username,
+      isGitHubUser: rawUser.is_github_user,
+    };
+    sessionStorage.setItem("auth_user", JSON.stringify(authUser));
+    setUser(authUser);
+  };
 
   return (
     <ErrorBoundary>
@@ -86,6 +112,10 @@ export default function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
         githubError={githubError}
+        onLogout={() => {
+          void handleLogout();
+        }}
+        onLoginSuccess={handleLoginSuccess}
       />
     </ErrorBoundary>
   );
