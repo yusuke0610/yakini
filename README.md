@@ -286,7 +286,6 @@ GitHub OAuth の `state` は backend 側 Cookie で検証されるため、`CORS
 | 変数 | 用途 |
 |---|---|
 | `SQLITE_DB_PATH` | SQLiteファイルパス（Cloud Run: `/tmp/devforge.sqlite`） |
-| `SECRET_KEY` | CSRF等で引き続き使用 |
 | `JWT_PRIVATE_KEY` | RS256署名用秘密鍵（PEM形式） |
 | `JWT_PUBLIC_KEY` | RS256検証用公開鍵（PEM形式） |
 | `FIELD_ENCRYPTION_KEY` | Fernet暗号化キー |
@@ -339,7 +338,7 @@ graph TB
         end
 
         subgraph "Secret Manager"
-            Secrets["SECRET_KEY<br/>FIELD_ENCRYPTION_KEY<br/>ADMIN_TOKEN<br/>GITHUB_CLIENT_ID<br/>GITHUB_CLIENT_SECRET"]
+            Secrets["FIELD_ENCRYPTION_KEY<br/>ADMIN_TOKEN<br/>GITHUB_CLIENT_ID<br/>GITHUB_CLIENT_SECRET"]
         end
 
         subgraph "IAM"

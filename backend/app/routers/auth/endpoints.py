@@ -31,12 +31,9 @@ from .oauth_flow import (
     get_frontend_origin,
     resolve_frontend_url_from_cookie,
     resolve_frontend_url_from_request,
-    validate_github_oauth_state,
 )
 from .token_manager import (
     clear_auth_cookies,
-    clear_github_oauth_session,
-    get_github_oauth_session,
     set_auth_cookies,
 )
 
@@ -194,7 +191,6 @@ def github_login(
 async def github_callback_redirect(
     request: Request,
     code: str | None = None,
-    state: str | None = None,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     """GitHub OAuth コールバックを処理し、フロントエンドへリダイレクトする。
@@ -203,8 +199,10 @@ async def github_callback_redirect(
     200 + HTML リダイレクトで Cookie を確実にセットする。
     """
 
-    stored_state, stored_redirect = get_github_oauth_session(request)
-    frontend_url = resolve_frontend_url_from_cookie(stored_redirect)
+    # 現行フローでは GitHub のリダイレクト先はフロントの /github/callback（React ルート）であり、
+    # フロントが sessionStorage の state を検証してから POST /auth/github/callback でトークン交換する。
+    # このエンドポイントは後方互換のために残しているが、state のサーバー側検証は行わない。
+    frontend_url = resolve_frontend_url_from_cookie(None)
 
     try:
         if not code:
@@ -214,7 +212,6 @@ async def github_callback_redirect(
                 message=get_error("auth.github_code_missing"),
                 action="GitHub ログインをやり直してください",
             )
-        validate_github_oauth_state(stored_state, state)
         callback_base = get_callback_base_url() or build_external_base_url(request)
         redirect_uri = f"{callback_base}/auth/github/callback"
         token_response = await authenticate_github_user(db, code, redirect_uri)
@@ -222,11 +219,9 @@ async def github_callback_redirect(
         # error.detail は AppErrorResponse の dict 形式なので message フィールドを取り出す
         detail = error.detail
         error_message = detail.get("message") if isinstance(detail, dict) else str(detail)
-        response = HTMLResponse(
+        return HTMLResponse(
             content=_html_redirect(build_frontend_redirect_url(frontend_url, error_message))
         )
-        clear_github_oauth_session(response)
-        return response
 
     response = HTMLResponse(content=_html_redirect(build_frontend_redirect_url(frontend_url)))
     set_auth_cookies(response, token_response.username, db)

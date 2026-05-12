@@ -14,7 +14,6 @@ locals {
     # 削除前に全環境（dev/stg/prod）の Cloud Run 設定から環境変数を外すこと。
   ]
   required_secret_env = {
-    SECRET_KEY           = "secret-key"
     FIELD_ENCRYPTION_KEY = "field-encryption-key"
     ADMIN_TOKEN          = "admin-token"
     JWT_PRIVATE_KEY      = "jwt-private-key"

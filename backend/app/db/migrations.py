@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ..core.settings import get_database_url
+from ..core.settings import get_sqlite_db_path
 
 
 def _alembic_config():
@@ -12,7 +12,7 @@ def _alembic_config():
 
     config = Config(str(alembic_ini))
     config.set_main_option("script_location", str(script_location))
-    config.set_main_option("sqlalchemy.url", get_database_url())
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{get_sqlite_db_path()}")
     return config
 
 

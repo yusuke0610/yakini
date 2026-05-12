@@ -295,7 +295,7 @@ def test_github_login_url_uses_frontend_origin_when_callback_base_url_unset(clie
         "/auth/github/login-url",
         headers={
             "Origin": "http://localhost:8788",
-            "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+            "Host": "devforge-dev-XXXXX-an.a.run.app",
             "X-Forwarded-Proto": "https",
         },
     )
@@ -308,12 +308,12 @@ def test_github_login_url_uses_frontend_origin_when_callback_base_url_unset(clie
 
 def test_github_login_url_uses_callback_base_url_when_set(client) -> None:
     """CALLBACK_BASE_URL が設定されている場合、x-forwarded-host より優先されることを確認する。"""
-    with patch.dict(os.environ, {"CALLBACK_BASE_URL": "https://devforge-dev-20260311.web.app"}):
+    with patch.dict(os.environ, {"CALLBACK_BASE_URL": "devforge-dev-XXXXX-an.a.run.app"}):
         response = client.get(
             "/auth/github/login-url",
             headers={
                 "Origin": "http://localhost:8788",
-                "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+                "Host": "devforge-dev-XXXXX-an.a.run.app",
                 "X-Forwarded-Proto": "https",
             },
         )
@@ -321,7 +321,7 @@ def test_github_login_url_uses_callback_base_url_when_set(client) -> None:
     assert response.status_code == 200
     parsed = urlparse(response.json()["authorization_url"])
     redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
-    assert redirect_uri == "https://devforge-dev-20260311.web.app/github/callback"
+    assert redirect_uri == "devforge-dev-XXXXX-an.a.run.app/github/callback"
 
 
 def test_github_login_redirect_to_github(client) -> None:
@@ -330,7 +330,7 @@ def test_github_login_redirect_to_github(client) -> None:
         "/auth/github/login",
         params={"return_to": "http://localhost:8788/index.html"},
         headers={
-            "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+            "Host": "devforge-dev-XXXXX-an.a.run.app",
             "X-Forwarded-Proto": "https",
         },
         follow_redirects=False,
@@ -416,7 +416,7 @@ def test_github_callback_post_does_not_require_cookie(client) -> None:
             "/auth/github/callback",
             json={"code": "test-code", "state": "any-state-from-frontend"},
             headers={
-                "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+                "Host": "devforge-dev-XXXXX-an.a.run.app",
                 "X-Forwarded-Proto": "https",
             },
         )

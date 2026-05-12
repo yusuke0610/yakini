@@ -54,7 +54,6 @@ CI 定義: `.github/workflows/ci.yml`
 
 ```
 SQLITE_DB_PATH       # Cloud Run: /tmp/devforge.sqlite
-SECRET_KEY           # CSRF等で引き続き使用
 JWT_PRIVATE_KEY      # RS256署名用秘密鍵（PEM形式）
 JWT_PUBLIC_KEY       # RS256検証用公開鍵（PEM形式）
 FIELD_ENCRYPTION_KEY # Fernet鍵
