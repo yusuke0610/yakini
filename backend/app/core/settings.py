@@ -2,6 +2,61 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse
 
+# --- Turso (libSQL) ---
+
+
+def get_turso_database_url() -> str:
+    """Turso / libSQL データベースの接続 URL を取得する。
+
+    対応する形式:
+      - `http://127.0.0.1:8080` / `https://...` : turso dev・libSQL HTTP サーバー
+      - `libsql://<db>.turso.io` : Turso Cloud
+      - `file:./local.sqlite` または絶対パス : ローカルファイル（テスト用途）
+    """
+    return os.getenv("TURSO_DATABASE_URL", "").strip()
+
+
+def get_turso_auth_token() -> str:
+    """Turso 認証トークン（Cloud 用）。turso dev では空でよい。"""
+    return os.getenv("TURSO_AUTH_TOKEN", "").strip()
+
+
+def build_sqlalchemy_database_url() -> str:
+    """SQLAlchemy 用のデータベース接続 URL を `TURSO_DATABASE_URL` から組み立てる。
+
+    - HTTP / HTTPS / libsql スキーム: `sqlite+libsql://` 形式に変換し Turso (libSQL) に接続
+    - ローカルファイルパス: `sqlite:///` （標準 SQLite ドライバ）を使用
+        libsql-experimental のローカルファイルドライバは複雑な DDL/DML (例: 0010 マイグレーション)
+        で `database table is locked` を返すため、ローカル/テスト用途では標準 sqlite を使う
+    - `TURSO_DATABASE_URL` 未設定時は RuntimeError を送出する
+    """
+    raw = get_turso_database_url()
+    if not raw:
+        raise RuntimeError(
+            "TURSO_DATABASE_URL が設定されていません。"
+            "turso dev または Turso Cloud の接続 URL を設定してください。"
+        )
+
+    parsed = urlparse(raw)
+    token = get_turso_auth_token()
+
+    if parsed.scheme in {"http", "https", "libsql"}:
+        # ホスト+ポート形式（HTTP/HTTPS サーバー or Turso Cloud）→ libSQL ドライバ
+        netloc = parsed.netloc
+        path = parsed.path or ""
+        url = f"sqlite+libsql://{netloc}{path}"
+        if token:
+            url = f"{url}?authToken={token}"
+        return url
+
+    if parsed.scheme in {"", "file"}:
+        # ローカルファイル形式（テスト用途）→ 標準 SQLite ドライバ
+        # path が "/abs" の場合 f"sqlite:///{path}" は自動で "sqlite:////abs" になる
+        path = parsed.path if parsed.scheme == "file" else raw
+        return f"sqlite:///{path}"
+
+    raise RuntimeError(f"TURSO_DATABASE_URL のスキームを解釈できません: {raw}")
+
 
 def _parse_bool_env(name: str) -> bool | None:
     value = os.getenv(name)

@@ -25,12 +25,24 @@ def _validate_jwt_keys() -> None:
 
 def bootstrap() -> None:
     _validate_jwt_keys()
-    restored = restore_sqlite_from_gcs_if_configured()
-    log_event(
-        logging.INFO,
-        "sqlite_bootstrap_restore_result",
-        restored=restored,
-    )
+
+    # Turso (libSQL) モード時は外部の Turso がデータ永続化を担うため GCS 復元は不要
+    # SQLite ファイル方式時のみ GCS 復元を試みる（Issue 3 のインフラ移行で完全廃止予定）
+    from ..core.settings import get_turso_database_url
+
+    if get_turso_database_url():
+        log_event(
+            logging.INFO,
+            "sqlite_bootstrap_restore_skipped",
+            reason="turso_mode",
+        )
+    else:
+        restored = restore_sqlite_from_gcs_if_configured()
+        log_event(
+            logging.INFO,
+            "sqlite_bootstrap_restore_result",
+            restored=restored,
+        )
     run_migrations()
     log_event(logging.INFO, "sqlite_bootstrap_migration_succeeded")
 

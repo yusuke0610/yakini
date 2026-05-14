@@ -1,26 +1,21 @@
 from typing import Generator
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.pool import NullPool
 
-from ..core.settings import get_sqlite_db_path
+from ..core.settings import build_sqlalchemy_database_url
 
-_db_url = f"sqlite:///{get_sqlite_db_path()}"
+# Turso (libSQL) 接続 URL を構築する。`TURSO_DATABASE_URL` を `sqlite+libsql://` 形式に変換する
+_db_url = build_sqlalchemy_database_url()
 
+# libSQL は HTTP/HTTPS 経由のため SQLAlchemy のコネクションプールは保持せず NullPool を使う
+# `check_same_thread` は SQLite ドライバ固有の引数で libSQL では不要
 engine = create_engine(
     _db_url,
-    connect_args={"check_same_thread": False},
+    poolclass=NullPool,
     pool_pre_ping=True,
 )
-
-
-@event.listens_for(engine, "connect")
-def _set_sqlite_pragma(dbapi_connection, connection_record):
-    """WAL モードと busy_timeout を有効化し、バックグラウンドタスクとの同時アクセスに対応する。"""
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA busy_timeout=5000")
-    cursor.close()
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
