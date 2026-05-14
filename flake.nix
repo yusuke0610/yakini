@@ -49,6 +49,9 @@
             redis              # Redis 7（ローカル開発用）
             turso-cli          # Turso (libSQL) CLI（ローカル開発用）
 
+            # --- IaC ---
+            opentofu           # OpenTofu CLI（Terraform 互換 / インフラ管理）
+
             # --- 共通ツール ---
             git
             gh                 # GitHub CLI
@@ -73,6 +76,7 @@
             echo "  npm    : $(npm --version)"
             echo "  uv     : $(uv --version)"
             echo "  Redis  : $(redis-server --version)"
+            echo "  tofu   : $(tofu --version | head -1)"
             echo "  Turso  : $(turso --version 2>/dev/null | head -1)"
             echo "  gh     : $(gh --version | head -1)"
             echo ""

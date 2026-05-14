@@ -1,4 +1,4 @@
-name: Terraform CI
+name: OpenTofu CI
 
 on:
   pull_request:
@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: terraform-ci-${{ github.workflow }}-${{ github.ref }}
+  group: opentofu-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -46,7 +46,7 @@ jobs:
           filters: |
             infra:
               - 'infra/**'
-              - '.github/workflows/terraform-ci.yml'
+              - '.github/workflows/opentofu-ci.yml'
             dev:
               - 'infra/environments/dev/**'
               - 'infra/modules/**'
@@ -57,110 +57,110 @@ jobs:
               - 'infra/environments/prod/**'
               - 'infra/modules/**'
 
-  terraform-fmt:
+  opentofu-fmt:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: detect-changes
 
     steps:
-      - name: No Terraform changes
+      - name: No OpenTofu changes
         if: needs.detect-changes.outputs.infra != 'true'
-        run: echo "No Terraform changes detected. Skipping format check."
+        run: echo "No OpenTofu changes detected. Skipping format check."
 
       - name: Checkout
         if: needs.detect-changes.outputs.infra == 'true'
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Setup OpenTofu
         if: needs.detect-changes.outputs.infra == 'true'
-        uses: hashicorp/setup-terraform@v3
+        uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: 1.8.5
+          tofu_version: 1.8.5
 
-      - name: Terraform format check
+      - name: OpenTofu format check
         if: needs.detect-changes.outputs.infra == 'true'
-        run: terraform fmt -check -recursive infra
+        run: tofu fmt -check -recursive infra
 
-  terraform-validate-dev:
+  opentofu-validate-dev:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [terraform-fmt, detect-changes]
+    needs: [opentofu-fmt, detect-changes]
 
     steps:
-      - name: No dev Terraform changes
+      - name: No dev OpenTofu changes
         if: needs.detect-changes.outputs.dev != 'true'
-        run: echo "No dev/module Terraform changes detected. Skipping validation."
+        run: echo "No dev/module OpenTofu changes detected. Skipping validation."
 
       - name: Checkout
         if: needs.detect-changes.outputs.dev == 'true'
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Setup OpenTofu
         if: needs.detect-changes.outputs.dev == 'true'
-        uses: hashicorp/setup-terraform@v3
+        uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: 1.8.5
+          tofu_version: 1.8.5
 
-      - name: Terraform init (no backend)
+      - name: OpenTofu init (no backend)
         if: needs.detect-changes.outputs.dev == 'true'
-        run: terraform -chdir=infra/environments/dev init -backend=false -input=false
+        run: tofu -chdir=infra/environments/dev init -backend=false -input=false
 
-      - name: Terraform validate
+      - name: OpenTofu validate
         if: needs.detect-changes.outputs.dev == 'true'
-        run: terraform -chdir=infra/environments/dev validate
+        run: tofu -chdir=infra/environments/dev validate
 
-  terraform-validate-stg:
+  opentofu-validate-stg:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [terraform-fmt, detect-changes]
+    needs: [opentofu-fmt, detect-changes]
 
     steps:
-      - name: No stg Terraform changes
+      - name: No stg OpenTofu changes
         if: needs.detect-changes.outputs.stg != 'true'
-        run: echo "No stg/module Terraform changes detected. Skipping validation."
+        run: echo "No stg/module OpenTofu changes detected. Skipping validation."
 
       - name: Checkout
         if: needs.detect-changes.outputs.stg == 'true'
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Setup OpenTofu
         if: needs.detect-changes.outputs.stg == 'true'
-        uses: hashicorp/setup-terraform@v3
+        uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: 1.8.5
+          tofu_version: 1.8.5
 
-      - name: Terraform init (no backend)
+      - name: OpenTofu init (no backend)
         if: needs.detect-changes.outputs.stg == 'true'
-        run: terraform -chdir=infra/environments/stg init -backend=false -input=false
+        run: tofu -chdir=infra/environments/stg init -backend=false -input=false
 
-      - name: Terraform validate
+      - name: OpenTofu validate
         if: needs.detect-changes.outputs.stg == 'true'
-        run: terraform -chdir=infra/environments/stg validate
+        run: tofu -chdir=infra/environments/stg validate
 
-  terraform-validate-prod:
+  opentofu-validate-prod:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [terraform-fmt, detect-changes]
+    needs: [opentofu-fmt, detect-changes]
 
     steps:
-      - name: No prod Terraform changes
+      - name: No prod OpenTofu changes
         if: needs.detect-changes.outputs.prod != 'true'
-        run: echo "No prod/module Terraform changes detected. Skipping validation."
+        run: echo "No prod/module OpenTofu changes detected. Skipping validation."
 
       - name: Checkout
         if: needs.detect-changes.outputs.prod == 'true'
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Setup OpenTofu
         if: needs.detect-changes.outputs.prod == 'true'
-        uses: hashicorp/setup-terraform@v3
+        uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: 1.8.5
+          tofu_version: 1.8.5
 
-      - name: Terraform init (no backend)
+      - name: OpenTofu init (no backend)
         if: needs.detect-changes.outputs.prod == 'true'
-        run: terraform -chdir=infra/environments/prod init -backend=false -input=false
+        run: tofu -chdir=infra/environments/prod init -backend=false -input=false
 
-      - name: Terraform validate
+      - name: OpenTofu validate
         if: needs.detect-changes.outputs.prod == 'true'
-        run: terraform -chdir=infra/environments/prod validate
+        run: tofu -chdir=infra/environments/prod validate

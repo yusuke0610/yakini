@@ -170,7 +170,9 @@ gcloud services enable run.googleapis.com
 gcloud services enable secretmanager.googleapis.com
 ```
 
-#### 2. Terraform でインフラを構築する
+#### 2. OpenTofu でインフラを構築する
+
+CLI は Nix 管理。`nix develop` シェル内で `tofu` を利用する（または `make infra-*` ターゲットを使う）。
 
 ```bash
 # GCS tfstate バケットを作成（初回のみ）
@@ -178,8 +180,7 @@ gcloud storage buckets create gs://devforge-tfstate-${ENV} \
   --location=${REGION} --uniform-bucket-level-access
 
 # インフラ構築
-cd infra/environments/${ENV}
-terraform init && terraform plan && terraform apply
+nix develop --command bash -c "cd infra/environments/${ENV} && tofu init && tofu plan && tofu apply"
 ```
 
 構成: `infra/environments/{dev|stg|prod}`, `infra/modules/`
@@ -458,13 +459,13 @@ cd backend
   - GitHub Actions 実行用サービスアカウントには、Cloud Run runtime SA に対する `roles/iam.serviceAccountUser` が必要
 - **低コスト運用**: Linuxランナー、依存キャッシュ、`concurrency` で古い実行を自動キャンセル、アプリ差分がない場合は重い処理をスキップ
 
-### Terraform検証 CI（`.github/workflows/terraform-ci.yml`）
+### OpenTofu 検証 CI（`.github/workflows/opentofu-ci.yml`）
 
 - **実行タイミング**: `pull_request` / `push`（target: `dev` / `stg` / `main`、`infra/**` 変更時）
 - **実行内容**:
-  - `terraform fmt -check -recursive`
-  - `terraform init -backend=false`
-  - `terraform validate`
+  - `tofu fmt -check -recursive`
+  - `tofu init -backend=false`
+  - `tofu validate`
 
 ## ブランチ保護
 
@@ -485,10 +486,10 @@ cd backend
    - `Require a pull request before merging`
    - `Require status checks to pass before merging`
      - `test`
-     - `terraform-fmt`
-     - `terraform-validate-dev`
-     - `terraform-validate-stg`
-     - `terraform-validate-prod`
+     - `opentofu-fmt`
+     - `opentofu-validate-dev`
+     - `opentofu-validate-stg`
+     - `opentofu-validate-prod`
 4. `stg` と `main` についても同じ設定を追加
 5. `Do not allow bypassing the above settings`（利用可能な場合）を有効化
 6. 保存
