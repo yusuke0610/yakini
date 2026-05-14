@@ -151,42 +151,22 @@ TURSO_AUTH_TOKEN=
 
 #### Turso (libSQL) ローカル起動
 
-DB は Turso (libSQL) を使用します。`turso dev` で libSQL 互換のローカルサーバーを起動できます。
-Turso CLI は `flake.nix` で管理されているため、`nix develop` 後にそのまま利用可能です。
-
-> **注意**: `turso dev` 実行には別途 `sqld` (libsql-server) のインストールが必要です（nixpkgs に未収録）。
-> 公式手順: https://docs.turso.tech/local-development/sqld
-
-```bash
-# libSQL HTTP サーバーを起動（ホスト側で別ターミナル）
-turso dev --db-file ./backend/local.sqlite
-# 起動すると http://127.0.0.1:8080 で待ち受ける
-```
-
-接続用の環境変数は `backend/.env.example` を参考に `backend/.env` へ設定してください。
+`docker compose up libsql` だけ起動すれば、ホストの `127.0.0.1:8080` に libSQL サーバーが公開されます。
+`backend/.env` で以下を設定すれば、ホストの uvicorn から接続できます。
 
 ```
 TURSO_DATABASE_URL=http://127.0.0.1:8080
 TURSO_AUTH_TOKEN=
 ```
 
-Docker コンテナ内から接続する場合は、コンテナ → ホストの `turso dev` に到達できるよう
-`host.docker.internal` を使用します（`docker-compose.yml` の `extra_hosts` で設定済み）。
-プロジェクトルートの `.env` を以下のように書き換えてから `docker compose up` してください。
-
-```
-TURSO_DATABASE_URL=http://host.docker.internal:8080
-TURSO_AUTH_TOKEN=
-```
-
-##### TablePlus からローカル Turso に接続する
+##### TablePlus からローカル libSQL に接続する
 
 1. TablePlus で **新規接続** → **libSQL** を選択
-2. **URL** に `http://127.0.0.1:8080` を指定
+2. **URL** に `http://127.0.0.1:8080` を指定（`docker compose up libsql` 経由）
 3. **Token** は空のままで OK
 4. **テスト** → **接続**
 
-> **注意**: 旧 SQLite ファイル方式は廃止しました。`data/devforge.sqlite` の bind mount や DBeaver の SQLite 直接接続は使えません。
+> **注意**: 旧 SQLite ファイル方式（`data/devforge.sqlite` の bind mount, DBeaver の SQLite 直接接続）は廃止しました。
 
 ---
 
