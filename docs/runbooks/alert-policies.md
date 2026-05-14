@@ -110,7 +110,7 @@ Notification Channel (Email)
 
 ## 通知チャンネルの保守
 
-- **メールアドレスの変更**: `infra/environments/{env}/terraform.tfvars` の `alert_email` を更新し `terraform apply`。
+- **メールアドレスの変更**: `infra/environments/{env}/terraform.tfvars` の `alert_email` を更新し `tofu apply`。
 - **退職対応**: 個人アドレスは避け、ML（mailing list）を使う運用を推奨。
 - **疎通確認**: GCP Console → Monitoring → Alerting → Notification channels → 「Send Test Notification」。
 

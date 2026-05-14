@@ -1,4 +1,3 @@
-from .admin import router as admin_router
 from .auth import router as auth_router
 from .blog import router as blog_router
 from .career_analysis import router as career_analysis_router
@@ -10,7 +9,6 @@ from .notifications import router as notifications_router
 from .resumes import router as resumes_router
 
 __all__ = [
-    "admin_router",
     "auth_router",
     "career_analysis_router",
     "blog_router",

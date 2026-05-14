@@ -28,7 +28,6 @@ from .core.settings import get_cors_origins, get_environment, get_internal_secre
 from .db.bootstrap import bootstrap  # noqa: E402
 from .middleware.request_id import RequestIDMiddleware  # noqa: E402
 from .routers import (  # noqa: E402
-    admin_router,
     auth_router,
     blog_router,
     career_analysis_router,
@@ -214,5 +213,4 @@ app.include_router(intelligence_router)
 app.include_router(blog_router)
 app.include_router(master_data_router)
 app.include_router(notifications_router)
-app.include_router(admin_router)
 app.include_router(internal_router)
