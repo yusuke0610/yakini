@@ -151,12 +151,15 @@ TURSO_AUTH_TOKEN=
 
 #### Turso (libSQL) ローカル起動
 
-SQLite → Turso 移行の準備として、`turso dev` で libSQL 互換のローカルサーバーを起動できます。
+DB は Turso (libSQL) を使用します。`turso dev` で libSQL 互換のローカルサーバーを起動できます。
 Turso CLI は `flake.nix` で管理されているため、`nix develop` 後にそのまま利用可能です。
 
+> **注意**: `turso dev` 実行には別途 `sqld` (libsql-server) のインストールが必要です（nixpkgs に未収録）。
+> 公式手順: https://docs.turso.tech/local-development/sqld
+
 ```bash
-# 既存の SQLite ファイルを引き継いだまま libSQL HTTP サーバーを起動（ホスト側で別ターミナル）
-turso dev --db-path ./backend/local.sqlite
+# libSQL HTTP サーバーを起動（ホスト側で別ターミナル）
+turso dev --db-file ./backend/local.sqlite
 # 起動すると http://127.0.0.1:8080 で待ち受ける
 ```
 
@@ -182,6 +185,8 @@ TURSO_AUTH_TOKEN=
 2. **URL** に `http://127.0.0.1:8080` を指定
 3. **Token** は空のままで OK
 4. **テスト** → **接続**
+
+> **注意**: 旧 SQLite ファイル方式は廃止しました。`data/devforge.sqlite` の bind mount や DBeaver の SQLite 直接接続は使えません。
 
 ---
 
