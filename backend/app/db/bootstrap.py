@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 
 from ..core.logging_utils import log_event
 from .migrations import run_migrations
-from .sqlite_backup import restore_sqlite_from_gcs_if_configured
 
 
 def _validate_jwt_keys() -> None:
@@ -25,26 +24,9 @@ def _validate_jwt_keys() -> None:
 
 def bootstrap() -> None:
     _validate_jwt_keys()
-
-    # Turso (libSQL) モード時は外部の Turso がデータ永続化を担うため GCS 復元は不要
-    # SQLite ファイル方式時のみ GCS 復元を試みる（Issue 3 のインフラ移行で完全廃止予定）
-    from ..core.settings import get_turso_database_url
-
-    if get_turso_database_url():
-        log_event(
-            logging.INFO,
-            "sqlite_bootstrap_restore_skipped",
-            reason="turso_mode",
-        )
-    else:
-        restored = restore_sqlite_from_gcs_if_configured()
-        log_event(
-            logging.INFO,
-            "sqlite_bootstrap_restore_result",
-            restored=restored,
-        )
+    # Turso (libSQL) がデータ永続化を担うため、起動時の DB 復元処理は不要
     run_migrations()
-    log_event(logging.INFO, "sqlite_bootstrap_migration_succeeded")
+    log_event(logging.INFO, "bootstrap_migration_succeeded")
 
     from .database import SessionLocal
     from .seed import seed_master_data
@@ -52,7 +34,7 @@ def bootstrap() -> None:
     db = SessionLocal()
     try:
         seed_master_data(db)
-        log_event(logging.INFO, "sqlite_bootstrap_seed_succeeded")
+        log_event(logging.INFO, "bootstrap_seed_succeeded")
         _reset_orphaned_tasks(db)
     finally:
         db.close()

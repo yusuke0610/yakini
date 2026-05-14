@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from urllib.parse import urlparse
 
 # --- Turso (libSQL) ---
@@ -76,12 +75,6 @@ def _is_loopback_origin(origin: str) -> bool:
     return parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}
 
 
-def get_sqlite_db_path() -> Path:
-    """SQLite ファイルのパスを取得する。GCS バックアップ等の物理パス操作に使用。"""
-    db_path = os.getenv("SQLITE_DB_PATH", "/data/devforge.sqlite").strip()
-    return Path(db_path)
-
-
 def get_cors_origins() -> list[str]:
     cors_origins = os.getenv("CORS_ORIGINS", "")
     return [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
@@ -108,14 +101,6 @@ def get_cookie_samesite() -> str:
     if value not in {"lax", "strict", "none"}:
         raise RuntimeError("COOKIE_SAMESITE must be one of: lax, strict, none")
     return value
-
-
-def get_gcs_bucket_name() -> str:
-    return os.getenv("GCS_BUCKET_NAME", "").strip()
-
-
-def get_gcs_db_object() -> str:
-    return os.getenv("GCS_DB_OBJECT", "").strip()
 
 
 def get_admin_token() -> str:

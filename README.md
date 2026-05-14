@@ -39,12 +39,12 @@ GitHub活動分析、ブログ連携による発信力を集計
 |---|---|
 | フロントエンド | React 18, TypeScript, Vite, Redux Toolkit, Recharts, marked |
 | バックエンドAPI | Python 3.13, FastAPI, SQLAlchemy, Pydantic |
-| データベース | SQLite（GCSバックアップ） |
+| データベース | Turso (libSQL / SQLite 互換、`sqlalchemy-libsql`) |
 | 認証 | JWT Cookie (python-jose), bcrypt, GitHub OAuth |
 | 暗号化 | Fernet（フィールド暗号化）, bcrypt（パスワード） |
 | PDF出力 | WeasyPrint（職務経歴書）, ReportLab（分析レポート補助） |
 | LLM | Ollama / Vertex AI（設定で切替、任意） |
-| インフラ | GCP (Cloud Run, GCS, Artifact Registry, Secret Manager) |
+| インフラ | GCP (Cloud Run, Artifact Registry, Secret Manager), Turso, Cloudflare Pages |
 | IaC | Terraform（モジュール構成、マルチ環境） |
 | CI/CD | GitHub Actions |
 
@@ -91,7 +91,7 @@ cp .env.example .env
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-`SQLITE_DB_PATH=./local.sqlite` でローカル永続ファイルを使います。
+DB は Turso (libSQL) を使います。先に別ターミナルで `turso dev --db-file ./backend/local.sqlite` を起動し、`backend/.env` の `TURSO_DATABASE_URL=http://127.0.0.1:8080` を設定してください（詳細は後述の「Turso (libSQL) ローカル起動」参照）。
 
 #### フロントエンド起動
 
@@ -115,33 +115,27 @@ Ollama（LLM）も同時に起動します。GitHub分析やブログのAI要約
 
 ##### マスタデータ変更時の再起動
 
-シードデータ（`backend/app/seed.py`）を変更した場合:
+シードデータ（`backend/app/seed.py`）を変更した場合は、ローカル DB を初期化して再起動します。
 
 ```bash
-docker compose build --no-cache
-rm data/devforge.sqlite
+# turso dev を停止 → local.sqlite を削除して再起動
+rm backend/local.sqlite
+turso dev --db-file ./backend/local.sqlite
+# 別ターミナルで
 docker compose up
 ```
 
-#### DBクライアント（DBeaver等）からSQLiteに接続する
-
-Docker起動時、SQLiteファイルはホストの `./data/devforge.sqlite` にバインドマウントされます。
-
-1. `docker compose up --build` でコンテナを起動する
-2. DBeaver で **新規接続** → **SQLite** を選択
-3. **Path** に `<プロジェクトルート>/data/devforge.sqlite` を指定
-4. **テスト接続** → **完了**
-
-> **注意**: SQLite はファイルロックで排他制御するため、DBeaver で書き込みを行うとアプリ側と競合する場合があります。参照のみの利用を推奨します。
-
 #### Turso (libSQL) ローカル起動
 
-SQLite → Turso 移行の準備として、`turso dev` で libSQL 互換のローカルサーバーを起動できます。
+DB は Turso (libSQL) を使用します。`turso dev` で libSQL 互換のローカルサーバーを起動できます。
 Turso CLI は `flake.nix` で管理されているため、`nix develop` 後にそのまま利用可能です。
 
+> **注意**: `turso dev` 実行には別途 `sqld` (libsql-server) のインストールが必要です（nixpkgs に未収録）。
+> 公式手順: https://docs.turso.tech/local-development/sqld
+
 ```bash
-# 既存の SQLite ファイルを引き継いだまま libSQL HTTP サーバーを起動（ホスト側で別ターミナル）
-turso dev --db-path ./backend/local.sqlite
+# libSQL HTTP サーバーを起動（ホスト側で別ターミナル）
+turso dev --db-file ./backend/local.sqlite
 # 起動すると http://127.0.0.1:8080 で待ち受ける
 ```
 
@@ -167,6 +161,8 @@ TURSO_AUTH_TOKEN=
 2. **URL** に `http://127.0.0.1:8080` を指定
 3. **Token** は空のままで OK
 4. **テスト** → **接続**
+
+> **注意**: 旧 SQLite ファイル方式は廃止しました。`data/devforge.sqlite` の bind mount や DBeaver の SQLite 直接接続は使えません。
 
 ---
 
@@ -307,9 +303,6 @@ GitHub OAuth の `state` は backend 側 Cookie で検証されるため、`CORS
 - `PATCH /api/notifications/{id}/read`: 個別既読
 - `POST /api/notifications/read-all`: 全て既読
 
-### 管理
-- `POST /admin/backup`: SQLite DBをGCSへバックアップ（Bearerトークン必須）
-
 ### その他
 - `GET /health`: ヘルスチェック
 
@@ -319,12 +312,12 @@ GitHub OAuth の `state` は backend 側 Cookie で検証されるため、`CORS
 
 | 変数 | 用途 |
 |---|---|
-| `SQLITE_DB_PATH` | SQLiteファイルパス（Cloud Run: `/tmp/devforge.sqlite`） |
+| `TURSO_DATABASE_URL` | Turso (libSQL) 接続 URL（ローカル: `http://127.0.0.1:8080` / 本番: `libsql://<db>.turso.io`） |
+| `TURSO_AUTH_TOKEN` | Turso 認証トークン（本番は Secret Manager から注入。`turso dev` では空） |
 | `JWT_PRIVATE_KEY` | RS256署名用秘密鍵（PEM形式） |
 | `JWT_PUBLIC_KEY` | RS256検証用公開鍵（PEM形式） |
 | `FIELD_ENCRYPTION_KEY` | Fernet暗号化キー |
-| `GCS_BUCKET_NAME` / `GCS_DB_OBJECT` | GCSバックアップ先（未設定ならスキップ） |
-| `ADMIN_TOKEN` | `/admin/backup` エンドポイント用 |
+| `ADMIN_TOKEN` | 管理者操作用トークン |
 | `CORS_ORIGINS` | 許可するオリジン（カンマ区切り） |
 | `COOKIE_SECURE` | 認証Cookieに `Secure` を付与するか（本番: `true`） |
 | `COOKIE_SAMESITE` | 認証Cookieの SameSite（`lax` / `strict` / `none`） |
@@ -356,15 +349,21 @@ graph TB
         NoteRSS["note RSS"]
     end
 
+    subgraph "Cloudflare"
+        CFPages["Cloudflare Pages<br/>静的サイトホスティング<br/>（React SPA）"]
+    end
+
+    subgraph "Turso"
+        TursoDB["Turso DB: devforge-{env}<br/>libSQL（nrt リージョン）"]
+    end
+
     subgraph "GCP Project: <PROJECT_ID>"
         subgraph "Cloud Storage"
-            FrontendBucket["GCS: devforge-{env}-frontend<br/>静的サイトホスティング<br/>（React SPA）"]
-            DBBackupBucket["GCS: devforge-{env}-db<br/>SQLite バックアップ<br/>（バージョニング有効）"]
             TfstateBucket["GCS: devforge-tfstate-{env}<br/>Terraform State"]
         end
 
         subgraph "Cloud Run"
-            CloudRun["Cloud Run: devforge-{env}<br/>FastAPI + SQLite<br/>max_instances=1 / min_instances=0<br/>CPU: 1000m / Memory: 512Mi"]
+            CloudRun["Cloud Run: devforge-{env}<br/>FastAPI + libSQL クライアント<br/>max_instances=1 / min_instances=0<br/>CPU: 1000m / Memory: 512Mi"]
         end
 
         subgraph "Artifact Registry"
@@ -372,7 +371,7 @@ graph TB
         end
 
         subgraph "Secret Manager"
-            Secrets["FIELD_ENCRYPTION_KEY<br/>ADMIN_TOKEN<br/>GITHUB_CLIENT_ID<br/>GITHUB_CLIENT_SECRET"]
+            Secrets["FIELD_ENCRYPTION_KEY<br/>ADMIN_TOKEN<br/>JWT_PRIVATE_KEY / JWT_PUBLIC_KEY<br/>INTERNAL_SECRET<br/>TURSO_AUTH_TOKEN<br/>GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET"]
         end
 
         subgraph "IAM"
@@ -380,33 +379,32 @@ graph TB
         end
     end
 
-    Browser -->|"HTTPS"| FrontendBucket
+    Browser -->|"HTTPS"| CFPages
     Browser -->|"API リクエスト"| CloudRun
     Browser -->|"OAuth 認証"| GitHubOAuth
 
-    GitHubActions -->|"npm build → upload"| FrontendBucket
+    GitHubActions -->|"npm build → deploy"| CFPages
     GitHubActions -->|"docker push"| AR
     GitHubActions -->|"gcloud run deploy"| CloudRun
 
-    CloudRun -->|"バックアップ/復元"| DBBackupBucket
+    CloudRun -->|"libsql HTTPS"| TursoDB
     CloudRun -->|"シークレット取得"| Secrets
     CloudRun -->|"リポジトリ分析"| GitHubAPI
     CloudRun -->|"記事取得"| ZennAPI
     CloudRun -->|"記事取得"| NoteRSS
     AR -->|"イメージ pull"| CloudRun
     SA -->|"実行権限"| CloudRun
-    SA -->|"storage.objectAdmin"| DBBackupBucket
     SA -->|"secretAccessor"| Secrets
 ```
 
 ## データベース・マイグレーション
 
-### SQLite + GCSバックアップ/復元
+### Turso (libSQL)
 
-- **起動時**: GCS→ローカル復元 → Alembic `upgrade head` → アプリ起動（復元失敗時は空DBで起動）
-- **バックアップ**: `POST /admin/backup` または `python -m app.db.backup` を明示実行した時のみ
-- **Cloud Run IAM**: `storage.objects.{get,create,list}`
-- **ローカルDB**: `backend/local.sqlite` はコミットしない。必要時に自動生成/再作成する
+- **本番**: Turso Cloud（東京リージョン `nrt`）。`turso CLI` で DB と auth token を発行し、URL は Cloud Run 環境変数、トークンは Secret Manager に登録
+- **ローカル**: `turso dev --db-file ./backend/local.sqlite` で libSQL HTTP サーバーを起動
+- **接続**: `app.core.settings.build_sqlalchemy_database_url()` が `TURSO_DATABASE_URL` を SQLAlchemy URL（HTTP/HTTPS は `sqlite+libsql://`、ローカルファイルは `sqlite:///`）に変換
+- **ローカル DB**: `backend/local.sqlite` はコミットしない。必要時に自動生成/再作成する
 
 ### Alembicマイグレーション
 
@@ -418,7 +416,7 @@ cd backend && alembic upgrade head
 ```
 
 設定: `backend/alembic.ini` / `backend/alembic_migrations/versions`
-SQLiteはDDL制約があるため、複雑なALTERはテーブル再作成型マイグレーションを推奨。
+libSQL は SQLite 互換で ALTER COLUMN 非対応のため、複雑なスキーマ変更は `batch_alter_table` を使う。
 
 ## データ設計メモ
 
@@ -470,7 +468,7 @@ cd backend
   - frontend: `npm run lint`, `npm run test`, `npm run build`, E2E（Playwright / Chromium）
   - backend: `ruff check`, `pytest`
 - **自動デプロイ**（`dev` ブランチ push 時のみ）:
-  - フロントエンド → GCSバケットへアップロード
+  - フロントエンド → Cloudflare Pages へデプロイ
   - バックエンド → Artifact Registry へイメージ push → Cloud Run デプロイ
   - GitHub Actions 実行用サービスアカウントには、Cloud Run runtime SA に対する `roles/iam.serviceAccountUser` が必要
 - **低コスト運用**: Linuxランナー、依存キャッシュ、`concurrency` で古い実行を自動キャンセル、アプリ差分がない場合は重い処理をスキップ

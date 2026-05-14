@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from ..core.settings import get_sqlite_db_path
-
 
 def _alembic_config():
     from alembic.config import Config
@@ -12,7 +10,7 @@ def _alembic_config():
 
     config = Config(str(alembic_ini))
     config.set_main_option("script_location", str(script_location))
-    config.set_main_option("sqlalchemy.url", f"sqlite:///{get_sqlite_db_path()}")
+    # 接続 URL は alembic_migrations/env.py が TURSO_DATABASE_URL から動的に構築する
     return config
 
 

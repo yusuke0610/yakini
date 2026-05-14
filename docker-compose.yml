@@ -9,7 +9,6 @@ services:
       redis:
         condition: service_healthy
     environment:
-      SQLITE_DB_PATH: ${SQLITE_DB_PATH}
       TURSO_DATABASE_URL: ${TURSO_DATABASE_URL}
       TURSO_AUTH_TOKEN: ${TURSO_AUTH_TOKEN}
       CORS_ORIGINS: ${CORS_ORIGINS}
@@ -30,8 +29,6 @@ services:
       VERTEX_PROJECT_ID: ${VERTEX_PROJECT_ID}
       VERTEX_LOCATION: ${VERTEX_LOCATION}
       VERTEX_MODEL: ${VERTEX_MODEL}
-      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME}
-      GCS_DB_OBJECT: ${GCS_DB_OBJECT}
       TASK_RUNNER: ${TASK_RUNNER}
       GCP_PROJECT_ID: ${GCP_PROJECT_ID}
       CLOUD_TASKS_QUEUE: ${CLOUD_TASKS_QUEUE}
@@ -47,8 +44,6 @@ services:
       APP_VERSION: ${APP_VERSION}
     ports:
       - "8000:8000"
-    volumes:
-      - ./data:/data
     # Linux で host.docker.internal を解決するための設定（macOS / Windows では不要だが指定しても無害）
     extra_hosts:
       - "host.docker.internal:host-gateway"

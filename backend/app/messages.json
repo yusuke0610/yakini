@@ -50,11 +50,9 @@
     },
     "server": {
       "internal_error": "サーバーエラーが発生しました。しばらくしてから再度お試しください。",
-      "backup_failed": "バックアップに失敗しました。",
       "admin_token_not_configured": "ADMIN_TOKENが設定されていません。",
       "bearer_token_missing": "Bearerトークンがありません。",
-      "rate_limited": "リクエストが多すぎます。しばらくしてからお試しください。",
-      "backup_service_unavailable": "バックアップサービスが利用できません。"
+      "rate_limited": "リクエストが多すぎます。しばらくしてからお試しください。"
     },
     "master_data": {
       "not_found": "{item}が見つかりません。"
@@ -101,9 +99,6 @@
     "intelligence": {
       "analysis_complete": "分析が完了しました。",
       "cache_cleared": "キャッシュをクリアしました。"
-    },
-    "backup": {
-      "complete": "バックアップが完了しました。"
     },
     "career_analysis": {
       "generate_success": "キャリアパス分析が完了しました",
