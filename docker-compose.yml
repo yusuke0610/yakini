@@ -8,10 +8,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      libsql:
+        condition: service_started
     environment:
-      SQLITE_DB_PATH: ${SQLITE_DB_PATH}
+      # compose の libsql サービス（docker network 内）に接続する。
+      # compose 起動時はここで上書きする。Turso Cloud を使う場合は .env で URL を設定すること
+      TURSO_DATABASE_URL: ${TURSO_DATABASE_URL}
+      TURSO_AUTH_TOKEN: ${TURSO_AUTH_TOKEN}
       CORS_ORIGINS: ${CORS_ORIGINS}
-      SECRET_KEY: ${SECRET_KEY}
       FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
       JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
@@ -29,18 +33,24 @@ services:
       VERTEX_PROJECT_ID: ${VERTEX_PROJECT_ID}
       VERTEX_LOCATION: ${VERTEX_LOCATION}
       VERTEX_MODEL: ${VERTEX_MODEL}
-      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME}
-      GCS_DB_OBJECT: ${GCS_DB_OBJECT}
       TASK_RUNNER: ${TASK_RUNNER}
       GCP_PROJECT_ID: ${GCP_PROJECT_ID}
       CLOUD_TASKS_QUEUE: ${CLOUD_TASKS_QUEUE}
       CLOUD_TASKS_LOCATION: ${CLOUD_TASKS_LOCATION}
       CLOUD_TASKS_SERVICE_URL: ${CLOUD_TASKS_SERVICE_URL}
       CLOUD_TASKS_SERVICE_ACCOUNT: ${CLOUD_TASKS_SERVICE_ACCOUNT}
+      ENVIRONMENT: ${ENVIRONMENT}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      CALLBACK_BASE_URL: ${CALLBACK_BASE_URL}
+      TASK_MAX_ATTEMPTS: ${TASK_MAX_ATTEMPTS}
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOG_FORMAT: ${LOG_FORMAT}
+      APP_VERSION: ${APP_VERSION}
     ports:
       - "8000:8000"
-    volumes:
-      - ./data:/data
+    # Linux で host.docker.internal を解決するための設定（macOS / Windows では不要だが指定しても無害）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   ollama:
     image: ollama/ollama:latest
@@ -70,5 +80,20 @@ services:
       timeout: 3s
       retries: 10
 
+  # libSQL (Turso) サーバー。ローカル開発で sqld を別途インストールせずに利用するため。
+  # 永続化は libsql_data ボリュームに保存。本番は Turso Cloud を直接参照する想定
+  libsql:
+    image: ghcr.io/tursodatabase/libsql-server:latest
+    container_name: devforge-libsql
+    restart: unless-stopped
+    environment:
+      SQLD_NODE: primary
+    ports:
+      # TablePlus 等のクライアントからホスト経由で接続できるよう公開
+      - "8080:8080"
+    volumes:
+      - libsql_data:/var/lib/sqld
+
 volumes:
   ollama_data:
+  libsql_data:

@@ -87,3 +87,8 @@ variable "upstash_redis_token" {
   sensitive   = true
   default     = ""
 }
+
+variable "turso_database_url" {
+  description = "Turso (libSQL) データベースの接続 URL（例: libsql://devforge-dev-xxxx.turso.io）。turso CLI で発行する。GitHub Secret → TF_VAR_turso_database_url で注入する。"
+  type        = string
+}

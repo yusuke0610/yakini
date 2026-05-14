@@ -18,7 +18,7 @@ frontend/vite.config.js
 # Cloudflare Pages _redirects はビルド時に gen-redirects.mjs で生成する
 frontend/public/_redirects
 
-# Terraform
+# OpenTofu / Terraform
 .terraform/
 *.tfstate
 *.tfstate.*

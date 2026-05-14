@@ -53,14 +53,12 @@ CI 定義: `.github/workflows/ci.yml`
 ## 環境変数（必須）
 
 ```
-SQLITE_DB_PATH       # Cloud Run: /tmp/devforge.sqlite
-SECRET_KEY           # CSRF等で引き続き使用
+TURSO_DATABASE_URL   # Turso (libSQL) 接続 URL。ローカル: http://127.0.0.1:8080（turso dev）/ 本番: libsql://<db>.turso.io
+TURSO_AUTH_TOKEN     # Turso 認証トークン（Cloud Run では Secret Manager から注入）
 JWT_PRIVATE_KEY      # RS256署名用秘密鍵（PEM形式）
 JWT_PUBLIC_KEY       # RS256検証用公開鍵（PEM形式）
 FIELD_ENCRYPTION_KEY # Fernet鍵
-GCS_BUCKET_NAME      # バックアップ用 GCS バケット名
-GCS_DB_OBJECT        # 例: devforge/dev/db.sqlite
-ADMIN_TOKEN          # /admin/backup エンドポイント用
+ADMIN_TOKEN          # 管理者操作用トークン
 CORS_ORIGINS         # 例: https://devforge-dev.example.com
 COOKIE_SECURE        # 例: true
 COOKIE_SAMESITE      # lax / strict / none
