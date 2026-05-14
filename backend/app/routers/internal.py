@@ -26,10 +26,10 @@ router = APIRouter(prefix="/internal/tasks", tags=["internal"])
 def _verify_request(request: Request) -> bool:
     """Cloud Tasks からのリクエストか検証する。
 
-    ローカルでは TASK_RUNNER=local なのでこのエンドポイントは通常使われないが、
-    テスト用に常に許可する。Cloud 環境では X-CloudTasks-QueueName ヘッダーで検証する。
+    TASK_RUNNER=cloud_tasks の場合のみ X-CloudTasks-QueueName ヘッダーを必須とする。
+    未設定（空文字含む）はローカル／テスト環境とみなし無条件で許可する。
     """
-    if os.environ.get("TASK_RUNNER", "local") == "local":
+    if os.environ.get("TASK_RUNNER", "").strip() != "cloud_tasks":
         return True
     queue_name = request.headers.get("X-CloudTasks-QueueName")
     return bool(queue_name)

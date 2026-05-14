@@ -172,7 +172,9 @@
         "devShells",
         "shellHook",
         "dyld",
-        "DYLD"
+        "DYLD",
+        "turso",
+        "libsql"
     ],
     "flake8.args": [
         "--max-line-length=100"

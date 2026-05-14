@@ -24,8 +24,8 @@ variable "enable_github_oauth" {
   default     = false
 }
 
-variable "db_backup_bucket_name" {
-  description = "GCS bucket name for database backups."
+variable "turso_database_url" {
+  description = "Turso (libSQL) データベースの接続 URL（例: libsql://devforge-dev-xxxx.turso.io）。Turso CLI で発行する。"
   type        = string
 }
 

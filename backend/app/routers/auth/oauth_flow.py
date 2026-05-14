@@ -11,17 +11,11 @@ from fastapi import HTTPException, Request, status
 from ...core.errors import ErrorCode, raise_app_error
 from ...core.messages import get_error
 from ...core.settings import get_callback_base_url, get_cors_origins, get_github_client_id
-from .token_manager import (
-    GITHUB_OAUTH_REDIRECT_COOKIE,
-    GITHUB_OAUTH_STATE_COOKIE,
-)
 
 logger = logging.getLogger(__name__)
 
 # 他モジュールが oauth_flow 経由でインポートできるよう再エクスポート
 __all__ = [
-    "GITHUB_OAUTH_STATE_COOKIE",
-    "GITHUB_OAUTH_REDIRECT_COOKIE",
     "get_default_frontend_origin",
     "get_default_frontend_url",
     "get_frontend_origin",
