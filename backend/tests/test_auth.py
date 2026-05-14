@@ -295,7 +295,7 @@ def test_github_login_url_uses_frontend_origin_when_callback_base_url_unset(clie
         "/auth/github/login-url",
         headers={
             "Origin": "http://localhost:8788",
-            "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+            "Host": "devforge-dev-XXXXX-an.a.run.app",
             "X-Forwarded-Proto": "https",
         },
     )
@@ -308,12 +308,12 @@ def test_github_login_url_uses_frontend_origin_when_callback_base_url_unset(clie
 
 def test_github_login_url_uses_callback_base_url_when_set(client) -> None:
     """CALLBACK_BASE_URL が設定されている場合、x-forwarded-host より優先されることを確認する。"""
-    with patch.dict(os.environ, {"CALLBACK_BASE_URL": "https://devforge-dev-20260311.web.app"}):
+    with patch.dict(os.environ, {"CALLBACK_BASE_URL": "devforge-dev-XXXXX-an.a.run.app"}):
         response = client.get(
             "/auth/github/login-url",
             headers={
                 "Origin": "http://localhost:8788",
-                "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+                "Host": "devforge-dev-XXXXX-an.a.run.app",
                 "X-Forwarded-Proto": "https",
             },
         )
@@ -321,7 +321,7 @@ def test_github_login_url_uses_callback_base_url_when_set(client) -> None:
     assert response.status_code == 200
     parsed = urlparse(response.json()["authorization_url"])
     redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
-    assert redirect_uri == "https://devforge-dev-20260311.web.app/github/callback"
+    assert redirect_uri == "devforge-dev-XXXXX-an.a.run.app/github/callback"
 
 
 def test_github_login_redirect_to_github(client) -> None:
@@ -330,7 +330,7 @@ def test_github_login_redirect_to_github(client) -> None:
         "/auth/github/login",
         params={"return_to": "http://localhost:8788/index.html"},
         headers={
-            "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+            "Host": "devforge-dev-XXXXX-an.a.run.app",
             "X-Forwarded-Proto": "https",
         },
         follow_redirects=False,
@@ -343,31 +343,30 @@ def test_github_login_redirect_to_github(client) -> None:
     assert redirect_uri == "http://localhost:8788/github/callback"
 
 
-def test_github_callback_redirect_rejects_state_mismatch(client) -> None:
-    client.cookies.set(
-        "session",
-        json.dumps({"state": "expected-state", "redirect": "http://localhost:8788/index.html"}),
-    )
+def test_github_callback_redirect_returns_error_when_code_missing(client) -> None:
+    """GET /auth/github/callback は code が無い場合、トークン交換せずエラー付きでフロントへリダイレクトする。
 
+    state はフロントの sessionStorage で検証する設計のため、サーバー側では検証しない。
+    """
     with patch("httpx.AsyncClient") as mock_async_client:
         response = client.get(
-            "/auth/github/callback?code=test-code&state=wrong-state",
+            "/auth/github/callback",
             follow_redirects=False,
         )
 
     assert response.status_code == 200
     assert mock_async_client.call_count == 0
-    # 200 + HTML リダイレクト: URL が HTML 本文に含まれていることを確認する
+    # 200 + HTML リダイレクト: デフォルトフロント (CORS_ORIGINS[0]) に github_error 付きで戻る
     assert "localhost:8788" in response.text
     assert "github_error=" in response.text
 
 
 def test_github_callback_redirect_sets_auth_cookie(client) -> None:
-    client.cookies.set(
-        "session",
-        json.dumps({"state": "expected-state", "redirect": "http://localhost:8788/index.html"}),
-    )
+    """GET /auth/github/callback は code を受け取って認証 Cookie を発行し、デフォルトフロントへリダイレクトする。
 
+    state 検証と redirect URL の cookie 読み出しはフロント (sessionStorage) に移譲したため、
+    リダイレクト先はサーバー側の CORS_ORIGINS[0] にフォールバックする。
+    """
     token_response = MagicMock()
     token_response.json.return_value = {"access_token": "github-access-token"}
     user_response = MagicMock()
@@ -382,13 +381,13 @@ def test_github_callback_redirect_sets_auth_cookie(client) -> None:
         mock_cls.return_value = mock_http
 
         response = client.get(
-            "/auth/github/callback?code=test-code&state=expected-state",
+            "/auth/github/callback?code=test-code",
             follow_redirects=False,
         )
 
     assert response.status_code == 200
     # 200 + HTML リダイレクト: フロントエンド URL が HTML 本文に含まれていることを確認する
-    assert "localhost:8788/index.html" in response.text
+    assert "localhost:8788" in response.text
     assert "access_token=" in response.headers["set-cookie"]
 
 
@@ -416,7 +415,7 @@ def test_github_callback_post_does_not_require_cookie(client) -> None:
             "/auth/github/callback",
             json={"code": "test-code", "state": "any-state-from-frontend"},
             headers={
-                "Host": "devforge-dev-nktebahhoq-an.a.run.app",
+                "Host": "devforge-dev-XXXXX-an.a.run.app",
                 "X-Forwarded-Proto": "https",
             },
         )

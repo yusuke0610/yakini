@@ -3,29 +3,8 @@ import os
 import secrets
 from unittest.mock import AsyncMock
 
-import app.routers.internal as _internal_router
-import app.services.tasks.local as _tasks_local
-import app.services.tasks.worker as _worker
-import pytest
-from app.core.security.auth import create_access_token, create_refresh_token
-from app.db import Base, get_db
-from app.models import (  # noqa: F401 — ensure models registered
-    BlogAccount,
-    BlogArticle,
-    BlogSummaryCache,
-    CareerAnalysis,
-    GitHubAnalysisCache,
-    MQualification,
-    MTechnologyStack,
-    Resume,
-    User,
-)
-from app.repositories import UserRepository
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 
 def _generate_test_rsa_keys() -> tuple[str, str]:
@@ -47,28 +26,84 @@ def _generate_test_rsa_keys() -> tuple[str, str]:
     return pem_private, pem_public
 
 
-# テスト用 RSA 鍵ペアをモジュール起動時に一度だけ生成する
+# --- アプリケーション import より前に環境変数を確定する ---
+# app.db.database が import 時に build_sqlalchemy_database_url() を評価するため、
+# TURSO_DATABASE_URL を先に必ず設定しておく必要がある
 _test_private_key, _test_public_key = _generate_test_rsa_keys()
 
-os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("JWT_PRIVATE_KEY", _test_private_key)
 os.environ.setdefault("JWT_PUBLIC_KEY", _test_public_key)
-os.environ.setdefault("SQLITE_DB_PATH", ":memory:")
+# Turso (libSQL) 接続用のテスト DB。db_session fixture でテストごとに別 engine を生成して差し替える
+os.environ.setdefault("TURSO_DATABASE_URL", "/tmp/devforge_test_default.db")
+os.environ.setdefault("TURSO_AUTH_TOKEN", "")
 os.environ.setdefault("APP_BOOTSTRAPPED", "1")
 os.environ.setdefault("GITHUB_CLIENT_ID", "test-github-client-id")
 os.environ.setdefault("GITHUB_CLIENT_SECRET", "test-github-client-secret")
 os.environ.setdefault("FIELD_ENCRYPTION_KEY", "pVo6M_raAWEpAv25F4p4RziywsjfPENokI10DZbNO7E=")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost:8788")
+os.environ.setdefault("TASK_RUNNER", "local")
+os.environ.setdefault("OLLAMA_BASE_URL", "http://localhost:11434")
+os.environ.setdefault("OLLAMA_MODEL", "gemma3:4b")
+os.environ.setdefault("OLLAMA_TIMEOUT", "1200")
+os.environ.setdefault("UPSTASH_REDIS_URL", "redis://redis:6379")
+os.environ.setdefault("UPSTASH_REDIS_TOKEN", "")
+os.environ.setdefault("GCP_PROJECT_ID", "")
+os.environ.setdefault("CLOUD_TASKS_QUEUE", "")
+os.environ.setdefault("CLOUD_TASKS_LOCATION", "")
+os.environ.setdefault("CLOUD_TASKS_SERVICE_URL", "")
+os.environ.setdefault("CLOUD_TASKS_SERVICE_ACCOUNT", "")
+os.environ.setdefault("COOKIE_SECURE", "true")
+os.environ.setdefault("COOKIE_SAMESITE", "lax")
+os.environ.setdefault("ADMIN_TOKEN", "test-admin-token")
+os.environ.setdefault("LLM_PROVIDER", "ollama")
+os.environ.setdefault("VERTEX_PROJECT_ID", "")
+os.environ.setdefault("VERTEX_LOCATION", "")
+os.environ.setdefault("VERTEX_MODEL", "")
+os.environ.setdefault("ENVIRONMENT", "local")
+os.environ.setdefault("INTERNAL_SECRET", "")
+os.environ.setdefault("TASK_MAX_ATTEMPTS", "3")
+os.environ.setdefault("CALLBACK_BASE_URL", "")
+os.environ.setdefault("LOG_LEVEL", "")
+os.environ.setdefault("LOG_FORMAT", "")
+os.environ.setdefault("APP_VERSION", "")
 
+import app.routers.internal as _internal_router  # noqa: E402
+import app.services.tasks.local as _tasks_local  # noqa: E402
+import app.services.tasks.worker as _worker  # noqa: E402
+import pytest  # noqa: E402
+from app.core.security.auth import create_access_token, create_refresh_token  # noqa: E402
+from app.db import Base, get_db  # noqa: E402
 from app.main import app, limiter  # noqa: E402
+from app.models import (  # noqa: F401,E402 — ensure models registered
+    BlogAccount,
+    BlogArticle,
+    BlogSummaryCache,
+    CareerAnalysis,
+    GitHubAnalysisCache,
+    MQualification,
+    MTechnologyStack,
+    Resume,
+    User,
+)
+from app.repositories import UserRepository  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.pool import NullPool  # noqa: E402
 
 
 @pytest.fixture()
 def db_session(tmp_path):
-    """一時ファイル SQLite を使うことで複数接続（worker の SessionLocal 等）を可能にする。"""
+    """一時ファイル SQLite を使うことで複数接続（worker の SessionLocal 等）を可能にする。
+
+    本番では Turso (libSQL HTTP) を使うが、テストはローカルファイルで動かす。
+    libsql-experimental のローカルドライバは複雑な DDL でロック競合を起こすため、
+    `settings.build_sqlalchemy_database_url()` と同じく標準 sqlite ドライバを使用する。
+    """
     engine = create_engine(
         f"sqlite:///{tmp_path}/test.db",
         connect_args={"check_same_thread": False},
+        poolclass=NullPool,
     )
     Base.metadata.create_all(bind=engine)
     TestSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)

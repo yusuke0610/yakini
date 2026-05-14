@@ -5,7 +5,6 @@
 | 変数名 | 説明 | dev との差分 | 設定場所 |
 |---|---|---|---|
 | SQLITE_DB_PATH | SQLiteパス | なし（`/tmp/devforge.sqlite`） | Cloud Run env |
-| SECRET_KEY | CSRF等のシークレットキー | ⚠️ 環境別に生成が必要（`openssl rand -hex 32`） | Secret Manager |
 | JWT_PRIVATE_KEY | RS256署名用秘密鍵（PEM形式） | ⚠️ 環境別に生成が必要 | Secret Manager |
 | JWT_PUBLIC_KEY | RS256検証用公開鍵（PEM形式） | ⚠️ 環境別に生成が必要 | Secret Manager |
 | FIELD_ENCRYPTION_KEY | Fernet鍵（個人情報フィールド暗号化） | ⚠️ 環境別に生成が必要（`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`) | Secret Manager |
