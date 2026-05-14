@@ -8,6 +8,7 @@
 	build-frontend build-backend deploy-frontend \
 	gen-redirects \
 	migrate migrate-create \
+	infra-fmt infra-fmt-check infra-validate-dev infra-validate-stg infra-validate-prod infra-validate \
 	clean
 
 # デフォルトターゲット: ヘルプ表示
@@ -49,6 +50,14 @@ help:
 	@echo "マイグレーション"
 	@echo "  migrate           alembic upgrade head"
 	@echo "  migrate-create    マイグレーション生成 (例: make migrate-create MSG=\"add user table\")"
+	@echo ""
+	@echo "インフラ (OpenTofu)"
+	@echo "  infra-fmt           tofu fmt -recursive infra"
+	@echo "  infra-fmt-check     tofu fmt -check -recursive infra"
+	@echo "  infra-validate-dev  dev 環境を validate"
+	@echo "  infra-validate-stg  stg 環境を validate"
+	@echo "  infra-validate-prod prod 環境を validate"
+	@echo "  infra-validate      dev/stg/prod を順に validate"
 	@echo ""
 	@echo "クリーンアップ"
 	@echo "  clean             docker-compose 停止 + キャッシュ削除"
@@ -148,6 +157,27 @@ migrate:
 migrate-create:
 	@if [ -z "$(MSG)" ]; then echo "エラー: MSG を指定してください (例: make migrate-create MSG=\"add user table\")"; exit 1; fi
 	cd backend && .venv/bin/alembic revision --autogenerate -m "$(MSG)"
+
+# ------------------------------------------------------------------ #
+# インフラ (OpenTofu)
+# ------------------------------------------------------------------ #
+
+infra-fmt:
+	nix develop --command tofu fmt -recursive infra
+
+infra-fmt-check:
+	nix develop --command tofu fmt -check -recursive infra
+
+infra-validate-dev:
+	nix develop --command bash -c "tofu -chdir=infra/environments/dev init -backend=false -input=false && tofu -chdir=infra/environments/dev validate"
+
+infra-validate-stg:
+	nix develop --command bash -c "tofu -chdir=infra/environments/stg init -backend=false -input=false && tofu -chdir=infra/environments/stg validate"
+
+infra-validate-prod:
+	nix develop --command bash -c "tofu -chdir=infra/environments/prod init -backend=false -input=false && tofu -chdir=infra/environments/prod validate"
+
+infra-validate: infra-validate-dev infra-validate-stg infra-validate-prod
 
 # ------------------------------------------------------------------ #
 # クリーンアップ
