@@ -3,6 +3,11 @@ FROM python:3.13-slim
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION
 
+# Turso (libSQL) 接続設定
+# TURSO_AUTH_TOKEN は機微情報のため Dockerfile では宣言せず、実行時に
+# docker-compose の environment / Cloud Run の Secret Manager から注入する
+ENV TURSO_DATABASE_URL=""
+
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

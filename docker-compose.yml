@@ -10,6 +10,8 @@ services:
         condition: service_healthy
     environment:
       SQLITE_DB_PATH: ${SQLITE_DB_PATH}
+      TURSO_DATABASE_URL: ${TURSO_DATABASE_URL}
+      TURSO_AUTH_TOKEN: ${TURSO_AUTH_TOKEN}
       CORS_ORIGINS: ${CORS_ORIGINS}
       FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
       JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
@@ -47,6 +49,9 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/data
+    # Linux で host.docker.internal を解決するための設定（macOS / Windows では不要だが指定しても無害）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   ollama:
     image: ollama/ollama:latest
