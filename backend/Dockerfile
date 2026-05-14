@@ -1,3 +1,32 @@
+# ============================================================================
+# Build stage: libsql-experimental など Rust ビルドが必要な wheel を作成する
+# ============================================================================
+FROM python:3.13-slim AS builder
+
+WORKDIR /build
+
+# Rust + C リンカ + cmake + tcl が必要なのは libsql-experimental
+# (aarch64-linux + cp313 の wheel が PyPI に無いためソースから build される)
+# - build-essential: gcc / cc (Rust の linker)
+# - cmake: libsql-ffi が同梱する sqlite3mc (SQLite3MultipleCiphers) のビルドに必要
+# - tcl: SQLite 系のビルドスクリプトが要求するケースあり
+# - curl: puccinialin が rustup を取得する際に使う
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    tcl \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt ./
+
+# wheel を /build/wheels に集約しておき、final stage で再利用する
+RUN pip wheel --no-cache-dir --wheel-dir=/build/wheels -r requirements.txt
+
+
+# ============================================================================
+# Final stage: 実行に必要なシステムライブラリと wheel のみを含む軽量イメージ
+# ============================================================================
 FROM python:3.13-slim
 
 ARG APP_VERSION=dev
@@ -16,8 +45,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 libgobject-2.0-0 libffi-dev libcairo2 \
     && rm -rf /var/lib/apt/lists/*
 
+# builder stage でビルドした wheel を流用して高速・確実に install する
+COPY --from=builder /build/wheels /wheels
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt \
+    && rm -rf /wheels
 
 COPY alembic.ini ./
 COPY alembic_migrations ./alembic_migrations
