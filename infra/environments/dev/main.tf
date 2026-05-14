@@ -37,8 +37,7 @@ module "cloud_tasks" {
 }
 
 module "cloud_run" {
-  source = "../../modules/cloud_run"
-
+  source                      = "../../modules/cloud_run"
   project_id                  = var.project_id
   region                      = local.region
   stack_name                  = local.stack_name
