@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from ..core.date_utils import parse_iso_date
@@ -222,6 +223,26 @@ class BlogSummaryCacheRepository:
             self.db.commit()
             return None
         return cache
+
+    def get_or_create(self) -> BlogSummaryCache:
+        """キャッシュを取得する。存在しない場合は新規作成して返す。
+
+        user_id の unique 制約を利用し、IntegrityError 時に再 SELECT することで
+        同時リクエストによる重複生成を防ぐ。
+        """
+        cache = self.get()
+        if cache is not None:
+            return cache
+        try:
+            cache = BlogSummaryCache(user_id=self.user_id)
+            self.db.add(cache)
+            self.db.flush()
+            return cache
+        except IntegrityError:
+            self.db.rollback()
+            return self.db.scalar(
+                select(BlogSummaryCache).where(BlogSummaryCache.user_id == self.user_id)
+            )
 
     def invalidate(self, *, commit: bool = True) -> bool:
         cache = self.get()

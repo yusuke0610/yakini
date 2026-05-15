@@ -41,10 +41,6 @@ backend/local.sqlite-wal
 frontend/.env.local
 backend/.env
 
-# Firebase（削除済みだが生成物の混入を防ぐために保持）
-.firebase/
-firebase-debug.log
-
 # Wrangler
 .wrangler/
 

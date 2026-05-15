@@ -1,6 +1,6 @@
 .PHONY: help \
 	setup install-hooks install-backend install-frontend generate-keys \
-	dev dev-build dev-down dev-frontend preview-frontend \
+	dev dev-build dev-down dev-frontend preview-frontend dev-proxy dev-proxy-only \
 	test test-backend test-frontend \
 	lint lint-backend lint-frontend lint-fix \
 	format format-check \

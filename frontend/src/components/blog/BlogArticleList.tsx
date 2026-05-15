@@ -47,6 +47,7 @@ export function BlogArticleList({ articles, filter, onFilterChange }: BlogArticl
               key={f}
               type="button"
               className={`${styles.filterTab} ${filter === f ? styles.filterTabActive : ""}`}
+              aria-pressed={filter === f}
               onClick={() => handleFilterChange(f)}
             >
               {f === "all" ? "All" : f === "zenn" ? "Zenn" : f === "note" ? "note" : "Qiita"}

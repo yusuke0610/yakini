@@ -19,6 +19,7 @@ from ...repositories.notification import NotificationRepository
 from .base import TaskType
 from .exceptions import NonRetryableError
 from .handlers import get_handler
+import time
 
 logger = get_logger(__name__)
 
@@ -29,7 +30,6 @@ _SLOW_TASK_THRESHOLD_MS = 300_000
 
 def _monotonic_ms_since(start: float) -> int:
     """``time.monotonic()`` の開始時点からの経過ミリ秒を返す。"""
-    import time
     return int((time.monotonic() - start) * 1000)
 
 
@@ -48,7 +48,6 @@ async def execute_task(
     ローカル（BackgroundTasks）呼び出しではデフォルトの ``retry_count=0, max_attempts=1`` を使い、
     失敗時は即座に ``dead_letter`` へ遷移する（ローカルはネイティブリトライが無いため）。
     """
-    import time
 
     user_id = payload.get("user_id", "unknown")
     record_id = payload.get("record_id")
@@ -177,21 +176,24 @@ def _now() -> datetime:
 async def _run_github_analysis(db: Session, payload: dict) -> None:
     """GitHub 分析ハンドラへのシム。"""
     handler = get_handler(TaskType.GITHUB_ANALYSIS)
-    assert handler is not None
+    if handler is None:
+        raise ValueError(f"ハンドラが登録されていません: {TaskType.GITHUB_ANALYSIS}")
     await handler.run(db, payload)
 
 
 async def _run_blog_summarize(db: Session, payload: dict) -> None:
     """ブログサマリハンドラへのシム。"""
     handler = get_handler(TaskType.BLOG_SUMMARIZE)
-    assert handler is not None
+    if handler is None:
+        raise ValueError(f"ハンドラが登録されていません: {TaskType.BLOG_SUMMARIZE}")
     await handler.run(db, payload)
 
 
 async def _run_career_analysis(db: Session, payload: dict) -> None:
     """キャリア分析ハンドラへのシム。"""
     handler = get_handler(TaskType.CAREER_ANALYSIS)
-    assert handler is not None
+    if handler is None:
+        raise ValueError(f"ハンドラが登録されていません: {TaskType.CAREER_ANALYSIS}")
     await handler.run(db, payload)
 
 

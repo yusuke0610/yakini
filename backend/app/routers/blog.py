@@ -24,7 +24,7 @@ from ..core.messages import get_error
 from ..core.security.auth import get_current_user
 from ..core.security.dependencies import limiter
 from ..db import get_db
-from ..models import BlogSummaryCache, User
+from ..models import User
 from ..repositories import BlogAccountRepository, BlogArticleRepository, BlogSummaryCacheRepository
 from ..schemas import (
     BlogAccountCreate,
@@ -268,26 +268,20 @@ async def summarize_blog(
 
     記事は worker 側で ``BlogArticleRepository`` から取得するため、リクエストボディは不要。
     """
-    cache = BlogSummaryCacheRepository(db, user.id).get()
-    if cache is None:
-        cache = BlogSummaryCache(user_id=user.id)
-        db.add(cache)
-        db.flush()
+    cache = BlogSummaryCacheRepository(db, user.id).get_or_create()
     service = AsyncTaskCacheService(db, cache)
-
-    # 進行中のタスクがあればそのステータスを返す（期限切れキャッシュは None が返るため再生成を許可）
-    if service.is_in_progress():
-        return BlogSummaryResponse(
-            summary=cache.summary or "",
-            available=False,
-            status=cache.status,
-        )
 
     available = await check_llm_available()
     if not available:
         return BlogSummaryResponse(summary="", available=False)
 
-    service.reset_to_pending()
+    # DB 最新状態を取得しつつ pending へアトミック遷移。進行中なら早期リターン
+    if not service.try_reset_to_pending():
+        return BlogSummaryResponse(
+            summary=cache.summary or "",
+            available=False,
+            status=cache.status,
+        )
 
     try:
         await service.dispatch(
@@ -340,7 +334,12 @@ async def retry_summarize_blog(
     if not available:
         return BlogSummaryResponse(summary="", available=False)
 
-    service.reset_to_pending(reset_retry_count=True)
+    # DB 最新状態を取得しつつアトミック遷移。並列リトライ競合を防ぐ
+    if not service.try_reset_to_pending(reset_retry_count=True):
+        raise HTTPException(
+            status_code=409,
+            detail=f"このタスクはリトライできない状態です（現在: {cache.status}）",
+        )
 
     try:
         await service.dispatch(

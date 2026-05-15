@@ -56,7 +56,7 @@ class CareerAnalysisHandler(TaskHandler):
             analysis.error_message = str(exc)
             analysis.completed_at = _now()
             db.commit()
-            raise exc
+            raise
 
         analysis.result_json = json.dumps(result, ensure_ascii=False)
         analysis.status = "completed"

@@ -68,6 +68,8 @@ class CachedAnalysisResponse(BaseModel):
     status: Optional[str] = None
     error_message: Optional[str] = None
     error_code: Optional[str] = None
+    # 分析自体は完了したが LLM など部分的に欠落した場合の警告メッセージ
+    warning_message: Optional[str] = None
 
 
 class SubProgress(BaseModel):

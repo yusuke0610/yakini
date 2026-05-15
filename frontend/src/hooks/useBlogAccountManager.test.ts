@@ -223,43 +223,4 @@ describe("useBlogAccountManager", () => {
     expect(result.current.accounts[0]?.last_synced_at).toBeNull();
     expect(result.current.success).toBe("usernameを更新しました。再同期してください。");
   });
-
-  it("handleUpdate を呼ぶと updateBlogAccount が呼ばれ未同期状態に更新される", async () => {
-    api.getBlogAccounts
-      .mockResolvedValueOnce(dummyAccounts)
-      .mockResolvedValueOnce([
-        {
-          ...dummyAccounts[0],
-          username: "updated-user",
-          last_synced_at: null,
-        },
-      ]);
-    api.getBlogArticles
-      .mockResolvedValueOnce(dummyArticles)
-      .mockResolvedValueOnce([]);
-    api.updateBlogAccount.mockResolvedValue({
-      ...dummyAccounts[0],
-      username: "updated-user",
-      last_synced_at: null,
-    });
-
-    const { result } = renderHook(() => useBlogAccountManager("all"));
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-
-    let updated = false;
-    await act(async () => {
-      updated = await result.current.handleUpdate("zenn", "updated-user");
-    });
-
-    expect(updated).toBe(true);
-    expect(api.updateBlogAccount).toHaveBeenCalledWith("zenn", "updated-user");
-    await waitFor(() => {
-      expect(result.current.accounts[0]?.username).toBe("updated-user");
-    });
-    expect(result.current.accounts[0]?.last_synced_at).toBeNull();
-    expect(result.current.success).toBe("usernameを更新しました。再同期してください。");
-  });
 });

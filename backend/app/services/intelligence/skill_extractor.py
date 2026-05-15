@@ -125,6 +125,6 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
 
     # 6. 依存関係由来のフレームワーク（merge_frameworks の代替）
     for framework in repo.detected_frameworks:
-        add(framework, "root_file")
+        add(framework, "dependency")
 
     return skills

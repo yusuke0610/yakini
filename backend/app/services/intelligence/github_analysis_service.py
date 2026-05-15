@@ -14,6 +14,7 @@ from ...core.encryption import decrypt_field
 from ...core.logging_utils import get_logger
 from ...models import GitHubAnalysisCache
 from ..progress_service import set_progress
+from ..tasks.exceptions import NonRetryableError, RetryableError
 from .github_collector import GitHubUserNotFoundError, collect_repos
 from .llm import get_llm_client
 from .llm_summarizer import generate_learning_advice
@@ -37,10 +38,12 @@ async def run_github_analysis(db: Session, payload: dict) -> None:
     cache = db.query(GitHubAnalysisCache).filter_by(user_id=user_id).first()
     if not cache:
         logger.error("GitHub 分析キャッシュが見つかりません", extra={"user_id": user_id})
-        return
+        raise RuntimeError(f"GitHub analysis cache not found: user_id={user_id}")
 
     cache.status = "processing"
     cache.started_at = _now()
+    # 前回実行の警告が残らないようリセット（error_message はディスパッチ時点でリセット済み）
+    cache.warning_message = None
     db.commit()
 
     token = decrypt_field(payload["github_token"]) if payload.get("github_token") else None
@@ -86,7 +89,9 @@ async def run_github_analysis(db: Session, payload: dict) -> None:
     # ステップ 4: DB 保存
     await set_progress(task_id, 4, _TOTAL_STEPS, "結果を保存中...")
     cache.status = "completed"
-    cache.error_message = "LLM処理が利用できません" if llm_failed else None
+    cache.error_message = None
+    # LLM 失敗は分析自体は成功しているため warning_message に分けて記録する
+    cache.warning_message = "LLM処理が利用できません" if llm_failed else None
     cache.completed_at = _now()
     db.commit()
 
@@ -116,6 +121,9 @@ async def _generate_advice_if_available(analysis: dict) -> tuple[str | None, boo
             logger.warning("LLM が学習アドバイスの生成に失敗しました")
             return None, True
         return advice, False
-    except Exception:
+    except (RetryableError, NonRetryableError):
         logger.warning("学習アドバイスの生成に失敗しましたが、分析結果は保存します", exc_info=True)
         return None, True
+    except Exception:
+        logger.exception("学習アドバイスの生成で予期しないエラーが発生しました")
+        raise
