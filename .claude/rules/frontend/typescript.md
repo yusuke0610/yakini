@@ -6,16 +6,17 @@ paths:
 # TypeScript/React コーディング規約
 
 - ESLint / Prettier の設定に従うこと
-- `cd frontend && npm run lint` でリントチェック
+- リントは `make lint-frontend`、テストは `make test-frontend` を使う（Nix devshell 経由で解決される）
+- 個別スクリプトを叩きたい場合は `nix develop --command bash -c "cd frontend && npm run <script>"` を使う。生シェルでの `cd frontend && npm ...` は AI エージェントでは禁止
 
 ## E2E テスト（Playwright）
 
 E2E テストは `frontend/e2e/` に配置する。
 
 ### 実行タイミング
-新しいページ・ルート・認証フロー・ナビゲーション・レイアウトコンポーネントを追加・変更した場合は必ず実行すること:
+新しいページ・ルート・認証フロー・ナビゲーション・レイアウトコンポーネントを追加・変更した場合は必ず実行すること（Makefile に E2E ターゲットは無いため nix wrap で叩く）:
 ```bash
-cd frontend && npm run test:e2e
+nix develop --command bash -c "cd frontend && npm run test:e2e"
 ```
 
 ### ルートモックの注意点（重要）

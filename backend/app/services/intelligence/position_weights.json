@@ -70,5 +70,17 @@
     "frontend": ["TypeScript", "React or Vue", "HTML/CSS"],
     "devops": ["Docker", "CI/CD", "Git workflow"],
     "cloud": ["クラウドサービス(GCP/AWS/Azure)基礎"]
+  },
+  "requirement_skill_map": {
+    "Python or Java or Go": ["Python", "Java", "Go"],
+    "REST API設計": ["REST API", "GraphQL"],
+    "DB設計/SQL": ["SQL"],
+    "TypeScript": ["TypeScript"],
+    "React or Vue": ["React", "Vue", "Angular", "Svelte", "Astro"],
+    "HTML/CSS": ["CSS", "HTML"],
+    "Docker": ["Docker"],
+    "CI/CD": ["CI/CD"],
+    "Git workflow": ["Git", "GitHub", "GitLab"],
+    "クラウドサービス(GCP/AWS/Azure)基礎": ["GCP", "AWS", "Azure"]
   }
 }

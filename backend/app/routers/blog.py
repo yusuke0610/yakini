@@ -16,7 +16,7 @@ GET    /api/blog/score                 — ブログスコアリング
 import logging
 from dataclasses import asdict
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from ..core.errors import resolve_async_error_code
@@ -24,7 +24,7 @@ from ..core.messages import get_error
 from ..core.security.auth import get_current_user
 from ..core.security.dependencies import limiter
 from ..db import get_db
-from ..models import BlogSummaryCache, User
+from ..models import User
 from ..repositories import BlogAccountRepository, BlogArticleRepository, BlogSummaryCacheRepository
 from ..schemas import (
     BlogAccountCreate,
@@ -32,7 +32,6 @@ from ..schemas import (
     BlogAccountUpdate,
     BlogArticleResponse,
     BlogScoreResponse,
-    BlogSummaryRequest,
     BlogSummaryResponse,
     BlogSyncResponse,
 )
@@ -48,7 +47,7 @@ from ..services.blog.collector import (
 from ..services.blog.scorer import blog_articles_to_score_dicts, calculate_blog_score
 from ..services.blog.sync_service import BlogSyncService
 from ..services.intelligence.llm_summarizer import check_llm_available
-from ..services.tasks import TaskType, get_task_dispatcher
+from ..services.tasks import AsyncTaskCacheService, TaskType
 
 logger = logging.getLogger(__name__)
 
@@ -265,39 +264,34 @@ async def summarize_blog(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """ブログ記事の AI サマリをバックグラウンドで生成する。"""
-    # 進行中のタスクがあればそのステータスを返す（期限切れキャッシュは None が返るため再生成を許可）
-    cache = BlogSummaryCacheRepository(db, user.id).get()
-    if cache and cache.status in ("pending", "processing"):
+    """ブログ記事の AI サマリをバックグラウンドで生成する。
+
+    記事は worker 側で ``BlogArticleRepository`` から取得するため、リクエストボディは不要。
+    """
+    cache = BlogSummaryCacheRepository(db, user.id).get_or_create()
+    service = AsyncTaskCacheService(db, cache)
+
+    available = await check_llm_available()
+    if not available:
+        return BlogSummaryResponse(summary="", available=False)
+
+    # DB 最新状態を取得しつつ pending へアトミック遷移。進行中なら早期リターン
+    if not service.try_reset_to_pending():
         return BlogSummaryResponse(
             summary=cache.summary or "",
             available=False,
             status=cache.status,
         )
 
-    available = await check_llm_available()
-    if not available:
-        return BlogSummaryResponse(summary="", available=False)
-
-    # キャッシュレコードを準備して pending にセット
-    if not cache:
-        cache = BlogSummaryCache(user_id=user.id)
-        db.add(cache)
-    cache.status = "pending"
-    cache.error_message = None
-    db.commit()
-
     try:
-        dispatcher = get_task_dispatcher(background_tasks)
-        await dispatcher.dispatch(
+        await service.dispatch(
+            background_tasks,
             TaskType.BLOG_SUMMARIZE,
             {"user_id": user.id},
+            failure_message="タスクの開始に失敗しました",
+            logger=logger,
         )
     except Exception:
-        logger.exception("ブログサマリタスクのディスパッチに失敗しました")
-        cache.status = "dead_letter"
-        cache.error_message = "タスクの開始に失敗しました"
-        db.commit()
         raise HTTPException(
             status_code=500,
             detail=get_error("task.dispatch_failed"),
@@ -310,22 +304,18 @@ async def summarize_blog(
     )
 
 
-# リトライ可能な終端ステータス（リトライ枯渇 or リトライ不可エラー）
-_RETRYABLE_TERMINAL_STATUSES = {"dead_letter"}
-
-
 @router.post("/summarize/retry", response_model=BlogSummaryResponse, status_code=202)
 @limiter.limit("5/minute")
 async def retry_summarize_blog(
     request: Request,
     background_tasks: BackgroundTasks,
-    body: BlogSummaryRequest = Body(...),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """失敗したブログサマリタスクを手動で再実行する。
 
-    ``dead_letter`` 状態のキャッシュのみ再実行可能。
+    ``dead_letter`` 状態のキャッシュのみ再実行可能。記事は worker 側で
+    ``BlogArticleRepository`` から取得するため、リクエストボディは不要。
     """
     cache = BlogSummaryCacheRepository(db, user.id).get()
     if not cache:
@@ -333,7 +323,8 @@ async def retry_summarize_blog(
             status_code=404,
             detail="サマリキャッシュが見つかりません",
         )
-    if cache.status not in _RETRYABLE_TERMINAL_STATUSES:
+    service = AsyncTaskCacheService(db, cache)
+    if not service.is_retryable_terminal():
         raise HTTPException(
             status_code=409,
             detail=f"このタスクはリトライできない状態です（現在: {cache.status}）",
@@ -343,24 +334,22 @@ async def retry_summarize_blog(
     if not available:
         return BlogSummaryResponse(summary="", available=False)
 
-    cache.status = "pending"
-    cache.error_message = None
-    cache.retry_count = 0
-    cache.started_at = None
-    cache.completed_at = None
-    db.commit()
+    # DB 最新状態を取得しつつアトミック遷移。並列リトライ競合を防ぐ
+    if not service.try_reset_to_pending(reset_retry_count=True):
+        raise HTTPException(
+            status_code=409,
+            detail=f"このタスクはリトライできない状態です（現在: {cache.status}）",
+        )
 
     try:
-        dispatcher = get_task_dispatcher(background_tasks)
-        await dispatcher.dispatch(
+        await service.dispatch(
+            background_tasks,
             TaskType.BLOG_SUMMARIZE,
             {"user_id": user.id},
+            failure_message="タスクの再実行に失敗しました",
+            logger=logger,
         )
     except Exception:
-        logger.exception("ブログサマリタスクの再実行に失敗しました")
-        cache.status = "dead_letter"
-        cache.error_message = "タスクの再実行に失敗しました"
-        db.commit()
         raise HTTPException(
             status_code=500,
             detail=get_error("task.dispatch_failed"),

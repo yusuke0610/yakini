@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 _KEY_PREFIX = "devforge:progress:"
 _TTL_SECONDS = 3600
-_GITHUB_ANALYSIS_TOTAL_STEPS = 6
+_GITHUB_ANALYSIS_TOTAL_STEPS = 5
 
 
 async def set_progress(

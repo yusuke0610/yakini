@@ -1,6 +1,6 @@
 .PHONY: help \
 	setup install-hooks install-backend install-frontend generate-keys \
-	dev dev-build dev-down dev-frontend preview-frontend \
+	dev dev-build dev-down dev-frontend preview-frontend dev-proxy dev-proxy-only \
 	test test-backend test-frontend \
 	lint lint-backend lint-frontend lint-fix \
 	format format-check \
@@ -98,6 +98,12 @@ dev-frontend:
 
 preview-frontend:
 	nix develop --command bash -c "cd frontend && CLOUD_RUN_URL='http://localhost:8000' npm run build && npx wrangler pages dev dist --port 8788"
+
+dev-proxy:
+	cd frontend && npm run dev:all
+
+dev-proxy-only:
+	cd frontend && npm run dev:proxy
 
 # ------------------------------------------------------------------ #
 # テスト・リント

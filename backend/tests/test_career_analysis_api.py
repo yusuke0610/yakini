@@ -24,9 +24,11 @@ def test_generate_returns_specific_error_when_llm_is_unavailable(client: TestCli
     headers = auth_header(client, "career-llm-off")
     _create_resume(client, headers)
 
+    mock_llm = AsyncMock()
+    mock_llm.check_available = AsyncMock(return_value=False)
     with patch(
-        "app.routers.career_analysis._llm_client.check_available",
-        new=AsyncMock(return_value=False),
+        "app.routers.career_analysis.get_llm_client",
+        return_value=mock_llm,
     ):
         resp = client.post(
             "/api/career-analysis/generate",
@@ -49,9 +51,11 @@ def test_generate_returns_202_when_llm_is_available(client: TestClient) -> None:
     headers = auth_header(client, "career-llm-empty")
     _create_resume(client, headers)
 
+    mock_llm = AsyncMock()
+    mock_llm.check_available = AsyncMock(return_value=True)
     with patch(
-        "app.routers.career_analysis._llm_client.check_available",
-        new=AsyncMock(return_value=True),
+        "app.routers.career_analysis.get_llm_client",
+        return_value=mock_llm,
     ):
         resp = client.post(
             "/api/career-analysis/generate",
@@ -74,9 +78,11 @@ def test_user_a_career_analysis_not_accessible_by_user_b(client: TestClient) -> 
     headers_a = auth_header(client, "boundary-user-a")
     _create_resume(client, headers_a)
 
+    mock_llm = AsyncMock()
+    mock_llm.check_available = AsyncMock(return_value=True)
     with patch(
-        "app.routers.career_analysis._llm_client.check_available",
-        new=AsyncMock(return_value=True),
+        "app.routers.career_analysis.get_llm_client",
+        return_value=mock_llm,
     ):
         resp_a = client.post(
             "/api/career-analysis/generate",

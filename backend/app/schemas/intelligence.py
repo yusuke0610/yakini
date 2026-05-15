@@ -68,6 +68,8 @@ class CachedAnalysisResponse(BaseModel):
     status: Optional[str] = None
     error_message: Optional[str] = None
     error_code: Optional[str] = None
+    # 分析自体は完了したが LLM など部分的に欠落した場合の警告メッセージ
+    warning_message: Optional[str] = None
 
 
 class SubProgress(BaseModel):
@@ -82,7 +84,7 @@ class ProgressResponse(BaseModel):
 
     task_id: str
     step_index: int = Field(0, description="現在のステップ番号（0 は未開始）")
-    total_steps: int = Field(6, description="全ステップ数")
+    total_steps: int = Field(5, description="全ステップ数")
     step_label: Optional[str] = Field(None, description="現在のステップラベル")
     sub_progress: Optional[SubProgress] = Field(
         None, description="リポジトリ詳細取得ステップの細粒度進捗"

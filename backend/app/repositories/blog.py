@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from ..core.date_utils import parse_iso_date
@@ -217,11 +218,37 @@ class BlogSummaryCacheRepository:
         statement = select(BlogSummaryCache).where(BlogSummaryCache.user_id == self.user_id)
         cache = self.db.scalar(statement)
         # SQLite は timezone を保持しないため naive UTC と比較する
-        if cache and cache.expires_at and cache.expires_at <= datetime.now(timezone.utc).replace(tzinfo=None):
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        if cache and cache.expires_at and cache.expires_at <= now_utc:
             self.db.delete(cache)
             self.db.commit()
             return None
         return cache
+
+    def get_or_create(self) -> BlogSummaryCache:
+        """キャッシュを取得する。存在しない場合は新規作成して返す。
+
+        user_id の unique 制約を利用し、IntegrityError 時に再 SELECT することで
+        同時リクエストによる重複生成を防ぐ。
+        """
+        cache = self.get()
+        if cache is not None:
+            return cache
+        try:
+            cache = BlogSummaryCache(user_id=self.user_id)
+            self.db.add(cache)
+            self.db.flush()
+            return cache
+        except IntegrityError:
+            self.db.rollback()
+            cache = self.db.scalar(
+                select(BlogSummaryCache).where(BlogSummaryCache.user_id == self.user_id)
+            )
+            if cache is None:
+                raise RuntimeError(
+                    "BlogSummaryCache の再取得に失敗しました（IntegrityError 後）"
+                )
+            return cache
 
     def invalidate(self, *, commit: bool = True) -> bool:
         cache = self.get()

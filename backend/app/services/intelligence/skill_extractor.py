@@ -15,10 +15,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import List, Set
 
-from .github_collector import (
-    DEPENDENCY_TO_FRAMEWORK,
-    RepoData,
-)
+from .github.repo_analyzer import DEPENDENCY_TO_FRAMEWORK
+from .github_collector import RepoData
 from .skill_taxonomy import (
     DESCRIPTION_KEYWORDS,
     LANGUAGE_TO_SKILL,
@@ -83,40 +81,31 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
     skills: List[ExtractedSkill] = []
     seen: Set[str] = set()
 
+    def add(skill_name: str, source: str, *, language_bytes: int = 0) -> None:
+        """スキルを ``skills`` に追加する。同一スキルは 1 度のみ追加。"""
+        if not skill_name or skill_name in seen:
+            return
+        seen.add(skill_name)
+        skills.append(
+            ExtractedSkill(
+                skill_name=skill_name,
+                category=get_skill_category(skill_name),
+                source=source,
+                repo_name=repo.name,
+                repo_created_at=repo.created_at,
+                repo_pushed_at=repo.pushed_at,
+                language_bytes=language_bytes,
+            )
+        )
+
     # 1. 言語
     for lang, byte_count in repo.languages.items():
-        skill_name = LANGUAGE_TO_SKILL.get(lang)
-        if skill_name and skill_name not in seen:
-            seen.add(skill_name)
-            skills.append(
-                ExtractedSkill(
-                    skill_name=skill_name,
-                    category=get_skill_category(skill_name),
-                    source="language",
-                    repo_name=repo.name,
-                    repo_created_at=repo.created_at,
-                    repo_pushed_at=repo.pushed_at,
-                    language_bytes=byte_count,
-                )
-            )
+        add(LANGUAGE_TO_SKILL.get(lang, ""), "language", language_bytes=byte_count)
 
     # 2. トピック
     for topic in repo.topics:
-        topic_lower = topic.lower()
-        matched_skills = TOPIC_TO_SKILLS.get(topic_lower, [])
-        for skill_name in matched_skills:
-            if skill_name not in seen:
-                seen.add(skill_name)
-                skills.append(
-                    ExtractedSkill(
-                        skill_name=skill_name,
-                        category=get_skill_category(skill_name),
-                        source="topic",
-                        repo_name=repo.name,
-                        repo_created_at=repo.created_at,
-                        repo_pushed_at=repo.pushed_at,
-                    )
-                )
+        for skill_name in TOPIC_TO_SKILLS.get(topic.lower(), []):
+            add(skill_name, "topic")
 
     # 3. 説明文のキーワード
     if repo.description:
@@ -124,48 +113,18 @@ def _extract_from_repo(repo: RepoData) -> List[ExtractedSkill]:
         for keyword, matched_skills in DESCRIPTION_KEYWORDS.items():
             if keyword in desc_lower:
                 for skill_name in matched_skills:
-                    if skill_name not in seen:
-                        seen.add(skill_name)
-                        skills.append(
-                            ExtractedSkill(
-                                skill_name=skill_name,
-                                category=get_skill_category(skill_name),
-                                source="description",
-                                repo_name=repo.name,
-                                repo_created_at=repo.created_at,
-                                repo_pushed_at=repo.pushed_at,
-                            )
-                        )
+                    add(skill_name, "description")
 
     # 4. 依存関係 (requirements.txt, package.json などから解析)
     for dep in repo.dependencies:
-        framework = DEPENDENCY_TO_FRAMEWORK.get(dep)
-        if framework and framework not in seen:
-            seen.add(framework)
-            skills.append(
-                ExtractedSkill(
-                    skill_name=framework,
-                    category=get_skill_category(framework),
-                    source="dependency",
-                    repo_name=repo.name,
-                    repo_created_at=repo.created_at,
-                    repo_pushed_at=repo.pushed_at,
-                )
-            )
+        add(DEPENDENCY_TO_FRAMEWORK.get(dep, ""), "dependency")
 
     # 5. ルートファイル / ディレクトリ検出（devtools・infra）
     for tech in [*repo.detected_devtools, *repo.detected_infras]:
-        if tech not in seen:
-            seen.add(tech)
-            skills.append(
-                ExtractedSkill(
-                    skill_name=tech,
-                    category=get_skill_category(tech),
-                    source="root_file",
-                    repo_name=repo.name,
-                    repo_created_at=repo.created_at,
-                    repo_pushed_at=repo.pushed_at,
-                )
-            )
+        add(tech, "root_file")
+
+    # 6. 依存関係由来のフレームワーク（merge_frameworks の代替）
+    for framework in repo.detected_frameworks:
+        add(framework, "dependency")
 
     return skills

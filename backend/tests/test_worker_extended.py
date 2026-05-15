@@ -16,9 +16,11 @@ import pytest
 from app.models import BlogSummaryCache, GitHubAnalysisCache
 from app.models.career_analysis import CareerAnalysis
 from app.repositories import UserRepository
+from app.services.intelligence.github_analysis_service import (
+    _generate_advice_if_available,
+)
 from app.services.tasks.base import TaskType
 from app.services.tasks.worker import (
-    _generate_advice_if_available,
     _mark_dead_letter,
     _run_blog_summarize,
     _run_career_analysis,
@@ -43,7 +45,11 @@ def _run(coro):
 
 class TestRunGithubAnalysis:
     def _make_user_and_cache(self, db: Session, username="github:gh-user"):
-        user = UserRepository(db).create(username, hashed_password=None, email=f"{username}@test.com")
+        user = UserRepository(db).create(
+            username,
+            hashed_password=None,
+            email=f"{username}@test.com",
+        )
         cache = GitHubAnalysisCache(user_id=user.id, status="pending")
         db.add(cache)
         db.commit()
@@ -79,7 +85,7 @@ class TestRunGithubAnalysis:
 
         with (
             patch(
-                "app.services.intelligence.github_collector.collect_repos",
+                "app.services.intelligence.github_analysis_service.collect_repos",
                 new_callable=AsyncMock,
                 return_value=repos,
             ),
@@ -88,10 +94,13 @@ class TestRunGithubAnalysis:
                 new_callable=AsyncMock,
             ),
             patch(
-                "app.services.tasks.worker.get_llm_client",
+                "app.services.intelligence.github_analysis_service.get_llm_client",
                 return_value=MagicMock(check_available=AsyncMock(return_value=False)),
             ),
-            patch("app.core.encryption.decrypt_field", return_value="token123"),
+            patch(
+                "app.services.intelligence.github_analysis_service.decrypt_field",
+                return_value="token123",
+            ),
         ):
             _run(
                 _run_github_analysis(
@@ -124,15 +133,18 @@ class TestRunGithubAnalysis:
 
         with (
             patch(
-                "app.services.intelligence.github_collector.collect_repos",
+                "app.services.intelligence.github_analysis_service.collect_repos",
                 side_effect=_fake_collect,
             ),
             patch("app.services.progress_service.set_progress", new_callable=AsyncMock),
             patch(
-                "app.services.tasks.worker.get_llm_client",
+                "app.services.intelligence.github_analysis_service.get_llm_client",
                 return_value=MagicMock(check_available=AsyncMock(return_value=False)),
             ),
-            patch("app.core.encryption.decrypt_field", return_value=None),
+            patch(
+                "app.services.intelligence.github_analysis_service.decrypt_field",
+                return_value=None,
+            ),
         ):
             _run(
                 _run_github_analysis(
@@ -156,12 +168,15 @@ class TestRunGithubAnalysis:
 
         with (
             patch(
-                "app.services.intelligence.github_collector.collect_repos",
+                "app.services.intelligence.github_analysis_service.collect_repos",
                 new_callable=AsyncMock,
                 side_effect=GitHubUserNotFoundError("notfound"),
             ),
             patch("app.services.progress_service.set_progress", new_callable=AsyncMock),
-            patch("app.core.encryption.decrypt_field", return_value=None),
+            patch(
+                "app.services.intelligence.github_analysis_service.decrypt_field",
+                return_value=None,
+            ),
         ):
             with pytest.raises(GitHubUserNotFoundError):
                 _run(
@@ -179,20 +194,20 @@ class TestRunGithubAnalysis:
         db_session.refresh(cache)
         assert cache.status == "dead_letter"
 
-    def test_no_cache_returns_early(self, db_session: Session):
-        """キャッシュが見つからない場合、例外なく早期リターンすること。"""
-        _run(
-            _run_github_analysis(
-                db_session,
-                {
-                    "user_id": "nonexistent-user-id",
-                    "github_username": "nobody",
-                    "github_token": None,
-                    "include_forks": False,
-                },
+    def test_no_cache_raises_runtime_error(self, db_session: Session):
+        """キャッシュが見つからない場合、RuntimeError が送出されること。"""
+        with pytest.raises(RuntimeError, match="GitHub analysis cache not found"):
+            _run(
+                _run_github_analysis(
+                    db_session,
+                    {
+                        "user_id": "nonexistent-user-id",
+                        "github_username": "nobody",
+                        "github_token": None,
+                        "include_forks": False,
+                    },
+                )
             )
-        )
-        # 例外が発生しないことを確認
 
 
 # ── _run_blog_summarize ───────────────────────────────────────────────────
@@ -200,7 +215,11 @@ class TestRunGithubAnalysis:
 
 class TestRunBlogSummarize:
     def _make_user_and_cache(self, db: Session, username="blog-worker-user"):
-        user = UserRepository(db).create(username, hashed_password=None, email=f"{username}@test.com")
+        user = UserRepository(db).create(
+            username,
+            hashed_password=None,
+            email=f"{username}@test.com",
+        )
         cache = BlogSummaryCache(user_id=user.id, status="pending")
         db.add(cache)
         db.commit()
@@ -227,8 +246,11 @@ class TestRunBlogSummarize:
         mock_llm.check_available = AsyncMock(return_value=True)
 
         with (
-            patch("app.services.tasks.worker.BlogArticleRepository", return_value=self._make_mock_repo()),
-            patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm),
+            patch(
+                "app.services.tasks.handlers.blog_summarize.BlogArticleRepository",
+                return_value=self._make_mock_repo(),
+            ),
+            patch("app.services.intelligence.llm.get_llm_client", return_value=mock_llm),
             patch(
                 "app.services.intelligence.llm_summarizer.summarize_blog_articles",
                 new_callable=AsyncMock,
@@ -255,8 +277,11 @@ class TestRunBlogSummarize:
         mock_llm.check_available = AsyncMock(return_value=False)
 
         with (
-            patch("app.services.tasks.worker.BlogArticleRepository", return_value=self._make_mock_repo()),
-            patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm),
+            patch(
+                "app.services.tasks.handlers.blog_summarize.BlogArticleRepository",
+                return_value=self._make_mock_repo(),
+            ),
+            patch("app.services.intelligence.llm.get_llm_client", return_value=mock_llm),
         ):
             _run(
                 _run_blog_summarize(
@@ -276,8 +301,11 @@ class TestRunBlogSummarize:
         mock_llm.check_available = AsyncMock(return_value=True)
 
         with (
-            patch("app.services.tasks.worker.BlogArticleRepository", return_value=self._make_mock_repo()),
-            patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm),
+            patch(
+                "app.services.tasks.handlers.blog_summarize.BlogArticleRepository",
+                return_value=self._make_mock_repo(),
+            ),
+            patch("app.services.intelligence.llm.get_llm_client", return_value=mock_llm),
             patch(
                 "app.services.intelligence.llm_summarizer.summarize_blog_articles",
                 new_callable=AsyncMock,
@@ -298,7 +326,10 @@ class TestRunBlogSummarize:
         """記事が 0 件の場合に status が dead_letter になること。"""
         user, cache = self._make_user_and_cache(db_session, "blog-no-articles")
 
-        with patch("app.services.tasks.worker.BlogArticleRepository", return_value=self._make_mock_repo(articles=[])):
+        with patch(
+            "app.services.tasks.handlers.blog_summarize.BlogArticleRepository",
+            return_value=self._make_mock_repo(articles=[]),
+        ):
             _run(
                 _run_blog_summarize(
                     db_session,
@@ -310,14 +341,17 @@ class TestRunBlogSummarize:
         assert cache.status == "dead_letter"
         assert cache.error_message == "分析対象の記事がありません"
 
-    def test_no_cache_returns_early(self, db_session: Session):
-        """キャッシュが見つからない場合、例外なく早期リターンすること。"""
-        _run(
-            _run_blog_summarize(
-                db_session,
-                {"user_id": "ghost-user"},
+    def test_no_cache_raises_non_retryable(self, db_session: Session):
+        """キャッシュが見つからない場合、NonRetryableError を送出すること。"""
+        from app.services.tasks.exceptions import NonRetryableError
+
+        with pytest.raises(NonRetryableError):
+            _run(
+                _run_blog_summarize(
+                    db_session,
+                    {"user_id": "ghost-user"},
+                )
             )
-        )
 
     def test_status_set_to_processing_before_llm_call(self, db_session: Session):
         """LLM 呼び出し前に status が processing に更新されること。"""
@@ -333,8 +367,11 @@ class TestRunBlogSummarize:
         mock_llm.check_available = _fake_check_available
 
         with (
-            patch("app.services.tasks.worker.BlogArticleRepository", return_value=self._make_mock_repo()),
-            patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm),
+            patch(
+                "app.services.tasks.handlers.blog_summarize.BlogArticleRepository",
+                return_value=self._make_mock_repo(),
+            ),
+            patch("app.services.intelligence.llm.get_llm_client", return_value=mock_llm),
         ):
             _run(
                 _run_blog_summarize(
@@ -351,7 +388,11 @@ class TestRunBlogSummarize:
 
 class TestRunCareerAnalysis:
     def _make_user_and_analysis(self, db: Session, username="career-worker-user"):
-        user = UserRepository(db).create(username, hashed_password=None, email=f"{username}@test.com")
+        user = UserRepository(db).create(
+            username,
+            hashed_password=None,
+            email=f"{username}@test.com",
+        )
         analysis = CareerAnalysis(
             user_id=user.id,
             version=1,
@@ -369,7 +410,7 @@ class TestRunCareerAnalysis:
         fake_result = {"strengths": [], "career_paths": [], "action_items": []}
 
         with (
-            patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm),
+            patch("app.services.intelligence.llm.get_llm_client", return_value=mock_llm),
             patch(
                 "app.services.career_analysis.builder.build_career_analysis",
                 new_callable=AsyncMock,
@@ -398,7 +439,7 @@ class TestRunCareerAnalysis:
         mock_llm = MagicMock()
 
         with (
-            patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm),
+            patch("app.services.intelligence.llm.get_llm_client", return_value=mock_llm),
             patch(
                 "app.services.career_analysis.builder.build_career_analysis",
                 new_callable=AsyncMock,
@@ -419,6 +460,7 @@ class TestRunCareerAnalysis:
 
         db_session.refresh(analysis)
         assert analysis.status == "dead_letter"
+        assert analysis.error_message is not None
         assert "不足" in analysis.error_message
 
     def test_no_record_returns_early(self, db_session: Session):
@@ -458,7 +500,10 @@ class TestGenerateAdviceIfAvailable:
         mock_llm = MagicMock()
         mock_llm.check_available = AsyncMock(return_value=False)
 
-        with patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm):
+        with patch(
+            "app.services.intelligence.github_analysis_service.get_llm_client",
+            return_value=mock_llm,
+        ):
             result = _run(_generate_advice_if_available(self._analysis()))
 
         assert result == (None, False)
@@ -469,9 +514,12 @@ class TestGenerateAdviceIfAvailable:
         mock_llm.check_available = AsyncMock(return_value=True)
 
         with (
-            patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm),
             patch(
-                "app.services.intelligence.llm_summarizer.generate_learning_advice",
+                "app.services.intelligence.github_analysis_service.get_llm_client",
+                return_value=mock_llm,
+            ),
+            patch(
+                "app.services.intelligence.github_analysis_service.generate_learning_advice",
                 new_callable=AsyncMock,
                 return_value="学習アドバイスです",
             ),
@@ -480,22 +528,42 @@ class TestGenerateAdviceIfAvailable:
 
         assert result == ("学習アドバイスです", False)
 
-    def test_llm_exception_returns_none(self):
-        """LLM が例外を送出した場合 (None, True) を返し例外が外に漏れないこと。"""
-        mock_llm = MagicMock()
-        mock_llm.check_available = AsyncMock(side_effect=Exception("LLM クラッシュ"))
+    def test_llm_retryable_error_returns_warning(self):
+        """LLM が想定内の RetryableError を送出した場合 (None, True) を返し例外を握りつぶすこと。"""
+        from app.services.tasks.exceptions import RetryableError
 
-        with patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm):
+        mock_llm = MagicMock()
+        mock_llm.check_available = AsyncMock(side_effect=RetryableError("LLM 一時障害"))
+
+        with patch(
+            "app.services.intelligence.github_analysis_service.get_llm_client",
+            return_value=mock_llm,
+        ):
             result = _run(_generate_advice_if_available(self._analysis()))
 
         assert result == (None, True)
+
+    def test_llm_unexpected_exception_propagates(self):
+        """LLM が予期しない例外を送出した場合は再送出されること（プログラミングエラー検知のため）。"""
+        mock_llm = MagicMock()
+        mock_llm.check_available = AsyncMock(side_effect=Exception("LLM クラッシュ"))
+
+        with patch(
+            "app.services.intelligence.github_analysis_service.get_llm_client",
+            return_value=mock_llm,
+        ):
+            with pytest.raises(Exception, match="LLM クラッシュ"):
+                _run(_generate_advice_if_available(self._analysis()))
 
     def test_no_position_scores_returns_none(self):
         """position_scores が None の場合 (None, False) を返すこと。"""
         mock_llm = MagicMock()
         mock_llm.check_available = AsyncMock(return_value=True)
 
-        with patch("app.services.tasks.worker.get_llm_client", return_value=mock_llm):
+        with patch(
+            "app.services.intelligence.github_analysis_service.get_llm_client",
+            return_value=mock_llm,
+        ):
             result = _run(_generate_advice_if_available({"repos_analyzed": 5}))
 
         assert result == (None, False)
@@ -505,14 +573,11 @@ class TestGenerateAdviceIfAvailable:
 
 
 class TestExecuteTask:
-    def test_unknown_task_type_logs_error_and_returns(self, db_session: Session):
-        """不明なタスク種別の場合エラーログを出し例外を上げないこと。"""
-        # TaskType は Enum なのでここでは直接 string を渡すことで unknown な値をシミュレート
-        # execute_task は if-elif で全種別をチェックするため、該当しない場合 logger.error を呼ぶ
-
-        # _run_github_analysis 等が呼ばれないことをモックで確認
+    def test_known_task_type_routes_to_correct_handler(self, db_session: Session):
+        """GITHUB_ANALYSIS が _run_github_analysis に正しくディスパッチされ、
+        他のハンドラ関数は呼ばれないことを確認する。"""
         with (
-            patch("app.db.database.SessionLocal", return_value=db_session),
+            patch("app.services.tasks.worker.SessionLocal", return_value=db_session),
             patch(
                 "app.services.tasks.worker._run_github_analysis",
                 new_callable=AsyncMock,
@@ -521,11 +586,12 @@ class TestExecuteTask:
                 "app.services.tasks.worker._run_blog_summarize",
                 new_callable=AsyncMock,
             ) as mock_blog,
+            patch(
+                "app.services.tasks.worker._run_career_analysis",
+                new_callable=AsyncMock,
+            ) as mock_career,
+            patch("app.services.tasks.worker._create_notification"),
         ):
-            # TaskType.GITHUB_ANALYSIS でもなく BLOG_SUMMARIZE でもない dummy を渡す
-            # ただし TaskType は str Enum なので実際の enum 値のみ渡せる。
-            # ここでは GITHUB_ANALYSIS を使い mock を差し替えて成功フローをシミュレート
-            mock_gh.return_value = None
             _run(
                 execute_task(
                     TaskType.GITHUB_ANALYSIS,
@@ -535,6 +601,7 @@ class TestExecuteTask:
 
         mock_gh.assert_called_once()
         mock_blog.assert_not_called()
+        mock_career.assert_not_called()
 
     def test_execute_task_marks_dead_letter_on_error(self, db_session: Session):
         """予期しない例外が発生した場合（max_attempts=1）、_mark_dead_letter が
