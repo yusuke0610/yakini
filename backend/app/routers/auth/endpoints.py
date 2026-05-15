@@ -186,6 +186,20 @@ def github_login(
     return RedirectResponse(url=authorization_url, status_code=status.HTTP_303_SEE_OTHER)
 
 
+def _build_callback_html_response(
+    frontend_url: str,
+    *,
+    error_message: str | None = None,
+) -> HTMLResponse:
+    """コールバック処理用の HTMLResponse を構築する。
+
+    error_message が指定された場合は ``github_error`` クエリ付きの URL に、
+    指定が無い場合は元の URL にリダイレクトする。
+    """
+    redirect_url = build_frontend_redirect_url(frontend_url, error_message)
+    return HTMLResponse(content=_html_redirect(redirect_url))
+
+
 @router.get("/github/callback")
 @limiter.limit("10/minute")
 async def github_callback_redirect(
@@ -219,11 +233,9 @@ async def github_callback_redirect(
         # error.detail は AppErrorResponse の dict 形式なので message フィールドを取り出す
         detail = error.detail
         error_message = detail.get("message") if isinstance(detail, dict) else str(detail)
-        return HTMLResponse(
-            content=_html_redirect(build_frontend_redirect_url(frontend_url, error_message))
-        )
+        return _build_callback_html_response(frontend_url, error_message=error_message)
 
-    response = HTMLResponse(content=_html_redirect(build_frontend_redirect_url(frontend_url)))
+    response = _build_callback_html_response(frontend_url)
     set_auth_cookies(response, token_response.username, db)
     return response
 

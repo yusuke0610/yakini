@@ -9,6 +9,12 @@ from ...core.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
+# 記事取得用のデフォルトタイムアウト（全ページフェッチに耐えられる長さ）
+_FETCH_TIMEOUT_SECONDS = 30.0
+
+# ユーザー存在確認用のタイムアウト（軽量リクエスト想定）
+_VERIFY_TIMEOUT_SECONDS = 10.0
+
 
 class UnsupportedBlogPlatformError(ValueError):
     """未対応プラットフォームが指定された場合の例外。"""
@@ -89,7 +95,7 @@ async def fetch_zenn_articles(username: str) -> list[dict]:
     articles: list[dict] = []
     page = 1
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=_FETCH_TIMEOUT_SECONDS) as client:
         while True:
             resp = await client.get(
                 "https://zenn.dev/api/articles",
@@ -143,7 +149,7 @@ async def fetch_note_articles(username: str) -> list[dict]:
     page = 1
     headers = {"User-Agent": "DevForge/1.0"}
 
-    async with httpx.AsyncClient(timeout=30.0, headers=headers) as client:
+    async with httpx.AsyncClient(timeout=_FETCH_TIMEOUT_SECONDS, headers=headers) as client:
         while True:
             resp = await client.get(
                 f"https://note.com/api/v2/creators/{username}/contents",
@@ -198,7 +204,7 @@ async def fetch_qiita_articles(username: str) -> list[dict]:
     page = 1
     per_page = 100
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=_FETCH_TIMEOUT_SECONDS) as client:
         while True:
             resp = await client.get(
                 f"https://qiita.com/api/v2/users/{username}/items",
@@ -246,18 +252,18 @@ async def verify_user_exists(platform: str, username: str) -> bool:
 
     try:
         if platform == "zenn":
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=_VERIFY_TIMEOUT_SECONDS) as client:
                 resp = await client.get(f"https://zenn.dev/api/users/{normalized_username}")
                 return resp.status_code == 200
         if platform == "note":
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=_VERIFY_TIMEOUT_SECONDS) as client:
                 resp = await client.get(
                     f"https://note.com/api/v2/creators/{normalized_username}/contents",
                     params={"kind": "note", "page": 1},
                 )
                 return resp.status_code == 200
         if platform == "qiita":
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=_VERIFY_TIMEOUT_SECONDS) as client:
                 resp = await client.get(f"https://qiita.com/api/v2/users/{normalized_username}")
                 return resp.status_code == 200
         raise UnsupportedBlogPlatformError(platform)

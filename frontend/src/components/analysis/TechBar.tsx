@@ -66,9 +66,6 @@ interface TechBarProps {
   ariaLabel?: string;
 }
 
-/**
- * フレームワーク・DevTools・インフラを使用リポジトリ数の割合バーで表示するコンポーネント。
- */
 export function TechBar({ techs, ariaLabel }: TechBarProps) {
   const [hoveredTech, setHoveredTech] = useState<string | null>(null);
 

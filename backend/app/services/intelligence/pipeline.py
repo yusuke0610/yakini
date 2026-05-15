@@ -2,9 +2,9 @@
 キャリアインテリジェンスパイプラインのオーケストレーター。
 
 GitHub のデータから以下の分析を順次実行します：
-  GitHub → リポジトリ → スキル抽出 → タイムライン生成 → 成長分析
+  GitHub → リポジトリ → 集計 → スキル抽出 → スコア算出
 
-オプションの LLM 要約を除き、各ステージは決定論的です。
+各ステージは決定論的（LLM は呼ばない）。
 """
 
 from collections import defaultdict
@@ -16,7 +16,7 @@ from ...core.logging_utils import get_logger
 from ...core.metrics import measure_time_async
 from .github_collector import RepoData, collect_repos
 from .position_scorer import PositionScores, calculate_position_scores
-from .skill_extractor import ExtractionResult, extract_skills
+from .skill_extractor import extract_skills
 
 logger = get_logger(__name__)
 
@@ -36,31 +36,12 @@ class IntelligenceResult:
     position_scores: Optional[PositionScores] = None
 
 
-@measure_time_async("intelligence.pipeline")
-async def run_pipeline(
-    username: str,
-    token: Optional[str] = None,
-    include_forks: bool = False,
-) -> IntelligenceResult:
+def aggregate_intelligence(username: str, repos: List[RepoData]) -> IntelligenceResult:
+    """リポジトリ集合から ``IntelligenceResult`` を構築する純粋関数。
+
+    I/O を行わないため、CLI/テスト向けの ``run_pipeline`` と
+    進捗通知付きのバックグラウンドワーカーの双方から再利用できる。
     """
-    GitHub ユーザーに対してキャリアインテリジェンスパイプラインを実行します。
-
-    パイプラインステージ:
-      1. GitHub API からリポジトリを収集
-      2. スキルを抽出（決定論的）
-      3. スキルタイムラインを構築
-      4. 成長速度を分析
-    """
-    logger.info("%s のインテリジェンスパイプラインを開始します", username)
-
-    # ステージ 1: GitHub データを収集
-    repos: List[RepoData] = await collect_repos(
-        username,
-        token=token,
-        include_forks=include_forks,
-    )
-
-    # 全リポジトリの言語バイト数を集計
     lang_totals: Dict[str, int] = defaultdict(int)
     for repo in repos:
         for lang, byte_count in repo.languages.items():
@@ -78,18 +59,8 @@ async def run_pipeline(
         for inf in repo.detected_infras:
             infra_counts[inf] += 1
 
-    # ステージ 2: スキルを抽出
-    extraction: ExtractionResult = extract_skills(repos)
-
-    # ステージ 3: ポジションスコアを算出
-    scores: PositionScores = calculate_position_scores(repos)
-
-    logger.info(
-        "パイプライン完了 (%s): 分析リポジトリ数=%d, ユニークスキル数=%d",
-        username,
-        extraction.repos_analyzed,
-        len(extraction.unique_skills),
-    )
+    extraction = extract_skills(repos)
+    scores = calculate_position_scores(repos)
 
     return IntelligenceResult(
         username=username,
@@ -102,3 +73,34 @@ async def run_pipeline(
         detected_infras=dict(infra_counts),
         position_scores=scores,
     )
+
+
+@measure_time_async("intelligence.pipeline")
+async def run_pipeline(
+    username: str,
+    token: Optional[str] = None,
+    include_forks: bool = False,
+) -> IntelligenceResult:
+    """GitHub ユーザーに対してキャリアインテリジェンスパイプラインを実行する。
+
+    1. GitHub API からリポジトリ収集
+    2. ``aggregate_intelligence`` で集計・スキル抽出・スコア算出
+    """
+    logger.info("%s のインテリジェンスパイプラインを開始します", username)
+
+    repos: List[RepoData] = await collect_repos(
+        username,
+        token=token,
+        include_forks=include_forks,
+    )
+
+    result = aggregate_intelligence(username, repos)
+
+    logger.info(
+        "パイプライン完了 (%s): 分析リポジトリ数=%d, ユニークスキル数=%d",
+        username,
+        result.repos_analyzed,
+        result.unique_skills,
+    )
+
+    return result

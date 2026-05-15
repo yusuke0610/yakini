@@ -110,8 +110,8 @@ describe("useBlogAccountManager", () => {
     expect(result.current.success).toBe("アカウントを解除しました");
   });
 
-  /** getBlogAccounts がエラーの場合、error がセットされること */
-  it("getBlogAccounts がエラーの場合 error がセットされる", async () => {
+  /** getBlogAccounts がエラーの場合、accountError がセットされること */
+  it("getBlogAccounts がエラーの場合 accountError がセットされる", async () => {
     api.getBlogAccounts.mockRejectedValue(new Error("ネットワークエラー"));
 
     const { result } = renderHook(() => useBlogAccountManager("all"));
@@ -120,7 +120,37 @@ describe("useBlogAccountManager", () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.error).toBe("ネットワークエラー");
+    expect(result.current.accountError).toBe("ネットワークエラー");
+  });
+
+  /**
+   * addBlogAccount と syncBlogAccount の両方が成功した場合、
+   * 同期件数を含む success メッセージがセットされること
+   */
+  it("addBlogAccount 成功 + syncBlogAccount 成功の場合 synced_count を含む success がセットされる", async () => {
+    api.getBlogAccounts
+      .mockResolvedValueOnce([])
+      .mockResolvedValue(dummyAccounts);
+    api.getBlogArticles.mockResolvedValue(dummyArticles);
+    api.addBlogAccount.mockResolvedValue(dummyAccounts[0]);
+    api.syncBlogAccount.mockResolvedValue({ synced_count: 3, total_count: 5 });
+
+    const { result } = renderHook(() => useBlogAccountManager("all"));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    await act(async () => {
+      result.current.setDraftUsernames((prev) => ({ ...prev, zenn: "testuser" }));
+    });
+
+    await act(async () => {
+      await result.current.handleSave("zenn");
+    });
+
+    expect(result.current.success).toBe("3件の記事を取得しました（合計: 5件）");
+    expect(result.current.accountError).toBeNull();
   });
 
   /**
@@ -151,8 +181,47 @@ describe("useBlogAccountManager", () => {
 
     // 連携成功メッセージが出ること
     expect(result.current.success).toBe("アカウントを連携しました");
-    // 同期失敗エラーが出ること
-    expect(result.current.error).toBe("同期に失敗しました");
+    // 同期失敗エラーが accountError にセットされること
+    expect(result.current.accountError).toBe("同期に失敗しました");
+  });
+
+  it("handleUpdate を呼ぶと updateBlogAccount が呼ばれ未同期状態に更新される", async () => {
+    api.getBlogAccounts
+      .mockResolvedValueOnce(dummyAccounts)
+      .mockResolvedValueOnce([
+        {
+          ...dummyAccounts[0],
+          username: "updated-user",
+          last_synced_at: null,
+        },
+      ]);
+    api.getBlogArticles
+      .mockResolvedValueOnce(dummyArticles)
+      .mockResolvedValueOnce([]);
+    api.updateBlogAccount.mockResolvedValue({
+      ...dummyAccounts[0],
+      username: "updated-user",
+      last_synced_at: null,
+    });
+
+    const { result } = renderHook(() => useBlogAccountManager("all"));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    let updated = false;
+    await act(async () => {
+      updated = await result.current.handleUpdate("zenn", "updated-user");
+    });
+
+    expect(updated).toBe(true);
+    expect(api.updateBlogAccount).toHaveBeenCalledWith("zenn", "updated-user");
+    await waitFor(() => {
+      expect(result.current.accounts[0]?.username).toBe("updated-user");
+    });
+    expect(result.current.accounts[0]?.last_synced_at).toBeNull();
+    expect(result.current.success).toBe("usernameを更新しました。再同期してください。");
   });
 
   it("handleUpdate を呼ぶと updateBlogAccount が呼ばれ未同期状態に更新される", async () => {

@@ -1,0 +1,642 @@
+[
+  {
+    "category": "language",
+    "name": "Python",
+    "sort_order": 1
+  },
+  {
+    "category": "language",
+    "name": "Java",
+    "sort_order": 2
+  },
+  {
+    "category": "language",
+    "name": "Go",
+    "sort_order": 3
+  },
+  {
+    "category": "language",
+    "name": "Ruby",
+    "sort_order": 4
+  },
+  {
+    "category": "language",
+    "name": "PHP",
+    "sort_order": 5
+  },
+  {
+    "category": "language",
+    "name": "Rust",
+    "sort_order": 6
+  },
+  {
+    "category": "language",
+    "name": "Scala",
+    "sort_order": 7
+  },
+  {
+    "category": "language",
+    "name": "Perl",
+    "sort_order": 8
+  },
+  {
+    "category": "language",
+    "name": "Groovy",
+    "sort_order": 9
+  },
+  {
+    "category": "language",
+    "name": "Erlang",
+    "sort_order": 10
+  },
+  {
+    "category": "language",
+    "name": "Elixir",
+    "sort_order": 11
+  },
+  {
+    "category": "language",
+    "name": "JavaScript",
+    "sort_order": 12
+  },
+  {
+    "category": "language",
+    "name": "TypeScript",
+    "sort_order": 13
+  },
+  {
+    "category": "language",
+    "name": "HTML",
+    "sort_order": 14
+  },
+  {
+    "category": "language",
+    "name": "CSS",
+    "sort_order": 15
+  },
+  {
+    "category": "language",
+    "name": "Kotlin",
+    "sort_order": 16
+  },
+  {
+    "category": "language",
+    "name": "Swift",
+    "sort_order": 17
+  },
+  {
+    "category": "language",
+    "name": "Dart",
+    "sort_order": 18
+  },
+  {
+    "category": "language",
+    "name": "Objective-C",
+    "sort_order": 19
+  },
+  {
+    "category": "language",
+    "name": "C",
+    "sort_order": 20
+  },
+  {
+    "category": "language",
+    "name": "C++",
+    "sort_order": 21
+  },
+  {
+    "category": "language",
+    "name": "C#",
+    "sort_order": 22
+  },
+  {
+    "category": "language",
+    "name": "Visual Basic",
+    "sort_order": 23
+  },
+  {
+    "category": "language",
+    "name": "Fortran",
+    "sort_order": 24
+  },
+  {
+    "category": "language",
+    "name": "Lua",
+    "sort_order": 25
+  },
+  {
+    "category": "language",
+    "name": "SQL",
+    "sort_order": 26
+  },
+  {
+    "category": "language",
+    "name": "R",
+    "sort_order": 27
+  },
+  {
+    "category": "language",
+    "name": "Julia",
+    "sort_order": 28
+  },
+  {
+    "category": "language",
+    "name": "Shell",
+    "sort_order": 29
+  },
+  {
+    "category": "language",
+    "name": "Haskell",
+    "sort_order": 30
+  },
+  {
+    "category": "language",
+    "name": "F#",
+    "sort_order": 31
+  },
+  {
+    "category": "language",
+    "name": "Lisp",
+    "sort_order": 32
+  },
+  {
+    "category": "framework",
+    "name": "React",
+    "sort_order": 33
+  },
+  {
+    "category": "framework",
+    "name": "Vue.js",
+    "sort_order": 34
+  },
+  {
+    "category": "framework",
+    "name": "Angular",
+    "sort_order": 35
+  },
+  {
+    "category": "framework",
+    "name": "Next.js",
+    "sort_order": 36
+  },
+  {
+    "category": "framework",
+    "name": "Nuxt.js",
+    "sort_order": 37
+  },
+  {
+    "category": "framework",
+    "name": "Svelte",
+    "sort_order": 38
+  },
+  {
+    "category": "framework",
+    "name": "jQuery",
+    "sort_order": 39
+  },
+  {
+    "category": "framework",
+    "name": "Express",
+    "sort_order": 40
+  },
+  {
+    "category": "framework",
+    "name": "NestJS",
+    "sort_order": 41
+  },
+  {
+    "category": "framework",
+    "name": "Meteor",
+    "sort_order": 42
+  },
+  {
+    "category": "framework",
+    "name": "FastAPI",
+    "sort_order": 43
+  },
+  {
+    "category": "framework",
+    "name": "Django",
+    "sort_order": 44
+  },
+  {
+    "category": "framework",
+    "name": "Flask",
+    "sort_order": 45
+  },
+  {
+    "category": "framework",
+    "name": "Tornado",
+    "sort_order": 46
+  },
+  {
+    "category": "framework",
+    "name": "Spring Boot",
+    "sort_order": 47
+  },
+  {
+    "category": "framework",
+    "name": "Spring Framework",
+    "sort_order": 48
+  },
+  {
+    "category": "framework",
+    "name": "Struts",
+    "sort_order": 49
+  },
+  {
+    "category": "framework",
+    "name": "Play Framework",
+    "sort_order": 50
+  },
+  {
+    "category": "framework",
+    "name": "Ruby on Rails",
+    "sort_order": 51
+  },
+  {
+    "category": "framework",
+    "name": "Sinatra",
+    "sort_order": 52
+  },
+  {
+    "category": "framework",
+    "name": "Laravel",
+    "sort_order": 53
+  },
+  {
+    "category": "framework",
+    "name": "Symfony",
+    "sort_order": 54
+  },
+  {
+    "category": "framework",
+    "name": "CodeIgniter",
+    "sort_order": 55
+  },
+  {
+    "category": "framework",
+    "name": "CakePHP",
+    "sort_order": 56
+  },
+  {
+    "category": "framework",
+    "name": "Yii",
+    "sort_order": 57
+  },
+  {
+    "category": "framework",
+    "name": "Gin",
+    "sort_order": 58
+  },
+  {
+    "category": "framework",
+    "name": "Echo",
+    "sort_order": 59
+  },
+  {
+    "category": "framework",
+    "name": "Beego",
+    "sort_order": 60
+  },
+  {
+    "category": "framework",
+    "name": "Actix-web",
+    "sort_order": 61
+  },
+  {
+    "category": "framework",
+    "name": "Rocket",
+    "sort_order": 62
+  },
+  {
+    "category": "framework",
+    "name": ".NET",
+    "sort_order": 63
+  },
+  {
+    "category": "framework",
+    "name": "ASP.NET",
+    "sort_order": 64
+  },
+  {
+    "category": "framework",
+    "name": "Xamarin",
+    "sort_order": 65
+  },
+  {
+    "category": "framework",
+    "name": "Unity",
+    "sort_order": 66
+  },
+  {
+    "category": "framework",
+    "name": "Ktor",
+    "sort_order": 67
+  },
+  {
+    "category": "framework",
+    "name": "Quarkus",
+    "sort_order": 68
+  },
+  {
+    "category": "framework",
+    "name": "SwiftUI",
+    "sort_order": 69
+  },
+  {
+    "category": "framework",
+    "name": "Vapor",
+    "sort_order": 70
+  },
+  {
+    "category": "framework",
+    "name": "Flutter",
+    "sort_order": 71
+  },
+  {
+    "category": "framework",
+    "name": "React Native",
+    "sort_order": 72
+  },
+  {
+    "category": "os",
+    "name": "Linux",
+    "sort_order": 73
+  },
+  {
+    "category": "os",
+    "name": "Windows Server",
+    "sort_order": 74
+  },
+  {
+    "category": "os",
+    "name": "macOS",
+    "sort_order": 75
+  },
+  {
+    "category": "os",
+    "name": "iOS",
+    "sort_order": 76
+  },
+  {
+    "category": "os",
+    "name": "Android",
+    "sort_order": 77
+  },
+  {
+    "category": "os",
+    "name": "ChromeOS",
+    "sort_order": 78
+  },
+  {
+    "category": "db",
+    "name": "PostgreSQL",
+    "sort_order": 79
+  },
+  {
+    "category": "db",
+    "name": "MySQL",
+    "sort_order": 80
+  },
+  {
+    "category": "db",
+    "name": "MariaDB",
+    "sort_order": 81
+  },
+  {
+    "category": "db",
+    "name": "SQLite",
+    "sort_order": 82
+  },
+  {
+    "category": "db",
+    "name": "Oracle Database",
+    "sort_order": 83
+  },
+  {
+    "category": "db",
+    "name": "SQL Server",
+    "sort_order": 84
+  },
+  {
+    "category": "db",
+    "name": "Amazon Aurora",
+    "sort_order": 85
+  },
+  {
+    "category": "db",
+    "name": "MongoDB",
+    "sort_order": 86
+  },
+  {
+    "category": "db",
+    "name": "Cassandra",
+    "sort_order": 87
+  },
+  {
+    "category": "db",
+    "name": "Apache HBase",
+    "sort_order": 88
+  },
+  {
+    "category": "db",
+    "name": "Firebase Realtime Database",
+    "sort_order": 89
+  },
+  {
+    "category": "db",
+    "name": "Firebase Firestore",
+    "sort_order": 90
+  },
+  {
+    "category": "db",
+    "name": "Redis",
+    "sort_order": 91
+  },
+  {
+    "category": "db",
+    "name": "DynamoDB",
+    "sort_order": 92
+  },
+  {
+    "category": "db",
+    "name": "Memcached",
+    "sort_order": 93
+  },
+  {
+    "category": "cloud_provider",
+    "name": "AWS",
+    "sort_order": 94
+  },
+  {
+    "category": "cloud_provider",
+    "name": "Google Cloud",
+    "sort_order": 95
+  },
+  {
+    "category": "cloud_provider",
+    "name": "Azure",
+    "sort_order": 96
+  },
+  {
+    "category": "container",
+    "name": "Docker",
+    "sort_order": 97
+  },
+  {
+    "category": "container",
+    "name": "Kubernetes",
+    "sort_order": 98
+  },
+  {
+    "category": "iac",
+    "name": "Terraform",
+    "sort_order": 99
+  },
+  {
+    "category": "iac",
+    "name": "Ansible",
+    "sort_order": 100
+  },
+  {
+    "category": "iac",
+    "name": "cloudFormation",
+    "sort_order": 101
+  },
+  {
+    "category": "vcs",
+    "name": "Git",
+    "sort_order": 102
+  },
+  {
+    "category": "vcs",
+    "name": "GitHub",
+    "sort_order": 103
+  },
+  {
+    "category": "vcs",
+    "name": "GitLab",
+    "sort_order": 104
+  },
+  {
+    "category": "vcs",
+    "name": "SVN",
+    "sort_order": 105
+  },
+  {
+    "category": "ci_cd",
+    "name": "Jenkins",
+    "sort_order": 106
+  },
+  {
+    "category": "ci_cd",
+    "name": "CircleCI",
+    "sort_order": 107
+  },
+  {
+    "category": "ci_cd",
+    "name": "GitHub Actions",
+    "sort_order": 108
+  },
+  {
+    "category": "project_tool",
+    "name": "Jira",
+    "sort_order": 109
+  },
+  {
+    "category": "project_tool",
+    "name": "Confluence",
+    "sort_order": 110
+  },
+  {
+    "category": "project_tool",
+    "name": "Slack",
+    "sort_order": 111
+  },
+  {
+    "category": "project_tool",
+    "name": "Teams",
+    "sort_order": 112
+  },
+  {
+    "category": "project_tool",
+    "name": "Notion",
+    "sort_order": 113
+  },
+  {
+    "category": "project_tool",
+    "name": "Trello",
+    "sort_order": 114
+  },
+  {
+    "category": "project_tool",
+    "name": "figma",
+    "sort_order": 115
+  },
+  {
+    "category": "project_tool",
+    "name": "Miro",
+    "sort_order": 116
+  },
+  {
+    "category": "project_tool",
+    "name": "backlog",
+    "sort_order": 117
+  },
+  {
+    "category": "monitoring",
+    "name": "Datadog",
+    "sort_order": 118
+  },
+  {
+    "category": "monitoring",
+    "name": "Grafana",
+    "sort_order": 119
+  },
+  {
+    "category": "monitoring",
+    "name": "Elasticsearch",
+    "sort_order": 120
+  },
+  {
+    "category": "monitoring",
+    "name": "cloudWatch",
+    "sort_order": 121
+  },
+  {
+    "category": "monitoring",
+    "name": "cloudMonitoring",
+    "sort_order": 122
+  },
+  {
+    "category": "middleware",
+    "name": "Nginx",
+    "sort_order": 121
+  },
+  {
+    "category": "middleware",
+    "name": "Apache",
+    "sort_order": 122
+  },
+  {
+    "category": "middleware",
+    "name": "Hulft",
+    "sort_order": 123
+  },
+  {
+    "category": "ai_agent",
+    "name": "ChatGPT",
+    "sort_order": 124
+  },
+  {
+    "category": "ai_agent",
+    "name": "Claude",
+    "sort_order": 125
+  },
+  {
+    "category": "ai_agent",
+    "name": "Gemini",
+    "sort_order": 126
+  }
+]

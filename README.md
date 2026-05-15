@@ -149,6 +149,25 @@ TURSO_AUTH_TOKEN=
 
 > **注意**: 旧 SQLite ファイル方式（`data/devforge.sqlite` の bind mount, DBeaver の SQLite 直接接続）は廃止しました。
 
+#### Turso (libSQL) ローカル起動
+
+`docker compose up libsql` だけ起動すれば、ホストの `127.0.0.1:8080` に libSQL サーバーが公開されます。
+`backend/.env` で以下を設定すれば、ホストの uvicorn から接続できます。
+
+```
+TURSO_DATABASE_URL=http://127.0.0.1:8080
+TURSO_AUTH_TOKEN=
+```
+
+##### TablePlus からローカル libSQL に接続する
+
+1. TablePlus で **新規接続** → **libSQL** を選択
+2. **URL** に `http://127.0.0.1:8080` を指定（`docker compose up libsql` 経由）
+3. **Token** は空のままで OK
+4. **テスト** → **接続**
+
+> **注意**: 旧 SQLite ファイル方式（`data/devforge.sqlite` の bind mount, DBeaver の SQLite 直接接続）は廃止しました。
+
 ---
 
 ### 本番デプロイ（GCP）

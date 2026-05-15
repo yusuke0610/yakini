@@ -177,7 +177,10 @@ class TestSummarizeBlogArticles:
         mock_client = AsyncMock()
         mock_client.generate = AsyncMock(return_value="テスト要約テキスト")
 
-        with patch("app.services.intelligence.llm_summarizer._client", mock_client):
+        with patch(
+            "app.services.intelligence.llm_summarizer._get_client",
+            return_value=mock_client,
+        ):
             result = _run(
                 summarize_blog_articles(
                     [{"title": "記事", "tags": [], "summary": "", "likes_count": 0}]
@@ -192,7 +195,10 @@ class TestSummarizeBlogArticles:
         mock_client = AsyncMock()
         mock_client.generate = AsyncMock(return_value="")
 
-        with patch("app.services.intelligence.llm_summarizer._client", mock_client):
+        with patch(
+            "app.services.intelligence.llm_summarizer._get_client",
+            return_value=mock_client,
+        ):
             result = _run(summarize_blog_articles([]))
 
         assert result == ""
@@ -202,7 +208,10 @@ class TestSummarizeBlogArticles:
         mock_client = AsyncMock()
         mock_client.generate = AsyncMock(return_value="")
 
-        with patch("app.services.intelligence.llm_summarizer._client", mock_client):
+        with patch(
+            "app.services.intelligence.llm_summarizer._get_client",
+            return_value=mock_client,
+        ):
             result = _run(summarize_blog_articles([{"title": "記事", "tags": []}]))
 
         assert result == ""
@@ -212,7 +221,10 @@ class TestSummarizeBlogArticles:
         mock_client = AsyncMock()
         mock_client.generate = AsyncMock(return_value="要約")
 
-        with patch("app.services.intelligence.llm_summarizer._client", mock_client):
+        with patch(
+            "app.services.intelligence.llm_summarizer._get_client",
+            return_value=mock_client,
+        ):
             _run(summarize_blog_articles([{"title": "記事", "tags": []}]))
 
         call_args = mock_client.generate.call_args
@@ -250,7 +262,10 @@ class TestGenerateLearningAdvice:
         mock_client = AsyncMock()
         mock_client.generate = AsyncMock(return_value="学習アドバイスです")
 
-        with patch("app.services.intelligence.llm_summarizer._client", mock_client):
+        with patch(
+            "app.services.intelligence.llm_summarizer._get_client",
+            return_value=mock_client,
+        ):
             result = _run(generate_learning_advice(self._make_analysis(), self._make_scores()))
 
         assert result == "学習アドバイスです"
@@ -261,7 +276,10 @@ class TestGenerateLearningAdvice:
         mock_client = AsyncMock()
         mock_client.generate = AsyncMock(return_value="")
 
-        with patch("app.services.intelligence.llm_summarizer._client", mock_client):
+        with patch(
+            "app.services.intelligence.llm_summarizer._get_client",
+            return_value=mock_client,
+        ):
             result = _run(generate_learning_advice(self._make_analysis(), self._make_scores()))
 
         assert result == ""
@@ -271,7 +289,10 @@ class TestGenerateLearningAdvice:
         mock_client = AsyncMock()
         mock_client.generate = AsyncMock(return_value="アドバイス")
 
-        with patch("app.services.intelligence.llm_summarizer._client", mock_client):
+        with patch(
+            "app.services.intelligence.llm_summarizer._get_client",
+            return_value=mock_client,
+        ):
             _run(generate_learning_advice(self._make_analysis(), self._make_scores()))
 
         call_args = mock_client.generate.call_args

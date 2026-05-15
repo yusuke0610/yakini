@@ -28,13 +28,11 @@ from ..schemas.career_analysis import (
     TaskStatusResponse,
 )
 from ..services.intelligence.llm import get_llm_client
-from ..services.tasks import TaskType, get_task_dispatcher
+from ..services.tasks import AsyncTaskCacheService, TaskType
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/career-analysis", tags=["career-analysis"])
-
-_llm_client = get_llm_client()
 
 
 def _to_response(analysis) -> CareerAnalysisResponse:
@@ -81,7 +79,7 @@ async def generate(
             action="職務経歴書を入力してから再試行してください",
         )
 
-    if not await _llm_client.check_available():
+    if not await get_llm_client().check_available():
         raise_app_error(
             status_code=503,
             code=ErrorCode.LLM_UNAVAILABLE,
@@ -91,20 +89,22 @@ async def generate(
 
     # pending レコード作成
     analysis = repo.create_pending(target_position=payload.target_position)
+    service = AsyncTaskCacheService(db, analysis)
 
     # バックグラウンドタスクをディスパッチ
     try:
-        dispatcher = get_task_dispatcher(background_tasks)
-        await dispatcher.dispatch(
+        await service.dispatch(
+            background_tasks,
             TaskType.CAREER_ANALYSIS,
             {
                 "user_id": current_user.id,
                 "record_id": analysis.id,
                 "target_position": payload.target_position,
             },
+            failure_message="タスクの開始に失敗しました",
+            logger=logger,
         )
     except Exception:
-        logger.exception("キャリア分析タスクのディスパッチに失敗しました")
         raise_app_error(
             status_code=500,
             code=ErrorCode.INTERNAL_ERROR,
@@ -113,10 +113,6 @@ async def generate(
         )
 
     return _to_response(analysis)
-
-
-# リトライ可能な終端ステータス（リトライ枯渇 or リトライ不可エラー）
-_RETRYABLE_TERMINAL_STATUSES = {"dead_letter"}
 
 
 @router.post("/{analysis_id}/retry", response_model=CareerAnalysisResponse, status_code=202)
@@ -142,7 +138,8 @@ async def retry_analysis(
             message=get_error("career_analysis.not_found"),
             action="一覧に戻って対象を選び直してください",
         )
-    if analysis.status not in _RETRYABLE_TERMINAL_STATUSES:
+    service = AsyncTaskCacheService(db, analysis)
+    if not service.is_retryable_terminal():
         raise_app_error(
             status_code=409,
             code=ErrorCode.VALIDATION_ERROR,
@@ -150,28 +147,21 @@ async def retry_analysis(
             action="タスクの完了または失敗を待ってから再試行してください",
         )
 
-    analysis.status = "pending"
-    analysis.error_message = None
-    analysis.retry_count = 0
-    analysis.started_at = None
-    analysis.completed_at = None
-    db.commit()
+    service.reset_to_pending(reset_retry_count=True)
 
     try:
-        dispatcher = get_task_dispatcher(background_tasks)
-        await dispatcher.dispatch(
+        await service.dispatch(
+            background_tasks,
             TaskType.CAREER_ANALYSIS,
             {
                 "user_id": current_user.id,
                 "record_id": analysis.id,
                 "target_position": analysis.target_position,
             },
+            failure_message="タスクの再実行に失敗しました",
+            logger=logger,
         )
     except Exception:
-        logger.exception("キャリア分析タスクの再実行に失敗しました")
-        analysis.status = "dead_letter"
-        analysis.error_message = "タスクの再実行に失敗しました"
-        db.commit()
         raise_app_error(
             status_code=500,
             code=ErrorCode.INTERNAL_ERROR,

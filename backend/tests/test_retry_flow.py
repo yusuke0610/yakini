@@ -436,8 +436,11 @@ class TestRetryEndpoints:
         assert cache.retry_count == 0
         assert cache.error_message is None
 
-    def test_blog_retry_requires_articles_body(self, client: TestClient):
-        """ブログサマリ再実行には articles 本文が必要。"""
+    def test_blog_retry_resets_dead_letter_cache(self, client: TestClient):
+        """ブログサマリ再実行で dead_letter キャッシュが pending にリセットされること。
+
+        記事は worker 側で BlogArticleRepository から取得するためボディ不要。
+        """
         headers = auth_header(client, "retry-blog-user")
         db = client._db_session
         user = UserRepository(db).get_by_username("retry-blog-user")
@@ -446,35 +449,21 @@ class TestRetryEndpoints:
             user_id=user.id,
             status="dead_letter",
             error_message="old",
+            retry_count=3,
         )
         db.add(cache)
         db.commit()
 
-        # 本文なし → 422 (pydantic validation)
-        resp_missing = client.post("/api/blog/summarize/retry", headers=headers)
-        assert resp_missing.status_code == 422
-
-        # articles が 1 件以上含まれていれば 202
-        articles = [
-            {
-                "platform": "zenn",
-                "title": "テスト記事",
-                "url": "https://example.com/article",
-            }
-        ]
         with patch(
             "app.routers.blog.check_llm_available", new=AsyncMock(return_value=True),
         ):
-            resp_ok = client.post(
-                "/api/blog/summarize/retry",
-                json={"articles": articles},
-                headers=headers,
-            )
+            resp_ok = client.post("/api/blog/summarize/retry", headers=headers)
         assert resp_ok.status_code == 202
 
         db.refresh(cache)
         assert cache.status == "pending"
         assert cache.retry_count == 0
+        assert cache.error_message is None
 
 
 # ══════════════════════════════════════════════════════════════════════
