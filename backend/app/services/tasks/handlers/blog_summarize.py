@@ -36,8 +36,9 @@ class BlogSummarizeHandler(TaskHandler):
 
         user_id = payload.get("user_id")
         if not user_id:
-            logger.error("ペイロードに user_id がありません", extra={"payload_keys": list(payload.keys())})
-            return
+            message = "ペイロードに user_id がありません"
+            logger.error(message, extra={"payload_keys": list(payload.keys())})
+            raise NonRetryableError(f"{message} (payload_keys={list(payload.keys())})")
         cache = self.get_record(db, payload)
         if not cache:
             message = "ブログサマリキャッシュが見つかりません"
@@ -81,7 +82,7 @@ class BlogSummarizeHandler(TaskHandler):
         summary = await summarize_blog_articles(articles_data)
         if not summary:
             cache.status = "dead_letter"
-            cache.error_message = "LLM処理が利用できません"
+            cache.error_message = "要約の生成に失敗しました"
             cache.completed_at = _now()
             db.commit()
             return
