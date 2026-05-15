@@ -42,7 +42,7 @@ nix develop --command bash -c "cd frontend && npm run test:e2e"
 
 Claude Code の sandbox は `~/.cache/nix/fetcher-locks/*.lock` への書き込みを拒否する。`make lint-backend` / `make test-backend` を sandbox 有効で実行すると次のエラーになる:
 
-```
+```text
 error: opening lock file "~/.cache/nix/fetcher-locks/...lock": Operation not permitted
 ```
 
