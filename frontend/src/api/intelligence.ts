@@ -43,6 +43,8 @@ export interface CachedAnalysisResponse {
   status?: string;
   error_message?: string;
   error_code?: string;
+  /** LLM 不在など、分析自体は完了したが部分的に欠落した場合の警告 */
+  warning_message?: string;
 }
 
 /**

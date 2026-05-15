@@ -73,6 +73,19 @@ class AsyncTaskCacheService:
             self._record.completed_at = None
         self._db.commit()
 
+    def try_reset_to_pending(self, *, reset_retry_count: bool = False) -> bool:
+        """DB から最新状態を取得してから ``pending`` へアトミックに遷移する。
+
+        既に ``pending`` / ``processing`` であれば何もせず False を返す。
+        遷移に成功した場合は True を返す。
+        ``reset_to_pending`` の代わりにこちらを使うことで TOCTOU を軽減できる。
+        """
+        self._db.refresh(self._record)
+        if is_in_progress(self._record.status):
+            return False
+        self.reset_to_pending(reset_retry_count=reset_retry_count)
+        return True
+
     async def dispatch(
         self,
         background_tasks: BackgroundTasks,

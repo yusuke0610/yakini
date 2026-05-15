@@ -33,7 +33,10 @@ class BlogSummarizeHandler(TaskHandler):
         from ...intelligence.llm import get_llm_client
         from ...intelligence.llm_summarizer import summarize_blog_articles
 
-        user_id = payload["user_id"]
+        user_id = payload.get("user_id")
+        if not user_id:
+            logger.error("ペイロードに user_id がありません", extra={"payload_keys": list(payload.keys())})
+            return
         cache = self.get_record(db, payload)
         if not cache:
             logger.error("ブログサマリキャッシュが見つかりません", extra={"user_id": user_id})

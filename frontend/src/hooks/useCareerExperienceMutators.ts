@@ -2,7 +2,6 @@ import {
   blankCareerClient,
   blankCareerExperience,
   blankCareerProject,
-  blankCareerTechnologyStack,
 } from "../constants";
 import type {
   CareerClientFieldKey,
@@ -122,7 +121,7 @@ export function useCareerExperienceMutators(
               ...c,
               projects:
                 c.projects.length === 1
-                  ? [{ ...blankCareerProject, technology_stacks: [{ ...blankCareerTechnologyStack }] }]
+                  ? [{ ...blankCareerProject }]
                   : c.projects.filter((_, pi) => pi !== projIndex),
             };
           }),

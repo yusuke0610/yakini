@@ -58,6 +58,7 @@ def get_cache(
         status=cache.status,
         error_message=cache.error_message,
         error_code=resolve_async_error_code(cache.error_message),
+        warning_message=cache.warning_message,
     )
 
 
@@ -114,10 +115,10 @@ async def analyze(
     # 進行中のタスクがあればそのステータスを返す
     cache = _get_or_create_cache(db, user.id)
     service = AsyncTaskCacheService(db, cache)
-    if service.is_in_progress():
-        return {"status": cache.status}
 
-    service.reset_to_pending()
+    # DB 最新状態を取得しつつ pending へアトミック遷移。進行中なら早期リターン
+    if not service.try_reset_to_pending():
+        return {"status": cache.status}
 
     try:
         await service.dispatch(
@@ -185,7 +186,14 @@ async def retry_analyze(
     github_username = user.username.removeprefix("github:")
     include_forks = payload.include_forks if payload else False
 
-    service.reset_to_pending(reset_retry_count=True)
+    # DB 最新状態を取得しつつアトミック遷移。並列リトライ競合を防ぐ
+    if not service.try_reset_to_pending(reset_retry_count=True):
+        raise_app_error(
+            status_code=409,
+            code=ErrorCode.VALIDATION_ERROR,
+            message=f"このタスクはリトライできない状態です（現在: {cache.status}）",
+            action="タスクの完了または失敗を待ってから再試行してください",
+        )
 
     try:
         await service.dispatch(

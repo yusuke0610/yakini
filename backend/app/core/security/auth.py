@@ -30,6 +30,21 @@ _REFRESH_COOKIE_MAX_AGE = _REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60  # 604800秒
 _ALGORITHM = "RS256"
 
 
+def validate_jwt_key_pair() -> None:
+    """起動時に JWT 鍵ペアの整合性を検証する。署名 → 検証が通らない場合は RuntimeError を送出する。"""
+    try:
+        tok = jwt.encode(
+            {"sub": "__bootstrap_check__"},
+            get_jwt_private_key(),
+            algorithm=_ALGORITHM,
+        )
+        jwt.decode(tok, get_jwt_public_key(), algorithms=[_ALGORITHM])
+    except JWTError as e:
+        raise RuntimeError(
+            f"JWT 鍵ペアが不正です（秘密鍵と公開鍵が一致しないか、フォーマットが壊れています）: {e}"
+        ) from e
+
+
 def create_access_token(username: str) -> str:
     """短命のアクセストークン（15分）を生成する。"""
     expire = datetime.now(timezone.utc) + timedelta(minutes=_ACCESS_TOKEN_EXPIRE_MINUTES)

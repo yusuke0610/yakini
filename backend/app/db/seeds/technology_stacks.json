@@ -612,31 +612,31 @@
   {
     "category": "middleware",
     "name": "Nginx",
-    "sort_order": 121
+    "sort_order": 123
   },
   {
     "category": "middleware",
     "name": "Apache",
-    "sort_order": 122
+    "sort_order": 124
   },
   {
     "category": "middleware",
     "name": "Hulft",
-    "sort_order": 123
-  },
-  {
-    "category": "ai_agent",
-    "name": "ChatGPT",
-    "sort_order": 124
-  },
-  {
-    "category": "ai_agent",
-    "name": "Claude",
     "sort_order": 125
   },
   {
     "category": "ai_agent",
-    "name": "Gemini",
+    "name": "ChatGPT",
     "sort_order": 126
+  },
+  {
+    "category": "ai_agent",
+    "name": "Claude",
+    "sort_order": 127
+  },
+  {
+    "category": "ai_agent",
+    "name": "Gemini",
+    "sort_order": 128
   }
 ]

@@ -147,7 +147,14 @@ async def retry_analysis(
             action="タスクの完了または失敗を待ってから再試行してください",
         )
 
-    service.reset_to_pending(reset_retry_count=True)
+    # DB 最新状態を取得しつつアトミック遷移。並列リトライ競合を防ぐ
+    if not service.try_reset_to_pending(reset_retry_count=True):
+        raise_app_error(
+            status_code=409,
+            code=ErrorCode.VALIDATION_ERROR,
+            message=f"このタスクはリトライできない状態です（現在: {analysis.status}）",
+            action="タスクの完了または失敗を待ってから再試行してください",
+        )
 
     try:
         await service.dispatch(
