@@ -45,7 +45,11 @@ def _run(coro):
 
 class TestRunGithubAnalysis:
     def _make_user_and_cache(self, db: Session, username="github:gh-user"):
-        user = UserRepository(db).create(username, hashed_password=None, email=f"{username}@test.com")
+        user = UserRepository(db).create(
+            username,
+            hashed_password=None,
+            email=f"{username}@test.com",
+        )
         cache = GitHubAnalysisCache(user_id=user.id, status="pending")
         db.add(cache)
         db.commit()
@@ -93,7 +97,10 @@ class TestRunGithubAnalysis:
                 "app.services.intelligence.github_analysis_service.get_llm_client",
                 return_value=MagicMock(check_available=AsyncMock(return_value=False)),
             ),
-            patch("app.services.intelligence.github_analysis_service.decrypt_field", return_value="token123"),
+            patch(
+                "app.services.intelligence.github_analysis_service.decrypt_field",
+                return_value="token123",
+            ),
         ):
             _run(
                 _run_github_analysis(
@@ -134,7 +141,10 @@ class TestRunGithubAnalysis:
                 "app.services.intelligence.github_analysis_service.get_llm_client",
                 return_value=MagicMock(check_available=AsyncMock(return_value=False)),
             ),
-            patch("app.services.intelligence.github_analysis_service.decrypt_field", return_value=None),
+            patch(
+                "app.services.intelligence.github_analysis_service.decrypt_field",
+                return_value=None,
+            ),
         ):
             _run(
                 _run_github_analysis(
@@ -163,7 +173,10 @@ class TestRunGithubAnalysis:
                 side_effect=GitHubUserNotFoundError("notfound"),
             ),
             patch("app.services.progress_service.set_progress", new_callable=AsyncMock),
-            patch("app.services.intelligence.github_analysis_service.decrypt_field", return_value=None),
+            patch(
+                "app.services.intelligence.github_analysis_service.decrypt_field",
+                return_value=None,
+            ),
         ):
             with pytest.raises(GitHubUserNotFoundError):
                 _run(
@@ -202,7 +215,11 @@ class TestRunGithubAnalysis:
 
 class TestRunBlogSummarize:
     def _make_user_and_cache(self, db: Session, username="blog-worker-user"):
-        user = UserRepository(db).create(username, hashed_password=None, email=f"{username}@test.com")
+        user = UserRepository(db).create(
+            username,
+            hashed_password=None,
+            email=f"{username}@test.com",
+        )
         cache = BlogSummaryCache(user_id=user.id, status="pending")
         db.add(cache)
         db.commit()
@@ -324,14 +341,17 @@ class TestRunBlogSummarize:
         assert cache.status == "dead_letter"
         assert cache.error_message == "分析対象の記事がありません"
 
-    def test_no_cache_returns_early(self, db_session: Session):
-        """キャッシュが見つからない場合、例外なく早期リターンすること。"""
-        _run(
-            _run_blog_summarize(
-                db_session,
-                {"user_id": "ghost-user"},
+    def test_no_cache_raises_non_retryable(self, db_session: Session):
+        """キャッシュが見つからない場合、NonRetryableError を送出すること。"""
+        from app.services.tasks.exceptions import NonRetryableError
+
+        with pytest.raises(NonRetryableError):
+            _run(
+                _run_blog_summarize(
+                    db_session,
+                    {"user_id": "ghost-user"},
+                )
             )
-        )
 
     def test_status_set_to_processing_before_llm_call(self, db_session: Session):
         """LLM 呼び出し前に status が processing に更新されること。"""
@@ -368,7 +388,11 @@ class TestRunBlogSummarize:
 
 class TestRunCareerAnalysis:
     def _make_user_and_analysis(self, db: Session, username="career-worker-user"):
-        user = UserRepository(db).create(username, hashed_password=None, email=f"{username}@test.com")
+        user = UserRepository(db).create(
+            username,
+            hashed_password=None,
+            email=f"{username}@test.com",
+        )
         analysis = CareerAnalysis(
             user_id=user.id,
             version=1,
@@ -436,6 +460,7 @@ class TestRunCareerAnalysis:
 
         db_session.refresh(analysis)
         assert analysis.status == "dead_letter"
+        assert analysis.error_message is not None
         assert "不足" in analysis.error_message
 
     def test_no_record_returns_early(self, db_session: Session):

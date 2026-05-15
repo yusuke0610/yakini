@@ -218,7 +218,8 @@ class BlogSummaryCacheRepository:
         statement = select(BlogSummaryCache).where(BlogSummaryCache.user_id == self.user_id)
         cache = self.db.scalar(statement)
         # SQLite は timezone を保持しないため naive UTC と比較する
-        if cache and cache.expires_at and cache.expires_at <= datetime.now(timezone.utc).replace(tzinfo=None):
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        if cache and cache.expires_at and cache.expires_at <= now_utc:
             self.db.delete(cache)
             self.db.commit()
             return None
@@ -240,9 +241,14 @@ class BlogSummaryCacheRepository:
             return cache
         except IntegrityError:
             self.db.rollback()
-            return self.db.scalar(
+            cache = self.db.scalar(
                 select(BlogSummaryCache).where(BlogSummaryCache.user_id == self.user_id)
             )
+            if cache is None:
+                raise RuntimeError(
+                    "BlogSummaryCache の再取得に失敗しました（IntegrityError 後）"
+                )
+            return cache
 
     def invalidate(self, *, commit: bool = True) -> bool:
         cache = self.get()

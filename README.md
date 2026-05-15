@@ -4,6 +4,17 @@
 GitHub活動分析、ブログ連携による発信力を集計
 キャリアインテリジェンスを提供するWebアプリケーションです。
 
+## ドキュメント
+
+| ドキュメント | 内容 |
+|---|---|
+| [docs/development.md](./docs/development.md) | Nix devshell・初回セットアップ・ローカル開発・テスト/リント |
+| [docs/deployment.md](./docs/deployment.md) | 本番デプロイ（GCP）・OpenTofu インフラ構成・CI/CD・ブランチ保護 |
+| [docs/api.md](./docs/api.md) | REST API 一覧・環境変数リファレンス |
+| [docs/data-model.md](./docs/data-model.md) | Turso (libSQL) 運用・Alembic マイグレーション・データ設計 |
+| [docs/adr/](./docs/adr/) | アーキテクチャ判断記録（ADR） |
+| [docs/runbooks/](./docs/runbooks/) | 運用 Runbook |
+
 ## 主な機能
 
 ### ドキュメント管理
@@ -45,276 +56,27 @@ GitHub活動分析、ブログ連携による発信力を集計
 | PDF出力 | WeasyPrint（職務経歴書）, ReportLab（分析レポート補助） |
 | LLM | Ollama / Vertex AI（設定で切替、任意） |
 | インフラ | GCP (Cloud Run, Artifact Registry, Secret Manager), Turso, Cloudflare Pages |
-| IaC | Terraform（モジュール構成、マルチ環境） |
+| IaC | OpenTofu（モジュール構成、マルチ環境） |
 | CI/CD | GitHub Actions |
 
-## セットアップ
+## クイックスタート
 
-### Nix を使ったセットアップ（推奨）
-
-[Nix](https://nixos.org/download/) がインストール済みの場合、`nix develop` 一発で Python 3.13・Node.js 22・Redis・WeasyPrint ネイティブライブラリが揃った開発環境が起動します。
+詳細手順は [docs/development.md](./docs/development.md) を参照。
 
 ```bash
-# フレーク機能を有効化（初回のみ）
-# ~/.config/nix/nix.conf または /etc/nix/nix.conf に以下を追加
-# experimental-features = nix-command flakes
+nix develop          # devshell に入る（direnv 利用時は自動）
+make setup           # git hooks + backend (.venv + uv) + frontend (npm ci)
+make generate-keys   # JWT RS256 鍵ペアを生成
+cp backend/.env.example backend/.env
 
-nix develop
+make dev             # docker compose up（FastAPI + Ollama + Redis + libSQL）
 ```
 
-シェルに入ったら、通常どおり `make setup` でセットアップできます。
+CI 相当を一括で走らせる:
 
 ```bash
-make setup
+make ci              # lint + test + build-frontend
 ```
-
-#### direnv を使った自動起動
-
-[direnv](https://direnv.net/) がインストール済みであれば、`.envrc` が同梱されているためディレクトリに移動するだけで自動的に Nix 開発シェルが起動します。
-
-```bash
-direnv allow   # 初回のみ許可が必要
-```
-
----
-
-### ローカル開発
-
-#### バックエンド起動
-
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-DB は Turso (libSQL) を使います。先に別ターミナルで `turso dev --db-file ./backend/local.sqlite` を起動し、`backend/.env` の `TURSO_DATABASE_URL=http://127.0.0.1:8080` を設定してください（詳細は後述の「Turso (libSQL) ローカル起動」参照）。
-
-#### フロントエンド起動
-
-別ターミナルで:
-
-```bash
-cd frontend
-npm install
-make dev-proxy
-```
-
-ブラウザで `http://localhost:8788` を開きます。
-
-#### Docker起動（FastAPI + Ollama + libSQL）
-
-```bash
-docker compose up --build
-```
-
-`docker-compose.yml` で以下のサービスをまとめて起動します:
-
-- `api`: FastAPI
-- `ollama`: LLM
-- `redis`: rate limit 等
-- `libsql`: libSQL サーバー（`ghcr.io/tursodatabase/libsql-server`）。`/var/lib/sqld` を `libsql_data` ボリュームに永続化
-
-DB 接続先は compose 内で `TURSO_DATABASE_URL=http://libsql:8080` に固定されています。
-
-##### マスタデータ変更時の再起動
-
-シードデータ（`backend/app/seed.py`）を変更した場合は、libSQL ボリュームを破棄して再起動します。
-
-```bash
-docker compose down
-docker volume rm devforge_libsql_data
-docker compose up
-```
-
-#### ローカル uvicorn で動かす場合の libSQL 起動
-
-`docker compose up libsql` だけ起動すれば、ホストの `127.0.0.1:8080` に libSQL サーバーが公開されます。
-`backend/.env` で以下を設定すれば、ホストの uvicorn から接続できます。
-
-```env
-TURSO_DATABASE_URL=http://127.0.0.1:8080
-TURSO_AUTH_TOKEN=
-```
-
-##### TablePlus からローカル libSQL に接続する
-
-1. TablePlus で **新規接続** → **libSQL** を選択
-2. **URL** に `http://127.0.0.1:8080` を指定（`docker compose up libsql` 経由）
-3. **Token** は空のままで OK
-4. **テスト** → **接続**
-
-> **注意**: 旧 SQLite ファイル方式（`data/devforge.sqlite` の bind mount, DBeaver の SQLite 直接接続）は廃止しました。
-
----
-
-### 本番デプロイ（GCP）
-
-#### 1. 事前準備
-
-```bash
-export PROJECT_ID=<your-gcp-project-id>   # 例: devforge-prod-xxxxxxxx
-export ENV=<dev|stg|prod>
-export REGION=asia-northeast1
-
-# gcloud 認証
-gcloud auth login
-gcloud config set project ${PROJECT_ID}
-
-# 必要な GCP API を有効化
-gcloud services enable artifactregistry.googleapis.com
-gcloud services enable run.googleapis.com
-gcloud services enable secretmanager.googleapis.com
-```
-
-#### 2. OpenTofu でインフラを構築する
-
-CLI は Nix 管理。`nix develop` シェル内で `tofu` を利用する（または `make infra-*` ターゲットを使う）。
-
-```bash
-# GCS tfstate バケットを作成（初回のみ）
-gcloud storage buckets create gs://devforge-tfstate-${ENV} \
-  --location=${REGION} --uniform-bucket-level-access
-
-# インフラ構築
-nix develop --command bash -c "cd infra/environments/${ENV} && tofu init && tofu plan && tofu apply"
-```
-
-構成: `infra/environments/{dev|stg|prod}`, `infra/modules/`
-モジュール: `service_account`, `artifact_registry`, `storage`, `cloud_run`
-
-#### 3. Docker イメージをビルドして push する
-
-> **注意**: Apple Silicon Mac（M1/M2/M3）は必ず `--platform linux/amd64` を付けること。
-> 省略すると Cloud Run で `exec format error` が発生する。
-
-```bash
-# Docker → Artifact Registry の認証設定（初回のみ）
-gcloud auth configure-docker ${REGION}-docker.pkg.dev
-
-# ビルド → タグ付け → push
-docker build --platform linux/amd64 -t devforge-${ENV} ./backend
-docker tag devforge-${ENV} ${REGION}-docker.pkg.dev/${PROJECT_ID}/devforge-${ENV}/devforge-${ENV}:latest
-docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/devforge-${ENV}/devforge-${ENV}:latest
-```
-
-#### 4. Cloud Run にデプロイする
-
-```bash
-gcloud run deploy devforge-${ENV} \
-  --image ${REGION}-docker.pkg.dev/${PROJECT_ID}/devforge-${ENV}/devforge-${ENV}:latest \
-  --region ${REGION} \
-  --platform managed
-
-# デプロイ確認（URL取得）
-gcloud run services describe devforge-${ENV} --region ${REGION} \
-  --format "value(status.url)"
-```
-
-秘密情報（`ADMIN_TOKEN` 等）は Secret Manager 経由の環境変数注入を推奨。
-GitHub OAuth の `state` は backend 側 Cookie で検証されるため、`CORS_ORIGINS` と Cookie 設定を環境に合わせて揃えること。
-
-#### 5. トラブルシューティング
-
-| エラー | 原因 | 対処 |
-|---|---|---|
-| `Error 403: ... is disabled` | GCP API が未有効 | `gcloud services enable <API名>` |
-| `exec format error` | Apple Silicon で `--platform linux/amd64` が未指定 | 上記手順3でビルドし直す |
-| `deletion protection is enabled` | Terraform destroy 時 | リソースの `deletion_protection = false` に変更 → `apply` → `destroy` |
-
----
-
-## API概要
-
-### 認証
-- `POST /auth/register`: 新規ユーザー登録（username, email, password）
-- `POST /auth/login`: ログイン
-- `GET /auth/me`: 現在のログインユーザー取得
-- `POST /auth/logout`: ログアウト
-- `POST /auth/refresh`: リフレッシュトークンでアクセストークンを更新
-- `GET /auth/github/login-url`: GitHub OAuth 開始URL取得
-- `GET /auth/github/login`: GitHub OAuth 認可URLへリダイレクト
-- `GET /auth/github/callback`: GitHub OAuth コールバック（GitHub→backend）
-- `POST /auth/github/callback`: 互換用コールバック
-
-### 職務経歴書
-- `POST /api/resumes`: 作成（1ユーザー1件。既存時は `409`）
-- `PUT /api/resumes/{id}`: 更新
-- `DELETE /api/resumes`: 削除
-- `GET /api/resumes/latest`: 現在データ取得
-- `GET /api/resumes/{id}`: 取得
-- `GET /api/resumes/{id}/pdf`: PDFダウンロード
-- `GET /api/resumes/{id}/markdown`: Markdownダウンロード
-
-### GitHub分析
-- `POST /api/intelligence/analyze`: GitHub活動の全パイプライン分析（GitHub OAuth必須、202 非同期、レート: 5/分）
-- `GET /api/intelligence/cache`: キャッシュされた分析結果を取得
-- `GET /api/intelligence/cache/status`: 分析タスクのステータスをポーリング（軽量）
-- `POST /api/intelligence/position-advice`: 分析結果をもとにポジション別学習アドバイスを生成（レート: 10/分）
-
-### ブログ連携
-- `GET /api/blog/accounts`: 連携アカウント一覧
-- `POST /api/blog/accounts`: アカウント追加（Zenn / note、レート: 10/分）
-- `DELETE /api/blog/accounts/{id}`: アカウント削除
-- `GET /api/blog/articles`: 記事一覧（プラットフォームでフィルタ可）
-- `POST /api/blog/accounts/{id}/sync`: 外部プラットフォームから記事同期（レート: 10/分）
-- `GET /api/blog/score`: ブログスコア（投稿頻度・反応数・技術記事比率等）を算出
-- `GET /api/blog/summary-cache`: キャッシュされたAI要約を取得
-- `GET /api/blog/summary-cache/status`: AI要約タスクのステータスをポーリング（軽量）
-- `POST /api/blog/summarize`: ブログAI要約を生成（202 非同期、レート: 5/分）
-
-### AIキャリアパス分析
-- `POST /api/career-analysis/generate`: キャリアパス分析を開始（職務経歴書必須、202 非同期、レート: 5/分）
-- `GET /api/career-analysis/`: 分析履歴一覧
-- `GET /api/career-analysis/{id}`: 分析結果詳細
-- `GET /api/career-analysis/{id}/status`: ステータスをポーリング（軽量）
-- `DELETE /api/career-analysis/{id}`: 分析結果削除
-
-### マスタデータ管理
-- `GET /api/master-data/qualification`: 資格一覧
-- `POST /api/master-data/qualification`: 資格追加（管理者）
-- `PUT /api/master-data/qualification/{id}`: 資格更新（管理者）
-- `DELETE /api/master-data/qualification/{id}`: 資格削除（管理者）
-- `GET /api/master-data/technology-stack`: 技術スタック一覧
-- `POST /api/master-data/technology-stack`: 技術スタック追加（管理者）
-- `PUT /api/master-data/technology-stack/{id}`: 技術スタック更新（管理者）
-- `DELETE /api/master-data/technology-stack/{id}`: 技術スタック削除（管理者）
-
-### 通知
-- `GET /api/notifications`: 通知一覧（直近30件）
-- `GET /api/notifications/unread-count`: 未読件数
-- `PATCH /api/notifications/{id}/read`: 個別既読
-- `POST /api/notifications/read-all`: 全て既読
-
-### その他
-- `GET /health`: ヘルスチェック
-
-## 環境変数
-
-各 `.env.example` を参照。主要な設定:
-
-| 変数 | 用途 |
-|---|---|
-| `TURSO_DATABASE_URL` | Turso (libSQL) 接続 URL（ローカル: `http://127.0.0.1:8080` / 本番: `libsql://<db>.turso.io`） |
-| `TURSO_AUTH_TOKEN` | Turso 認証トークン（本番は Secret Manager から注入。`turso dev` では空） |
-| `JWT_PRIVATE_KEY` | RS256署名用秘密鍵（PEM形式） |
-| `JWT_PUBLIC_KEY` | RS256検証用公開鍵（PEM形式） |
-| `FIELD_ENCRYPTION_KEY` | Fernet暗号化キー |
-| `ADMIN_TOKEN` | 管理者操作用トークン |
-| `CORS_ORIGINS` | 許可するオリジン（カンマ区切り） |
-| `COOKIE_SECURE` | 認証Cookieに `Secure` を付与するか（本番: `true`） |
-| `COOKIE_SAMESITE` | 認証Cookieの SameSite（`lax` / `strict` / `none`） |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth（任意） |
-| `LLM_PROVIDER` | `ollama` または `vertex` |
-| `OLLAMA_BASE_URL` | Ollama エンドポイント（`LLM_PROVIDER=ollama` 時必須） |
-| `OLLAMA_MODEL` | Ollama 利用時のモデル名（デフォルト: `gemma3:4b`） |
-| `OLLAMA_TIMEOUT` | Ollama 生成タイムアウト秒数（デフォルト: `1200`） |
-| `VERTEX_PROJECT_ID` / `VERTEX_LOCATION` | Vertex AI 利用時の設定 |
-| `VERTEX_MODEL` | Vertex AI 利用時のモデル名（デフォルト: `gemini-2.5-flash-lite`） |
-| `VITE_API_BASE_URL` | フロントエンド→バックエンドURL |
 
 ## システム構成図
 
@@ -345,7 +107,7 @@ graph TB
 
     subgraph "GCP Project: <PROJECT_ID>"
         subgraph "Cloud Storage"
-            TfstateBucket["GCS: devforge-tfstate-{env}<br/>Terraform State"]
+            TfstateBucket["GCS: devforge-tfstate-{env}<br/>OpenTofu State"]
         end
 
         subgraph "Cloud Run"
@@ -382,114 +144,3 @@ graph TB
     SA -->|"実行権限"| CloudRun
     SA -->|"secretAccessor"| Secrets
 ```
-
-## データベース・マイグレーション
-
-### Turso (libSQL)
-
-- **本番**: Turso Cloud（東京リージョン `nrt`）。`turso CLI` で DB と auth token を発行し、URL は Cloud Run 環境変数、トークンは Secret Manager に登録
-- **ローカル**: `turso dev --db-file ./backend/local.sqlite` で libSQL HTTP サーバーを起動
-- **接続**: `app.core.settings.build_sqlalchemy_database_url()` が `TURSO_DATABASE_URL` を SQLAlchemy URL（HTTP/HTTPS は `sqlite+libsql://`、ローカルファイルは `sqlite:///`）に変換
-- **ローカル DB**: `backend/local.sqlite` はコミットしない。必要時に自動生成/再作成する
-
-### Alembicマイグレーション
-
-本番環境では Cloud Run 起動時に自動実行される（`alembic upgrade head`）。
-手動実行が必要な場合:
-
-```bash
-cd backend && alembic upgrade head
-```
-
-設定: `backend/alembic.ini` / `backend/alembic_migrations/versions`
-libSQL は SQLite 互換で ALTER COLUMN 非対応のため、複雑なスキーマ変更は `batch_alter_table` を使う。
-
-## データ設計メモ
-
-- `basic_info` / `resumes` は **1ユーザー1件**
-- `career_analyses` は **複数バージョン保持可能**（分析履歴として蓄積）
-- `intelligence_cache` / `blog_summary_cache` は **1ユーザー1件**（最新結果のみ保持）
-- 可変長データは JSON ではなく子テーブルに正規化
-  - `basic_info_qualifications`
-  - `resume_experiences` / `resume_clients` / `resume_projects` / `resume_project_*`
-  - `blog_article_tags`
-- 日付は DB では `DATE` として保持
-  - 日単位: `record_date` / `birthday` / `blog_articles.published_at`
-  - 月単位: 職務経歴・学歴・職歴は月初日に正規化して保存し、API では `YYYY-MM` で返却
-- `blog_articles` は `account_id` 起点で管理し、`platform` は `blog_accounts` から解決
-- 非同期タスクはステータスフィールド（`pending` / `running` / `completed` / `failed`）で管理し、フロントエンドはポーリングで結果を取得する
-
-## テスト
-
-### フロントエンド（ユニット・ビルド）
-```bash
-cd frontend
-npm run lint
-npm run test
-npm run build
-```
-
-### フロントエンド E2E（Playwright）
-```bash
-cd frontend
-npm run test:e2e        # ヘッドレス実行
-npm run test:e2e:ui     # UI モードで実行（デバッグ用）
-```
-
-E2E テストは `frontend/e2e/` に配置。新しいページ・ルート・認証フロー・レイアウト変更時は必ず実行すること。
-
-### バックエンド
-```bash
-cd backend
-.venv/bin/python -m ruff check app tests alembic_migrations
-.venv/bin/python -m pytest -q tests
-```
-
-## CI/CD（GitHub Actions）
-
-### アプリケーション CI（`.github/workflows/ci.yml`）
-
-- **実行タイミング**: `pull_request` / `push`（target: `dev` / `stg` / `main`、`frontend/**` or `backend/**` 変更時）
-- **テスト内容**:
-  - frontend: `npm run lint`, `npm run test`, `npm run build`, E2E（Playwright / Chromium）
-  - backend: `ruff check`, `pytest`
-- **自動デプロイ**（`dev` ブランチ push 時のみ）:
-  - フロントエンド → Cloudflare Pages へデプロイ
-  - バックエンド → Artifact Registry へイメージ push → Cloud Run デプロイ
-  - GitHub Actions 実行用サービスアカウントには、Cloud Run runtime SA に対する `roles/iam.serviceAccountUser` が必要
-- **低コスト運用**: Linuxランナー、依存キャッシュ、`concurrency` で古い実行を自動キャンセル、アプリ差分がない場合は重い処理をスキップ
-
-### OpenTofu 検証 CI（`.github/workflows/opentofu-ci.yml`）
-
-- **実行タイミング**: `pull_request` / `push`（target: `dev` / `stg` / `main`、`infra/**` 変更時）
-- **実行内容**:
-  - `tofu fmt -check -recursive`
-  - `tofu init -backend=false`
-  - `tofu validate`
-
-## ブランチ保護
-
-### ローカル（ターミナル）での直コミット/直push防止
-
-```bash
-./scripts/setup-git-hooks.sh
-```
-
-- `.githooks/pre-commit`: `dev` / `stg` / `main` への直接コミットを拒否
-- `.githooks/pre-push`: `dev` / `stg` / `main` への直接pushを拒否
-
-### GitHub 側での強制保護（推奨）
-
-1. GitHub リポジトリの `Settings` -> `Branches` -> `Add branch protection rule`
-2. `Branch name pattern` に `dev` を設定
-3. 以下を有効化
-   - `Require a pull request before merging`
-   - `Require status checks to pass before merging`
-     - `test`
-     - `opentofu-fmt`
-     - `opentofu-validate-dev`
-     - `opentofu-validate-stg`
-     - `opentofu-validate-prod`
-4. `stg` と `main` についても同じ設定を追加
-5. `Do not allow bypassing the above settings`（利用可能な場合）を有効化
-6. 保存

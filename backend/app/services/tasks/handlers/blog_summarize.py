@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from ....core.logging_utils import get_logger
 from ....models import BlogSummaryCache
 from ....repositories import BlogArticleRepository
+from ..exceptions import NonRetryableError
 from .base import TaskHandler
 
 logger = get_logger(__name__)
@@ -39,8 +40,9 @@ class BlogSummarizeHandler(TaskHandler):
             return
         cache = self.get_record(db, payload)
         if not cache:
-            logger.error("ブログサマリキャッシュが見つかりません", extra={"user_id": user_id})
-            return
+            message = "ブログサマリキャッシュが見つかりません"
+            logger.error(message, extra={"user_id": user_id})
+            raise NonRetryableError(f"{message} (user_id={user_id})")
 
         cache.status = "processing"
         cache.started_at = _now()
