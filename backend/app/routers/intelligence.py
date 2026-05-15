@@ -26,7 +26,7 @@ from ..schemas.intelligence import (
     ProgressResponse,
 )
 from ..services.intelligence.llm_advice_service import LLMPositionAdviceService
-from ..services.tasks import TaskType, get_task_dispatcher
+from ..services.tasks import AsyncTaskCacheService, TaskType
 
 logger = logging.getLogger(__name__)
 
@@ -113,17 +113,15 @@ async def analyze(
 
     # 進行中のタスクがあればそのステータスを返す
     cache = _get_or_create_cache(db, user.id)
-    if cache.status in ("pending", "processing"):
+    service = AsyncTaskCacheService(db, cache)
+    if service.is_in_progress():
         return {"status": cache.status}
 
-    # pending にセットして即座に返却
-    cache.status = "pending"
-    cache.error_message = None
-    db.commit()
+    service.reset_to_pending()
 
     try:
-        dispatcher = get_task_dispatcher(background_tasks)
-        await dispatcher.dispatch(
+        await service.dispatch(
+            background_tasks,
             TaskType.GITHUB_ANALYSIS,
             {
                 "user_id": user.id,
@@ -131,12 +129,10 @@ async def analyze(
                 "github_token": user.github_token,
                 "include_forks": payload.include_forks,
             },
+            failure_message="タスクの開始に失敗しました",
+            logger=logger,
         )
     except Exception:
-        logger.exception("GitHub 分析タスクのディスパッチに失敗しました")
-        cache.status = "dead_letter"
-        cache.error_message = "タスクの開始に失敗しました"
-        db.commit()
         raise_app_error(
             status_code=500,
             code=ErrorCode.INTERNAL_ERROR,
@@ -145,10 +141,6 @@ async def analyze(
         )
 
     return {"status": "pending"}
-
-
-# リトライ可能な終端ステータス（リトライ枯渇 or リトライ不可エラー）
-_RETRYABLE_TERMINAL_STATUSES = {"dead_letter"}
 
 
 @router.post("/analyze/retry", status_code=202)
@@ -181,7 +173,8 @@ async def retry_analyze(
             message=get_error("intelligence.no_analysis_cache"),
             action="先に GitHub 分析を実行してください",
         )
-    if cache.status not in _RETRYABLE_TERMINAL_STATUSES:
+    service = AsyncTaskCacheService(db, cache)
+    if not service.is_retryable_terminal():
         raise_app_error(
             status_code=409,
             code=ErrorCode.VALIDATION_ERROR,
@@ -192,16 +185,11 @@ async def retry_analyze(
     github_username = user.username.removeprefix("github:")
     include_forks = payload.include_forks if payload else False
 
-    cache.status = "pending"
-    cache.error_message = None
-    cache.retry_count = 0
-    cache.started_at = None
-    cache.completed_at = None
-    db.commit()
+    service.reset_to_pending(reset_retry_count=True)
 
     try:
-        dispatcher = get_task_dispatcher(background_tasks)
-        await dispatcher.dispatch(
+        await service.dispatch(
+            background_tasks,
             TaskType.GITHUB_ANALYSIS,
             {
                 "user_id": user.id,
@@ -209,12 +197,10 @@ async def retry_analyze(
                 "github_token": user.github_token,
                 "include_forks": include_forks,
             },
+            failure_message="タスクの再実行に失敗しました",
+            logger=logger,
         )
     except Exception:
-        logger.exception("GitHub 分析タスクの再実行に失敗しました")
-        cache.status = "dead_letter"
-        cache.error_message = "タスクの再実行に失敗しました"
-        db.commit()
         raise_app_error(
             status_code=500,
             code=ErrorCode.INTERNAL_ERROR,

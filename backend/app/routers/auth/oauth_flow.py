@@ -214,7 +214,7 @@ def begin_github_oauth(
     GITHUB_CLIENT_ID が未設定の場合は503を発生させる。
 
     Args:
-        frontend_url: 認証完了後の遷移先（現状は `state` 検証のフロント実装で利用）
+        frontend_url: 認証完了後の遷移先。CALLBACK_BASE_URL 未設定時に redirect_uri のベースとして使用する。
 
     Returns:
         (authorization_url, state) のタプル

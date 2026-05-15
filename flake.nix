@@ -52,6 +52,9 @@
             # --- IaC ---
             opentofu           # OpenTofu CLI（Terraform 互換 / インフラ管理）
 
+            # --- IaC ---
+            opentofu           # OpenTofu CLI（Terraform 互換 / インフラ管理）
+
             # --- 共通ツール ---
             git
             gh                 # GitHub CLI

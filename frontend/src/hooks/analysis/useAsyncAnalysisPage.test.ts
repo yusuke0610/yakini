@@ -48,6 +48,23 @@ describe("useAsyncAnalysisPage", () => {
     expect(result.current.result).toBeNull();
   });
 
+  /** 初回マウント時に status が retrying の場合、polling フェーズに遷移すること */
+  it("status が retrying の場合 polling フェーズに遷移する", async () => {
+    mockLoadCache.mockResolvedValue({ result: null, status: "retrying" });
+    mockCheckStatus.mockResolvedValue({ status: "retrying" });
+
+    const { result } = renderHook(() =>
+      useAsyncAnalysisPage({
+        loadCache: mockLoadCache,
+        checkStatus: mockCheckStatus,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.phase).toBe("polling");
+    });
+  });
+
   /** 初回マウント時に status が pending の場合、polling フェーズに遷移すること */
   it("status が pending の場合 polling フェーズに遷移する", async () => {
     mockLoadCache.mockResolvedValue({ result: null, status: "pending" });

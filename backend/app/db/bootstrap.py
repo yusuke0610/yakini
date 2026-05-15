@@ -22,6 +22,23 @@ def _validate_jwt_keys() -> None:
         ) from e
 
 
+def _validate_jwt_keys() -> None:
+    """起動時に JWT 鍵ペアの整合性を検証する。署名 → 検証が通らない場合は RuntimeError を送出する。"""
+    from jose import JWTError, jwt
+
+    from ..core.settings import get_jwt_private_key, get_jwt_public_key
+
+    try:
+        priv = get_jwt_private_key()
+        pub = get_jwt_public_key()
+        tok = jwt.encode({"sub": "__bootstrap_check__"}, priv, algorithm="RS256")
+        jwt.decode(tok, pub, algorithms=["RS256"])
+    except JWTError as e:
+        raise RuntimeError(
+            f"JWT 鍵ペアが不正です（秘密鍵と公開鍵が一致しないか、フォーマットが壊れています）: {e}"
+        ) from e
+
+
 def bootstrap() -> None:
     _validate_jwt_keys()
     # Turso (libSQL) がデータ永続化を担うため、起動時の DB 復元処理は不要

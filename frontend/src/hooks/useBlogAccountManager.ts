@@ -11,7 +11,7 @@ import {
 import type { BlogAccount, BlogArticle } from "../types";
 import { useBlogSummaryPolling } from "./useBlogSummaryPolling";
 
-type PlatformKey = "zenn" | "note" | "qiita";
+export type PlatformKey = "zenn" | "note" | "qiita";
 
 /**
  * BlogPage のブログアカウント管理・同期・AI分析ロジックを提供するカスタムフック。
@@ -20,7 +20,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
   const [accounts, setAccounts] = useState<BlogAccount[]>([]);
   const [articles, setArticles] = useState<BlogArticle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [accountError, setAccountError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   /** プラットフォームごとの入力中ユーザー名 */
@@ -56,7 +56,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
         setArticles([]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "データの取得に失敗しました");
+      setAccountError(e instanceof Error ? e.message : "データの取得に失敗しました");
     } finally {
       setLoading(false);
     }
@@ -76,7 +76,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     const username = draftUsernames[platform]?.trim();
     if (!username) return;
     setSavingPlatform(platform);
-    setError(null);
+    setAccountError(null);
     setSuccess(null);
     try {
       const account = await addBlogAccount(platform, username);
@@ -91,14 +91,14 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
         );
       } catch (syncErr) {
         setSuccess("アカウントを連携しました");
-        setError(
+        setAccountError(
           syncErr instanceof Error
             ? syncErr.message
             : "記事の同期に失敗しました。「同期」ボタンで再試行してください。",
         );
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "アカウントの連携に失敗しました");
+      setAccountError(e instanceof Error ? e.message : "アカウントの連携に失敗しました");
     } finally {
       setSavingPlatform(null);
     }
@@ -111,7 +111,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     const account = accountMap.get(platform);
     if (!account) return;
     setSyncingPlatform(platform);
-    setError(null);
+    setAccountError(null);
     setSuccess(null);
     try {
       const result = await syncBlogAccount(account.id);
@@ -120,7 +120,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
         `${result.synced_count}件の新しい記事を取得しました（合計: ${result.total_count}件）`,
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "同期に失敗しました");
+      setAccountError(e instanceof Error ? e.message : "同期に失敗しました");
     } finally {
       setSyncingPlatform(null);
     }
@@ -133,14 +133,14 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     const account = accountMap.get(platform);
     if (!account) return;
     setDeletingPlatform(platform);
-    setError(null);
+    setAccountError(null);
     setSuccess(null);
     try {
       await deleteBlogAccount(account.id);
       await loadData();
       setSuccess("アカウントを解除しました");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "アカウントの解除に失敗しました");
+      setAccountError(e instanceof Error ? e.message : "アカウントの解除に失敗しました");
     } finally {
       setDeletingPlatform(null);
     }
@@ -155,7 +155,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     const trimmedUsername = username.trim();
     if (!trimmedUsername) return false;
     setUpdatingPlatform(platform);
-    setError(null);
+    setAccountError(null);
     setSuccess(null);
     try {
       await updateBlogAccount(platform, trimmedUsername);
@@ -170,7 +170,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
         );
       } catch (syncErr) {
         setSuccess("usernameを更新しました。再同期してください。");
-        setError(
+        setAccountError(
           syncErr instanceof Error
             ? syncErr.message
             : "記事の同期に失敗しました。「同期」ボタンで再試行してください。",
@@ -178,7 +178,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
       }
       return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "usernameの更新に失敗しました");
+      setAccountError(e instanceof Error ? e.message : "usernameの更新に失敗しました");
       return false;
     } finally {
       setUpdatingPlatform(null);
@@ -189,7 +189,8 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     accounts,
     articles,
     loading,
-    error: error || summaryError,
+    accountError,
+    summaryError,
     success,
     draftUsernames,
     setDraftUsernames,
