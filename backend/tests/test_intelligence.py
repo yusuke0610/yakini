@@ -7,11 +7,11 @@ Tests cover deterministic modules only (no GitHub API calls).
 import asyncio
 from unittest.mock import AsyncMock, patch
 
+from app.services.intelligence.github.repo_analyzer import parse_go_mod, parse_pom_xml
 from app.services.intelligence.github_collector import RepoData
 from app.services.intelligence.pipeline import IntelligenceResult, run_pipeline
 from app.services.intelligence.response_mapper import map_pipeline_result
 from app.services.intelligence.skill_extractor import extract_skills
-from fastapi.testclient import TestClient
 
 from conftest import auth_header
 
@@ -257,7 +257,6 @@ class TestSkillExtractor:
 
 class TestDependencyParsing:
     def test_parse_pom_xml(self):
-        from app.services.intelligence.github.repo_analyzer import parse_pom_xml
 
         content = (
             "<project><dependencies><dependency>"
@@ -268,7 +267,6 @@ class TestDependencyParsing:
         assert "spring-boot-starter-web" in result
 
     def test_parse_go_mod(self):
-        from app.services.intelligence.github.repo_analyzer import parse_go_mod
 
         content = (
             "module example.com/app\n\nrequire (\n"
@@ -281,7 +279,7 @@ class TestDependencyParsing:
 # ── Intelligence Endpoint Tests ────────────────────────────────────────
 
 
-def test_analyze_requires_github_user(client: TestClient) -> None:
+def test_analyze_requires_github_user(client) -> None:
     """通常ユーザー（非 GitHub）で analyze を呼ぶと 403 になること。"""
     headers = auth_header(client, "normal_analyze")
     resp = client.post(

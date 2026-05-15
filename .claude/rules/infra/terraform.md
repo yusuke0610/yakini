@@ -5,7 +5,7 @@ paths:
 
 # Infrastructure (Terraform)
 
-```
+```text
 infra/
 ├── modules/             # cloud_run, artifact_registry, cloud_tasks, cloudflare, monitoring, service_account
 └── environments/        # dev, stg, prod（各環境で tfvars 管理）

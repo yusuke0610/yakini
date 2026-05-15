@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any
+from typing import Any, NoReturn
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -66,7 +66,7 @@ def raise_app_error(
     action: str | None = None,
     retry_after: int | None = None,
     headers: dict[str, str] | None = None,
-) -> None:
+) -> NoReturn:
     raise HTTPException(
         status_code=status_code,
         detail=build_app_error_response(

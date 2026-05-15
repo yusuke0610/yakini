@@ -80,7 +80,7 @@
     "HTML/CSS": ["CSS", "HTML"],
     "Docker": ["Docker"],
     "CI/CD": ["CI/CD"],
-    "Git workflow": ["CI/CD"],
+    "Git workflow": ["Git", "GitHub", "GitLab"],
     "クラウドサービス(GCP/AWS/Azure)基礎": ["GCP", "AWS", "Azure"]
   }
 }

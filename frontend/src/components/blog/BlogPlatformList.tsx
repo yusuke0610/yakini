@@ -33,9 +33,9 @@ type BlogPlatformListProps = {
   setDraftUsernames: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   savingPlatform: string | null;
   syncingPlatform: string | null;
-  onSave: (platform: PlatformKey) => void;
-  onSync: (platform: PlatformKey) => void;
-  onDelete: (platform: PlatformKey) => void;
+  onSave: (platform: PlatformKey) => Promise<void>;
+  onSync: (platform: PlatformKey) => Promise<void>;
+  onDelete: (platform: PlatformKey) => Promise<void>;
 };
 
 /** プラットフォーム連携行の一覧を描画するコンポーネント。 */
@@ -93,7 +93,12 @@ export function BlogPlatformList({
                       setDraftUsernames((prev) => ({ ...prev, [pf.key]: e.target.value }))
                     }
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") onSave(pf.key);
+                      if (
+                        e.key === "Enter" &&
+                        savingPlatform !== pf.key &&
+                        draftUsernames[pf.key]?.trim()
+                      )
+                        onSave(pf.key);
                     }}
                   />
                   <button

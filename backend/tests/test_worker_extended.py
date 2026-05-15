@@ -181,20 +181,20 @@ class TestRunGithubAnalysis:
         db_session.refresh(cache)
         assert cache.status == "dead_letter"
 
-    def test_no_cache_returns_early(self, db_session: Session):
-        """キャッシュが見つからない場合、例外なく早期リターンすること。"""
-        _run(
-            _run_github_analysis(
-                db_session,
-                {
-                    "user_id": "nonexistent-user-id",
-                    "github_username": "nobody",
-                    "github_token": None,
-                    "include_forks": False,
-                },
+    def test_no_cache_raises_runtime_error(self, db_session: Session):
+        """キャッシュが見つからない場合、RuntimeError が送出されること。"""
+        with pytest.raises(RuntimeError, match="GitHub analysis cache not found"):
+            _run(
+                _run_github_analysis(
+                    db_session,
+                    {
+                        "user_id": "nonexistent-user-id",
+                        "github_username": "nobody",
+                        "github_token": None,
+                        "include_forks": False,
+                    },
+                )
             )
-        )
-        # 例外が発生しないことを確認
 
 
 # ── _run_blog_summarize ───────────────────────────────────────────────────
@@ -503,10 +503,12 @@ class TestGenerateAdviceIfAvailable:
 
         assert result == ("学習アドバイスです", False)
 
-    def test_llm_exception_returns_none(self):
-        """LLM が例外を送出した場合 (None, True) を返し例外が外に漏れないこと。"""
+    def test_llm_retryable_error_returns_warning(self):
+        """LLM が想定内の RetryableError を送出した場合 (None, True) を返し例外を握りつぶすこと。"""
+        from app.services.tasks.exceptions import RetryableError
+
         mock_llm = MagicMock()
-        mock_llm.check_available = AsyncMock(side_effect=Exception("LLM クラッシュ"))
+        mock_llm.check_available = AsyncMock(side_effect=RetryableError("LLM 一時障害"))
 
         with patch(
             "app.services.intelligence.github_analysis_service.get_llm_client",
@@ -515,6 +517,18 @@ class TestGenerateAdviceIfAvailable:
             result = _run(_generate_advice_if_available(self._analysis()))
 
         assert result == (None, True)
+
+    def test_llm_unexpected_exception_propagates(self):
+        """LLM が予期しない例外を送出した場合は再送出されること（プログラミングエラー検知のため）。"""
+        mock_llm = MagicMock()
+        mock_llm.check_available = AsyncMock(side_effect=Exception("LLM クラッシュ"))
+
+        with patch(
+            "app.services.intelligence.github_analysis_service.get_llm_client",
+            return_value=mock_llm,
+        ):
+            with pytest.raises(Exception, match="LLM クラッシュ"):
+                _run(_generate_advice_if_available(self._analysis()))
 
     def test_no_position_scores_returns_none(self):
         """position_scores が None の場合 (None, False) を返すこと。"""

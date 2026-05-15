@@ -43,7 +43,8 @@ type CareerAnalysisResultViewProps = {
 
 /** 分析結果詳細ビュー。全結果セクションをまとめて表示する。 */
 export function CareerAnalysisResultView({ selected, onBack }: CareerAnalysisResultViewProps) {
-  const r = selected.result!;
+  if (!selected.result) return null;
+  const r = selected.result;
   return (
     <div className={styles.dashboard}>
       <div className={styles.dashboardHeader}>

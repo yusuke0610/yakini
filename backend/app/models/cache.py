@@ -21,6 +21,9 @@ class GitHubAnalysisCache(Base):
     position_advice: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="completed", server_default="completed")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    # LLM 失敗のような「分析自体は完了したが部分的に欠落した」非致命的状況を残す。
+    # error_message は真の失敗のみに使う。
+    warning_message: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     max_retries: Mapped[int] = mapped_column(Integer, nullable=False, default=3, server_default="3")
     next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
