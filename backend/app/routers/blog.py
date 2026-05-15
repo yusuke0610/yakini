@@ -16,7 +16,7 @@ GET    /api/blog/score                 — ブログスコアリング
 import logging
 from dataclasses import asdict
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from ..core.errors import resolve_async_error_code
@@ -32,7 +32,6 @@ from ..schemas import (
     BlogAccountUpdate,
     BlogArticleResponse,
     BlogScoreResponse,
-    BlogSummaryRequest,
     BlogSummaryResponse,
     BlogSyncResponse,
 )
@@ -297,6 +296,32 @@ async def summarize_blog(
             {"user_id": user.id},
             failure_message="タスクの開始に失敗しました",
             logger=logger,
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail=get_error("task.dispatch_failed"),
+        )
+
+    return BlogSummaryResponse(
+        summary="",
+        available=False,
+        status="pending",
+    )
+
+
+@router.post("/summarize/retry", response_model=BlogSummaryResponse, status_code=202)
+@limiter.limit("5/minute")
+async def retry_summarize_blog(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """失敗したブログサマリタスクを手動で再実行する。
+
+    ``dead_letter`` 状態のキャッシュのみ再実行可能。記事は worker 側で
+    ``BlogArticleRepository`` から取得するため、リクエストボディは不要。
     """
     cache = BlogSummaryCacheRepository(db, user.id).get()
     if not cache:
