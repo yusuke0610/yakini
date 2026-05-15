@@ -175,7 +175,8 @@
         "DYLD",
         "turso",
         "libsql",
-        "Qiita"
+        "Qiita",
+        "pyproject"
     ],
     "flake8.args": [
         "--max-line-length=100"

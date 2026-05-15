@@ -161,8 +161,10 @@ frontend/src/
 
 ## 最低限の検証コマンド
 
-- `cd frontend && npm run lint`
-- `cd frontend && npm test`
-- `cd frontend && npm run build`
+- `make lint-frontend`
+- `make test-frontend`
+- `make build-frontend`
+
+個別スクリプトを叩きたい場合は `nix develop --command bash -c "cd frontend && npm run <script>"` を使う。生シェルでの `cd frontend && npm ...` は AI エージェントでは禁止。
 
 コード変更を含む場合は、少なくとも影響範囲の画面とテストを確認し、最後に build まで通してください。
