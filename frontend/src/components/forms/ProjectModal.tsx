@@ -30,7 +30,7 @@ type ProjectModalProps = {
 /** プロジェクト情報を初期化する */
 function initProject(project: CareerProjectForm | null): CareerProjectForm {
   if (project) {
-    return JSON.parse(JSON.stringify(project));
+    return structuredClone(project);
   }
   return {
     name: "",

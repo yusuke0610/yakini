@@ -155,4 +155,30 @@ describe("api/client request", () => {
 
     await expect(request("/api/test")).rejects.toThrow("サーバーに接続できません");
   });
+
+  /** POST リクエストに Cookie の csrf_token が X-CSRF-Token ヘッダーとして付与されること */
+  it("POST リクエストに X-CSRF-Token ヘッダーが付与される", async () => {
+    Object.defineProperty(document, "cookie", {
+      writable: true,
+      value: "csrf_token=test-csrf-token",
+    });
+    const fetchMock = vi.fn().mockResolvedValue(makeResponse(200, {}));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await request("/api/test", { method: "POST", body: JSON.stringify({}) });
+
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options.headers as Record<string, string>)["X-CSRF-Token"]).toBe("test-csrf-token");
+  });
+
+  /** GET リクエストには X-CSRF-Token ヘッダーが付与されないこと */
+  it("GET リクエストには X-CSRF-Token ヘッダーが付与されない", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(makeResponse(200, {}));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await request("/api/test");
+
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options.headers as Record<string, string>)["X-CSRF-Token"]).toBeUndefined();
+  });
 });

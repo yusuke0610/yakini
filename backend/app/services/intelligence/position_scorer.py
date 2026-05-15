@@ -3,6 +3,10 @@
 
 GitHubリポジトリデータから5軸（Backend / Frontend / Fullstack / SRE / Cloud）の
 適性スコアを0-100で算出する。
+
+スキル分類辞書（言語→スキル、トピック→スキル、フレームワーク→スキル）は
+``skill_taxonomy/ownership_map.py`` に集約されており、本モジュールは
+スコア計算ロジックと不足スキル判定の関数のみを持つ。
 """
 
 import json
@@ -12,6 +16,14 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Set
 
 from .github_collector import RepoData
+from .skill_taxonomy import (
+    FILE_SKILL_MAP,
+    FRAMEWORK_SKILL_MAP,
+    FRAMEWORK_TO_TOPICS,
+    LANG_SKILL_MAP,
+    LANG_SKILL_THRESHOLD,
+    TOPIC_SKILL_MAP,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +85,7 @@ def calculate_position_scores(repos: List[RepoData]) -> PositionScores:
     # 検出フレームワークを等価なトピックに展開してスコア算出に反映させる
     # （リポジトリに topic タグが無くても依存関係から推定できるようにする）
     for fw in all_frameworks:
-        all_topics.update(_FRAMEWORK_TO_TOPICS.get(fw, ()))
+        all_topics.update(FRAMEWORK_TO_TOPICS.get(fw, ()))
 
     # 各ポジションのスコア算出
     backend = _calc_axis_score("backend", lang_ratios, all_topics, all_files)
@@ -146,132 +158,6 @@ def _calc_axis_score(
     return min(int(raw), 100)
 
 
-# 言語バイト比率からスキルへのマッピング（1% 以上で保有とみなす）
-_LANG_SKILL_MAP: Dict[str, str] = {
-    "Python": "Python", "Java": "Java", "Go": "Go",
-    "Rust": "Rust", "Ruby": "Ruby", "PHP": "PHP",
-    "TypeScript": "TypeScript", "JavaScript": "JavaScript",
-    "CSS": "CSS", "HTML": "HTML", "SCSS": "CSS",
-    "HCL": "Terraform", "Shell": "Shell",
-    "Kotlin": "Kotlin", "C#": "C#",
-}
-
-# GitHub トピックからスキルへのマッピング
-_TOPIC_SKILL_MAP: Dict[str, str] = {
-    "react": "React", "vue": "Vue", "angular": "Angular",
-    "nextjs": "Next.js", "docker": "Docker",
-    "kubernetes": "Kubernetes", "k8s": "Kubernetes",
-    "terraform": "Terraform", "aws": "AWS",
-    "gcp": "GCP", "azure": "Azure",
-    "ci-cd": "CI/CD", "graphql": "GraphQL",
-    "rest": "REST API", "api": "REST API",
-    "database": "SQL", "sql": "SQL",
-}
-
-# リポジトリルートファイルからスキルへのマッピング
-_FILE_SKILL_MAP: Dict[str, str] = {
-    "Dockerfile": "Docker",
-    "docker-compose.yml": "Docker",
-    "docker-compose.yaml": "Docker",
-    ".github": "CI/CD",
-    "Jenkinsfile": "CI/CD",
-    ".gitlab-ci.yml": "CI/CD",
-    ".circleci": "CI/CD",
-    "terraform": "Terraform",
-    ".terraform": "Terraform",
-}
-
-# 検出フレームワーク → position_weights.json で参照されるトピック語のマッピング。
-# リポジトリに topic タグが無いケースでも依存関係から推定できるよう、
-# `_calc_axis_score` の topic 判定に合成的に注入する。
-_FRAMEWORK_TO_TOPICS: Dict[str, tuple] = {
-    # フロントエンド
-    "React": ("react", "frontend", "web"),
-    "React Native": ("react", "frontend"),
-    "Next.js": ("nextjs", "react", "frontend", "web"),
-    "Gatsby": ("gatsby", "react", "frontend"),
-    "Remix": ("remix", "react", "frontend"),
-    "Vue": ("vue", "frontend", "web"),
-    "Nuxt.js": ("nuxt", "vue", "frontend"),
-    "Angular": ("angular", "frontend", "web"),
-    "Svelte": ("svelte", "frontend"),
-    "Astro": ("astro", "frontend"),
-    # バックエンド
-    "FastAPI": ("fastapi", "api", "backend"),
-    "Django": ("django", "backend", "api"),
-    "Flask": ("flask", "backend"),
-    "Express": ("express", "backend", "api"),
-    "NestJS": ("nestjs", "backend", "api"),
-    "Spring Boot": ("spring", "backend", "api"),
-    "Gin": ("backend", "api"),
-    "Echo": ("backend", "api"),
-    "Fiber": ("backend", "api"),
-    # データベース / API
-    "PostgreSQL": ("database",),
-    "MongoDB": ("database",),
-    "Redis": ("database",),
-    "GraphQL": ("graphql", "api"),
-    # インフラ / SRE
-    "Docker": ("docker",),
-    "Docker Compose": ("docker",),
-    "GitHub Actions": ("ci-cd",),
-    "Jenkins": ("ci-cd",),
-    "GitLab CI": ("ci-cd",),
-    "CircleCI": ("ci-cd",),
-    "Terraform": ("terraform", "iac"),
-    # クラウド
-    "AWS": ("aws", "cloud"),
-    "GCP": ("gcp", "cloud"),
-    "Azure": ("azure", "cloud"),
-}
-
-
-# 検出フレームワークからスキルへのマッピング
-_FRAMEWORK_SKILL_MAP: Dict[str, str] = {
-    "Docker": "Docker",
-    "Docker Compose": "Docker",
-    "GitHub Actions": "CI/CD",
-    "Jenkins": "CI/CD",
-    "GitLab CI": "CI/CD",
-    "CircleCI": "CI/CD",
-    "Terraform": "Terraform",
-    # フロントエンドフレームワーク
-    "React": "React",
-    "React Native": "React",
-    "Next.js": "React",
-    "Gatsby": "React",
-    "Remix": "React",
-    "Vue": "Vue",
-    "Nuxt.js": "Vue",
-    "Angular": "Angular",
-    "Svelte": "Svelte",
-    "Astro": "Astro",
-    # バックエンドフレームワーク
-    "FastAPI": "REST API",
-    "Django": "REST API",
-    "Flask": "REST API",
-    "Express": "REST API",
-    "NestJS": "REST API",
-    "Spring Boot": "REST API",
-    "Gin": "REST API",
-    "Echo": "REST API",
-    "Fiber": "REST API",
-    # データベース
-    "PostgreSQL": "SQL",
-    "MongoDB": "SQL",
-    "Redis": "SQL",
-    # クラウド SDK
-    "AWS": "AWS",
-    "GCP": "GCP",
-    "Azure": "Azure",
-    # GraphQL
-    "GraphQL": "GraphQL",
-}
-
-# 言語比率がこの閾値以上で「保有」とみなす
-_LANG_SKILL_THRESHOLD = 0.01
-
-
 def _detect_owned_skills(
     lang_ratios: Dict[str, float],
     topics: Set[str],
@@ -281,23 +167,31 @@ def _detect_owned_skills(
     """ユーザーが保有しているスキルを特定する。"""
     owned: Set[str] = set()
 
-    for lang, skill in _LANG_SKILL_MAP.items():
-        if lang_ratios.get(lang, 0) >= _LANG_SKILL_THRESHOLD:
+    for lang, skill in LANG_SKILL_MAP.items():
+        if lang_ratios.get(lang, 0) >= LANG_SKILL_THRESHOLD:
             owned.add(skill)
 
-    for topic, skill in _TOPIC_SKILL_MAP.items():
+    for topic, skill in TOPIC_SKILL_MAP.items():
         if topic in topics:
             owned.add(skill)
 
-    for fname, skill in _FILE_SKILL_MAP.items():
+    for fname, skill in FILE_SKILL_MAP.items():
         if fname in files:
             owned.add(skill)
 
-    for fw, skill in _FRAMEWORK_SKILL_MAP.items():
+    for fw, skill in FRAMEWORK_SKILL_MAP.items():
         if fw in frameworks:
             owned.add(skill)
 
     return owned
+
+
+# 要件名 → 必要スキル集合（いずれか一つ満たせば OK）
+# 中身は ``position_weights.json`` の ``requirement_skill_map`` から構築する。
+_REQUIREMENT_TO_OWNED_SKILLS: Dict[str, Set[str]] = {
+    req: set(skills)
+    for req, skills in _WEIGHTS.get("requirement_skill_map", {}).items()
+}
 
 
 def _find_missing_skills(owned: Set[str]) -> List[str]:
@@ -305,24 +199,9 @@ def _find_missing_skills(owned: Set[str]) -> List[str]:
     requirements = _WEIGHTS.get("fullstack_requirements", {})
     missing: List[str] = []
 
-    # 要件チェック用マッピング
-    # `React or Vue` は SPA フレームワーク系スキルがどれか一つあれば満たすものとする
-    checks = {
-        "Python or Java or Go": {"Python", "Java", "Go"},
-        "REST API設計": {"REST API", "GraphQL"},
-        "DB設計/SQL": {"SQL"},
-        "TypeScript": {"TypeScript"},
-        "React or Vue": {"React", "Vue", "Angular", "Svelte", "Astro"},
-        "HTML/CSS": {"CSS", "HTML"},
-        "Docker": {"Docker"},
-        "CI/CD": {"CI/CD"},
-        "Git workflow": {"CI/CD"},  # GitHub Actions等で代替
-        "クラウドサービス(GCP/AWS/Azure)基礎": {"GCP", "AWS", "Azure"},
-    }
-
-    for category, req_list in requirements.items():
+    for req_list in requirements.values():
         for req in req_list:
-            needed = checks.get(req, set())
+            needed = _REQUIREMENT_TO_OWNED_SKILLS.get(req, set())
             if needed and not (owned & needed):
                 missing.append(req)
 

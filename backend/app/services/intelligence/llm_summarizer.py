@@ -1,24 +1,32 @@
 """LLM を利用したキャリア分析・ブログ記事の要約生成。
 
 システムプロンプトは backend/prompts/ 配下の MD ファイルから都度読み込む。
+
+LLM クライアントは ``get_llm_client()`` をプロセス内で 1 度だけ初期化する
+（テスト・本番起動の双方で ``LLM_PROVIDER`` 切替を反映できるよう、遅延ロードする）。
 """
 
+from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 from ...core.logging_utils import get_logger
 from ...core.metrics import measure_time_async
 from ...utils.prompt_loader import load_prompt
 from ..llm.sanitizer import SanitizeContext, sanitize_text
-from .llm import get_llm_client
+from .llm import LLMClient, get_llm_client
 
 logger = get_logger(__name__)
 
-_client = get_llm_client()
+
+@lru_cache(maxsize=1)
+def _get_client() -> LLMClient:
+    """LLM クライアントをプロセス内で 1 度だけ生成して再利用する。"""
+    return get_llm_client()
 
 
 async def check_llm_available() -> bool:
     """LLM バックエンドが利用可能か確認します。"""
-    return await _client.check_available()
+    return await _get_client().check_available()
 
 
 def _build_blog_prompt(
@@ -60,7 +68,7 @@ async def summarize_blog_articles(
     """
     system_prompt = load_prompt("blog_analysis.md")
     prompt = _build_blog_prompt(articles, context)
-    return await _client.generate(system_prompt, prompt)
+    return await _get_client().generate(system_prompt, prompt)
 
 
 def _build_learning_advice_prompt(
@@ -117,4 +125,4 @@ async def generate_learning_advice(
     """
     system_prompt = load_prompt("github_analysis.md")
     prompt = _build_learning_advice_prompt(analysis, scores)
-    return await _client.generate(system_prompt, prompt)
+    return await _get_client().generate(system_prompt, prompt)
