@@ -162,7 +162,9 @@ backend/app/
 
 ## 最低限の検証コマンド
 
-- `cd backend && PYTHONPATH=. .venv/bin/python -m ruff check app tests alembic_migrations`
-- `cd backend && PYTHONPATH=. .venv/bin/python -m pytest -q tests`
+- `make lint-backend`
+- `make test-backend`
+
+特定ファイルだけ検証したい場合は `nix develop --command bash -c "cd backend && .venv/bin/python -m ruff check <path>"` を使う。生シェルで `.venv/bin/python` を直接叩くのは禁止（WeasyPrint の動的ライブラリが解決できず import に失敗する）。
 
 コード変更を含む場合は、少なくとも影響範囲のテストを回し、必要なら全件を回してください。

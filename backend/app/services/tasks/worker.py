@@ -8,6 +8,7 @@ Cloud: /internal/tasks/{type} エンドポイント経由で呼ばれる（Cloud
 リトライ・dead_letter・通知などのタスク横断ロジックのみを担う。
 """
 
+import time
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
@@ -19,7 +20,6 @@ from ...repositories.notification import NotificationRepository
 from .base import TaskType
 from .exceptions import NonRetryableError
 from .handlers import get_handler
-import time
 
 logger = get_logger(__name__)
 
