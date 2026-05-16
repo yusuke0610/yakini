@@ -9,6 +9,7 @@ import os
 
 from google.cloud import tasks_v2
 
+from ...core import env_keys
 from .base import TaskDispatcher, TaskType
 
 
@@ -18,12 +19,12 @@ class CloudTasksDispatcher(TaskDispatcher):
     def __init__(self):
         self._client = tasks_v2.CloudTasksClient()
         self._queue = self._client.queue_path(
-            os.environ["GCP_PROJECT_ID"],
-            os.environ.get("CLOUD_TASKS_LOCATION", "asia-northeast1"),
-            os.environ.get("CLOUD_TASKS_QUEUE", "devforge-ai-tasks"),
+            os.environ[env_keys.GCP_PROJECT_ID],
+            os.environ.get(env_keys.CLOUD_TASKS_LOCATION, "asia-northeast1"),
+            os.environ.get(env_keys.CLOUD_TASKS_QUEUE, "devforge-ai-tasks"),
         )
-        self._service_url = os.environ["CLOUD_TASKS_SERVICE_URL"]
-        self._service_account = os.environ.get("CLOUD_TASKS_SERVICE_ACCOUNT", "")
+        self._service_url = os.environ[env_keys.CLOUD_TASKS_SERVICE_URL]
+        self._service_account = os.environ.get(env_keys.CLOUD_TASKS_SERVICE_ACCOUNT, "")
 
     async def dispatch(self, task_type: TaskType, payload: dict) -> None:
         task = tasks_v2.Task(

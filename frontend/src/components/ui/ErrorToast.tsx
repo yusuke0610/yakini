@@ -1,3 +1,4 @@
+import { isErrorCode } from "../../constants/errorCodes";
 import { ERROR_CONFIG } from "../../constants/errorMessages";
 import styles from "./ErrorToast.module.css";
 
@@ -10,7 +11,7 @@ type Props = {
 };
 
 export function ErrorToast({ code, message, action, onRetry, errorId }: Props) {
-  const config = ERROR_CONFIG[code] ?? ERROR_CONFIG.INTERNAL_ERROR;
+  const config = isErrorCode(code) ? ERROR_CONFIG[code] : ERROR_CONFIG.INTERNAL_ERROR;
   const recovery = config.recovery;
   const recoveryFn = onRetry ?? recovery?.fn;
   const resolvedMessage = message ?? config.message;

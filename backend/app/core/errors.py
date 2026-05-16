@@ -7,6 +7,19 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ErrorCode(str, Enum):
+    """API エラーレスポンスの共通エラーコード。
+
+    本 enum は FE 側の ``frontend/src/constants/errorCodes.ts:ERROR_CODES`` および
+    ``frontend/src/constants/errorMessages.ts:ERROR_CONFIG`` のキー集合と一致させること。
+    片方だけ変更すると FE 側で ``INTERNAL_ERROR`` にサイレント fallback して
+    適切なメッセージと recovery action が表示されなくなる。
+
+    新しいコードを追加する手順:
+      1. 本 enum に値を追加
+      2. ``frontend/src/constants/errorCodes.ts:ERROR_CODES`` に文字列を追加
+      3. ``frontend/src/constants/errorMessages.ts:ERROR_CONFIG`` にメッセージと recovery を追加
+    """
+
     # 認証
     AUTH_EXPIRED = "AUTH_EXPIRED"
     AUTH_REQUIRED = "AUTH_REQUIRED"

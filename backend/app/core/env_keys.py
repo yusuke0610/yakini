@@ -1,0 +1,95 @@
+"""環境変数名の SSoT 定義モジュール。
+
+本モジュールは backend / infra / CI / docker-compose を跨いで使われる
+環境変数名（文字列リテラル）を Python 定数として集約する。
+
+## SSoT 違反の背景
+
+同じ環境変数名（例: `TURSO_DATABASE_URL`）が以下 4 箇所にリテラルとして
+独立に書かれており、rename 時に同期忘れの事故が起きやすい状態だった:
+
+- `backend/app/core/**` の `os.getenv("XXX", ...)`
+- `infra/modules/cloud_run/main.tf` の env block
+- `.github/workflows/ci.yml` の env / with ブロック
+- `docker-compose.yml` の environment ブロック
+
+## 運用ルール
+
+- backend 内では本モジュールの定数を参照する（`os.getenv("XXX")` ではなく `os.getenv(env_keys.XXX)`）
+- 新規環境変数を追加する場合は、まず本モジュールに定数を追加する
+- 環境変数名を rename する場合:
+  1. 本モジュールの定数値を更新
+  2. `infra/modules/cloud_run/main.tf` の env block を追従
+  3. `.github/workflows/ci.yml` の env / secrets 参照を追従
+  4. `docker-compose.yml` の environment ブロックを追従
+  5. `docs/api.md` の環境変数表を更新
+
+## 関連ドキュメント
+
+- 環境変数一覧と用途: `docs/api.md`「環境変数」セクション
+- インフラでの注入経路: `infra/modules/cloud_run/main.tf`
+- ローカル開発での注入経路: `docker-compose.yml`
+"""
+
+# --- Turso (libSQL) ---
+
+TURSO_DATABASE_URL = "TURSO_DATABASE_URL"
+TURSO_AUTH_TOKEN = "TURSO_AUTH_TOKEN"
+
+# --- 認証 / Cookie / CORS ---
+
+ADMIN_TOKEN = "ADMIN_TOKEN"
+JWT_PRIVATE_KEY = "JWT_PRIVATE_KEY"
+JWT_PUBLIC_KEY = "JWT_PUBLIC_KEY"
+COOKIE_SECURE = "COOKIE_SECURE"
+COOKIE_SAMESITE = "COOKIE_SAMESITE"
+CORS_ORIGINS = "CORS_ORIGINS"
+
+# --- 暗号化 ---
+
+FIELD_ENCRYPTION_KEY = "FIELD_ENCRYPTION_KEY"
+
+# --- GitHub OAuth ---
+
+GITHUB_CLIENT_ID = "GITHUB_CLIENT_ID"
+GITHUB_CLIENT_SECRET = "GITHUB_CLIENT_SECRET"
+CALLBACK_BASE_URL = "CALLBACK_BASE_URL"
+
+# --- Cloudflare Pages → Cloud Run 連携 ---
+
+INTERNAL_SECRET = "INTERNAL_SECRET"
+
+# --- アプリケーション識別 ---
+
+APP_VERSION = "APP_VERSION"
+ENVIRONMENT = "ENVIRONMENT"
+
+# --- LLM ---
+
+LLM_PROVIDER = "LLM_PROVIDER"
+VERTEX_PROJECT_ID = "VERTEX_PROJECT_ID"
+VERTEX_LOCATION = "VERTEX_LOCATION"
+VERTEX_MODEL = "VERTEX_MODEL"
+
+# --- 非同期タスク（Cloud Tasks / Local BackgroundTasks） ---
+
+TASK_RUNNER = "TASK_RUNNER"
+GCP_PROJECT_ID = "GCP_PROJECT_ID"
+CLOUD_TASKS_QUEUE = "CLOUD_TASKS_QUEUE"
+CLOUD_TASKS_LOCATION = "CLOUD_TASKS_LOCATION"
+CLOUD_TASKS_SERVICE_URL = "CLOUD_TASKS_SERVICE_URL"
+CLOUD_TASKS_SERVICE_ACCOUNT = "CLOUD_TASKS_SERVICE_ACCOUNT"
+
+# --- Upstash Redis ---
+
+UPSTASH_REDIS_URL = "UPSTASH_REDIS_URL"
+UPSTASH_REDIS_TOKEN = "UPSTASH_REDIS_TOKEN"
+
+# --- ログ ---
+
+LOG_FORMAT = "LOG_FORMAT"
+LOG_LEVEL = "LOG_LEVEL"
+
+# --- アプリ起動制御 ---
+
+APP_BOOTSTRAPPED = "APP_BOOTSTRAPPED"

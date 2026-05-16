@@ -1,4 +1,5 @@
 import { API_BASE_URL, request } from "./client";
+import { PATHS } from "./paths";
 
 type AuthResponse = { username: string; is_github_user: boolean };
 
@@ -16,7 +17,7 @@ export async function getCurrentUser(): Promise<AuthResponse | null> {
 }
 
 export async function handleGitHubCallback(code: string, state: string): Promise<AuthResponse> {
-  return request<AuthResponse>("/auth/github/callback", {
+  return request<AuthResponse>(PATHS.auth.githubCallback, {
     method: "POST",
     body: JSON.stringify({ code, state }),
   });

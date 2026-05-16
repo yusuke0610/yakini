@@ -14,6 +14,7 @@ from slowapi.errors import RateLimitExceeded  # noqa: E402
 from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
+from .core import env_keys  # noqa: E402
 from .core.errors import (  # noqa: E402
     ErrorCode,
     build_app_error_response,
@@ -44,7 +45,7 @@ from .routers import (  # noqa: E402
 async def lifespan(_: FastAPI):
     setup_logging()
     load_messages()
-    if os.getenv("APP_BOOTSTRAPPED", "0") != "1":
+    if os.getenv(env_keys.APP_BOOTSTRAPPED, "0") != "1":
         bootstrap()
     yield
 

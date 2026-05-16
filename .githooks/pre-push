@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# main / stg / dev への直接 push を禁止する
 while read -r local_ref local_sha remote_ref remote_sha
 do
   case "$remote_ref" in
@@ -10,5 +11,20 @@ do
       ;;
   esac
 done
+
+# 重複検知（opt-in、デフォルト off）
+# 有効化: export DEVFORGE_PREPUSH_DUPE_CHECK=1
+# 警告のみで push をブロックしない。CI で artifact として確認可能。
+if [ "${DEVFORGE_PREPUSH_DUPE_CHECK:-0}" = "1" ]; then
+  echo "[pre-push] 重複検知を実行中 (warn-only)..."
+  if make dupe-check >/dev/null 2>&1; then
+    if [ -f report/dupe/jscpd-report.json ]; then
+      DUP_PERCENT=$(grep -o '"percentage":[[:space:]]*[0-9.]*' report/dupe/jscpd-report.json | head -1 | awk -F: '{gsub(/ /,""); print $2}')
+      [ -n "$DUP_PERCENT" ] && echo "[pre-push] 重複率: ${DUP_PERCENT}% (詳細: report/dupe/jscpd-report.md)"
+    fi
+  else
+    echo "[pre-push] dupe-check 失敗 (push は継続)"
+  fi
+fi
 
 exit 0

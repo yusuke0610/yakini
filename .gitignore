@@ -44,6 +44,9 @@ backend/.env
 # Wrangler
 .wrangler/
 
+# AI レビュー出力（BE_refacter / FE_refacter skill が書き出す）
+report/
+
 # OS
 .DS_Store
 .direnv/

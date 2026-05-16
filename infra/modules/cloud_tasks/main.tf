@@ -1,5 +1,9 @@
+locals {
+  queue_name = "${var.app_name}-ai-tasks-${var.environment}"
+}
+
 resource "google_cloud_tasks_queue" "ai_tasks" {
-  name     = var.queue_name
+  name     = local.queue_name
   location = var.location
   project  = var.project_id
 
