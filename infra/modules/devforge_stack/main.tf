@@ -52,9 +52,10 @@ module "artifact_registry" {
 module "cloud_tasks" {
   source = "../cloud_tasks"
 
-  project_id = var.project_id
-  location   = var.region
-  queue_name = "devforge-ai-tasks-${var.environment}"
+  project_id  = var.project_id
+  app_name    = var.app_name
+  environment = var.environment
+  location    = var.region
 
   depends_on = [google_project_service.apis]
 }

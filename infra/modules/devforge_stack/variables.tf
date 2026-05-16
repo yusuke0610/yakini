@@ -30,7 +30,7 @@ variable "region" {
 }
 
 variable "template_version" {
-  description = "Infrastructure template version。"
+  description = "Infrastructure template version（環境 output・ドキュメント用。リソース定義では未使用）。"
   type        = string
 }
 

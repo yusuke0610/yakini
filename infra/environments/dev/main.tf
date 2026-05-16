@@ -1,6 +1,6 @@
 provider "google" {
   project = var.project_id
-  region  = "asia-northeast1"
+  region  = var.region
 }
 
 provider "cloudflare" {
@@ -19,6 +19,7 @@ module "devforge_stack" {
   project_id                     = var.project_id
   app_name                       = var.app_name
   template_version               = var.template_version
+  region                         = var.region
   deployer_service_account_email = var.deployer_service_account_email
 
   cors_origins        = var.cors_origins
@@ -36,25 +37,5 @@ module "devforge_stack" {
   cloudflare_zone_id            = var.cloudflare_zone_id
   cloudflare_pages_project_name = var.cloudflare_pages_project_name
   cloudflare_subdomain          = var.cloudflare_subdomain
-  cloudflare_production_branch  = "dev"
-}
-
-output "stack_name" {
-  value = module.devforge_stack.stack_name
-}
-
-output "template_version" {
-  value = var.template_version
-}
-
-output "artifact_registry_url" {
-  value = module.devforge_stack.artifact_registry_url
-}
-
-output "cloudflare_pages_subdomain" {
-  value = module.devforge_stack.cloudflare_pages_subdomain
-}
-
-output "cloudflare_pages_project_name" {
-  value = module.devforge_stack.cloudflare_pages_project_name
+  cloudflare_production_branch  = var.cloudflare_production_branch
 }

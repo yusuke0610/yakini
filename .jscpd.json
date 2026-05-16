@@ -46,7 +46,16 @@
     "**/*.lock",
     "**/*.snap",
     "**/.terraform.lock.hcl",
-    "**/.terraform/**"
+    "**/.terraform/**",
+    "**/infra/environments/dev/variables.tf",
+    "**/infra/environments/stg/variables.tf",
+    "**/infra/environments/prod/variables.tf",
+    "**/infra/environments/dev/moved.tf",
+    "**/infra/environments/stg/moved.tf",
+    "**/infra/environments/prod/moved.tf",
+    "**/infra/environments/dev/outputs.tf",
+    "**/infra/environments/stg/outputs.tf",
+    "**/infra/environments/prod/outputs.tf"
   ],
   "reporters": ["json", "html", "markdown", "consoleFull"],
   "output": "report/dupe",
