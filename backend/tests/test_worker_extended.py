@@ -194,9 +194,14 @@ class TestRunGithubAnalysis:
         db_session.refresh(cache)
         assert cache.status == "dead_letter"
 
-    def test_no_cache_raises_runtime_error(self, db_session: Session):
-        """キャッシュが見つからない場合、RuntimeError が送出されること。"""
-        with pytest.raises(RuntimeError, match="GitHub analysis cache not found"):
+    def test_no_cache_raises_non_retryable(self, db_session: Session):
+        """キャッシュが見つからない場合、NonRetryableError が送出されること。
+
+        worker 側で ``dead_letter`` 遷移と通知発行を行わせる契約。
+        """
+        from app.services.tasks.exceptions import NonRetryableError
+
+        with pytest.raises(NonRetryableError):
             _run(
                 _run_github_analysis(
                     db_session,
@@ -463,18 +468,25 @@ class TestRunCareerAnalysis:
         assert analysis.error_message is not None
         assert "不足" in analysis.error_message
 
-    def test_no_record_returns_early(self, db_session: Session):
-        """レコードが見つからない場合、例外なく早期リターンすること。"""
-        _run(
-            _run_career_analysis(
-                db_session,
-                {
-                    "user_id": "ghost",
-                    "record_id": 99999,
-                    "target_position": "test",
-                },
+    def test_no_record_raises_non_retryable(self, db_session: Session):
+        """レコードが見つからない場合、NonRetryableError が送出されること。
+
+        旧契約（silent return）は worker から completed と誤って観測される回帰を招くため、
+        ``dead_letter`` への遷移を強制する。
+        """
+        from app.services.tasks.exceptions import NonRetryableError
+
+        with pytest.raises(NonRetryableError):
+            _run(
+                _run_career_analysis(
+                    db_session,
+                    {
+                        "user_id": "ghost",
+                        "record_id": 99999,
+                        "target_position": "test",
+                    },
+                )
             )
-        )
 
 
 # ── _generate_advice_if_available ─────────────────────────────────────────

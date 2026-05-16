@@ -5,6 +5,7 @@ import {
   getBlogSummaryCacheStatus,
 } from "../api";
 import type { BlogArticle } from "../types";
+import { isInProgressStatus } from "../utils/taskStatus";
 import { useTaskPolling } from "./useTaskPolling";
 
 /**
@@ -35,11 +36,7 @@ export function useBlogSummaryPolling(articles: BlogArticle[]) {
   useEffect(() => {
     getBlogSummaryCache()
       .then((cached) => {
-        if (
-          cached.status === "pending" ||
-          cached.status === "processing" ||
-          cached.status === "retrying"
-        ) {
+        if (isInProgressStatus(cached.status)) {
           setSummaryLoading(true);
           startPolling();
           return;
