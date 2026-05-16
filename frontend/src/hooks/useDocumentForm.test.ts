@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-import formCacheReducer from "../store/formCacheSlice";
+import formCacheReducer, { setCache } from "../store/formCacheSlice";
 import { useDocumentForm } from "./useDocumentForm";
 import { ApiError } from "../utils/appError";
 
@@ -141,6 +141,46 @@ describe("useDocumentForm", () => {
 
     expect(result.current.error).toBe("認証が必要です");
     expect(result.current.success).toBeNull();
+  });
+
+  /**
+   * Redux キャッシュにデータがある場合、loadLatest を呼ばずに
+   * キャッシュ値を初期 form として使うこと。
+   * ページ遷移で戻ってきたときの再 fetch チラつき/二重 API 呼び出しを直接守るテスト。
+   */
+  it("Redux キャッシュ存在時は loadLatest を呼ばずキャッシュ値を form の初期値にする", async () => {
+    const store = createTestStore();
+    // 事前にキャッシュをセット
+    store.dispatch(
+      setCache({
+        key: "career",
+        form: { title: "cached title" },
+        documentId: "doc-cached",
+      }),
+    );
+
+    const { result } = renderHook(
+      () =>
+        useDocumentForm<TestForm, { title: string }, TestResponse>({
+          createInitialForm: () => ({ title: "" }),
+          loadLatest: mockLoadLatest,
+          createDocument: mockCreateDocument,
+          updateDocument: mockUpdateDocument,
+          buildPayload: mockBuildPayload,
+          mapResponseToForm: mockMapResponseToForm,
+          successMessage: "保存しました",
+          cacheKey: "career",
+        }),
+      { wrapper: makeWrapper(store) },
+    );
+
+    // キャッシュがあるので最初から loading=false
+    expect(result.current.loading).toBe(false);
+    // loadLatest は呼ばれない（二重 fetch 防止）
+    expect(mockLoadLatest).not.toHaveBeenCalled();
+    // キャッシュ値が form の初期値になる
+    expect(result.current.form).toEqual({ title: "cached title" });
+    expect(result.current.documentId).toBe("doc-cached");
   });
 
   /** beforeSave でエラーがスローされた場合、API が呼ばれずエラーが表示されること */

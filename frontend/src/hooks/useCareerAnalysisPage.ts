@@ -9,6 +9,7 @@ import {
   type CareerAnalysisResponse,
 } from "../api";
 import type { AppErrorState } from "../utils/appError";
+import { isInProgressStatus } from "../utils/taskStatus";
 import { useTaskPolling } from "./useTaskPolling";
 
 export type CareerAnalysisPhase = "loading" | "input" | "polling" | "list" | "detail";
@@ -57,12 +58,7 @@ export function useCareerAnalysisPage() {
         if (!active) return;
         setAnalyses(data);
 
-        const pending = data.find(
-          (a) =>
-            a.status === "pending" ||
-            a.status === "processing" ||
-            a.status === "retrying",
-        );
+        const pending = data.find((a) => isInProgressStatus(a.status));
         if (pending) {
           setPollingId(pending.id);
           setPhase("polling");

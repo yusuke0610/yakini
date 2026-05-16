@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTaskPolling } from "../useTaskPolling";
 import type { AppErrorState } from "../../utils/appError";
+import { isInProgressStatus } from "../../utils/taskStatus";
 import type { TaskProgress } from "../../api/intelligence";
 
 /** 分析ページのフェーズ型 */
@@ -150,11 +151,7 @@ export function useAsyncAnalysisPage<TResult>({
     loadCache()
       .then((cached) => {
         if (cancelled) return;
-        if (
-          cached.status === "pending" ||
-          cached.status === "processing" ||
-          cached.status === "retrying"
-        ) {
+        if (isInProgressStatus(cached.status)) {
           setPhase("polling");
           return;
         }
