@@ -1,4 +1,5 @@
 import { request } from "./client";
+import { PATHS } from "./paths";
 import type { BlogAccount, BlogArticle } from "../types";
 import type { TaskStatusResponse } from "./career-analysis";
 
@@ -32,7 +33,7 @@ export interface BlogSummaryResponse {
  * 連携アカウント一覧を取得する。
  */
 export function getBlogAccounts(): Promise<BlogAccount[]> {
-  return request<BlogAccount[]>("/api/blog/accounts");
+  return request<BlogAccount[]>(PATHS.blog.accounts);
 }
 
 /**
@@ -42,7 +43,7 @@ export function addBlogAccount(
   platform: "zenn" | "note" | "qiita",
   username: string,
 ): Promise<BlogAccount> {
-  return request<BlogAccount>("/api/blog/accounts", {
+  return request<BlogAccount>(PATHS.blog.accounts, {
     method: "POST",
     body: JSON.stringify({ platform, username }),
   });
@@ -55,7 +56,7 @@ export function updateBlogAccount(
   platform: "zenn" | "note" | "qiita",
   username: string,
 ): Promise<BlogAccount> {
-  return request<BlogAccount>(`/api/blog/accounts/${platform}`, {
+  return request<BlogAccount>(PATHS.blog.accountByPlatform(platform), {
     method: "PATCH",
     body: JSON.stringify({ username }),
   });
@@ -65,7 +66,7 @@ export function updateBlogAccount(
  * 連携アカウントを解除する。
  */
 export async function deleteBlogAccount(id: string): Promise<void> {
-  await request<void>(`/api/blog/accounts/${id}`, {
+  await request<void>(PATHS.blog.accountById(id), {
     method: "DELETE",
   });
 }
@@ -74,8 +75,7 @@ export async function deleteBlogAccount(id: string): Promise<void> {
  * DB の記事一覧を取得する。
  */
 export function getBlogArticles(platform?: string): Promise<BlogArticle[]> {
-  const query = platform ? `?platform=${platform}` : "";
-  return request<BlogArticle[]>(`/api/blog/articles${query}`);
+  return request<BlogArticle[]>(PATHS.blog.articles(platform));
 }
 
 /**
@@ -85,7 +85,7 @@ export function syncBlogAccount(
   accountId: string,
 ): Promise<{ synced_count: number; total_count: number }> {
   return request<{ synced_count: number; total_count: number }>(
-    `/api/blog/accounts/${accountId}/sync`,
+    PATHS.blog.accountSync(accountId),
     { method: "POST" },
   );
 }
@@ -95,7 +95,7 @@ export function syncBlogAccount(
  * 分析対象記事はサーバー側で DB から取得する。
  */
 export function summarizeBlogArticles(): Promise<BlogSummaryResponse> {
-  return request<BlogSummaryResponse>("/api/blog/summarize", { method: "POST" });
+  return request<BlogSummaryResponse>(PATHS.blog.summarize, { method: "POST" });
 }
 
 /**
@@ -103,26 +103,26 @@ export function summarizeBlogArticles(): Promise<BlogSummaryResponse> {
  * 分析対象記事はサーバー側で DB から取得する。
  */
 export function retrySummarizeBlogArticles(): Promise<BlogSummaryResponse> {
-  return request<BlogSummaryResponse>("/api/blog/summarize/retry", { method: "POST" });
+  return request<BlogSummaryResponse>(PATHS.blog.summarizeRetry, { method: "POST" });
 }
 
 /**
  * DB に保存されたブログ AI 分析結果を取得する。
  */
 export function getBlogSummaryCache(): Promise<BlogSummaryResponse> {
-  return request<BlogSummaryResponse>("/api/blog/summary-cache");
+  return request<BlogSummaryResponse>(PATHS.blog.summaryCache);
 }
 
 /**
  * サマリ生成ステータスを取得する（ポーリング用）。
  */
 export function getBlogSummaryCacheStatus(): Promise<TaskStatusResponse> {
-  return request<TaskStatusResponse>("/api/blog/summary-cache/status");
+  return request<TaskStatusResponse>(PATHS.blog.summaryCacheStatus);
 }
 
 /**
  * ブログスコアリング結果を取得する。
  */
 export function getBlogScore(): Promise<BlogScoreResponse> {
-  return request<BlogScoreResponse>("/api/blog/score");
+  return request<BlogScoreResponse>(PATHS.blog.score);
 }

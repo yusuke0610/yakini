@@ -1,5 +1,6 @@
 import { request } from "./client";
 import { downloadBlob } from "./download";
+import { PATHS } from "./paths";
 
 export interface SectionItem {
   original: string;
@@ -39,7 +40,7 @@ export interface AiResumeSnapshotUpdate {
 
 /** AI 強化版職務経歴書を生成する。 */
 export function generateAiResume(targetPosition: string): Promise<AiResumeSnapshot> {
-  return request<AiResumeSnapshot>("/api/ai-resume/generate", {
+  return request<AiResumeSnapshot>(PATHS.aiResume.generate, {
     method: "POST",
     body: JSON.stringify({ target_position: targetPosition }),
   });
@@ -47,17 +48,17 @@ export function generateAiResume(targetPosition: string): Promise<AiResumeSnapsh
 
 /** 全スナップショットを取得する。 */
 export function listSnapshots(): Promise<AiResumeSnapshot[]> {
-  return request<AiResumeSnapshot[]>("/api/ai-resume/snapshots");
+  return request<AiResumeSnapshot[]>(PATHS.aiResume.snapshots);
 }
 
 /** 指定 ID のスナップショットを取得する。 */
 export function getSnapshot(id: number): Promise<AiResumeSnapshot> {
-  return request<AiResumeSnapshot>(`/api/ai-resume/snapshots/${id}`);
+  return request<AiResumeSnapshot>(PATHS.aiResume.snapshotById(id));
 }
 
 /** セクション採用状態を更新する。 */
 export function updateSnapshot(id: number, body: AiResumeSnapshotUpdate): Promise<AiResumeSnapshot> {
-  return request<AiResumeSnapshot>(`/api/ai-resume/snapshots/${id}`, {
+  return request<AiResumeSnapshot>(PATHS.aiResume.snapshotById(id), {
     method: "PATCH",
     body: JSON.stringify(body),
   });
@@ -65,24 +66,24 @@ export function updateSnapshot(id: number, body: AiResumeSnapshotUpdate): Promis
 
 /** バージョンを確定する。 */
 export function finalizeSnapshot(id: number): Promise<AiResumeSnapshot> {
-  return request<AiResumeSnapshot>(`/api/ai-resume/snapshots/${id}/finalize`, {
+  return request<AiResumeSnapshot>(PATHS.aiResume.snapshotFinalize(id), {
     method: "POST",
   });
 }
 
 /** スナップショットを削除する。 */
 export function deleteSnapshot(id: number): Promise<void> {
-  return request<void>(`/api/ai-resume/snapshots/${id}`, {
+  return request<void>(PATHS.aiResume.snapshotById(id), {
     method: "DELETE",
   });
 }
 
 /** PDF をダウンロードする。 */
 export function downloadPdf(id: number): Promise<void> {
-  return downloadBlob(`/api/ai-resume/snapshots/${id}/pdf`, `ai_resume_${id}.pdf`);
+  return downloadBlob(PATHS.aiResume.snapshotPdf(id), `ai_resume_${id}.pdf`);
 }
 
 /** Markdown をダウンロードする。 */
 export function downloadMarkdown(id: number): Promise<void> {
-  return downloadBlob(`/api/ai-resume/snapshots/${id}/markdown`, `ai_resume_${id}.md`);
+  return downloadBlob(PATHS.aiResume.snapshotMarkdown(id), `ai_resume_${id}.md`);
 }

@@ -44,7 +44,9 @@
     "frontend/src/**/*.module.css",
     "report/**",
     "**/*.lock",
-    "**/*.snap"
+    "**/*.snap",
+    "**/.terraform.lock.hcl",
+    "**/.terraform/**"
   ],
   "reporters": ["json", "html", "markdown", "consoleFull"],
   "output": "report/dupe",

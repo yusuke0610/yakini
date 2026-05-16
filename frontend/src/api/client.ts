@@ -1,3 +1,4 @@
+import { isErrorCode } from "../constants/errorCodes";
 import { ERROR_CONFIG } from "../constants/errorMessages";
 import { ApiError } from "../utils/appError";
 import { generateErrorId } from "../utils/errorId";
@@ -90,7 +91,7 @@ function buildApiError(response: Response, body: ErrorResponseBody | null, fallb
   const message =
     body?.message ??
     getLegacyDetail(body) ??
-    ERROR_CONFIG[code]?.message ??
+    (isErrorCode(code) ? ERROR_CONFIG[code].message : undefined) ??
     fallbackMessage;
 
   return new ApiError({

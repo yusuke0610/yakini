@@ -274,10 +274,12 @@ jobs:
       (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped')
     timeout-minutes: 20
     env:
-      PROJECT_ID: devforge-dev-20260311
-      REGION: asia-northeast1
-      REPO: devforge-dev
-      SERVICE: devforge-dev
+      # 値は GitHub Repo Variables / Secrets で上書き可能。未設定時は既存値にフォールバック。
+      # 正本: infra/environments/dev/terraform.tfvars の project_id / stack_name
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID_DEV || 'devforge-dev-20260311' }}
+      REGION: ${{ vars.GCP_REGION || 'asia-northeast1' }}
+      REPO: ${{ vars.GCP_ARTIFACT_REPO_DEV || 'devforge-dev' }}
+      SERVICE: ${{ vars.CLOUD_RUN_SERVICE_DEV || 'devforge-dev' }}
 
     steps:
       - name: Checkout
@@ -373,10 +375,12 @@ jobs:
       (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped')
     timeout-minutes: 20
     env:
-      PROJECT_ID: devforge-stg-20260404
-      REGION: asia-northeast1
-      REPO: devforge-stg
-      SERVICE: devforge-stg
+      # 値は GitHub Repo Variables / Secrets で上書き可能。未設定時は既存値にフォールバック。
+      # 正本: infra/environments/stg/terraform.tfvars の project_id / stack_name
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID_STG || 'devforge-stg-20260404' }}
+      REGION: ${{ vars.GCP_REGION || 'asia-northeast1' }}
+      REPO: ${{ vars.GCP_ARTIFACT_REPO_STG || 'devforge-stg' }}
+      SERVICE: ${{ vars.CLOUD_RUN_SERVICE_STG || 'devforge-stg' }}
 
     steps:
       - name: Checkout
@@ -472,10 +476,12 @@ jobs:
       (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped')
     timeout-minutes: 20
     env:
-      PROJECT_ID: devforge-prod-20260404
-      REGION: asia-northeast1
-      REPO: devforge-prod
-      SERVICE: devforge-prod
+      # 値は GitHub Repo Variables / Secrets で上書き可能。未設定時は既存値にフォールバック。
+      # 正本: infra/environments/prod/terraform.tfvars の project_id / stack_name
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID_PROD || 'devforge-prod-20260404' }}
+      REGION: ${{ vars.GCP_REGION || 'asia-northeast1' }}
+      REPO: ${{ vars.GCP_ARTIFACT_REPO_PROD || 'devforge-prod' }}
+      SERVICE: ${{ vars.CLOUD_RUN_SERVICE_PROD || 'devforge-prod' }}
 
     steps:
       - name: Checkout

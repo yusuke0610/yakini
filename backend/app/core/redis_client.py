@@ -3,6 +3,8 @@
 import logging
 import os
 
+from . import env_keys
+
 logger = logging.getLogger(__name__)
 
 # モジュールレベルのシングルトン（初回呼び出し時に初期化）
@@ -21,8 +23,8 @@ def get_redis_client():
         return _client
 
     _initialized = True
-    url = os.getenv("UPSTASH_REDIS_URL", "").strip()
-    token = os.getenv("UPSTASH_REDIS_TOKEN", "").strip()
+    url = os.getenv(env_keys.UPSTASH_REDIS_URL, "").strip()
+    token = os.getenv(env_keys.UPSTASH_REDIS_TOKEN, "").strip()
 
     if not url:
         return None
