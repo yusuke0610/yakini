@@ -1,4 +1,5 @@
 import { request } from "./client";
+import { PATHS } from "./paths";
 import type { TaskStatusResponse } from "./career-analysis";
 
 export interface TaskProgress {
@@ -51,7 +52,7 @@ export interface CachedAnalysisResponse {
  * GitHub プロフィールの分析を開始します（202 非同期）。
  */
 export function analyzeGitHub(payload: AnalyzeGitHubPayload): Promise<{ status: string }> {
-  return request<{ status: string }>("/api/intelligence/analyze", {
+  return request<{ status: string }>(PATHS.intelligence.analyze, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -61,14 +62,14 @@ export function analyzeGitHub(payload: AnalyzeGitHubPayload): Promise<{ status: 
  * DB に保存された分析キャッシュを取得します。
  */
 export function getAnalysisCache(): Promise<CachedAnalysisResponse> {
-  return request<CachedAnalysisResponse>("/api/intelligence/cache");
+  return request<CachedAnalysisResponse>(PATHS.intelligence.cache);
 }
 
 /**
  * 分析ステータスを取得します（ポーリング用）。
  */
 export function getAnalysisCacheStatus(): Promise<TaskStatusResponse> {
-  return request<TaskStatusResponse>("/api/intelligence/cache/status");
+  return request<TaskStatusResponse>(PATHS.intelligence.cacheStatus);
 }
 
 /**
@@ -76,7 +77,7 @@ export function getAnalysisCacheStatus(): Promise<TaskStatusResponse> {
  * Redis が利用できない場合は step_index=0 のデフォルト値が返ります。
  */
 export function getAnalysisProgress(): Promise<TaskProgress> {
-  return request<TaskProgress>("/api/intelligence/progress");
+  return request<TaskProgress>(PATHS.intelligence.progress);
 }
 
 /**
@@ -85,7 +86,7 @@ export function getAnalysisProgress(): Promise<TaskProgress> {
 export function retryAnalyzeGitHub(
   payload: AnalyzeGitHubPayload = {},
 ): Promise<{ status: string }> {
-  return request<{ status: string }>("/api/intelligence/analyze/retry", {
+  return request<{ status: string }>(PATHS.intelligence.analyzeRetry, {
     method: "POST",
     body: JSON.stringify(payload),
   });

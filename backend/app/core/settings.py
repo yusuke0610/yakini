@@ -1,6 +1,8 @@
 import os
 from urllib.parse import urlparse
 
+from . import env_keys
+
 # --- Turso (libSQL) ---
 
 
@@ -12,12 +14,12 @@ def get_turso_database_url() -> str:
       - `libsql://<db>.turso.io` : Turso Cloud
       - `file:./local.sqlite` または絶対パス : ローカルファイル（テスト用途）
     """
-    return os.getenv("TURSO_DATABASE_URL", "").strip()
+    return os.getenv(env_keys.TURSO_DATABASE_URL, "").strip()
 
 
 def get_turso_auth_token() -> str:
     """Turso 認証トークン（Cloud 用）。turso dev では空でよい。"""
-    return os.getenv("TURSO_AUTH_TOKEN", "").strip()
+    return os.getenv(env_keys.TURSO_AUTH_TOKEN, "").strip()
 
 
 def build_sqlalchemy_database_url() -> str:
@@ -76,12 +78,12 @@ def _is_loopback_origin(origin: str) -> bool:
 
 
 def get_cors_origins() -> list[str]:
-    cors_origins = os.getenv("CORS_ORIGINS", "")
+    cors_origins = os.getenv(env_keys.CORS_ORIGINS, "")
     return [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
 
 
 def get_cookie_secure() -> bool:
-    configured = _parse_bool_env("COOKIE_SECURE")
+    configured = _parse_bool_env(env_keys.COOKIE_SECURE)
     if configured is not None:
         return configured
 
@@ -97,19 +99,19 @@ def get_cookie_samesite() -> str:
     if origins and not all(_is_loopback_origin(origin) for origin in origins):
         default = "none"
 
-    value = os.getenv("COOKIE_SAMESITE", default).strip().lower()
+    value = os.getenv(env_keys.COOKIE_SAMESITE, default).strip().lower()
     if value not in {"lax", "strict", "none"}:
         raise RuntimeError("COOKIE_SAMESITE must be one of: lax, strict, none")
     return value
 
 
 def get_admin_token() -> str:
-    return os.getenv("ADMIN_TOKEN", "").strip()
+    return os.getenv(env_keys.ADMIN_TOKEN, "").strip()
 
 
 def get_jwt_private_key() -> str:
     """RS256署名用秘密鍵（PEM形式）を取得する。"""
-    key = os.getenv("JWT_PRIVATE_KEY", "").replace("\\n", "\n").strip()
+    key = os.getenv(env_keys.JWT_PRIVATE_KEY, "").replace("\\n", "\n").strip()
     if not key:
         raise RuntimeError("JWT_PRIVATE_KEY is not configured")
     return key
@@ -117,7 +119,7 @@ def get_jwt_private_key() -> str:
 
 def get_jwt_public_key() -> str:
     """RS256検証用公開鍵（PEM形式）を取得する。"""
-    key = os.getenv("JWT_PUBLIC_KEY", "").replace("\\n", "\n").strip()
+    key = os.getenv(env_keys.JWT_PUBLIC_KEY, "").replace("\\n", "\n").strip()
     if not key:
         raise RuntimeError("JWT_PUBLIC_KEY is not configured")
     return key
@@ -130,26 +132,26 @@ def get_callback_base_url() -> str:
     CALLBACK_BASE_URL に Cloudflare Pages の URL（例: https://app.devforge.app）を明示することで
     redirect_uri を固定できる。空の場合は呼び出し元が build_external_base_url にフォールバックする。
     """
-    url = os.getenv("CALLBACK_BASE_URL", "").strip()
+    url = os.getenv(env_keys.CALLBACK_BASE_URL, "").strip()
     return url.rstrip("/") if url else ""
 
 
 def get_github_client_id() -> str:
-    return os.getenv("GITHUB_CLIENT_ID", "").strip()
+    return os.getenv(env_keys.GITHUB_CLIENT_ID, "").strip()
 
 
 def get_github_client_secret() -> str:
-    return os.getenv("GITHUB_CLIENT_SECRET", "").strip()
+    return os.getenv(env_keys.GITHUB_CLIENT_SECRET, "").strip()
 
 
 def get_app_version() -> str:
     """アプリケーションバージョンを取得する（Git タグから CI で注入）。"""
-    return os.getenv("APP_VERSION", "dev").strip()
+    return os.getenv(env_keys.APP_VERSION, "dev").strip()
 
 
 def get_environment() -> str:
     """実行環境を取得する（local / dev / stg / prod）。"""
-    return os.getenv("ENVIRONMENT", "local").strip()
+    return os.getenv(env_keys.ENVIRONMENT, "local").strip()
 
 
 def get_internal_secret() -> str:
@@ -159,7 +161,7 @@ def get_internal_secret() -> str:
     値はログや例外メッセージに含めないこと。
     """
     env = get_environment()
-    secret = os.getenv("INTERNAL_SECRET", "").strip()
+    secret = os.getenv(env_keys.INTERNAL_SECRET, "").strip()
     if env != "local" and not secret:
         raise RuntimeError(
             "INTERNAL_SECRET が設定されていません。"
@@ -169,27 +171,27 @@ def get_internal_secret() -> str:
 
 
 def get_llm_provider() -> str:
-    return os.environ.get("LLM_PROVIDER", "ollama")
+    return os.environ.get(env_keys.LLM_PROVIDER, "ollama")
 
 
 def get_vertex_project_id() -> str:
-    return os.environ.get("VERTEX_PROJECT_ID", "")
+    return os.environ.get(env_keys.VERTEX_PROJECT_ID, "")
 
 
 def get_vertex_location() -> str:
-    return os.environ.get("VERTEX_LOCATION", "asia-northeast1")
+    return os.environ.get(env_keys.VERTEX_LOCATION, "asia-northeast1")
 
 
 def get_vertex_model(default: str) -> str:
     """Vertex AI のモデル名を取得する。default は呼び出し元（Vertex クライアント）の既定値を渡す。"""
-    return os.environ.get("VERTEX_MODEL", default)
+    return os.environ.get(env_keys.VERTEX_MODEL, default)
 
 
 def get_log_format() -> str:
     """ログフォーマット指定（json / text / 空）を小文字で取得する。"""
-    return os.getenv("LOG_FORMAT", "").strip().lower()
+    return os.getenv(env_keys.LOG_FORMAT, "").strip().lower()
 
 
 def get_log_level() -> str:
     """ログレベル名（DEBUG / INFO / WARNING / ERROR / CRITICAL）を大文字で取得する。"""
-    return os.getenv("LOG_LEVEL", "INFO").strip().upper()
+    return os.getenv(env_keys.LOG_LEVEL, "INFO").strip().upper()

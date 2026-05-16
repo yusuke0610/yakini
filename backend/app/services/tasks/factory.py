@@ -4,6 +4,7 @@ import os
 
 from fastapi import BackgroundTasks
 
+from ...core import env_keys
 from .base import TaskDispatcher
 
 
@@ -15,7 +16,7 @@ def get_task_dispatcher(
     - ``"local"`` (デフォルト): LocalDispatcher（FastAPI BackgroundTasks）
     - ``"cloud_tasks"``: CloudTasksDispatcher（Google Cloud Tasks）
     """
-    runner = os.environ.get("TASK_RUNNER", "local")
+    runner = os.environ.get(env_keys.TASK_RUNNER, "local")
 
     if runner == "cloud_tasks":
         from .cloud_tasks import CloudTasksDispatcher

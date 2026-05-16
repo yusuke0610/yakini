@@ -55,7 +55,13 @@ export function useAuthSession() {
     const params = new URLSearchParams(location.search);
     const error = params.get("github_error");
     if (error) {
-      navigate(location.pathname, { replace: true });
+      // ``github_error`` のみ取り除き、それ以外の query は残す。
+      params.delete("github_error");
+      const remaining = params.toString();
+      navigate(
+        `${location.pathname}${remaining ? `?${remaining}` : ""}`,
+        { replace: true },
+      );
       setGithubError(error);
     }
   }, [location.search, location.pathname, navigate]);
@@ -70,6 +76,11 @@ export function useAuthSession() {
         active = false;
       };
     }
+
+    // 公開パス → 保護パス遷移などで authLoading が false のまま
+    // 復元処理に入るとルートガードが先に走ってしまうため、
+    // 非同期復元前に必ず true に上げる。
+    setAuthLoading(true);
 
     (async () => {
       try {
@@ -96,10 +107,17 @@ export function useAuthSession() {
   }, [user, location.pathname]);
 
   const handleLogout = async () => {
-    await logout();
-    sessionStorage.removeItem("auth_user");
-    justLoggedOut.current = true;
-    setUser(null);
+    try {
+      await logout();
+    } catch (error) {
+      // サーバ側ログアウトが失敗してもクライアント側のクリアは必ず実行する。
+      // 未捕捉の reject を残さないようログだけ出して握る。
+      console.warn("logout API 呼び出しに失敗しました（クライアント側はクリアします）", error);
+    } finally {
+      sessionStorage.removeItem("auth_user");
+      justLoggedOut.current = true;
+      setUser(null);
+    }
   };
 
   const handleLoginSuccess = (rawUser: { username: string; is_github_user: boolean }) => {

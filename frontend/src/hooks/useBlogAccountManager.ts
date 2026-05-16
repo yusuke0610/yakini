@@ -42,11 +42,25 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
   /** プラットフォーム別の進行中アクション。同時に複数プラットフォームを操作する余地を残す。 */
   const [actions, setActions] = useState<PlatformActionMap>({});
 
-  /** 指定プラットフォームのアクションをセット/解除する。 */
+  /**
+   * 指定プラットフォームのアクションをセット/解除する。
+   *
+   * クリア（``action === null``）時に ``expectedAction`` を指定すると、
+   * 現在のアクションが ``expectedAction`` と一致する場合のみ削除する。
+   * これにより、同一プラットフォームで先発アクションの finally が
+   * 後発アクションを clobber することを防ぐ。
+   */
   const setAction = useCallback(
-    (platform: PlatformKey, action: PlatformAction | null) => {
+    (
+      platform: PlatformKey,
+      action: PlatformAction | null,
+      expectedAction?: PlatformAction,
+    ) => {
       setActions((prev) => {
         if (action == null) {
+          if (expectedAction !== undefined && prev[platform] !== expectedAction) {
+            return prev;
+          }
           const next = { ...prev };
           delete next[platform];
           return next;
@@ -139,7 +153,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     } catch (e) {
       setAccountError(e instanceof Error ? e.message : "アカウントの連携に失敗しました");
     } finally {
-      setAction(platform, null);
+      setAction(platform, null, "saving");
     }
   };
 
@@ -161,7 +175,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     } catch (e) {
       setAccountError(e instanceof Error ? e.message : "同期に失敗しました");
     } finally {
-      setAction(platform, null);
+      setAction(platform, null, "syncing");
     }
   };
 
@@ -181,7 +195,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     } catch (e) {
       setAccountError(e instanceof Error ? e.message : "アカウントの解除に失敗しました");
     } finally {
-      setAction(platform, null);
+      setAction(platform, null, "deleting");
     }
   };
 
@@ -211,7 +225,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
       setAccountError(e instanceof Error ? e.message : "usernameの更新に失敗しました");
       return false;
     } finally {
-      setAction(platform, null);
+      setAction(platform, null, "updating");
     }
   };
 

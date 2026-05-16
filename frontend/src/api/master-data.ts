@@ -1,10 +1,11 @@
 import type { MasterItem, TechStackMasterItem } from "../types";
 import { request } from "./client";
+import { PATHS } from "./paths";
 
 export function getQualifications(): Promise<MasterItem[]> {
-  return request<MasterItem[]>("/api/master-data/qualification");
+  return request<MasterItem[]>(PATHS.masterData.qualification);
 }
 
 export function getTechnologyStacks(): Promise<TechStackMasterItem[]> {
-  return request<TechStackMasterItem[]>("/api/master-data/technology-stack");
+  return request<TechStackMasterItem[]>(PATHS.masterData.technologyStack);
 }
