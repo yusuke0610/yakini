@@ -8,6 +8,7 @@ paths:
 - ESLint / Prettier の設定に従うこと
 - リントは `make lint-frontend`、テストは `make test-frontend` を使う（Nix devshell 経由で解決される）
 - 個別スクリプトを叩きたい場合は `nix develop --command bash -c "cd frontend && npm run <script>"` を使う。生シェルでの `cd frontend && npm ...` は AI エージェントでは禁止
+- 重複検知 / DRY ポリシーは `.claude/rules/common/duplication.md` を参照（抽出先は `src/hooks/` `src/utils/` `src/components/ui/`）
 
 ## E2E テスト（Playwright）
 

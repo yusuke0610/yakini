@@ -5,6 +5,7 @@
 	lint lint-backend lint-frontend lint-fix \
 	format format-check \
 	ci \
+	dupe-check dupe-check-html dupe-clean \
 	build-frontend build-backend deploy-frontend \
 	gen-redirects \
 	migrate migrate-create \
@@ -40,6 +41,11 @@ help:
 	@echo "  lint-fix          リント自動修正 (ruff + eslint)"
 	@echo "  format            Prettier で整形"
 	@echo "  format-check      Prettier チェック"
+	@echo ""
+	@echo "コード重複検知 (jscpd)"
+	@echo "  dupe-check        重複検知を実行し report/dupe/ に JSON/HTML/Markdown を出力"
+	@echo "  dupe-check-html   同上 (HTML レポート出力後にパスを表示)"
+	@echo "  dupe-clean        report/dupe/ を削除"
 	@echo ""
 	@echo "ビルド"
 	@echo "  build-frontend    Vite ビルド"
@@ -136,6 +142,22 @@ format:
 
 format-check:
 	cd frontend && npm run format:check
+
+# ------------------------------------------------------------------ #
+# コード重複検知 (jscpd)
+# ------------------------------------------------------------------ #
+
+# jscpd は npx 経由で実行する（devShell の nodejs_22 を利用）。
+# 設定は .jscpd.json、出力は report/dupe/。Phase 1 は warn-only（threshold=0）。
+dupe-check:
+	nix develop --command bash -c "mkdir -p report/dupe && npx --yes jscpd@4 --config .jscpd.json"
+
+dupe-check-html:
+	nix develop --command bash -c "mkdir -p report/dupe && npx --yes jscpd@4 --config .jscpd.json"
+	@echo "HTML レポート: report/dupe/html/index.html"
+
+dupe-clean:
+	rm -rf report/dupe
 
 # ------------------------------------------------------------------ #
 # ビルド

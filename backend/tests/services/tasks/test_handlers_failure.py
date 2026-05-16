@@ -70,17 +70,35 @@ class TestCareerAnalysisHandlerFailures:
     """キャリア分析ハンドラの失敗パス。"""
 
     def test_missing_user_id_raises_non_retryable(self, db_session: Session) -> None:
-        """payload に user_id が無い → NonRetryableError。"""
+        """user_id のみ欠落 → NonRetryableError。
+
+        他の必須キー（record_id / target_position）は揃えた上で user_id だけ
+        外し、user_id 欠落の検知のみを単独で固定化する。
+        """
         handler = CareerAnalysisHandler()
         with pytest.raises(NonRetryableError):
-            _run(handler.run(db_session, payload={}))
+            _run(
+                handler.run(
+                    db_session,
+                    payload={"record_id": 1, "target_position": "Backend"},
+                )
+            )
 
     def test_missing_record_id_raises_non_retryable(self, db_session: Session) -> None:
-        """user_id だけで record_id が無い → NonRetryableError。"""
+        """record_id のみ欠落 → NonRetryableError。
+
+        user_id と target_position は揃えた上で record_id だけ外し、
+        record_id 欠落の検知のみを単独で固定化する。
+        """
         user = _make_user(db_session, "career-handler-no-record-id")
         handler = CareerAnalysisHandler()
         with pytest.raises(NonRetryableError):
-            _run(handler.run(db_session, payload={"user_id": user.id}))
+            _run(
+                handler.run(
+                    db_session,
+                    payload={"user_id": user.id, "target_position": "Backend"},
+                )
+            )
 
     def test_missing_record_raises_non_retryable(self, db_session: Session) -> None:
         """user_id / record_id はあるが CareerAnalysis が DB に無い → NonRetryableError。"""
