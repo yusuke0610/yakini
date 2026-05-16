@@ -64,6 +64,19 @@ function getLegacyDetail(body: ErrorResponseBody | null): string | null {
   return typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
 }
 
+/**
+ * 401 認証失敗時に共通で行う後処理。
+ * onUnauthorized コールバックを発火し、AUTH_REQUIRED の ApiError を返す。
+ */
+function buildUnauthorizedError(): ApiError {
+  _onUnauthorized?.();
+  return new ApiError({
+    code: "AUTH_REQUIRED",
+    message: "認証が必要です。再度ログインしてください。",
+    action: "ログインし直してください",
+  });
+}
+
 function buildApiError(response: Response, body: ErrorResponseBody | null, fallbackMessage: string): ApiError {
   const code =
     body?.code ??
@@ -129,21 +142,11 @@ export async function request<T>(
     if (refreshed) {
       return request<T>(path, options, true);
     }
-    _onUnauthorized?.();
-    throw new ApiError({
-      code: "AUTH_REQUIRED",
-      message: "認証が必要です。再度ログインしてください。",
-      action: "ログインし直してください",
-    });
+    throw buildUnauthorizedError();
   }
 
   if (response.status === 401) {
-    _onUnauthorized?.();
-    throw new ApiError({
-      code: "AUTH_REQUIRED",
-      message: "認証が必要です。再度ログインしてください。",
-      action: "ログインし直してください",
-    });
+    throw buildUnauthorizedError();
   }
 
   if (!response.ok) {

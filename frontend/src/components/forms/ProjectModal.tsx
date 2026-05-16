@@ -1,17 +1,11 @@
-import { useState } from "react";
-
 import type { CareerProjectForm } from "../../payloadBuilders";
-import { validateDateRange } from "../../payloadBuilders";
-import type { CareerTechnologyStack, CareerTechnologyStackCategory } from "../../types";
-import type { CareerProjectFieldKey } from "../../formTypes";
 import {
-  blankCareerTechnologyStack,
-  blankTeamMember,
   careerTechnologyStackCategories,
   careerTechnologyStackCategoryLabels,
   phaseOptions,
   teamRoleOptions,
 } from "../../constants";
+import { useProjectModalForm } from "../../hooks/useProjectModalForm";
 import { Combobox } from "./Combobox";
 import { MarkdownTextarea } from "./MarkdownTextarea";
 import styles from "./ProjectModal.module.css";
@@ -27,122 +21,25 @@ type ProjectModalProps = {
   techStackNamesByCategory: Map<string, string[]>;
 };
 
-/** プロジェクト情報を初期化する */
-function initProject(project: CareerProjectForm | null): CareerProjectForm {
-  if (project) {
-    return structuredClone(project);
-  }
-  return {
-    name: "",
-    start_date: "",
-    end_date: "",
-    is_current: false,
-    role: "",
-    description: "",
-    challenge: "",
-    action: "",
-    result: "",
-    team: { total: "", members: [] },
-    technology_stacks: [{ ...blankCareerTechnologyStack }],
-    phases: [],
-  };
-}
-
 export function ProjectModal({
   project,
   onSave,
   onClose,
   techStackNamesByCategory,
 }: ProjectModalProps) {
-  const [local, setLocal] = useState<CareerProjectForm>(() => initProject(project));
-
-  const updateField = (key: CareerProjectFieldKey, value: string | boolean) => {
-    setLocal((prev) => {
-      if (key === "is_current") {
-        const isCurrent = Boolean(value);
-        return { ...prev, is_current: isCurrent, end_date: isCurrent ? "" : prev.end_date };
-      }
-      return { ...prev, [key]: value };
-    });
-  };
-
-  const updateTechStack = (
-    stackIndex: number,
-    key: keyof CareerTechnologyStack,
-    value: string,
-  ) => {
-    setLocal((prev) => ({
-      ...prev,
-      technology_stacks: prev.technology_stacks.map((stack, si) => {
-        if (si !== stackIndex) return stack;
-        if (key === "category") {
-          return { ...stack, category: value as CareerTechnologyStackCategory, name: "" };
-        }
-        return { ...stack, name: value };
-      }),
-    }));
-  };
-
-  const addTechStack = () => {
-    setLocal((prev) => ({
-      ...prev,
-      technology_stacks: [...prev.technology_stacks, { ...blankCareerTechnologyStack }],
-    }));
-  };
-
-  const removeTechStack = (stackIndex: number) => {
-    setLocal((prev) => ({
-      ...prev,
-      technology_stacks:
-        prev.technology_stacks.length === 1
-          ? [{ ...blankCareerTechnologyStack }]
-          : prev.technology_stacks.filter((_, si) => si !== stackIndex),
-    }));
-  };
-
-  const updateTeamTotal = (value: string) => {
-    setLocal((prev) => ({ ...prev, team: { ...prev.team, total: value } }));
-  };
-
-  const addTeamMember = () => {
-    setLocal((prev) => ({
-      ...prev,
-      team: { ...prev.team, members: [...prev.team.members, { ...blankTeamMember }] },
-    }));
-  };
-
-  const removeTeamMember = (memberIndex: number) => {
-    setLocal((prev) => ({
-      ...prev,
-      team: {
-        ...prev.team,
-        members: prev.team.members.filter((_, mi) => mi !== memberIndex),
-      },
-    }));
-  };
-
-  const updateTeamMember = (memberIndex: number, key: "role" | "count", value: string) => {
-    setLocal((prev) => ({
-      ...prev,
-      team: {
-        ...prev.team,
-        members: prev.team.members.map((m, mi) =>
-          mi === memberIndex ? { ...m, [key]: value } : m,
-        ),
-      },
-    }));
-  };
-
-  const togglePhase = (phase: string) => {
-    setLocal((prev) => {
-      const phases = prev.phases.includes(phase)
-        ? prev.phases.filter((p) => p !== phase)
-        : [...prev.phases, phase];
-      return { ...prev, phases };
-    });
-  };
-
-  const dateError = validateDateRange(local.start_date, local.end_date, local.is_current);
+  const {
+    local,
+    dateError,
+    updateField,
+    updateTechStack,
+    addTechStack,
+    removeTechStack,
+    updateTeamTotal,
+    addTeamMember,
+    removeTeamMember,
+    updateTeamMember,
+    togglePhase,
+  } = useProjectModalForm(project);
 
   return (
     <div className={styles.overlay} onClick={onClose}>

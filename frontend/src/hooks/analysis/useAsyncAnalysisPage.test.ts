@@ -160,6 +160,36 @@ describe("useAsyncAnalysisPage", () => {
     expect(result.current.result).toBeNull();
   });
 
+  /**
+   * fetchProgress が reject しても polling は継続し、progress は null のまま。
+   * Redis 障害等の進捗取得失敗で hook 全体が壊れないことを守る。
+   */
+  it("fetchProgress が reject しても polling フェーズが維持される", async () => {
+    mockLoadCache.mockResolvedValue({ result: null, status: "pending" });
+    mockCheckStatus.mockResolvedValue({ status: "pending" });
+    const mockFetchProgress = vi.fn().mockRejectedValue(new Error("Redis down"));
+
+    const { result } = renderHook(() =>
+      useAsyncAnalysisPage({
+        loadCache: mockLoadCache,
+        checkStatus: mockCheckStatus,
+        fetchProgress: mockFetchProgress,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.phase).toBe("polling");
+    });
+
+    await waitFor(() => {
+      expect(mockFetchProgress).toHaveBeenCalled();
+    });
+
+    // fetchProgress が reject しても polling 本体は続行し、progress は null のまま
+    expect(result.current.phase).toBe("polling");
+    expect(result.current.progress).toBeNull();
+  });
+
   /** loadCache でエラーが発生した場合、input フェーズに遷移すること */
   it("loadCache でエラーが発生した場合 input フェーズに遷移する", async () => {
     mockLoadCache.mockRejectedValue(new Error("ネットワークエラー"));

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ....core.logging_utils import get_logger
 from ....models.career_analysis import CareerAnalysis
+from ..exceptions import NonRetryableError
 from .base import TaskHandler
 
 logger = get_logger(__name__)
@@ -30,14 +31,28 @@ class CareerAnalysisHandler(TaskHandler):
         from ...career_analysis.builder import build_career_analysis
         from ...intelligence.llm import get_llm_client
 
-        user_id = payload["user_id"]
-        record_id = payload["record_id"]
-        target_position = payload["target_position"]
+        user_id = payload.get("user_id")
+        record_id = payload.get("record_id")
+        target_position = payload.get("target_position")
+        # 必須キー欠落はディスパッチ側のバグであり、リトライしても回復しない。
+        # ``dead_letter`` への遷移を worker に委ねるため NonRetryableError を raise する。
+        missing = [
+            name for name, value in (
+                ("user_id", user_id),
+                ("record_id", record_id),
+                ("target_position", target_position),
+            ) if not value
+        ]
+        if missing:
+            message = "キャリア分析タスクのペイロードに必須キーがありません"
+            logger.error(message, extra={"missing_keys": missing, "payload_keys": list(payload.keys())})
+            raise NonRetryableError(f"{message} (missing={missing})")
 
         analysis = db.query(CareerAnalysis).filter_by(id=record_id, user_id=user_id).first()
         if not analysis:
-            logger.error("キャリア分析レコードが見つかりません", extra={"record_id": record_id})
-            return
+            message = "キャリア分析レコードが見つかりません"
+            logger.error(message, extra={"record_id": record_id, "user_id": user_id})
+            raise NonRetryableError(f"{message} (record_id={record_id}, user_id={user_id})")
 
         analysis.status = "processing"
         analysis.started_at = _now()
