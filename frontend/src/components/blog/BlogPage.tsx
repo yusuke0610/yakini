@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { useBlogAccountManager } from "../../hooks/useBlogAccountManager";
+import { useBlogAccountManager } from "../../hooks/blog/useBlogAccountManager";
 import { BlogScoreCard } from "./BlogScoreCard";
 import { BlogAnalysisSection } from "./BlogAnalysisSection";
 import { BlogPlatformList } from "./BlogPlatformList";

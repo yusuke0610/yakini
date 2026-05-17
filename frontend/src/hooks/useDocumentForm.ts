@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../store";
 import { clearCache, setCache, type FormCacheKey } from "../store/formCacheSlice";
 
-type UseDocumentFormOptions<FormState, Payload, Response extends { id: string }> = {
+export type UseDocumentFormOptions<FormState, Payload, Response extends { id: string }> = {
   createInitialForm: () => FormState;
   loadLatest: () => Promise<Response>;
   createDocument: (payload: Payload) => Promise<Response>;

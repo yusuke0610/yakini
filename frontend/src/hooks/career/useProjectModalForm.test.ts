@@ -2,7 +2,7 @@ import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 
 import { useProjectModalForm } from "./useProjectModalForm";
-import type { CareerProjectForm } from "../payloadBuilders";
+import type { CareerProjectForm } from "../../payloadBuilders";
 
 const sampleProject: CareerProjectForm = {
   name: "テスト",

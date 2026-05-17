@@ -11,17 +11,25 @@ function renderPage() {
   return renderWithProviders(<GitHubAnalysisPage />);
 }
 
+/**
+ * `GET /api/intelligence/cache` をキャッシュ未保存（入力画面表示）レスポンスに差し替える。
+ * 2 箇所でコピペされていた server.use ブロックを集約する。
+ */
+function mockEmptyCache() {
+  server.use(
+    http.get("*/api/intelligence/cache", () =>
+      HttpResponse.json({
+        analysis_result: null,
+        position_advice: null,
+        status: null,
+      }),
+    ),
+  );
+}
+
 describe("GitHubAnalysisPage", () => {
   it("キャッシュなしの場合、入力画面が表示される", async () => {
-    server.use(
-      http.get("*/api/intelligence/cache", () =>
-        HttpResponse.json({
-          analysis_result: null,
-          position_advice: null,
-          status: null,
-        }),
-      ),
-    );
+    mockEmptyCache();
 
     renderPage();
 
@@ -106,14 +114,8 @@ describe("GitHubAnalysisPage", () => {
   it("分析開始ボタン押下後、ポーリング画面に遷移する", async () => {
     const user = userEvent.setup();
 
+    mockEmptyCache();
     server.use(
-      http.get("*/api/intelligence/cache", () =>
-        HttpResponse.json({
-          analysis_result: null,
-          position_advice: null,
-          status: null,
-        }),
-      ),
       http.get("*/api/intelligence/cache/status", () =>
         HttpResponse.json({ status: "pending" }),
       ),
@@ -137,14 +139,8 @@ describe("GitHubAnalysisPage", () => {
   it("API 500 エラー時にエラーメッセージが表示される", async () => {
     const user = userEvent.setup();
 
+    mockEmptyCache();
     server.use(
-      http.get("*/api/intelligence/cache", () =>
-        HttpResponse.json({
-          analysis_result: null,
-          position_advice: null,
-          status: null,
-        }),
-      ),
       http.post("*/api/intelligence/analyze", () =>
         HttpResponse.json(
           {

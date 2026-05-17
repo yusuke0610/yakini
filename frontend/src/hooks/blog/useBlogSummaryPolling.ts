@@ -3,10 +3,10 @@ import {
   summarizeBlogArticles,
   getBlogSummaryCache,
   getBlogSummaryCacheStatus,
-} from "../api";
-import type { BlogArticle } from "../types";
-import { isInProgressStatus } from "../utils/taskStatus";
-import { useTaskPolling } from "./useTaskPolling";
+} from "../../api";
+import type { BlogArticle } from "../../types";
+import { isInProgressStatus } from "../../utils/taskStatus";
+import { useTaskPolling } from "../useTaskPolling";
 
 /**
  * ブログ記事の AI サマリのポーリングを管理するフック。

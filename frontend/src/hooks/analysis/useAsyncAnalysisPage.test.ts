@@ -1,6 +1,9 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { useAsyncAnalysisPage } from "./useAsyncAnalysisPage";
+import {
+  useAsyncAnalysisPage,
+  type UseAsyncAnalysisPageOptions,
+} from "./useAsyncAnalysisPage";
 
 describe("useAsyncAnalysisPage", () => {
   const mockLoadCache = vi.fn();
@@ -10,17 +13,29 @@ describe("useAsyncAnalysisPage", () => {
     vi.clearAllMocks();
   });
 
+  /**
+   * 4 箇所の renderHook + props 標準セット (loadCache / checkStatus) のコピペを集約する setup ファクトリ。
+   * `overrides` で fetchProgress 等の追加 props を渡せる。
+   */
+  type TestResult = { id: string };
+  function setup(
+    overrides: Partial<UseAsyncAnalysisPageOptions<TestResult>> = {},
+  ) {
+    return renderHook(() =>
+      useAsyncAnalysisPage<TestResult>({
+        loadCache: mockLoadCache,
+        checkStatus: mockCheckStatus,
+        ...overrides,
+      }),
+    );
+  }
+
   /** 初回マウント時にキャッシュが存在する場合、result フェーズに遷移すること */
   it("キャッシュが存在する場合 result フェーズに遷移する", async () => {
     mockLoadCache.mockResolvedValue({ result: { id: "test-result" } });
     mockCheckStatus.mockResolvedValue({ status: "completed" });
 
-    const { result } = renderHook(() =>
-      useAsyncAnalysisPage({
-        loadCache: mockLoadCache,
-        checkStatus: mockCheckStatus,
-      }),
-    );
+    const { result } = setup();
 
     await waitFor(() => {
       expect(result.current.phase).toBe("result");
@@ -34,12 +49,7 @@ describe("useAsyncAnalysisPage", () => {
     mockLoadCache.mockResolvedValue({ result: null });
     mockCheckStatus.mockResolvedValue({ status: "idle" });
 
-    const { result } = renderHook(() =>
-      useAsyncAnalysisPage({
-        loadCache: mockLoadCache,
-        checkStatus: mockCheckStatus,
-      }),
-    );
+    const { result } = setup();
 
     await waitFor(() => {
       expect(result.current.phase).toBe("input");
@@ -53,12 +63,7 @@ describe("useAsyncAnalysisPage", () => {
     mockLoadCache.mockResolvedValue({ result: null, status: "retrying" });
     mockCheckStatus.mockResolvedValue({ status: "retrying" });
 
-    const { result } = renderHook(() =>
-      useAsyncAnalysisPage({
-        loadCache: mockLoadCache,
-        checkStatus: mockCheckStatus,
-      }),
-    );
+    const { result } = setup();
 
     await waitFor(() => {
       expect(result.current.phase).toBe("polling");
@@ -71,12 +76,7 @@ describe("useAsyncAnalysisPage", () => {
     // ポーリングが止まらないよう pending を返し続ける
     mockCheckStatus.mockResolvedValue({ status: "pending" });
 
-    const { result } = renderHook(() =>
-      useAsyncAnalysisPage({
-        loadCache: mockLoadCache,
-        checkStatus: mockCheckStatus,
-      }),
-    );
+    const { result } = setup();
 
     await waitFor(() => {
       expect(result.current.phase).toBe("polling");
@@ -93,12 +93,7 @@ describe("useAsyncAnalysisPage", () => {
       error_message: "分析に失敗しました",
     });
 
-    const { result } = renderHook(() =>
-      useAsyncAnalysisPage({
-        loadCache: mockLoadCache,
-        checkStatus: mockCheckStatus,
-      }),
-    );
+    const { result } = setup();
 
     await waitFor(() => {
       expect(result.current.phase).toBe("input");
@@ -117,12 +112,7 @@ describe("useAsyncAnalysisPage", () => {
     mockLoadCache.mockResolvedValue({ result: null });
     mockCheckStatus.mockResolvedValue({ status: "pending" });
 
-    const { result } = renderHook(() =>
-      useAsyncAnalysisPage({
-        loadCache: mockLoadCache,
-        checkStatus: mockCheckStatus,
-      }),
-    );
+    const { result } = setup();
 
     // input フェーズになるまで待つ
     await waitFor(() => {
@@ -141,12 +131,7 @@ describe("useAsyncAnalysisPage", () => {
     mockLoadCache.mockResolvedValue({ result: { id: "existing" } });
     mockCheckStatus.mockResolvedValue({ status: "completed" });
 
-    const { result } = renderHook(() =>
-      useAsyncAnalysisPage({
-        loadCache: mockLoadCache,
-        checkStatus: mockCheckStatus,
-      }),
-    );
+    const { result } = setup();
 
     await waitFor(() => {
       expect(result.current.phase).toBe("result");
@@ -169,13 +154,7 @@ describe("useAsyncAnalysisPage", () => {
     mockCheckStatus.mockResolvedValue({ status: "pending" });
     const mockFetchProgress = vi.fn().mockRejectedValue(new Error("Redis down"));
 
-    const { result } = renderHook(() =>
-      useAsyncAnalysisPage({
-        loadCache: mockLoadCache,
-        checkStatus: mockCheckStatus,
-        fetchProgress: mockFetchProgress,
-      }),
-    );
+    const { result } = setup({ fetchProgress: mockFetchProgress });
 
     await waitFor(() => {
       expect(result.current.phase).toBe("polling");
@@ -195,12 +174,7 @@ describe("useAsyncAnalysisPage", () => {
     mockLoadCache.mockRejectedValue(new Error("ネットワークエラー"));
     mockCheckStatus.mockResolvedValue({ status: "idle" });
 
-    const { result } = renderHook(() =>
-      useAsyncAnalysisPage({
-        loadCache: mockLoadCache,
-        checkStatus: mockCheckStatus,
-      }),
-    );
+    const { result } = setup();
 
     await waitFor(() => {
       expect(result.current.phase).toBe("input");

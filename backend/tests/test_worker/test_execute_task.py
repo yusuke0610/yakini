@@ -10,6 +10,7 @@ from app.services.tasks.worker import (
     _safe_rollback,
     execute_task,
 )
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ._helpers import run_sync as _run
@@ -107,26 +108,37 @@ class TestExecuteTask:
 
 class TestSafeRollback:
     def test_rollback_after_failed_commit_restores_session(self, db_session: Session):
-        """DB commit 失敗後に _safe_rollback を呼ぶと、セッションが再利用可能になること。"""
+        """DB commit 失敗で実際にエラー状態に陥ったあと、_safe_rollback で
+        セッションが再利用可能になること。
+
+        `BlogSummaryCache.user_id` の unique 制約に違反させて IntegrityError を起こし、
+        その後 `_safe_rollback` を呼ぶことで、ロールバックが効いて以降の commit が成功する
+        という回復経路を実際に踏ませる。元実装は手動 `rollback()` のみで失敗状態を作らず、
+        テストとして空回りしていた。
+        """
         user = UserRepository(db_session).create(
             "rollback-test-user", hashed_password=None, email="rollback@test.com"
         )
-        cache = BlogSummaryCache(user_id=user.id, status="processing")
-        db_session.add(cache)
+        first_cache = BlogSummaryCache(user_id=user.id, status="processing")
+        db_session.add(first_cache)
         db_session.commit()
 
-        # コミット失敗をシミュレートしてセッションを PendingRollback 状態にする
-        db_session.execute.__self__ if hasattr(db_session.execute, "__self__") else None
-        db_session.rollback()  # まず手動でロールバックして dirty 状態を作る
+        # 同じ user_id で 2 件目を追加 → unique 制約違反で commit が失敗し、
+        # セッションは「次の操作で PendingRollbackError を投げる」状態になる
+        duplicate = BlogSummaryCache(user_id=user.id, status="processing")
+        db_session.add(duplicate)
+        with pytest.raises(IntegrityError):
+            db_session.commit()
 
-        # _safe_rollback は例外を上げないこと
+        # _safe_rollback は例外を外に漏らさないこと（dirty な状態でも安全に呼べる）
         _safe_rollback(db_session)
 
-        # ロールバック後にセッションが再利用可能であること
-        cache.status = "dead_letter"
+        # ロールバック後にセッションが再利用可能であること。
+        # 元の cache に対する更新 commit が通れば回復経路 OK と判断する。
+        first_cache.status = "dead_letter"
         db_session.commit()
-        db_session.refresh(cache)
-        assert cache.status == "dead_letter"
+        db_session.refresh(first_cache)
+        assert first_cache.status == "dead_letter"
 
     def test_safe_rollback_suppresses_exception(self):
         """rollback() が例外を送出しても _safe_rollback は例外を外に漏らさないこと。"""
