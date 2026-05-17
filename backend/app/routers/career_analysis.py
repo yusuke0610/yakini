@@ -25,8 +25,8 @@ from ..schemas.career_analysis import (
     CareerAnalysisGenerateRequest,
     CareerAnalysisResponse,
     CareerAnalysisResult,
-    TaskStatusResponse,
 )
+from ..schemas.shared import TaskStatusResponse
 from ..services.intelligence.llm import get_llm_client
 from ..services.tasks import AsyncTaskCacheService, TaskType
 

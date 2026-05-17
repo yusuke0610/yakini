@@ -6,35 +6,13 @@ import markdown
 import weasyprint
 
 from ....core.date_utils import JST
+from ...shared.resume_format import CATEGORY_LABELS as _CATEGORY_LABELS
+from ...shared.resume_format import attr as _a
 
 _CSS_PATH = Path(__file__).resolve().parent.parent / "templates" / "resume.css"
 _FONT_PATH = (
     Path(__file__).resolve().parent.parent.parent.parent / "fonts" / "NotoSansJP-Regular.ttf"
 )
-
-
-def _a(obj, key, default=""):
-    """dict / ORM オブジェクト両対応の属性アクセス"""
-    if isinstance(obj, dict):
-        return obj.get(key, default)
-    return getattr(obj, key, default)
-
-
-_CATEGORY_LABELS = {
-    "language": "言語",
-    "framework": "FW",
-    "os": "OS",
-    "db": "DB",
-    "cloud_provider": "クラウド",
-    "container": "コンテナ",
-    "iac": "IaC",
-    "vcs": "バージョン管理",
-    "ci_cd": "CI/CD",
-    "project_tool": "プロジェクトツール",
-    "monitoring": "監視・可観測性",
-    "middleware": "ミドルウェア",
-    "ai_agent": "AIエージェント",
-}
 
 
 def _esc(text: str) -> str:
