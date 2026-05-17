@@ -34,9 +34,9 @@ export const PATHS = {
   careerAnalysis: {
     base: "/api/career-analysis/",
     generate: "/api/career-analysis/generate",
-    byId: (id: number | string) => `/api/career-analysis/${id}`,
-    status: (id: number | string) => `/api/career-analysis/${id}/status`,
-    retry: (id: number | string) => `/api/career-analysis/${id}/retry`,
+    byId: (id: number) => `/api/career-analysis/${id}`,
+    status: (id: number) => `/api/career-analysis/${id}/status`,
+    retry: (id: number) => `/api/career-analysis/${id}/retry`,
   },
   intelligence: {
     analyze: "/api/intelligence/analyze",
@@ -71,9 +71,9 @@ export const PATHS = {
   aiResume: {
     generate: "/api/ai-resume/generate",
     snapshots: "/api/ai-resume/snapshots",
-    snapshotById: (id: number | string) => `/api/ai-resume/snapshots/${id}`,
-    snapshotFinalize: (id: number | string) => `/api/ai-resume/snapshots/${id}/finalize`,
-    snapshotPdf: (id: number | string) => `/api/ai-resume/snapshots/${id}/pdf`,
-    snapshotMarkdown: (id: number | string) => `/api/ai-resume/snapshots/${id}/markdown`,
+    snapshotById: (id: number) => `/api/ai-resume/snapshots/${id}`,
+    snapshotFinalize: (id: number) => `/api/ai-resume/snapshots/${id}/finalize`,
+    snapshotPdf: (id: number) => `/api/ai-resume/snapshots/${id}/pdf`,
+    snapshotMarkdown: (id: number) => `/api/ai-resume/snapshots/${id}/markdown`,
   },
 } as const;

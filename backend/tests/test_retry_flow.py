@@ -15,6 +15,7 @@
 
 import asyncio
 import os
+from contextlib import contextmanager
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -59,6 +60,41 @@ def _keep_open_session(db: Session):
     return _Proxy(db)
 
 
+@contextmanager
+def _setup_github_analysis_test(
+    db_session: Session,
+    suffix: str,
+    side_effect,
+    initial_status: str = "processing",
+):
+    """github_analysis worker テストの共通スキャフォールド。
+
+    元の各テストにあった「user 作成 → cache 作成 → worker.SessionLocal / _run_github_analysis /
+    _create_notification の 3 連 patch」を集約する。15 行 × 4 箇所のコピペを解消するための helper。
+    yield する mock_notify で `_create_notification` の呼び出し有無を検証できる。
+    """
+    user = UserRepository(db_session).create(
+        f"github:{suffix}", hashed_password=None, email=f"{suffix}@test.com",
+    )
+    cache = GitHubAnalysisCache(user_id=user.id, status=initial_status)
+    db_session.add(cache)
+    db_session.commit()
+
+    with (
+        patch(
+            "app.services.tasks.worker.SessionLocal",
+            return_value=_keep_open_session(db_session),
+        ),
+        patch(
+            "app.services.tasks.worker._run_github_analysis",
+            new_callable=AsyncMock,
+            side_effect=side_effect,
+        ),
+        patch("app.services.tasks.worker._create_notification") as mock_notify,
+    ):
+        yield user, cache, mock_notify
+
+
 # ══════════════════════════════════════════════════════════════════════
 # execute_task リトライ分岐
 # ══════════════════════════════════════════════════════════════════════
@@ -69,25 +105,9 @@ class TestExecuteTaskRetryBranching:
 
     def test_non_retryable_error_marks_dead_letter(self, db_session: Session):
         """NonRetryableError はリトライ回数に関係なく status=dead_letter で終える。"""
-        user = UserRepository(db_session).create(
-            "github:nonretry-user", hashed_password=None, email="nonretry@test.com",
-        )
-        cache = GitHubAnalysisCache(user_id=user.id, status="processing")
-        db_session.add(cache)
-        db_session.commit()
-
-        with (
-            patch(
-                "app.services.tasks.worker.SessionLocal",
-                return_value=_keep_open_session(db_session),
-            ),
-            patch(
-                "app.services.tasks.worker._run_github_analysis",
-                new_callable=AsyncMock,
-                side_effect=NonRetryableError("認証不可"),
-            ),
-            patch("app.services.tasks.worker._create_notification"),
-        ):
+        with _setup_github_analysis_test(
+            db_session, "nonretry-user", side_effect=NonRetryableError("認証不可"),
+        ) as (user, cache, _mock_notify):
             with pytest.raises(NonRetryableError):
                 _run(
                     execute_task(
@@ -106,25 +126,11 @@ class TestExecuteTaskRetryBranching:
         self, db_session: Session,
     ):
         """RetryableError で試行回数が残っていれば status=retrying にする。"""
-        user = UserRepository(db_session).create(
-            "github:retrying-user", hashed_password=None, email="retrying@test.com",
-        )
-        cache = GitHubAnalysisCache(user_id=user.id, status="processing")
-        db_session.add(cache)
-        db_session.commit()
-
-        with (
-            patch(
-                "app.services.tasks.worker.SessionLocal",
-                return_value=_keep_open_session(db_session),
-            ),
-            patch(
-                "app.services.tasks.worker._run_github_analysis",
-                new_callable=AsyncMock,
-                side_effect=RetryableError("一時エラー", retry_after=10),
-            ),
-            patch("app.services.tasks.worker._create_notification") as mock_notify,
-        ):
+        with _setup_github_analysis_test(
+            db_session,
+            "retrying-user",
+            side_effect=RetryableError("一時エラー", retry_after=10),
+        ) as (user, cache, mock_notify):
             with pytest.raises(RetryableError):
                 _run(
                     execute_task(
@@ -146,25 +152,12 @@ class TestExecuteTaskRetryBranching:
         self, db_session: Session,
     ):
         """最終試行（retry_count == max_attempts - 1）で失敗したら dead_letter。"""
-        user = UserRepository(db_session).create(
-            "github:deadletter-user", hashed_password=None, email="dl@test.com",
-        )
-        cache = GitHubAnalysisCache(user_id=user.id, status="retrying")
-        db_session.add(cache)
-        db_session.commit()
-
-        with (
-            patch(
-                "app.services.tasks.worker.SessionLocal",
-                return_value=_keep_open_session(db_session),
-            ),
-            patch(
-                "app.services.tasks.worker._run_github_analysis",
-                new_callable=AsyncMock,
-                side_effect=RetryableError("最後も失敗"),
-            ),
-            patch("app.services.tasks.worker._create_notification") as mock_notify,
-        ):
+        with _setup_github_analysis_test(
+            db_session,
+            "deadletter-user",
+            side_effect=RetryableError("最後も失敗"),
+            initial_status="retrying",
+        ) as (user, cache, mock_notify):
             with pytest.raises(RetryableError):
                 _run(
                     execute_task(
@@ -185,25 +178,11 @@ class TestExecuteTaskRetryBranching:
 
     def test_unknown_exception_treated_as_retryable(self, db_session: Session):
         """分類されていない例外（RuntimeError 等）は retryable と同様に扱う。"""
-        user = UserRepository(db_session).create(
-            "github:unknown-err-user", hashed_password=None, email="unk@test.com",
-        )
-        cache = GitHubAnalysisCache(user_id=user.id, status="processing")
-        db_session.add(cache)
-        db_session.commit()
-
-        with (
-            patch(
-                "app.services.tasks.worker.SessionLocal",
-                return_value=_keep_open_session(db_session),
-            ),
-            patch(
-                "app.services.tasks.worker._run_github_analysis",
-                new_callable=AsyncMock,
-                side_effect=RuntimeError("想定外のクラッシュ"),
-            ),
-            patch("app.services.tasks.worker._create_notification"),
-        ):
+        with _setup_github_analysis_test(
+            db_session,
+            "unknown-err-user",
+            side_effect=RuntimeError("想定外のクラッシュ"),
+        ) as (user, cache, _mock_notify):
             with pytest.raises(RuntimeError):
                 _run(
                     execute_task(
@@ -221,25 +200,11 @@ class TestExecuteTaskRetryBranching:
         self, db_session: Session,
     ):
         """ローカル（max_attempts=1 デフォルト）では最初の失敗で即 dead_letter。"""
-        user = UserRepository(db_session).create(
-            "github:local-fail-user", hashed_password=None, email="local@test.com",
-        )
-        cache = GitHubAnalysisCache(user_id=user.id, status="processing")
-        db_session.add(cache)
-        db_session.commit()
-
-        with (
-            patch(
-                "app.services.tasks.worker.SessionLocal",
-                return_value=_keep_open_session(db_session),
-            ),
-            patch(
-                "app.services.tasks.worker._run_github_analysis",
-                new_callable=AsyncMock,
-                side_effect=RuntimeError("ローカル失敗"),
-            ),
-            patch("app.services.tasks.worker._create_notification"),
-        ):
+        with _setup_github_analysis_test(
+            db_session,
+            "local-fail-user",
+            side_effect=RuntimeError("ローカル失敗"),
+        ) as (user, cache, _mock_notify):
             with pytest.raises(RuntimeError):
                 # retry_count=0, max_attempts=1（デフォルト）
                 _run(execute_task(TaskType.GITHUB_ANALYSIS, {"user_id": user.id}))
@@ -455,7 +420,7 @@ class TestRetryEndpoints:
         db.commit()
 
         with patch(
-            "app.routers.blog.check_llm_available", new=AsyncMock(return_value=True),
+            "app.routers.blog.summarize.check_llm_available", new=AsyncMock(return_value=True),
         ):
             resp_ok = client.post("/api/blog/summarize/retry", headers=headers)
         assert resp_ok.status_code == 202

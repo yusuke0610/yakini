@@ -20,7 +20,6 @@ from .career_analysis import (
     CareerAnalysisResult,
     CareerPathItem,
     StrengthItem,
-    TaskStatusResponse,
     TechStackItem,
     TechStackSection,
 )
@@ -51,6 +50,7 @@ from .resume import (
     TeamMember,
     TechnologyStackItem,
 )
+from .shared import TaskStatusResponse
 
 __all__ = [
     "ActionItem",

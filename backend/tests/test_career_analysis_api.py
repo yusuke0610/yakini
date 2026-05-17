@@ -106,7 +106,11 @@ def test_user_a_blog_article_not_accessible_by_user_b(client: TestClient) -> Non
 
     # user A でブログアカウントと記事を作成
     headers_a = auth_header(client, "blog-boundary-a")
-    with patch("app.routers.blog.verify_user_exists", new_callable=AsyncMock, return_value=True):
+    with patch(
+        "app.routers.blog.accounts.verify_user_exists",
+        new_callable=AsyncMock,
+        return_value=True,
+    ):
         resp = client.post(
             "/api/blog/accounts",
             json={"platform": "zenn", "username": "boundary-a"},
