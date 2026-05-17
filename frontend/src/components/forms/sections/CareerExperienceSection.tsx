@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 import type { CareerExperienceForm, CareerFormState, CareerProjectForm } from "../../../payloadBuilders";
 import type { TechStackMasterItem } from "../../../types";
@@ -13,7 +14,7 @@ type CareerExperienceSectionProps = {
   /** 職務経歴データの配列 */
   experiences: CareerExperienceForm[];
   /** フォーム状態更新ディスパッチャ */
-  setForm: React.Dispatch<React.SetStateAction<CareerFormState>>;
+  setForm: Dispatch<SetStateAction<CareerFormState>>;
   /** 技術スタックのマスタデータ */
   techStackOptions: TechStackMasterItem[];
 };

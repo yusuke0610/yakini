@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 import { useAppDispatch, useAppSelector } from "../store";
 import { clearCache, setCache, type FormCacheKey } from "../store/formCacheSlice";
@@ -52,7 +53,7 @@ export function useDocumentForm<FormState, Payload, Response extends { id: strin
   cacheKeyRef.current = cacheKey;
 
   /** setForm のラッパー: Redux キャッシュも同時更新する */
-  const setForm: React.Dispatch<React.SetStateAction<FormState>> = useCallback(
+  const setForm: Dispatch<SetStateAction<FormState>> = useCallback(
     (action) => {
       setFormRaw((prev) => {
         const next = typeof action === "function" ? (action as (prev: FormState) => FormState)(prev) : action;

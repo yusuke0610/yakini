@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useTaskPolling } from "../useTaskPolling";
 import type { AppErrorState } from "../../utils/appError";
 import { isInProgressStatus } from "../../utils/taskStatus";
@@ -52,15 +53,15 @@ type UseAsyncAnalysisPageReturn<TResult> = {
   /** 現在のフェーズ */
   phase: AsyncAnalysisPhase;
   /** フェーズを手動で更新する関数 */
-  setPhase: React.Dispatch<React.SetStateAction<AsyncAnalysisPhase>>;
+  setPhase: Dispatch<SetStateAction<AsyncAnalysisPhase>>;
   /** 分析結果（result フェーズ時のみ非 null） */
   result: TResult | null;
   /** 結果を更新する関数 */
-  setResult: React.Dispatch<React.SetStateAction<TResult | null>>;
+  setResult: Dispatch<SetStateAction<TResult | null>>;
   /** エラーメッセージ */
   error: AppErrorState | null;
   /** エラーを更新する関数 */
-  setError: React.Dispatch<React.SetStateAction<AppErrorState | null>>;
+  setError: Dispatch<SetStateAction<AppErrorState | null>>;
   /** ポーリング開始関数 */
   startPolling: () => void;
   /** ポーリング中フラグ */
