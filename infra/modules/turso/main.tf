@@ -9,4 +9,12 @@ resource "turso_database" "this" {
   name              = "${var.app_name}-${var.environment}"
   organization_name = var.organization_name
   group             = var.group
+
+  # DB はアプリ唯一のデータ保持リソース。誤った destroy / 再作成でデータ消失を防ぐ。
+  # OpenTofu の lifecycle メタ引数はリテラル値のみ許容するため変数化はできない。
+  # 意図的な teardown が必要な場合は、本ブロックを一時的に削除して apply するか
+  # `tofu state rm` で state から外してから destroy すること。
+  lifecycle {
+    prevent_destroy = true
+  }
 }
