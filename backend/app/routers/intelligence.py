@@ -18,13 +18,13 @@ from ..core.security.auth import get_current_user
 from ..core.security.dependencies import limiter
 from ..db import get_db
 from ..models import GitHubAnalysisCache, User
-from ..schemas.career_analysis import TaskStatusResponse
 from ..schemas.intelligence import (
     AnalyzeRequest,
     CachedAnalysisResponse,
     PositionAdviceResponse,
     ProgressResponse,
 )
+from ..schemas.shared import TaskStatusResponse
 from ..services.intelligence.llm_advice_service import LLMPositionAdviceService
 from ..services.tasks import AsyncTaskCacheService, TaskType
 

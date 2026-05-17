@@ -1,14 +1,9 @@
 from typing import Any
 
+from ...shared.resume_format import CATEGORY_LABELS
+from ...shared.resume_format import attr as _a
 from ..templates import resume_template as tpl
 from ..utils.markdown_utils import field_line, format_period
-
-
-def _a(obj, key, default=""):
-    """dict / ORM オブジェクト両対応の属性アクセス"""
-    if isinstance(obj, dict):
-        return obj.get(key, default)
-    return getattr(obj, key, default)
 
 
 def build_resume_markdown(payload: dict[str, Any]) -> str:
@@ -122,21 +117,6 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                         lines.append(field_line("工程", ", ".join(phases)))
                     stacks = _a(proj, "technology_stacks", [])
                     if stacks:
-                        cat_labels = {
-                            "language": "言語",
-                            "framework": "FW",
-                            "os": "OS",
-                            "db": "DB",
-                            "cloud_provider": "クラウド",
-                            "container": "コンテナ",
-                            "iac": "IaC",
-                            "vcs": "バージョン管理",
-                            "ci_cd": "CI/CD",
-                            "project_tool": "プロジェクトツール",
-                            "monitoring": "監視・可観測性",
-                            "middleware": "ミドルウェア",
-                            "ai_agent": "AIエージェント",
-                        }
                         grouped: dict[str, list[str]] = {}
                         for st in stacks:
                             cat = _a(st, "category")
@@ -144,7 +124,8 @@ def build_resume_markdown(payload: dict[str, Any]) -> str:
                                 grouped[cat] = []
                             grouped[cat].append(_a(st, "name"))
                         parts = [
-                            f"{cat_labels.get(c, c)}: {', '.join(ns)}" for c, ns in grouped.items()
+                            f"{CATEGORY_LABELS.get(c, c)}: {', '.join(ns)}"
+                            for c, ns in grouped.items()
                         ]
                         lines.append(field_line("技術スタック", " / ".join(parts)))
                     lines.append("")
