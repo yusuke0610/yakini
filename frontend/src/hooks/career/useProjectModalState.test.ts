@@ -1,7 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { useProjectModalState } from "./useProjectModalState";
-import type { CareerProjectForm } from "../payloadBuilders";
+import type { CareerProjectForm } from "../../payloadBuilders";
 
 const dummyProject: CareerProjectForm = {
   name: "テストプロジェクト",

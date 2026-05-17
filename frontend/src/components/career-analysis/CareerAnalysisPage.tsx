@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { CareerAnalysisResponse } from "../../api";
-import { useCareerAnalysisPage } from "../../hooks/useCareerAnalysisPage";
+import { useCareerAnalysisPage } from "../../hooks/career/useCareerAnalysisPage";
 import { CareerAnalysisResultView } from "./result/CareerAnalysisResultView";
 import { ErrorToast } from "../ui/ErrorToast";
 import { InlineSpinner } from "../ui/InlineSpinner";

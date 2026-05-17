@@ -1,38 +1,29 @@
 import { useState } from "react";
 
 import {
+  blankCareerProject,
   blankCareerTechnologyStack,
   blankTeamMember,
-} from "../constants";
-import type { CareerProjectFieldKey } from "../formTypes";
+} from "../../constants";
+import type { CareerProjectFieldKey } from "../../formTypes";
 import {
   validateDateRange,
   type CareerProjectForm,
-} from "../payloadBuilders";
-import type { CareerTechnologyStack, CareerTechnologyStackCategory } from "../types";
+} from "../../payloadBuilders";
+import type { CareerTechnologyStack, CareerTechnologyStackCategory } from "../../types";
 
 /**
  * 編集対象が無い（新規追加）場合の初期プロジェクトを生成する。
  * 既存プロジェクトを編集する場合は structuredClone で副作用を切る。
+ *
+ * 初期値の唯一の SSoT は `constants.ts:blankCareerProject`。フィールド追加・改名は
+ * そちらで行えば本フックも自動追従する。
  */
 export function initProject(project: CareerProjectForm | null): CareerProjectForm {
   if (project) {
     return structuredClone(project);
   }
-  return {
-    name: "",
-    start_date: "",
-    end_date: "",
-    is_current: false,
-    role: "",
-    description: "",
-    challenge: "",
-    action: "",
-    result: "",
-    team: { total: "", members: [] },
-    technology_stacks: [{ ...blankCareerTechnologyStack }],
-    phases: [],
-  };
+  return structuredClone(blankCareerProject);
 }
 
 /**

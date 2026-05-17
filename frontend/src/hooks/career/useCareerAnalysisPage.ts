@@ -7,10 +7,10 @@ import {
   retryAnalysis,
   toAppError,
   type CareerAnalysisResponse,
-} from "../api";
-import type { AppErrorState } from "../utils/appError";
-import { isInProgressStatus } from "../utils/taskStatus";
-import { useTaskPolling } from "./useTaskPolling";
+} from "../../api";
+import type { AppErrorState } from "../../utils/appError";
+import { isInProgressStatus } from "../../utils/taskStatus";
+import { useTaskPolling } from "../useTaskPolling";
 
 export type CareerAnalysisPhase = "loading" | "input" | "polling" | "list" | "detail";
 

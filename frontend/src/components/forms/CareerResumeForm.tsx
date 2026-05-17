@@ -15,15 +15,14 @@ import { buildCareerPayload } from "../../payloadBuilders";
 import type { CareerTextFieldKey } from "../../formTypes";
 import { useQualifications, useTechnologyStacks } from "../../hooks/useMasterData";
 import { usePdfActions } from "../../hooks/usePdfActions";
-import type { ResumeQualification } from "../../types";
-import { blankResumeQualification } from "../../constants";
 import shared from "../../styles/shared.module.css";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { Skeleton } from "../ui/Skeleton";
-import { Combobox } from "./Combobox";
-import { MarkdownTextarea } from "./MarkdownTextarea";
 import { PdfPreviewModal } from "./PdfPreviewModal";
+import { CareerBasicInfoSection } from "./sections/CareerBasicInfoSection";
 import { CareerExperienceSection } from "./sections/CareerExperienceSection";
+import { CareerQualificationsSection } from "./sections/CareerQualificationsSection";
+import { CareerSelfPrSection } from "./sections/CareerSelfPrSection";
 
 export function CareerResumeForm() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -79,39 +78,6 @@ export function CareerResumeForm() {
 
   const onChangeField = (key: CareerTextFieldKey, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
-  };
-
-  /** 資格フィールド変更ハンドラ */
-  const updateQualificationField = (
-    index: number,
-    key: keyof ResumeQualification,
-    value: string,
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      qualifications: prev.qualifications.map((qualification, i) =>
-        i === index ? { ...qualification, [key]: value } : qualification,
-      ),
-    }));
-  };
-
-  /** 資格追加ハンドラ */
-  const addQualification = () => {
-    setForm((prev) => ({
-      ...prev,
-      qualifications: [...prev.qualifications, { ...blankResumeQualification }],
-    }));
-  };
-
-  /** 資格削除ハンドラ */
-  const removeQualification = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      qualifications:
-        prev.qualifications.length === 1
-          ? [{ ...blankResumeQualification }]
-          : prev.qualifications.filter((_, i) => i !== index),
-    }));
   };
 
   const onSubmit = async (event: FormEvent) => {
@@ -184,35 +150,12 @@ export function CareerResumeForm() {
             {success && <p className={shared.success}>{success}</p>}
 
             {/* 基本情報: 氏名・職務要約 */}
-            <section className={shared.section}>
-              <label>
-                <span className={shared.labelText}>
-                  氏名<span className={shared.requiredBadge}>必須</span>
-                </span>
-                {loading ? (
-                  <Skeleton height="38px" />
-                ) : (
-                  <input
-                    type="text"
-                    value={form.full_name}
-                    onChange={(e) => onChangeField("full_name", e.target.value)}
-                    placeholder="例: 山田 太郎"
-                    required
-                  />
-                )}
-              </label>
-              {loading ? (
-                <Skeleton height="110px" />
-              ) : (
-                <MarkdownTextarea
-                  label="職務要約"
-                  value={form.career_summary}
-                  onChange={(v) => onChangeField("career_summary", v)}
-                  rows={4}
-                  required
-                />
-              )}
-            </section>
+            <CareerBasicInfoSection
+              fullName={form.full_name}
+              careerSummary={form.career_summary}
+              loading={loading}
+              onChange={onChangeField}
+            />
 
             {/* 職務経歴セクション */}
             {loading ? (
@@ -234,62 +177,19 @@ export function CareerResumeForm() {
             )}
 
             {/* 資格セクション */}
-            <section className={shared.section}>
-              <h2>資格</h2>
-              {loading ? (
-                <div className={shared.entry}>
-                  <Skeleton height="56px" />
-                </div>
-              ) : (
-                <>
-                  {form.qualifications.map((qualification, index) => (
-                    <div key={`qualification-${index}`} className={shared.entry}>
-                      <div className={shared.inline}>
-                        <label>
-                          資格名 ※プルダウンにないものはテキストで入力できます。
-                          <Combobox
-                            value={qualification.name}
-                            onChange={(val) => updateQualificationField(index, "name", val)}
-                            options={qualificationNames}
-                            placeholder="例: 基本情報技術者試験"
-                            allowCustom
-                          />
-                        </label>
-                        <label>
-                          取得日
-                          <input
-                            type="date"
-                            value={qualification.acquired_date}
-                            onChange={(e) => updateQualificationField(index, "acquired_date", e.target.value)}
-                          />
-                        </label>
-                      </div>
-                      <button type="button" className="danger" onClick={() => removeQualification(index)}>
-                        資格を削除
-                      </button>
-                    </div>
-                  ))}
-                  <button type="button" className="ghost" onClick={addQualification}>
-                    資格を追加
-                  </button>
-                </>
-              )}
-            </section>
+            <CareerQualificationsSection
+              qualifications={form.qualifications}
+              qualificationNames={qualificationNames}
+              loading={loading}
+              setForm={setForm}
+            />
 
             {/* 自己PR */}
-            <section className={shared.section}>
-              {loading ? (
-                <Skeleton height="110px" />
-              ) : (
-                <MarkdownTextarea
-                  label="自己PR"
-                  value={form.self_pr}
-                  onChange={(v) => onChangeField("self_pr", v)}
-                  rows={4}
-                  required
-                />
-              )}
-            </section>
+            <CareerSelfPrSection
+              selfPr={form.self_pr}
+              loading={loading}
+              onChange={(v) => onChangeField("self_pr", v)}
+            />
           </div>
         </div>
       </form>

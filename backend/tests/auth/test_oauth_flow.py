@@ -174,8 +174,15 @@ def test_github_login_url_uses_frontend_origin_when_callback_base_url_unset(clie
 
 
 def test_github_login_url_uses_callback_base_url_when_set(client) -> None:
-    """CALLBACK_BASE_URL が設定されている場合、x-forwarded-host より優先されることを確認する。"""
-    with patch.dict(os.environ, {"CALLBACK_BASE_URL": "devforge-dev-XXXXX-an.a.run.app"}):
+    """CALLBACK_BASE_URL が設定されている場合、x-forwarded-host より優先されることを確認する。
+
+    settings.py のドキュメントに従い、scheme 付きの URL（``https://<host>``）を期待値とする。
+    GitHub OAuth は scheme 付きの redirect_uri しか受け付けないため、現実的な値で検証する。
+    """
+    with patch.dict(
+        os.environ,
+        {"CALLBACK_BASE_URL": "https://devforge-dev-XXXXX-an.a.run.app"},
+    ):
         response = client.get(
             "/auth/github/login-url",
             headers={
@@ -188,7 +195,7 @@ def test_github_login_url_uses_callback_base_url_when_set(client) -> None:
     assert response.status_code == 200
     parsed = urlparse(response.json()["authorization_url"])
     redirect_uri = parse_qs(parsed.query)["redirect_uri"][0]
-    assert redirect_uri == "devforge-dev-XXXXX-an.a.run.app/github/callback"
+    assert redirect_uri == "https://devforge-dev-XXXXX-an.a.run.app/github/callback"
 
 
 def test_github_login_redirect_to_github(client) -> None:

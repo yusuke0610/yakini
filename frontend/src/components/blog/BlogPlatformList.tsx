@@ -1,5 +1,5 @@
 import type { BlogAccount } from "../../types";
-import type { PlatformKey } from "../../hooks/useBlogAccountManager";
+import type { PlatformKey } from "../../hooks/blog/useBlogAccountManager";
 import { ZennIcon } from "../icons/ZennIcon";
 import { NoteIcon } from "../icons/NoteIcon";
 import { QiitaIcon } from "../icons/QiitaIcon";

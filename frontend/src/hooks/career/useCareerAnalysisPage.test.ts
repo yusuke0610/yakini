@@ -1,7 +1,7 @@
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useCareerAnalysisPage } from "./useCareerAnalysisPage";
-import type { CareerAnalysisResponse } from "../api";
+import type { CareerAnalysisResponse } from "../../api";
 
 /** テスト用のダミー分析データ */
 const dummyCompleted: CareerAnalysisResponse = {
@@ -28,8 +28,8 @@ const dummyPending: CareerAnalysisResponse = {
   created_at: "2024-01-02T00:00:00",
 };
 
-/** ../api モジュール全体をモック */
-vi.mock("../api", () => ({
+/** ../../api モジュール全体をモック */
+vi.mock("../../api", () => ({
   listAnalyses: vi.fn(),
   generateAnalysis: vi.fn(),
   deleteAnalysis: vi.fn(),
@@ -49,15 +49,34 @@ describe("useCareerAnalysisPage", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    api = await import("../api");
+    api = await import("../../api");
     api.listAnalyses.mockResolvedValue([]);
   });
 
+  /**
+   * setup ファクトリ: 各テストで使う初期一覧と、API モックの挙動セットを差分指定可能にする。
+   * 7 箇所でコピペされていた `renderHook(() => useCareerAnalysisPage())` 直前の API setup を集約する。
+   */
+  function setup(
+    initialAnalyses: CareerAnalysisResponse[] = [],
+    mockOverrides: {
+      generateAnalysis?: ReturnType<typeof vi.fn>;
+      deleteAnalysis?: ReturnType<typeof vi.fn>;
+    } = {},
+  ) {
+    api.listAnalyses.mockResolvedValue(initialAnalyses);
+    if (mockOverrides.generateAnalysis) {
+      api.generateAnalysis = mockOverrides.generateAnalysis;
+    }
+    if (mockOverrides.deleteAnalysis) {
+      api.deleteAnalysis = mockOverrides.deleteAnalysis;
+    }
+    return renderHook(() => useCareerAnalysisPage());
+  }
+
   /** マウント時に listAnalyses が呼ばれ、データがなければ input フェーズになること */
   it("マウント時にデータなしの場合 input フェーズになる", async () => {
-    api.listAnalyses.mockResolvedValue([]);
-
-    const { result } = renderHook(() => useCareerAnalysisPage());
+    const { result } = setup([]);
 
     await waitFor(() => {
       expect(result.current.phase).toBe("input");
@@ -69,9 +88,7 @@ describe("useCareerAnalysisPage", () => {
 
   /** マウント時にデータがあれば list フェーズになること */
   it("マウント時にデータありの場合 list フェーズになる", async () => {
-    api.listAnalyses.mockResolvedValue([dummyCompleted]);
-
-    const { result } = renderHook(() => useCareerAnalysisPage());
+    const { result } = setup([dummyCompleted]);
 
     await waitFor(() => {
       expect(result.current.phase).toBe("list");
@@ -82,9 +99,7 @@ describe("useCareerAnalysisPage", () => {
 
   /** マウント時に pending レコードがあればポーリングフェーズになること */
   it("マウント時に pending レコードがある場合 polling フェーズになる", async () => {
-    api.listAnalyses.mockResolvedValue([dummyPending]);
-
-    const { result } = renderHook(() => useCareerAnalysisPage());
+    const { result } = setup([dummyPending]);
 
     await waitFor(() => {
       expect(result.current.phase).toBe("polling");
@@ -93,10 +108,8 @@ describe("useCareerAnalysisPage", () => {
 
   /** handleGenerate が失敗した場合、error がセットされ input フェーズになること */
   it("handleGenerate が失敗した場合 error がセットされ input フェーズになる", async () => {
-    api.listAnalyses.mockResolvedValue([]);
     api.generateAnalysis.mockRejectedValue(new Error("生成に失敗しました"));
-
-    const { result } = renderHook(() => useCareerAnalysisPage());
+    const { result } = setup([]);
 
     await waitFor(() => {
       expect(result.current.phase).toBe("input");
@@ -113,10 +126,8 @@ describe("useCareerAnalysisPage", () => {
 
   /** handleGenerate が成功した場合、polling フェーズに遷移すること */
   it("handleGenerate が成功した場合 polling フェーズに遷移する", async () => {
-    api.listAnalyses.mockResolvedValue([]);
     api.generateAnalysis.mockResolvedValue({ id: 10, status: "pending" });
-
-    const { result } = renderHook(() => useCareerAnalysisPage());
+    const { result } = setup([]);
 
     await waitFor(() => {
       expect(result.current.phase).toBe("input");
@@ -131,10 +142,8 @@ describe("useCareerAnalysisPage", () => {
 
   /** handleDelete が成功した場合、削除後の一覧を返すこと */
   it("handleDelete が成功した場合 更新後の一覧を返す", async () => {
-    api.listAnalyses.mockResolvedValue([dummyCompleted]);
     api.deleteAnalysis.mockResolvedValue(undefined);
-
-    const { result } = renderHook(() => useCareerAnalysisPage());
+    const { result } = setup([dummyCompleted]);
 
     await waitFor(() => {
       expect(result.current.phase).toBe("list");
@@ -153,10 +162,8 @@ describe("useCareerAnalysisPage", () => {
 
   /** handleDelete が失敗した場合、null を返し error がセットされること */
   it("handleDelete が失敗した場合 null を返し error がセットされる", async () => {
-    api.listAnalyses.mockResolvedValue([dummyCompleted]);
     api.deleteAnalysis.mockRejectedValue(new Error("削除に失敗しました"));
-
-    const { result } = renderHook(() => useCareerAnalysisPage());
+    const { result } = setup([dummyCompleted]);
 
     await waitFor(() => {
       expect(result.current.phase).toBe("list");

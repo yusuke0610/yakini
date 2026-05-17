@@ -4,7 +4,7 @@ import React from "react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import formCacheReducer, { setCache } from "../store/formCacheSlice";
-import { useDocumentForm } from "./useDocumentForm";
+import { useDocumentForm, type UseDocumentFormOptions } from "./useDocumentForm";
 import { ApiError } from "../utils/appError";
 
 /** テスト用の Redux Store を生成するヘルパー */
@@ -16,6 +16,9 @@ function createTestStore() {
 
 /** テスト用のフォーム状態型 */
 type TestForm = { title: string };
+
+/** テスト用のペイロード型 */
+type TestPayload = { title: string };
 
 /** テスト用のレスポンス型 */
 type TestResponse = { id: string; title: string };
@@ -42,14 +45,27 @@ describe("useDocumentForm", () => {
     }));
   });
 
-  /** save() が API エラー（500）を返した場合、error メッセージが表示されること */
-  it("save() で API エラーが発生した場合 error がセットされる", async () => {
-    mockLoadLatest.mockRejectedValue(new Error("Not found"));
-
+  /**
+   * テスト共通の setup 関数。各 it では `overrides` で差分だけ指定する。
+   * 5 箇所でコピペされていた renderHook + props の標準セットを集約する。
+   */
+  function setup(
+    overrides: Partial<UseDocumentFormOptions<TestForm, TestPayload, TestResponse>> = {},
+    storeOverrides: { presetCache?: { form: TestForm; documentId: string | null } } = {},
+  ) {
     const store = createTestStore();
-    const { result } = renderHook(
+    if (storeOverrides.presetCache) {
+      store.dispatch(
+        setCache({
+          key: "career",
+          form: storeOverrides.presetCache.form,
+          documentId: storeOverrides.presetCache.documentId,
+        }),
+      );
+    }
+    const hook = renderHook(
       () =>
-        useDocumentForm<TestForm, { title: string }, TestResponse>({
+        useDocumentForm<TestForm, TestPayload, TestResponse>({
           createInitialForm: () => ({ title: "" }),
           loadLatest: mockLoadLatest,
           createDocument: mockCreateDocument,
@@ -57,9 +73,17 @@ describe("useDocumentForm", () => {
           buildPayload: mockBuildPayload,
           mapResponseToForm: mockMapResponseToForm,
           successMessage: "保存しました",
+          ...overrides,
         }),
       { wrapper: makeWrapper(store) },
     );
+    return { ...hook, store };
+  }
+
+  /** save() が API エラー（500）を返した場合、error メッセージが表示されること */
+  it("save() で API エラーが発生した場合 error がセットされる", async () => {
+    mockLoadLatest.mockRejectedValue(new Error("Not found"));
+    const { result } = setup();
 
     // ローディング完了を待つ
     await waitFor(() => {
@@ -82,20 +106,7 @@ describe("useDocumentForm", () => {
     mockLoadLatest.mockRejectedValue(new Error("Not found"));
     mockCreateDocument.mockResolvedValueOnce({ id: "new-id", title: "テスト" });
 
-    const store = createTestStore();
-    const { result } = renderHook(
-      () =>
-        useDocumentForm<TestForm, { title: string }, TestResponse>({
-          createInitialForm: () => ({ title: "" }),
-          loadLatest: mockLoadLatest,
-          createDocument: mockCreateDocument,
-          updateDocument: mockUpdateDocument,
-          buildPayload: mockBuildPayload,
-          mapResponseToForm: mockMapResponseToForm,
-          successMessage: "保存しました",
-        }),
-      { wrapper: makeWrapper(store) },
-    );
+    const { result } = setup();
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -116,20 +127,7 @@ describe("useDocumentForm", () => {
       new ApiError({ code: "UNAUTHORIZED", message: "認証が必要です" }),
     );
 
-    const store = createTestStore();
-    const { result } = renderHook(
-      () =>
-        useDocumentForm<TestForm, { title: string }, TestResponse>({
-          createInitialForm: () => ({ title: "" }),
-          loadLatest: mockLoadLatest,
-          createDocument: mockCreateDocument,
-          updateDocument: mockUpdateDocument,
-          buildPayload: mockBuildPayload,
-          mapResponseToForm: mockMapResponseToForm,
-          successMessage: "保存しました",
-        }),
-      { wrapper: makeWrapper(store) },
-    );
+    const { result } = setup();
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -149,29 +147,9 @@ describe("useDocumentForm", () => {
    * ページ遷移で戻ってきたときの再 fetch チラつき/二重 API 呼び出しを直接守るテスト。
    */
   it("Redux キャッシュ存在時は loadLatest を呼ばずキャッシュ値を form の初期値にする", async () => {
-    const store = createTestStore();
-    // 事前にキャッシュをセット
-    store.dispatch(
-      setCache({
-        key: "career",
-        form: { title: "cached title" },
-        documentId: "doc-cached",
-      }),
-    );
-
-    const { result } = renderHook(
-      () =>
-        useDocumentForm<TestForm, { title: string }, TestResponse>({
-          createInitialForm: () => ({ title: "" }),
-          loadLatest: mockLoadLatest,
-          createDocument: mockCreateDocument,
-          updateDocument: mockUpdateDocument,
-          buildPayload: mockBuildPayload,
-          mapResponseToForm: mockMapResponseToForm,
-          successMessage: "保存しました",
-          cacheKey: "career",
-        }),
-      { wrapper: makeWrapper(store) },
+    const { result } = setup(
+      { cacheKey: "career" },
+      { presetCache: { form: { title: "cached title" }, documentId: "doc-cached" } },
     );
 
     // キャッシュがあるので最初から loading=false
@@ -186,24 +164,11 @@ describe("useDocumentForm", () => {
   /** beforeSave でエラーがスローされた場合、API が呼ばれずエラーが表示されること */
   it("beforeSave でエラーがスローされた場合 API が呼ばれずエラーがセットされる", async () => {
     mockLoadLatest.mockRejectedValue(new Error("Not found"));
-
-    const store = createTestStore();
-    const { result } = renderHook(
-      () =>
-        useDocumentForm<TestForm, { title: string }, TestResponse>({
-          createInitialForm: () => ({ title: "" }),
-          loadLatest: mockLoadLatest,
-          createDocument: mockCreateDocument,
-          updateDocument: mockUpdateDocument,
-          buildPayload: mockBuildPayload,
-          mapResponseToForm: mockMapResponseToForm,
-          successMessage: "保存しました",
-          beforeSave: async () => {
-            throw new Error("基本情報が未入力です");
-          },
-        }),
-      { wrapper: makeWrapper(store) },
-    );
+    const { result } = setup({
+      beforeSave: async () => {
+        throw new Error("基本情報が未入力です");
+      },
+    });
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
