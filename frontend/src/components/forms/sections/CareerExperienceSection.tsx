@@ -2,8 +2,8 @@ import { useMemo } from "react";
 
 import type { CareerExperienceForm, CareerFormState, CareerProjectForm } from "../../../payloadBuilders";
 import type { TechStackMasterItem } from "../../../types";
-import { useCareerExperienceMutators } from "../../../hooks/useCareerExperienceMutators";
-import { useProjectModalState } from "../../../hooks/useProjectModalState";
+import { useCareerExperienceMutators } from "../../../hooks/career/useCareerExperienceMutators";
+import { useProjectModalState } from "../../../hooks/career/useProjectModalState";
 import shared from "../../../styles/shared.module.css";
 import { CareerExperienceEditor } from "../CareerFormEditors/CareerExperienceEditor";
 import { ProjectModal } from "../ProjectModal";

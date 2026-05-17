@@ -5,7 +5,7 @@ import {
   phaseOptions,
   teamRoleOptions,
 } from "../../constants";
-import { useProjectModalForm } from "../../hooks/useProjectModalForm";
+import { useProjectModalForm } from "../../hooks/career/useProjectModalForm";
 import { Combobox } from "./Combobox";
 import { MarkdownTextarea } from "./MarkdownTextarea";
 import styles from "./ProjectModal.module.css";
