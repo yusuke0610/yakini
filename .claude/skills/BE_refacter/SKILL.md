@@ -1,5 +1,5 @@
 ---
-name: backend_refacter
+name: BE_refacter
 description: Use when reviewing or planning refactors for the DevForge FastAPI backend, especially for maintainability, redundant or missing unit tests, oversized modules or classes, responsibility separation, and directory structure changes. Trigger on requests such as “backend のリファクタリングを見て”, “保守性を確認”, “不要な単体テスト”, “単体テストは十分か”, “責務分離”, or “構成見直し”.
 ---
 
@@ -12,7 +12,9 @@ description: Use when reviewing or planning refactors for the DevForge FastAPI b
 - `.claude/rules/backend/python.md`
 - `.claude/rules/backend/database.md`
 - `.claude/rules/backend/auth-security.md`
+- `.claude/rules/common/duplication.md`（DRY / 重複検知ポリシー）
 - LLM やブログ AI 分析を含む場合だけ `.claude/rules/backend/llm.md`
+- `report/dupe/jscpd-report.json` が存在すれば最新を読み込み、backend に該当する clone を抽出して Duplication Findings の素材にする
 
 ## 対象
 
@@ -20,6 +22,26 @@ description: Use when reviewing or planning refactors for the DevForge FastAPI b
 - `backend/tests/**`
 - `backend/alembic_migrations/**`
 - 必要に応じて `backend/scripts/**`, `backend/Dockerfile`, `backend/requirements.txt`
+
+## 成果物の出力先（必須）
+
+レビュー本文はターミナルに垂れ流さず、必ずファイルへ保存する。スクロールで流れて読み返せなくなるのを防ぐためのルール。
+
+- 保存先: `report/BE_report_<YYYYMMDD_HHMM>.md`
+  - 例: `report/BE_report_20260516_1042.md`
+  - `report/` が無ければ作成する (`mkdir -p report`)
+  - タイムスタンプはレビュー開始時刻のローカルタイム (`date +%Y%m%d_%H%M`)
+- ファイル中身は本ドキュメント末尾の「推奨出力フォーマット」に従う
+- 既存の `BE_report_*.md` は削除しない（履歴として残す）
+
+### ターミナルへの出力ルール
+
+- レポート本文を assistant メッセージへ貼らない（ファイルにだけ書く）
+- ターミナルには以下だけを返す:
+  1. 保存先パス（`report/BE_report_YYYYMMDD_HHMM.md`）
+  2. `Verdict` セクションの 3-5 行サマリのみ
+  3. 次に取るべきアクション（あれば 1-2 行）
+- Findings / Test Review / Structure Review / Refactor Plan などの詳細セクションはファイル参照に留める
 
 ## 目的
 
@@ -87,7 +109,28 @@ description: Use when reviewing or planning refactors for the DevForge FastAPI b
 - マイグレーション後の不変条件
 - セキュリティ設定: cookie, CSRF, GitHub OAuth state, rate limit
 
-### 4. ディレクトリ構成レビュー
+### 4. 重複検知レビュー（Duplication Findings）
+
+`make dupe-check` で `report/dupe/jscpd-report.json` を生成し、backend 配下の clone を抽出する。
+生成されていない場合は `make dupe-check` を sandbox 無効で 1 回回してから本セクションに進む。
+
+抽出した clone を以下の 3 分類でラベリングする（`.claude/rules/common/duplication.md` の基準に従う）。
+
+- **本質的重複**（抽出すべき）: ドメインロジック / バリデーション / スコア計算 / エラーマッピング / API パスや env 名リテラル / DTO 変換ロジック
+- **偶発的重複**（抽出しない）: SQLAlchemy の `created_at` / `updated_at` 定義などの boilerplate、Pydantic schema の field 列、pytest fixture の minimal scaffolding、import 文の塊
+- **意味的重複**（jscpd では拾えない）: 変数名やシグネチャは違うが「同じ判断・同じ整形・同じ I/O パターン」を行うコード。grep + 目視で別途探す。例: 似た Cloud Tasks エンキューロジック、似た LLM 呼び出しエラーハンドリング、似たエラー → HTTPException 変換
+
+本質的重複は「3 回目で抽出（Rule of Three）」を守る。2 箇所だけの重複は **記録するが、抽出は次の重複出現時まで保留**。
+
+抽出先は `.claude/rules/common/duplication.md` の「Backend (FastAPI)」ヒエラルキーに従う:
+
+1. 同一サブパッケージ内 → `_utils.py` / `_helpers.py`
+2. ドメイン横断 → `backend/app/services/shared/`
+3. 永続化 → `repositories/base.py`
+4. HTTP 入出力 → `routers/<scope>/_responses.py`
+5. モデル / DTO → `schemas/shared.py`
+
+### 5. ディレクトリ構成レビュー
 
 以下を見ます。
 
@@ -112,6 +155,8 @@ description: Use when reviewing or planning refactors for the DevForge FastAPI b
 
 ## 推奨出力フォーマット
 
+下記テンプレートを `report/BE_report_<YYYYMMDD_HHMM>.md` に書き込む。ターミナルには貼らない。
+
 ````markdown
 # Backend Refactor Review
 
@@ -134,6 +179,16 @@ description: Use when reviewing or planning refactors for the DevForge FastAPI b
 
 ### Add
 - [path or module] どのケースを追加すべきか。守る仕様は何か。
+
+## Duplication Findings
+### High（本質的重複・抽出強く推奨）
+- [path1:line] ↔ [path2:line] (jscpd: N tokens) 何が重複しているか。本質的な理由。抽出先候補（`services/shared/<name>.py` など）
+
+### Medium（意味的重複・要検討）
+- [path1] と [path2] の処理パターンが同義。差分は X のみ。共通ヘルパに切り出すと差分が明示できる。
+
+### Allowed Duplication（記録のみ・抽出しない）
+- [path:line] SQLAlchemy boilerplate などの偶発的重複。jscpd で検出されたが規約上抽出しない理由。
 
 ## Structure Review
 ### Oversized Modules or Classes
@@ -164,6 +219,7 @@ backend/app/
 
 - `make lint-backend`
 - `make test-backend`
+- `make dupe-check`（重複検知。`report/dupe/jscpd-report.json` を生成。sandbox は無効化して実行）
 
 特定ファイルだけ検証したい場合は `nix develop --command bash -c "cd backend && .venv/bin/python -m ruff check <path>"` を使う。生シェルで `.venv/bin/python` を直接叩くのは禁止（WeasyPrint の動的ライブラリが解決できず import に失敗する）。
 

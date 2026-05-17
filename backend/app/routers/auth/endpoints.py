@@ -34,6 +34,7 @@ from .oauth_flow import (
 )
 from .token_manager import (
     clear_auth_cookies,
+    extract_refresh_token_from_session,
     set_auth_cookies,
 )
 
@@ -72,16 +73,7 @@ def refresh(
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """リフレッシュトークンで新しいアクセストークンを発行する。"""
-    # session Cookie に JSON 形式で格納した refresh_token を取り出す
-    raw = request.cookies.get("session")
-    token: str | None = None
-    if raw:
-        try:
-            data = _json.loads(raw)
-            if isinstance(data, dict):
-                token = data.get("refresh_token")
-        except (ValueError, TypeError):
-            pass
+    token = extract_refresh_token_from_session(request)
     if not token:
         raise_app_error(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -126,16 +118,7 @@ def logout(
     """ログアウト処理。DB の refresh_jti を無効化し Cookie を削除する。
     トークン解析が失敗した場合でも必ず Cookie を削除して 204 を返す。
     """
-    # session Cookie に JSON 形式で格納した refresh_token を取り出す
-    raw = request.cookies.get("session")
-    token: str | None = None
-    if raw:
-        try:
-            data = _json.loads(raw)
-            if isinstance(data, dict):
-                token = data.get("refresh_token")
-        except (ValueError, TypeError):
-            logger.debug("ログアウト時の session Cookie パースに失敗（Cookie 削除を継続）", exc_info=True)
+    token = extract_refresh_token_from_session(request)
     if token:
         try:
             payload = _decode_token(token)

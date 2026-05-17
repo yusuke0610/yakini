@@ -1,10 +1,19 @@
+import type { ErrorCodeKey } from "./errorCodes";
+
 type RecoveryAction = {
   label: string;
   fn: (() => void) | null;
 };
 
+/**
+ * エラーコード → メッセージ + 回復アクションのマップ。
+ *
+ * キーは `frontend/src/constants/errorCodes.ts` の `ErrorCodeKey` で型縛り。
+ * backend `backend/app/core/errors.py:ErrorCode` に新しいコードを追加した場合、
+ * ERROR_CODES と本マップの両方に同時追加が必要（型エラーで漏れを検出）。
+ */
 export const ERROR_CONFIG: Record<
-  string,
+  ErrorCodeKey,
   {
     message: string;
     recovery: RecoveryAction | null;

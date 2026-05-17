@@ -13,6 +13,7 @@ import os
 
 from fastapi import APIRouter, HTTPException, Request
 
+from ..core import env_keys
 from ..core.messages import get_error
 from ..services.tasks.base import TaskType
 from ..services.tasks.exceptions import NonRetryableError, RetryableError
@@ -29,7 +30,7 @@ def _verify_request(request: Request) -> bool:
     TASK_RUNNER=cloud_tasks の場合のみ X-CloudTasks-QueueName ヘッダーを必須とする。
     未設定（空文字含む）はローカル／テスト環境とみなし無条件で許可する。
     """
-    if os.environ.get("TASK_RUNNER", "").strip() != "cloud_tasks":
+    if os.environ.get(env_keys.TASK_RUNNER, "").strip() != "cloud_tasks":
         return True
     queue_name = request.headers.get("X-CloudTasks-QueueName")
     return bool(queue_name)

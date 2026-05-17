@@ -13,8 +13,17 @@ import { useBlogSummaryPolling } from "./useBlogSummaryPolling";
 
 export type PlatformKey = "zenn" | "note" | "qiita";
 
+type PlatformAction = "saving" | "syncing" | "updating" | "deleting";
+
+/** プラットフォーム別の進行中アクション集合。値が無いキーは「アイドル」を意味する。 */
+type PlatformActionMap = Partial<Record<PlatformKey, PlatformAction>>;
+
 /**
  * BlogPage のブログアカウント管理・同期・AI分析ロジックを提供するカスタムフック。
+ *
+ * 4 種類の per-platform lifecycle（saving / syncing / updating / deleting）は
+ * 単一の ``PlatformActionMap`` で集約管理する。外部には従来通り
+ * ``savingPlatform`` / ``syncingPlatform`` 等の派生値で公開する。
  */
 export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita") {
   const [accounts, setAccounts] = useState<BlogAccount[]>([]);
@@ -30,14 +39,45 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     qiita: "",
   });
 
-  /** 保存中のプラットフォーム */
-  const [savingPlatform, setSavingPlatform] = useState<string | null>(null);
-  /** 同期中のプラットフォーム */
-  const [syncingPlatform, setSyncingPlatform] = useState<string | null>(null);
-  /** 更新中のプラットフォーム */
-  const [updatingPlatform, setUpdatingPlatform] = useState<string | null>(null);
-  /** 解除中のプラットフォーム */
-  const [deletingPlatform, setDeletingPlatform] = useState<string | null>(null);
+  /** プラットフォーム別の進行中アクション。同時に複数プラットフォームを操作する余地を残す。 */
+  const [actions, setActions] = useState<PlatformActionMap>({});
+
+  /**
+   * 指定プラットフォームのアクションをセット/解除する。
+   *
+   * クリア（``action === null``）時に ``expectedAction`` を指定すると、
+   * 現在のアクションが ``expectedAction`` と一致する場合のみ削除する。
+   * これにより、同一プラットフォームで先発アクションの finally が
+   * 後発アクションを clobber することを防ぐ。
+   */
+  const setAction = useCallback(
+    (
+      platform: PlatformKey,
+      action: PlatformAction | null,
+      expectedAction?: PlatformAction,
+    ) => {
+      setActions((prev) => {
+        if (action == null) {
+          if (expectedAction !== undefined && prev[platform] !== expectedAction) {
+            return prev;
+          }
+          const next = { ...prev };
+          delete next[platform];
+          return next;
+        }
+        return { ...prev, [platform]: action };
+      });
+    },
+    [],
+  );
+
+  /** 指定アクションを実行中のプラットフォームを返す（最初の 1 件、なければ null）。 */
+  const findPlatformWithAction = (target: PlatformAction): PlatformKey | null => {
+    for (const [platform, action] of Object.entries(actions)) {
+      if (action === target) return platform as PlatformKey;
+    }
+    return null;
+  };
 
   /** アカウント map（platform → account） */
   const accountMap = new Map(accounts.map((a) => [a.platform, a]));
@@ -70,37 +110,50 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     useBlogSummaryPolling(articles);
 
   /**
+   * 保存/更新後の自動同期を試みる。成功時は formatSuccess の文言、
+   * 失敗時は fallbackMessage を success にセットしつつ同期エラーを accountError に出す。
+   */
+  const attemptAutoSync = async (
+    accountId: string,
+    formatSuccess: (synced: number, total: number) => string,
+    fallbackMessage: string,
+  ) => {
+    try {
+      const result = await syncBlogAccount(accountId);
+      await loadData();
+      setSuccess(formatSuccess(result.synced_count, result.total_count));
+    } catch (syncErr) {
+      setSuccess(fallbackMessage);
+      setAccountError(
+        syncErr instanceof Error
+          ? syncErr.message
+          : "記事の同期に失敗しました。「同期」ボタンで再試行してください。",
+      );
+    }
+  };
+
+  /**
    * ユーザー名を保存（連携）し、自動で記事を同期する。
    */
   const handleSave = async (platform: PlatformKey) => {
     const username = draftUsernames[platform]?.trim();
     if (!username) return;
-    setSavingPlatform(platform);
+    setAction(platform, "saving");
     setAccountError(null);
     setSuccess(null);
     try {
       const account = await addBlogAccount(platform, username);
       setDraftUsernames((prev) => ({ ...prev, [platform]: "" }));
       await loadData();
-      // 連携直後に自動同期
-      try {
-        const result = await syncBlogAccount(account.id);
-        await loadData();
-        setSuccess(
-          `${result.synced_count}件の記事を取得しました（合計: ${result.total_count}件）`,
-        );
-      } catch (syncErr) {
-        setSuccess("アカウントを連携しました");
-        setAccountError(
-          syncErr instanceof Error
-            ? syncErr.message
-            : "記事の同期に失敗しました。「同期」ボタンで再試行してください。",
-        );
-      }
+      await attemptAutoSync(
+        account.id,
+        (synced, total) => `${synced}件の記事を取得しました（合計: ${total}件）`,
+        "アカウントを連携しました",
+      );
     } catch (e) {
       setAccountError(e instanceof Error ? e.message : "アカウントの連携に失敗しました");
     } finally {
-      setSavingPlatform(null);
+      setAction(platform, null, "saving");
     }
   };
 
@@ -110,7 +163,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
   const handleSync = async (platform: PlatformKey) => {
     const account = accountMap.get(platform);
     if (!account) return;
-    setSyncingPlatform(platform);
+    setAction(platform, "syncing");
     setAccountError(null);
     setSuccess(null);
     try {
@@ -122,7 +175,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     } catch (e) {
       setAccountError(e instanceof Error ? e.message : "同期に失敗しました");
     } finally {
-      setSyncingPlatform(null);
+      setAction(platform, null, "syncing");
     }
   };
 
@@ -132,7 +185,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
   const handleDelete = async (platform: PlatformKey) => {
     const account = accountMap.get(platform);
     if (!account) return;
-    setDeletingPlatform(platform);
+    setAction(platform, "deleting");
     setAccountError(null);
     setSuccess(null);
     try {
@@ -142,7 +195,7 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     } catch (e) {
       setAccountError(e instanceof Error ? e.message : "アカウントの解除に失敗しました");
     } finally {
-      setDeletingPlatform(null);
+      setAction(platform, null, "deleting");
     }
   };
 
@@ -154,34 +207,25 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     if (!account) return false;
     const trimmedUsername = username.trim();
     if (!trimmedUsername) return false;
-    setUpdatingPlatform(platform);
+    setAction(platform, "updating");
     setAccountError(null);
     setSuccess(null);
     try {
       await updateBlogAccount(platform, trimmedUsername);
       setDraftUsernames((prev) => ({ ...prev, [platform]: "" }));
       await loadData();
-      // 更新後に自動同期
-      try {
-        const result = await syncBlogAccount(account.id);
-        await loadData();
-        setSuccess(
-          `usernameを更新し、${result.synced_count}件の記事を取得しました（合計: ${result.total_count}件）`,
-        );
-      } catch (syncErr) {
-        setSuccess("usernameを更新しました。再同期してください。");
-        setAccountError(
-          syncErr instanceof Error
-            ? syncErr.message
-            : "記事の同期に失敗しました。「同期」ボタンで再試行してください。",
-        );
-      }
+      await attemptAutoSync(
+        account.id,
+        (synced, total) =>
+          `usernameを更新し、${synced}件の記事を取得しました（合計: ${total}件）`,
+        "usernameを更新しました。再同期してください。",
+      );
       return true;
     } catch (e) {
       setAccountError(e instanceof Error ? e.message : "usernameの更新に失敗しました");
       return false;
     } finally {
-      setUpdatingPlatform(null);
+      setAction(platform, null, "updating");
     }
   };
 
@@ -194,10 +238,10 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
     success,
     draftUsernames,
     setDraftUsernames,
-    savingPlatform,
-    syncingPlatform,
-    updatingPlatform,
-    deletingPlatform,
+    savingPlatform: findPlatformWithAction("saving"),
+    syncingPlatform: findPlatformWithAction("syncing"),
+    updatingPlatform: findPlatformWithAction("updating"),
+    deletingPlatform: findPlatformWithAction("deleting"),
     summary,
     summaryLoading,
     accountMap,

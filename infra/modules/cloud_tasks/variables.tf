@@ -3,14 +3,18 @@ variable "project_id" {
   type        = string
 }
 
+variable "app_name" {
+  description = "アプリケーション名 prefix"
+  type        = string
+}
+
+variable "environment" {
+  description = "環境名 suffix"
+  type        = string
+}
+
 variable "location" {
   description = "Cloud Tasks キューのロケーション"
   type        = string
   default     = "asia-northeast1"
-}
-
-variable "queue_name" {
-  description = "Cloud Tasks キュー名"
-  type        = string
-  default     = "devforge-ai-tasks"
 }

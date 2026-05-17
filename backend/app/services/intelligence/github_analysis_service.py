@@ -32,13 +32,20 @@ def _now() -> datetime:
 
 async def run_github_analysis(db: Session, payload: dict) -> None:
     """GitHub 分析パイプラインを実行し、AI 学習アドバイスまで一括生成してキャッシュに保存する。"""
-    user_id = payload["user_id"]
+    user_id = payload.get("user_id")
+    # 必須キー欠落・キャッシュ不在はいずれもディスパッチ側のバグであり、
+    # リトライしても回復しないため NonRetryableError で worker に dead_letter を委ねる。
+    if not user_id:
+        message = "GitHub 分析タスクのペイロードに user_id がありません"
+        logger.error(message, extra={"payload_keys": list(payload.keys())})
+        raise NonRetryableError(f"{message} (payload_keys={list(payload.keys())})")
     task_id = user_id
 
     cache = db.query(GitHubAnalysisCache).filter_by(user_id=user_id).first()
     if not cache:
-        logger.error("GitHub 分析キャッシュが見つかりません", extra={"user_id": user_id})
-        raise RuntimeError(f"GitHub analysis cache not found: user_id={user_id}")
+        message = "GitHub 分析キャッシュが見つかりません"
+        logger.error(message, extra={"user_id": user_id})
+        raise NonRetryableError(f"{message} (user_id={user_id})")
 
     cache.status = "processing"
     cache.started_at = _now()

@@ -4,6 +4,9 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# 互換のため再エクスポート。新規実装は schemas.shared から import すること。
+from .shared import TaskStatusResponse  # noqa: F401
+
 
 class TechStackItem(BaseModel):
     """技術スタック1件。"""
@@ -79,9 +82,3 @@ class CareerAnalysisResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class TaskStatusResponse(BaseModel):
-    """タスクステータスの軽量レスポンス。"""
-
-    status: str
-    error_message: str | None = None
-    error_code: str | None = None

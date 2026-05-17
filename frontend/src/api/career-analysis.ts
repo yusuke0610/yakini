@@ -1,4 +1,5 @@
 import { request } from "./client";
+import { PATHS } from "./paths";
 
 /* ── 型定義 ──────────────────────────────────────────── */
 
@@ -64,7 +65,7 @@ export interface TaskStatusResponse {
 
 /** キャリアパス分析を開始する（202 非同期）。 */
 export function generateAnalysis(targetPosition: string): Promise<CareerAnalysisResponse> {
-  return request<CareerAnalysisResponse>("/api/career-analysis/generate", {
+  return request<CareerAnalysisResponse>(PATHS.careerAnalysis.generate, {
     method: "POST",
     body: JSON.stringify({ target_position: targetPosition }),
   });
@@ -72,29 +73,29 @@ export function generateAnalysis(targetPosition: string): Promise<CareerAnalysis
 
 /** 全分析結果を取得する。 */
 export function listAnalyses(): Promise<CareerAnalysisResponse[]> {
-  return request<CareerAnalysisResponse[]>("/api/career-analysis/");
+  return request<CareerAnalysisResponse[]>(PATHS.careerAnalysis.base);
 }
 
 /** 指定 ID の分析結果を取得する。 */
 export function getAnalysis(id: number): Promise<CareerAnalysisResponse> {
-  return request<CareerAnalysisResponse>(`/api/career-analysis/${id}`);
+  return request<CareerAnalysisResponse>(PATHS.careerAnalysis.byId(id));
 }
 
 /** 分析ステータスを取得する（ポーリング用）。 */
 export function getAnalysisStatus(id: number): Promise<TaskStatusResponse> {
-  return request<TaskStatusResponse>(`/api/career-analysis/${id}/status`);
+  return request<TaskStatusResponse>(PATHS.careerAnalysis.status(id));
 }
 
 /** 分析結果を削除する。 */
 export function deleteAnalysis(id: number): Promise<void> {
-  return request<void>(`/api/career-analysis/${id}`, {
+  return request<void>(PATHS.careerAnalysis.byId(id), {
     method: "DELETE",
   });
 }
 
 /** 失敗したキャリア分析タスクを手動で再実行する（202 非同期）。 */
 export function retryAnalysis(id: number): Promise<CareerAnalysisResponse> {
-  return request<CareerAnalysisResponse>(`/api/career-analysis/${id}/retry`, {
+  return request<CareerAnalysisResponse>(PATHS.careerAnalysis.retry(id), {
     method: "POST",
   });
 }

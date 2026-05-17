@@ -22,16 +22,10 @@ describe("TechBar", () => {
 
   it("リポジトリ数の多い順に並ぶ", () => {
     render(<TechBar techs={{ Vue: 1, React: 3, FastAPI: 2 }} />);
-    const items = screen.getAllByRole("generic").filter((el) =>
-      ["React", "FastAPI", "Vue"].includes(el.textContent ?? ""),
-    );
-    // React(3) > FastAPI(2) > Vue(1) の順
     const texts = screen
       .getAllByText(/^(React|FastAPI|Vue)$/)
       .map((el) => el.textContent);
     expect(texts.indexOf("React")).toBeLessThan(texts.indexOf("FastAPI"));
     expect(texts.indexOf("FastAPI")).toBeLessThan(texts.indexOf("Vue"));
-    // items を使ってESLint の unused variable を回避
-    expect(items).toBeDefined();
   });
 });

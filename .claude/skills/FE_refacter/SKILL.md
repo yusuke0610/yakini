@@ -1,5 +1,5 @@
 ---
-name: frontend_refacter
+name: FE_refacter
 description: Use when reviewing or planning refactors for the DevForge React frontend, especially for maintainability, redundant or missing unit tests, oversized components or hooks, responsibility separation, and directory structure changes. Trigger on requests such as “frontend のリファクタリングを見て”, “保守性を確認”, “不要な単体テスト”, “単体テストは十分か”, “責務分離”, or “構成見直し”.
 ---
 
@@ -10,6 +10,8 @@ description: Use when reviewing or planning refactors for the DevForge React fro
 - `.claude/CLAUDE.md`
 - `.claude/rules/frontend/architecture.md`
 - `.claude/rules/frontend/typescript.md`
+- `.claude/rules/common/duplication.md`（DRY / 重複検知ポリシー）
+- `report/dupe/jscpd-report.json` が存在すれば最新を読み込み、frontend に該当する clone を抽出して Duplication Findings の素材にする
 
 必要に応じて backend 側 API 契約も確認すること。
 
@@ -18,6 +20,26 @@ description: Use when reviewing or planning refactors for the DevForge React fro
 - `frontend/src/**`
 - `frontend/tests/**`
 - 必要に応じて `frontend/package.json`, `frontend/vite.config.ts`, `frontend/eslint.config.js`
+
+## 成果物の出力先（必須）
+
+レビュー本文はターミナルに垂れ流さず、必ずファイルへ保存する。スクロールで流れて読み返せなくなるのを防ぐためのルール。
+
+- 保存先: `report/FE_report_<YYYYMMDD_HHMM>.md`
+  - 例: `report/FE_report_20260516_1042.md`
+  - `report/` が無ければ作成する (`mkdir -p report`)
+  - タイムスタンプはレビュー開始時刻のローカルタイム (`date +%Y%m%d_%H%M`)
+- ファイル中身は本ドキュメント末尾の「推奨出力フォーマット」に従う
+- 既存の `FE_report_*.md` は削除しない（履歴として残す）
+
+### ターミナルへの出力ルール
+
+- レポート本文を assistant メッセージへ貼らない（ファイルにだけ書く）
+- ターミナルには以下だけを返す:
+  1. 保存先パス（`report/FE_report_YYYYMMDD_HHMM.md`）
+  2. `Verdict` セクションの 3-5 行サマリのみ
+  3. 次に取るべきアクション（あれば 1-2 行）
+- Findings / Test Review / Structure Review / Refactor Plan などの詳細セクションはファイル参照に留める
 
 ## 目的
 
@@ -84,7 +106,29 @@ description: Use when reviewing or planning refactors for the DevForge React fro
 不要テストを挙げるときは、必ず「削っても残る保護」を書くこと。  
 不足テストを挙げるときは、必ず「何の仕様を守るためのテストか」を書くこと。
 
-### 4. ディレクトリ構成レビュー
+### 4. 重複検知レビュー（Duplication Findings）
+
+`make dupe-check` で `report/dupe/jscpd-report.json` を生成し、`frontend/src` 配下の clone を抽出する。
+生成されていない場合は `make dupe-check` を sandbox 無効で 1 回回してから本セクションに進む。
+
+抽出した clone を以下の 3 分類でラベリングする（`.claude/rules/common/duplication.md` の基準に従う）。
+
+- **本質的重複**（抽出すべき）: 同じデータ取得 + フォーム状態管理のロジック、同じ payload 変換、同じエラーマッピング、同じ API 呼び出しパターン、複数 component に散らばった同一 derived state
+- **偶発的重複**（抽出しない）: import 文の塊、Redux slice の boilerplate、同形の TypeScript interface 定義（変更理由が違う）、CSS Module の class 列、test の arrange-act-assert の流れ
+- **意味的重複**（jscpd では拾えない）: 別 hook で「同じデータ取得 + loading/error 管理 + キャッシュ」を別実装している、複数 component で「同じ条件分岐 + 描画」を別実装している。grep + 目視で別途探す。`useDocumentForm` / `useTaskPolling` / `useAsyncAnalysisPage` のような既存共通フックで吸収できないか確認する
+
+本質的重複は「3 回目で抽出（Rule of Three）」を守る。
+
+抽出先は `.claude/rules/common/duplication.md` の「Frontend」ヒエラルキーに従う:
+
+1. 状態管理を含むロジック → `src/hooks/` の新規フック
+2. 純粋関数・文字列変換・日付処理 → `src/utils/`
+3. API クライアントの共通パターン → `src/api/client.ts` のラッパー
+4. フォーム入出力変換 → `src/formMappers.ts` / `src/payloadBuilders.ts`
+5. 共通 UI コンポーネント → `src/components/ui/`
+6. 型定義 → `src/types.ts` / `src/formTypes.ts`
+
+### 5. ディレクトリ構成レビュー
 
 以下を確認します。
 
@@ -109,6 +153,8 @@ description: Use when reviewing or planning refactors for the DevForge React fro
 
 ## 推奨出力フォーマット
 
+下記テンプレートを `report/FE_report_<YYYYMMDD_HHMM>.md` に書き込む。ターミナルには貼らない。
+
 ````markdown
 # Frontend Refactor Review
 
@@ -131,6 +177,16 @@ description: Use when reviewing or planning refactors for the DevForge React fro
 
 ### Add
 - [path or feature] どのユーザー挙動を守るテストか。
+
+## Duplication Findings
+### High（本質的重複・抽出強く推奨）
+- [path1:line] ↔ [path2:line] (jscpd: N tokens) 何が重複しているか。本質的な理由。抽出先候補（`hooks/useXxx.ts` など）
+
+### Medium（意味的重複・要検討）
+- [path1] と [path2] の hook が同じデータ取得 + loading/error 管理パターン。既存の `useDocumentForm` で吸収できないか / 新規フックに統合するか。
+
+### Allowed Duplication（記録のみ・抽出しない）
+- [path:line] Redux slice / interface 定義などの偶発的重複。jscpd で検出されたが規約上抽出しない理由。
 
 ## Structure Review
 ### Oversized Components or Hooks
@@ -164,6 +220,7 @@ frontend/src/
 - `make lint-frontend`
 - `make test-frontend`
 - `make build-frontend`
+- `make dupe-check`（重複検知。`report/dupe/jscpd-report.json` を生成。sandbox は無効化して実行）
 
 個別スクリプトを叩きたい場合は `nix develop --command bash -c "cd frontend && npm run <script>"` を使う。生シェルでの `cd frontend && npm ...` は AI エージェントでは禁止。
 
