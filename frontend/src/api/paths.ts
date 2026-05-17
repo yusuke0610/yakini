@@ -23,6 +23,9 @@
 export const PATHS = {
   auth: {
     githubCallback: "/auth/github/callback",
+    me: "/auth/me",
+    githubLoginUrl: "/auth/github/login-url",
+    logout: "/auth/logout",
   },
   resumes: {
     base: "/api/resumes",

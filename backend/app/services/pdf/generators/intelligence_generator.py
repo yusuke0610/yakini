@@ -30,6 +30,24 @@ def _add_page_number(canvas_obj, doc):
     canvas_obj.restoreState()
 
 
+def _table_style(
+    header_range: tuple[tuple[int, int], tuple[int, int]],
+    valign: str,
+) -> TableStyle:
+    """グリッド・ヘッダ背景・パディングをまとめた共通 TableStyle を返す。"""
+    return TableStyle(
+        [
+            ("GRID", (0, 0), (-1, -1), 0.5, TABLE_BORDER),
+            ("BACKGROUND", header_range[0], header_range[1], HEADER_BG),
+            ("VALIGN", (0, 0), (-1, -1), valign),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ]
+    )
+
+
 def build_intelligence_pdf(payload: dict) -> bytes:
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -68,19 +86,7 @@ def build_intelligence_pdf(payload: dict) -> bytes:
         [Paragraph("<b>分析日時</b>", s["body"]), Paragraph(analyzed_at, s["body"])],
     ]
     overview_table = Table(overview_data, colWidths=[40 * mm, content_width - 40 * mm])
-    overview_table.setStyle(
-        TableStyle(
-            [
-                ("GRID", (0, 0), (-1, -1), 0.5, TABLE_BORDER),
-                ("BACKGROUND", (0, 0), (0, -1), HEADER_BG),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-            ]
-        )
-    )
+    overview_table.setStyle(_table_style(((0, 0), (0, -1)), "MIDDLE"))
     elements.append(overview_table)
     elements.append(Spacer(1, 4 * mm))
 
@@ -138,19 +144,7 @@ def build_intelligence_pdf(payload: dict) -> bytes:
                     ]
                 )
             role_table = Table(role_data, colWidths=[45 * mm, 20 * mm, content_width - 65 * mm])
-            role_table.setStyle(
-                TableStyle(
-                    [
-                        ("GRID", (0, 0), (-1, -1), 0.5, TABLE_BORDER),
-                        ("BACKGROUND", (0, 0), (-1, 0), HEADER_BG),
-                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                        ("TOPPADDING", (0, 0), (-1, -1), 3),
-                        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-                        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                    ]
-                )
-            )
+            role_table.setStyle(_table_style(((0, 0), (-1, 0)), "TOP"))
             elements.append(role_table)
             elements.append(Spacer(1, 2 * mm))
 

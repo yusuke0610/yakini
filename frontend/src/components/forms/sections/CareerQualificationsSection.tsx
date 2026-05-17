@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import { blankResumeQualification } from "../../../constants";
 import type { CareerFormState } from "../../../payloadBuilders";
 import type { ResumeQualification } from "../../../types";
@@ -14,7 +15,7 @@ type Props = {
   /** ローディング中（Skeleton 表示） */
   loading: boolean;
   /** フォーム状態更新ディスパッチャ */
-  setForm: React.Dispatch<React.SetStateAction<CareerFormState>>;
+  setForm: Dispatch<SetStateAction<CareerFormState>>;
 };
 
 /**
