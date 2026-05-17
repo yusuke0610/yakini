@@ -7,16 +7,43 @@ import {
   deleteBlogAccount,
   getBlogArticles,
   syncBlogAccount,
-} from "../api";
-import type { BlogAccount, BlogArticle } from "../types";
+} from "../../api";
+import type { BlogAccount, BlogArticle } from "../../types";
 import { useBlogSummaryPolling } from "./useBlogSummaryPolling";
 
 export type PlatformKey = "zenn" | "note" | "qiita";
 
-type PlatformAction = "saving" | "syncing" | "updating" | "deleting";
+export type PlatformAction = "saving" | "syncing" | "updating" | "deleting";
 
 /** プラットフォーム別の進行中アクション集合。値が無いキーは「アイドル」を意味する。 */
-type PlatformActionMap = Partial<Record<PlatformKey, PlatformAction>>;
+export type PlatformActionMap = Partial<Record<PlatformKey, PlatformAction>>;
+
+/**
+ * PlatformActionMap への純粋な更新関数。
+ *
+ * クリア（``action === null``）時に ``expectedAction`` を指定すると、
+ * 現在のアクションが ``expectedAction`` と一致する場合のみ削除する。
+ * これにより、同一プラットフォームで先発アクションの finally が
+ * 後発アクションを clobber することを防ぐ（race condition ガード）。
+ *
+ * 単体テストのため、フック内のクロージャから切り出して export している。
+ */
+export function reduceActions(
+  prev: PlatformActionMap,
+  platform: PlatformKey,
+  action: PlatformAction | null,
+  expectedAction?: PlatformAction,
+): PlatformActionMap {
+  if (action == null) {
+    if (expectedAction !== undefined && prev[platform] !== expectedAction) {
+      return prev;
+    }
+    const next = { ...prev };
+    delete next[platform];
+    return next;
+  }
+  return { ...prev, [platform]: action };
+}
 
 /**
  * BlogPage のブログアカウント管理・同期・AI分析ロジックを提供するカスタムフック。
@@ -42,31 +69,14 @@ export function useBlogAccountManager(filter: "all" | "zenn" | "note" | "qiita")
   /** プラットフォーム別の進行中アクション。同時に複数プラットフォームを操作する余地を残す。 */
   const [actions, setActions] = useState<PlatformActionMap>({});
 
-  /**
-   * 指定プラットフォームのアクションをセット/解除する。
-   *
-   * クリア（``action === null``）時に ``expectedAction`` を指定すると、
-   * 現在のアクションが ``expectedAction`` と一致する場合のみ削除する。
-   * これにより、同一プラットフォームで先発アクションの finally が
-   * 後発アクションを clobber することを防ぐ。
-   */
+  /** 指定プラットフォームのアクションをセット/解除する（reduceActions の薄いラッパ）。 */
   const setAction = useCallback(
     (
       platform: PlatformKey,
       action: PlatformAction | null,
       expectedAction?: PlatformAction,
     ) => {
-      setActions((prev) => {
-        if (action == null) {
-          if (expectedAction !== undefined && prev[platform] !== expectedAction) {
-            return prev;
-          }
-          const next = { ...prev };
-          delete next[platform];
-          return next;
-        }
-        return { ...prev, [platform]: action };
-      });
+      setActions((prev) => reduceActions(prev, platform, action, expectedAction));
     },
     [],
   );

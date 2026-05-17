@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { CareerProjectForm } from "../payloadBuilders";
+import type { CareerProjectForm } from "../../payloadBuilders";
 
 /** プロジェクトモーダルの対象を表す型 */
 export type ProjectModalTarget = {

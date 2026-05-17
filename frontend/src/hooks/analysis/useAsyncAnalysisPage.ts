@@ -24,7 +24,7 @@ const getNextInterval = (current: number): number =>
 export { getNextInterval };
 
 /** useAsyncAnalysisPage のオプション型 */
-type UseAsyncAnalysisPageOptions<TResult> = {
+export type UseAsyncAnalysisPageOptions<TResult> = {
   /**
    * キャッシュ読み込み関数。
    * - 結果が存在する場合は result を返す

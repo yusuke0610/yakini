@@ -1,7 +1,7 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { useBlogAccountManager } from "./useBlogAccountManager";
-import type { BlogAccount, BlogArticle } from "../types";
+import { reduceActions, useBlogAccountManager } from "./useBlogAccountManager";
+import type { BlogAccount, BlogArticle } from "../../types";
 
 /** テスト用のダミーアカウントデータ */
 const dummyAccounts: BlogAccount[] = [
@@ -29,7 +29,7 @@ const dummyArticles: BlogArticle[] = [
 ];
 
 /** ../api モジュール全体をモック */
-vi.mock("../api", () => ({
+vi.mock("../../api", () => ({
   getBlogAccounts: vi.fn(),
   getBlogArticles: vi.fn(),
   addBlogAccount: vi.fn(),
@@ -41,6 +41,48 @@ vi.mock("../api", () => ({
   getBlogSummaryCacheStatus: vi.fn(),
 }));
 
+// ── reduceActions の単体テスト ────────────────────────────────
+//
+// setAction の expectedAction ガード（先発アクションの finally が後発アクションを
+// clobber しないこと）を locked-down するために、reduceActions を直接検証する。
+// hook の useState から純粋関数として切り出してある。
+describe("reduceActions", () => {
+  it("action を指定すると platform にアクションをセットする", () => {
+    const next = reduceActions({}, "zenn", "saving");
+    expect(next).toEqual({ zenn: "saving" });
+  });
+
+  it("既存のアクションは新しいアクションで上書きされる", () => {
+    const next = reduceActions({ zenn: "saving" }, "zenn", "syncing");
+    expect(next).toEqual({ zenn: "syncing" });
+  });
+
+  it("action=null + expectedAction なしでは無条件で削除される", () => {
+    const next = reduceActions({ zenn: "saving", note: "syncing" }, "zenn", null);
+    expect(next).toEqual({ note: "syncing" });
+  });
+
+  it("expectedAction が現在の値と一致するとき削除される", () => {
+    const next = reduceActions({ zenn: "saving" }, "zenn", null, "saving");
+    expect(next).toEqual({});
+  });
+
+  it("expectedAction が現在の値と異なるときは prev のまま返す（後発を clobber しない）", () => {
+    // 先発 saving の finally が、後発 syncing が走った後に呼ばれたケース
+    const prev = { zenn: "syncing" } as const;
+    const next = reduceActions(prev, "zenn", null, "saving");
+    // 同一参照で返ることで、保持する syncing がクリアされない
+    expect(next).toBe(prev);
+    expect(next).toEqual({ zenn: "syncing" });
+  });
+
+  it("expectedAction 指定で対象プラットフォーム未登録なら何もしない", () => {
+    const prev = { note: "saving" } as const;
+    const next = reduceActions(prev, "zenn", null, "saving");
+    expect(next).toBe(prev);
+  });
+});
+
 describe("useBlogAccountManager", () => {
   // モック関数への参照を取得するために動的 import を使う
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,7 +90,7 @@ describe("useBlogAccountManager", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    api = await import("../api");
+    api = await import("../../api");
     // デフォルトのモック戻り値を設定
     api.getBlogSummaryCache.mockResolvedValue({ available: false, summary: null, status: "idle" });
     api.getBlogSummaryCacheStatus.mockResolvedValue({ status: "idle" });

@@ -189,8 +189,12 @@ def test_get_request_skips_csrf_check(client) -> None:
 
 
 def _auth_failed_records(records: list[logging.LogRecord]) -> list[logging.LogRecord]:
-    """auth_failed イベント (devforge ロガー WARNING) のみ抽出する。"""
-    return [r for r in records if r.name == "devforge" and r.message == "auth_failed"]
+    """auth_failed イベント (devforge ロガー WARNING) のみ抽出する。
+
+    `LogRecord.message` はフォーマット後にのみ設定される派生属性のため、
+    常に値を返す `getMessage()` を使う方が堅牢（caplog 等のフォーマッタ設定差異に強い）。
+    """
+    return [r for r in records if r.name == "devforge" and r.getMessage() == "auth_failed"]
 
 
 def test_auth_failed_logged_when_cookie_missing(client, caplog) -> None:
